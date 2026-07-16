@@ -502,10 +502,26 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .mermaid { display: inline-block; vertical-align: middle; width: var(--zoom, 100%); transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
 .mermaid svg { width: 100% !important; max-width: none !important; height: auto !important; }
 
-/* 直書模式 */
+/* ========================= */
+/* 直書模式 (與中文排版設定) */
+/* ========================= */
 .vertical-wrapper { writing-mode: vertical-rl; height: 65vh; min-height: 400px; width: 100%; box-sizing: border-box; overflow-x: auto; overflow-y: hidden; padding: 2rem 1.5rem 0.5rem 1.5rem; margin: 1rem 0; border-radius: 12px; background: var(--box-bg); border: 1px solid var(--card-border); box-shadow: inset 0 0 20px rgba(0,0,0,0.02); }
 .vertical-wrapper h1, .vertical-wrapper h2, .vertical-wrapper h3 { margin: 0 1.2rem 0 0; }
 .vertical-wrapper img { max-height: 70%; width: auto !important; margin: 0 1.5rem !important; }
+
+/* 2. 參數控制：關閉縮排 */
+.vertical-wrapper[data-indent="false"] p {
+    text-indent: 0;
+}
+
+/* 3. 防禦性設定：防止表格、清單、圖片等區塊被誤縮排 */
+.vertical-wrapper table, 
+.vertical-wrapper ul, 
+.vertical-wrapper ol, 
+.vertical-wrapper figure, 
+.vertical-wrapper .gallery {
+    text-indent: 0 !important;
+}
 
 /* 排序按鈕動畫 */
 .sort-icon .sort-arr-left, .sort-icon .sort-arr-right { stroke-dasharray: 24 24; transition: stroke-dasharray 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
@@ -843,7 +859,7 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
 
 /* 確保工具列分隔線的基本設定 */
 .toolbar-divider { 
-    width: 1px; 
+    width: 2px; 
     height: 24px; 
     background: rgba(255, 255, 255, 0.2); 
     margin: 0 4px; 
@@ -872,16 +888,16 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     
     .toolbox-group {
         position: absolute;
-        /* ✨ 往下推 50px，剛好懸浮在按鈕下方 */
-        top: 50px; 
+        top: 55px; /* 懸浮在按鈕下方 */
         
-        /* ✨ 完美對齊魔法：從右邊界往左推 85px，精準來到 ... 按鈕的正中心 */
-        right: 85px; 
-        transform: translateX(50%) translateY(-15px) scale(0.95);
+        /* ✨ 魔法對齊：直接貼齊右側邊緣，向左展開，絕對不會超出螢幕 */
+        right: 0; 
         
-        flex-direction: column; 
+        /* ✨ 改回水平排列 */
+        flex-direction: row; 
         align-items: center;    
         justify-content: center;
+        
         background: rgba(0, 0, 0, 0.7);
         backdrop-filter: blur(15px);
         padding: 8px;
@@ -889,17 +905,21 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
         border: 1px solid rgba(255, 255, 255, 0.15);
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         
+        /* 動畫初始狀態：稍微往上縮，並取消 translateX */
         opacity: 0;
         visibility: hidden;
-        transform-origin: top center; 
+        transform: translateY(-15px) scale(0.95);
+        
+        /* ✨ 動畫起點改為右上角，像是由選單按鈕與關閉按鈕下方展開 */
+        transform-origin: top right; 
         transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
     
-    /* ✨ 展開時保持 translateX(50%) 的置中狀態 */
+    /* 展開時的狀態：只需平移 Y 軸與還原縮放 */
     .toolbox-group.is-open {
         opacity: 1;
         visibility: visible;
-        transform: translateX(50%) translateY(0) scale(1);
+        transform: translateY(0) scale(1);
         pointer-events: auto;
     }
     

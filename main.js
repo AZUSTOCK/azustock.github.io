@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.3.0",          // 目前系統版本號
+    VERSION: "U1.3.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "light",     // 預設主題 (light / dark)
@@ -1280,7 +1280,14 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         modalOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
         
+        // 渲染完成後
         modalBody.innerHTML = marked.parse(markdownContent);
+
+        // ✨ 確保針對所有 vertical-wrapper 區域進行處理
+        const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
+        verticalWrappers.forEach(wrapper => {
+            window.applyIndentToVerticalWrapper(wrapper);
+        });
         document.querySelector('.modal-content').scrollTop = 0;
 
         const flatSequence = window.getArticleSequence(projectId);
@@ -1666,8 +1673,65 @@ function closeModal() {
 
 closeModalBtn.addEventListener('click', closeModal);
 modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalOverlay.classList.contains('active') && !document.getElementById('lightbox-modal').classList.contains('is-active')) closeModal(); });
+
 modalOverlay.addEventListener('touchmove', (e) => { if (e.target === modalOverlay) e.preventDefault(); }, { passive: false });
+
+// ==========================================
+// ✨ 全域鍵盤快捷鍵引擎 (Unified Keyboard Engine)
+// ==========================================
+document.addEventListener('keydown', (e) => {
+    const lightboxModal = document.getElementById('lightbox-modal');
+    const isLightboxOpen = lightboxModal && lightboxModal.classList.contains('is-active');
+    
+    const modalOverlay = document.getElementById('md-modal');
+    const isArticleOpen = modalOverlay && modalOverlay.classList.contains('active');
+
+    // --- 🥊 第一層：Lightbox 大圖預覽 (最高優先權) ---
+    if (isLightboxOpen) {
+        if (e.key === 'Escape') {
+            const toolbox = document.getElementById('lightbox-toolbox');
+            const state = window.lightboxState;
+            
+            // 💡 聰明的 3 段式退回邏輯：
+            if (toolbox && toolbox.classList.contains('is-open')) {
+                toolbox.classList.remove('is-open'); // 1. 如果工具箱開著，先收起工具箱
+            } else if (state.zoom > 1) {
+                window.lightboxAction('reset');      // 2. 如果圖片有放大，先恢復 1:1 比例
+            } else {
+                window.closeLightbox();              // 3. 都沒有，才真正關閉 Lightbox
+            }
+            e.preventDefault();
+        }
+        
+        // 左右鍵切換相簿圖片
+        if (e.key === 'ArrowLeft') { window.navigateLightbox(-1); e.preventDefault(); }
+        if (e.key === 'ArrowRight') { window.navigateLightbox(1); e.preventDefault(); }
+        
+        // 鎖定上下鍵，防止背景文章在背後偷偷滾動
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+        
+        return; // 終止事件，絕不把按鍵傳給底下的文章 Modal
+    }
+
+    // --- 📖 第二層：文章 Modal 閱讀模式 ---
+    if (isArticleOpen) {
+        if (e.key === 'Escape') {
+            closeModal();
+            e.preventDefault();
+        }
+        
+        // ✨ 新增：左右鍵自動切換「上一篇 / 下一篇」文章
+        if (e.key === 'ArrowLeft') {
+            const prevBtn = document.querySelector('.nav-card.prev');
+            if (prevBtn) { prevBtn.click(); e.preventDefault(); }
+        }
+        if (e.key === 'ArrowRight') {
+            const nextBtn = document.querySelector('.nav-card.next');
+            if (nextBtn) { nextBtn.click(); e.preventDefault(); }
+        }
+        return;
+    }
+});
 
 // ==========================================
 // ✨ Mermaid 專業控制台引擎
@@ -1764,3 +1828,32 @@ function show404Modal(title, message) {
     modalOverlay.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
+
+// ✨ 專為 JSON/Markdown 轉 HTML 後的中文排版處理器
+window.applyIndentToVerticalWrapper = function(container) {
+    if (!container || container.getAttribute('data-indent') === 'false') return;
+
+    // ✨ 使用 Unicode 全形空格字元 (U+3000)，直接填入文字，不會被轉義為字串
+    const indent = '\u3000\u3000';
+
+    function traverse(node) {
+        node.childNodes.forEach(child => {
+            if (child.nodeType === Node.TEXT_NODE) {
+                // 檢查是否已經有縮排，避免重複執行
+                if (child.textContent.trim().length > 0 && !child.textContent.startsWith(indent)) {
+                    const lines = child.textContent.split('\n');
+                    const indentedLines = lines.map(line => {
+                        // 每一行開頭都加上全形空格
+                        return line.trim() ? indent + line.trim() : line;
+                    });
+                    child.textContent = indentedLines.join('\n');
+                }
+            } else if (child.tagName !== 'BR' && child.tagName !== 'SCRIPT' && child.tagName !== 'STYLE') {
+                // 遞迴處理非換行標籤
+                traverse(child);
+            }
+        });
+    }
+
+    traverse(container);
+};
