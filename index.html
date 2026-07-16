@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="light"> <!-- 預設背景 -->
+<head>
+  <!-- ✨ 1. 圖示與 PWA 設定 (已更新為 azustock 絕對路徑) -->
+  <link rel="apple-touch-icon" sizes="180x180" href="https://azustock.github.io/assets/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="https://azustock.github.io/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="https://azustock.github.io/assets/favicon-16x16.png">
+  <link rel="manifest" href="https://azustock.github.io/assets/site.webmanifest">
+  <link rel="shortcut icon" href="https://azustock.github.io/assets/favicon.ico">
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>風川梓 | Azustock</title>
+  <link rel="preload" href="./all_projects.json" as="fetch" crossorigin="anonymous" />
+
+  <!-- ✨ 2. 社群分享標籤 (Open Graph / Twitter Cards) - 這裡「必須」是絕對路徑 -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://azustock.github.io/" />
+  <meta property="og:title" content="風川梓 | Azustock" />
+  <meta property="og:description" content="程式、金融、像素、音符、字詞。" />
+  <meta property="og:image" content="https://azustock.github.io/assets/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://azustock.github.io/" />
+  <meta name="twitter:title" content="風川梓 | Azustock" />
+  <meta name="twitter:description" content="程式、金融、像素、音符、字詞。" />
+  <meta name="twitter:image" content="https://azustock.github.io/assets/og.png" />
+  
+  <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <link rel="stylesheet" href="./style.css?v=1.3.0" />
+  <script defer src="./main.js?v=1.3.0"></script>
+</head>
+<body>
+<button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
+    <img src="./assets/light.png" id="icon-sun" class="theme-img" alt="Sun">
+    <img src="./assets/dark.png" id="icon-moon" class="theme-img" alt="Moon">
+  </button>
+<button id="menu-toggle" class="menu-btn">
+    <span class="bar"></span>
+    <span class="bar"></span>
+    <span class="bar"></span>
+  </button>
+
+  <nav id="fullscreen-menu" class="fullscreen-nav">
+    <ul class="nav-links" id="dynamic-nav"></ul>
+  </nav>
+
+  <button id="back-to-top" class="btt-btn" aria-label="返回頂部">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+  </button>
+
+  <div id="md-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-top-bar">
+        <div id="modal-top-left"></div>
+        <div id="modal-top-right">
+          <div id="toc-mount-point"></div>
+          <button id="close-modal" class="modal-close-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      
+      <div id="modal-body" class="markdown-body"></div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- ✨ 新增：全螢幕大圖預覽 (Lightbox) Modal -->
+  <!-- ========================================== -->
+  <div id="lightbox-modal" class="lightbox-hidden">
+    <button id="lightbox-close" onclick="window.closeLightbox()">&times;</button>
+    <!-- ✨ 移動至圖片上方 -->
+    <div id="lightbox-caption" class="lightbox-caption"></div>
+    <img id="lightbox-img" src="" alt="大圖預覽">
+  </div>
+
+  <div id="filter-toast" class="filter-toast">
+    <div class="toast-content">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+      <span id="toast-text"></span>
+      <span id="toast-count" style="font-size: 0.85rem; color: var(--muted); margin-left: 6px; font-family: monospace;"></span>
+    </div>
+    <div class="toast-actions">
+      <button class="toast-btn next-btn" onclick="window.scrollToNextCard(event)" data-tooltip="跳至下一個">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg>
+      </button>
+      <div class="toast-divider"></div>
+      <button class="toast-btn close-btn" onclick="window.clearFilter(event)" data-tooltip="解除過濾">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <header>
+    <h1>風川梓</h1>
+    <p>
+      Software Engineer · Systems Builder<br />
+      程式、金融、像素、音符、字詞
+    </p>
+    <div class="cta">
+      <!-- ✨ 3. 已更新為新組織的 GitHub 連結 -->
+      <a class="btn" href="https://github.com/AZUSTOCK" target="_blank">GitHub</a>
+      <button class="btn share-site-btn" style="width: 120px;" onclick="window.handleCopy(this, 'https://azustock.github.io/')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px;">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+        </svg>
+        分享本站
+    </button>
+    </div>
+  </header>
+    <div class="marquee-container">
+      <div class="marquee-content" id="marquee-text">
+        Loading skills...
+      </div>
+    </div>
+
+  <main>
+    <section>
+      <h2>Profile</h2>
+      <p>
+        一個名為「梓」的人的聚集地，通常都在寫寫字、寫程式、畫圖、音樂和財經及理解中。<br/>
+        此亦為「梓本投資控股偽存公司」的官方網站，主要用於展示旗下梓們的作品。
+      </p>
+    </section>
+
+    <div id="portfolio-sections">
+      <div class="loading-container"><span class="loading-text">FETCHING DATA</span></div>
+    </div>
+
+  </main>
+
+  <footer>
+   <div class="copyright-box">
+      <p>© 2026 風川梓 (Azustock). All rights reserved.</p>
+      
+      <p class="copyright-footer" style="justify-content: center;">
+        <span>Hosted on GitHub Pages.</span>
+      </p>
+      
+      <p style="text-align: right; margin-top: 0.5rem; margin-bottom: 0;">
+        <span id="sys-version" class="sys-version"></span>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

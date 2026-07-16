@@ -1,0 +1,13 @@
+{
+  "order": 2,
+  "title": "azustock",
+  "category": "code",
+  "meta": "Stock Market Simulation Platform",
+  "description": "即時股票模擬與報價系統，自行設計價格行為模型、成交撮合與高頻更新流程。",
+  "tags": ["Python", "AsyncIO", "Finance", "System Design"],
+  "link": "",
+  "cover": "logo.webp",
+  "archived": true,
+  "version": "0.0.1",
+  "date": "2025-12-18"
+}

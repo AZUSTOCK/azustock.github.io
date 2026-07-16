@@ -1,0 +1,26 @@
+{
+  "order": 4,
+  "title": "日記的故事",
+  "category": "writing",
+  "meta": "暫定 & 未排序",
+  "description": "她和她的一段經歷",
+  "tags": ["Story", "Original", "OC"],
+  "link": "",
+  "default_sort": "asc",
+  "pinned": true,
+  "wip": true,
+  "new": true,
+  "groups": {
+    "introduction": {
+      "title": "INTRODUCTION",
+      "description": "人物介紹與故事背景",
+      "highlight": true
+    },
+    "main": {
+      "title": "MAIN STORY",
+      "description": "連載章節",
+      "highlight": false,
+      "default": true
+    }
+  }
+}

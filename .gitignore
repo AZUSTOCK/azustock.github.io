@@ -1,0 +1,9 @@
+projects/**/*.png
+projects/**/*.jpg
+projects/**/*.jpeg
+*.pyc
+__pycache__
+.vscode
+note.txt
+tempCodeRunnerFile.py
+private/
