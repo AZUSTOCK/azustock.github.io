@@ -856,24 +856,32 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
 .toolbox-toggle-btn { display: none; /* 桌機預設隱藏 */ }
 
 @media (max-width: 600px) {
-    /* ✨ 新增：觸控裝置不需要 Tooltip，隱藏避免點擊後殘留擋住視線 */
+    /* 隱藏觸控裝置 Tooltip */
     .toolbar-btn::after, .toolbar-btn::before,
     .lightbox-capsule-btn::after, .lightbox-capsule-btn::before {
         display: none !important;
     }
-    /* 手機模式：顯示選單鈕、隱藏桌機分隔線 */
+    
     .toolbox-toggle-btn { display: flex; }
     .desktop-only-divider { display: none; }
     
-    /* 工具箱變換為下拉毛玻璃選單 */
+    /* ✨ 新增：讓右側工具列成為絕對定位的參考座標 */
+    .toolbar-right {
+        position: relative; 
+    }
+    
     .toolbox-group {
         position: absolute;
-        top: 65px;
-        right: 15px;
-        flex-direction: column; /* 手機版改為垂直列表 */
-        align-items: center;    /* 確保在垂直狀態下內容水平居中 */
+        /* ✨ 往下推 50px，剛好懸浮在按鈕下方 */
+        top: 50px; 
+        
+        /* ✨ 完美對齊魔法：從右邊界往左推 85px，精準來到 ... 按鈕的正中心 */
+        right: 85px; 
+        transform: translateX(50%) translateY(-15px) scale(0.95);
+        
+        flex-direction: column; 
+        align-items: center;    
         justify-content: center;
-        flex-direction: column; /* 垂直排列 */
         background: rgba(0, 0, 0, 0.7);
         backdrop-filter: blur(15px);
         padding: 8px;
@@ -881,34 +889,22 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
         border: 1px solid rgba(255, 255, 255, 0.15);
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         
-        /* 展開/收合動畫狀態 */
         opacity: 0;
         visibility: hidden;
-        transform: translateY(-15px) scale(0.95);
-        transform-origin: top right;
+        transform-origin: top center; 
         transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
     
-    /* JS 切換此 class 來展開 */
+    /* ✨ 展開時保持 translateX(50%) 的置中狀態 */
     .toolbox-group.is-open {
         opacity: 1;
         visibility: visible;
-        transform: translateY(0) scale(1);
+        transform: translateX(50%) translateY(0) scale(1);
         pointer-events: auto;
     }
     
-    /* 修正手機版 Tooltip 方向 (改為向左長，避免超出螢幕) */
-    .toolbox-group .toolbar-btn::after {
-        top: 50%; left: auto; right: 100%; margin-top: 0; margin-right: 12px;
-        transform: translateY(-50%) translateX(10px);
+    /* 修正手機版 Tooltip 殘留問題 (防禦性設定) */
+    .toolbox-group .toolbar-btn::after, .toolbox-group .toolbar-btn::before {
+        display: none !important;
     }
-    .toolbox-group .toolbar-btn::before {
-        top: 50%; left: auto; right: 100%; margin-top: -5px; margin-right: 2px;
-        border-color: transparent transparent transparent #fff;
-        transform: translateY(0) translateX(10px);
-    }
-    .toolbox-group .toolbar-btn:hover::after, .toolbox-group .toolbar-btn:hover::before {
-        transform: translateY(-50%) translateX(0);
-    }
-    .toolbox-group .toolbar-btn:hover::before { transform: translateY(0) translateX(0); }
 }
