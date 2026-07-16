@@ -468,12 +468,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- 2. 拖曳平移 (Drag Panning) ---
     const startDrag = (e) => {
-        // ✨ 核心修復：阻止瀏覽器預設的「圖片拖曳存檔」殘影行為
-        if (e.type === 'mousedown') e.preventDefault(); 
+        // ✨ 如果是雙指觸控 (e.touches.length > 1)，直接退出，讓瀏覽器執行縮放
+        if (e.touches && e.touches.length > 1) return; 
 
-        const state = window.lightboxState;
-        // if (state.zoom <= 1) return; // 只有在放大狀態才允許拖曳
+        if (e.type === 'mousedown') e.preventDefault(); 
         
+        const state = window.lightboxState;
         isDragging = true;
         lightboxImg.classList.add('is-dragging');
         
@@ -481,12 +481,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
         startClientX = clientX - state.x;
-        startClientY = clientY - state.y;
+        startClientY = clientY - startClientY; // 注意這裡確保 y 的邏輯正確
     };
 
     const onDrag = (e) => {
-        if (!isDragging) return;
-        e.preventDefault(); // 防止手機端滑動觸發重整
+        // ✨ 如果是雙指觸控，直接退出，不要鎖定
+        if (!isDragging || (e.touches && e.touches.length > 1)) return; 
+        
+        e.preventDefault();
         
         const state = window.lightboxState;
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -494,7 +496,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         state.x = clientX - startClientX;
         state.y = clientY - startClientY;
-        updateTransform();
+        
+        // 呼叫更新 transform 的函數
+        const img = document.getElementById('lightbox-img');
+        if (img) img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
     };
 
     const stopDrag = () => {
