@@ -502,10 +502,26 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .mermaid { display: inline-block; vertical-align: middle; width: var(--zoom, 100%); transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
 .mermaid svg { width: 100% !important; max-width: none !important; height: auto !important; }
 
-/* 直書模式 */
+/* ========================= */
+/* 直書模式 (與中文排版設定) */
+/* ========================= */
 .vertical-wrapper { writing-mode: vertical-rl; height: 65vh; min-height: 400px; width: 100%; box-sizing: border-box; overflow-x: auto; overflow-y: hidden; padding: 2rem 1.5rem 0.5rem 1.5rem; margin: 1rem 0; border-radius: 12px; background: var(--box-bg); border: 1px solid var(--card-border); box-shadow: inset 0 0 20px rgba(0,0,0,0.02); }
 .vertical-wrapper h1, .vertical-wrapper h2, .vertical-wrapper h3 { margin: 0 1.2rem 0 0; }
 .vertical-wrapper img { max-height: 70%; width: auto !important; margin: 0 1.5rem !important; }
+
+/* 2. 參數控制：關閉縮排 */
+.vertical-wrapper[data-indent="false"] p {
+    text-indent: 0;
+}
+
+/* 3. 防禦性設定：防止表格、清單、圖片等區塊被誤縮排 */
+.vertical-wrapper table, 
+.vertical-wrapper ul, 
+.vertical-wrapper ol, 
+.vertical-wrapper figure, 
+.vertical-wrapper .gallery {
+    text-indent: 0 !important;
+}
 
 /* 排序按鈕動畫 */
 .sort-icon .sort-arr-left, .sort-icon .sort-arr-right { stroke-dasharray: 24 24; transition: stroke-dasharray 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
@@ -672,80 +688,243 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
 }
 
 /* ========================================== */
-/* 全螢幕大圖 Lightbox Modal (安全邊距修正版) */
+/* 進階版全螢幕大圖 Lightbox Modal UI (修復版) */
 /* ========================================== */
 #lightbox-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.9);
-    backdrop-filter: blur(5px);
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: #000;
     z-index: 9999;
-    /* ✨ 改為垂直排列 */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 60px 20px;
-    box-sizing: border-box;
-    opacity: 0;
-    visibility: hidden;
+    display: flex; justify-content: center; align-items: center;
+    opacity: 0; visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
+    overflow: hidden;
+}
+#lightbox-modal.is-active { opacity: 1; visibility: visible; }
+
+#lightbox-backdrop {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    object-fit: cover;
+    filter: blur(40px) brightness(0.3);
+    transform: scale(1.1);
+    z-index: 1;
+    pointer-events: none;
 }
 
-.lightbox-caption {
-    width: 100%;
-    text-align: center;
-    color: var(--text-main, #ffffff);
-    
-    /* ✨ 將字體放大，例如從 1.05rem 改為 1.3rem */
-    font-size: 1.3rem; 
-    
-    /* ✨ 增加行高，提升閱讀舒適度 */
-    line-height: 1.5;
-    
-    padding-bottom: 20px; 
+#lightbox-toolbar {
+    position: absolute; top: 0; left: 0; width: 100%; height: 70px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+    z-index: 50; /* ✨ 調高層級，確保絕對不會被圖片蓋住 */
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 15px 20px; box-sizing: border-box;
     pointer-events: none;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.toolbar-left, .toolbar-right{ display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+
+
+#lightbox-counter { color: #fff; font-family: monospace; font-size: 1.1rem; opacity: 0.8; letter-spacing: 0.05em; margin-left: 10px; }
+
+/* 修正：工具列按鈕防跳動與專屬 Tooltip */
+.toolbar-btn {
+    background: rgba(255, 255, 255, 0.1); border: none; color: #fff;
+    width: 40px; height: 40px; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); 
+    backdrop-filter: blur(4px);
+    position: relative;
+    /* ✨ 解決 SVG 跳動的關鍵 */
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0); 
+}
+/* 1. 全域 Hover 放大效果 */
+.toolbar-btn:hover { 
+    background: var(--accent); 
+    transform: scale(1.1) translateZ(0); 
+}
+
+/* 2. 針對「縮小」按鈕的特殊 SVG 動畫 */
+/* 當按鈕放大時，讓內部的減號 SVG 縮小，產生「被按下」的錯覺 */
+.toolbar-btn[onclick*="zoom-out"]:hover svg {
+    transform: scale(0.85);
+    transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 3. 確保 SVG 在 hover 時能穩定過渡 */
+.toolbar-btn svg { 
+    display: block; 
+    transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
+
+/* 工具列專屬 Tooltip (往下長，白底黑字高質感) */
+.toolbar-btn::after { content: attr(data-tooltip); position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(8px); background: #fff; color: #111; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 10px; }
+.toolbar-btn::before { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(8px); border-width: 5px; border-style: solid; border-color: transparent transparent #fff transparent; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); margin-top: 0px; }
+.toolbar-btn:hover::after, .toolbar-btn:hover::before { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.close-btn { background: rgba(255, 50, 50, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); }
+.close-btn:hover { background: #ff4757; border-color: #ff4757; }
+
+/* 核心修復：主體內容容器 */
+.lightbox-content-wrapper {
+    position: relative; z-index: 10;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    width: 100%; height: 100%; 
+    
+    /* ✨ 修改底部 padding，從 30px 加大到 90px，確保圖片絕對不會碰到文字膠囊 */
+    padding: 80px 20px 90px 20px; 
+    
+    box-sizing: border-box;
+    pointer-events: none;
+}
+
+/* ========================= */
+/* Lightbox 膠囊導覽列 */
+/* ========================= */
+.lightbox-capsule {
+    display: none; /* 預設隱藏，由 JS 控制顯示 */
+    align-items: center; height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.2); 
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.4); 
+    backdrop-filter: blur(8px);
+    box-sizing: border-box; transition: all 0.3s ease;
+}
+.lightbox-capsule-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 100%; background: transparent; border: none; color: #fff;
+    cursor: pointer; padding: 0 0.8rem; transition: all 0.2s ease;
+    position: relative;
+}
+.lightbox-capsule-btn:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
+.lightbox-capsule-btn:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
+.lightbox-capsule-btn:hover:not(.disabled) { background: rgba(255, 255, 255, 0.2); }
+.lightbox-capsule-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+.lightbox-capsule-btn svg { display: block; transition: transform 0.2s ease; }
+.lightbox-capsule-btn:hover:not(.disabled):first-child svg { transform: translateX(-3px); }
+.lightbox-capsule-btn:hover:not(.disabled):last-child svg { transform: translateX(3px); }
+
+.lightbox-capsule-divider { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.3); margin: 0; }
+.lightbox-capsule-progress { font-family: monospace; font-size: 0.95rem; font-weight: 600; color: #fff; padding: 0 0.8rem; letter-spacing: 0.05em; pointer-events: none; }
+
+/* 專屬 Tooltip (套用與右側工具列相同的提示框邏輯) */
+.lightbox-capsule-btn::after { content: attr(data-tooltip); position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(8px); background: #fff; color: #111; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 10px; }
+.lightbox-capsule-btn::before { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(8px); border-width: 5px; border-style: solid; border-color: transparent transparent #fff transparent; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); margin-top: 0px; }
+.lightbox-capsule-btn:hover::after, .lightbox-capsule-btn:hover::before { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ========================= */
+/* Lightbox 底部浮動說明文字 */
+/* ========================= */
+.lightbox-caption {
+    position: absolute; 
+    bottom: 30px; 
+    left: 50%; 
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7); 
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 999px; 
+    padding: 8px 24px;
+    color: #fff; 
+    font-size: 1rem; 
+    line-height: 1.5; 
+    text-align: center; 
+    font-weight: 500;
+    pointer-events: none; /* 穿透點擊 */
+    z-index: 50; 
+    max-width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    display: none; /* 預設隱藏，有文字才顯示 */
+}
+
+/* 核心修復：加入 min-height: 0 避免 Flexbox 溢出跑版 */
+.lightbox-img-wrapper {
+    flex: 1; 
+    min-height: 0; min-width: 0; width: 100%;
+    display: flex; justify-content: center; align-items: center;
+    overflow: visible; pointer-events: auto;
 }
 
 #lightbox-img {
-    max-width: 100%;
-    /* ✨ 限制圖片高度，確保上方有文字時不會被擠出畫面 */
-    max-height: calc(100% - 60px); 
-    object-fit: contain;
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    max-width: 100%; max-height: 100%;
+    object-fit: contain; border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transform-origin: center center;
+    cursor: grab;
+}
+#lightbox-img.is-dragging {
+    cursor: grabbing;
+    transition: none !important;
 }
 
-/* 顯示時的狀態 */
-#lightbox-modal.is-active {
-    opacity: 1;
-    visibility: visible;
+/* 確保工具列分隔線的基本設定 */
+.toolbar-divider { 
+    width: 2px; 
+    height: 24px; 
+    background: rgba(255, 255, 255, 0.2); 
+    margin: 0 4px; 
 }
 
-/* 關閉按鈕調整：稍微調大一點，方便手指點擊 */
-#lightbox-close {
-    position: absolute;
-    top: 10px;  /* ✨ 稍微往內移 */
-    right: 15px; /* ✨ 稍微往內移 */
-    background: none;
-    border: none;
-    color: white;
-    font-size: 36px;
-    cursor: pointer;
-    padding: 10px;
-    line-height: 1;
-    z-index: 10000; /* 確保永遠浮在圖片之上 */
-}
+/* ========================= */
+/* 手機版工具箱收合邏輯 (Toolbox) */
+/* ========================= */
+.toolbox-group { display: flex; align-items: center; gap: 8px; }
+.toolbox-toggle-btn { display: none; /* 桌機預設隱藏 */ }
 
-#lightbox-close:hover {
-    color: var(--accent, #ff4757);
-}
-
-/* 如果裡面還有子元素，確保它們不會被繼承影響 */
-.lightbox-caption > span {
-    display: inline-block;
+@media (max-width: 600px) {
+    /* 隱藏觸控裝置 Tooltip */
+    .toolbar-btn::after, .toolbar-btn::before,
+    .lightbox-capsule-btn::after, .lightbox-capsule-btn::before {
+        display: none !important;
+    }
+    
+    .toolbox-toggle-btn { display: flex; }
+    .desktop-only-divider { display: none; }
+    
+    /* ✨ 新增：讓右側工具列成為絕對定位的參考座標 */
+    .toolbar-right {
+        position: relative; 
+    }
+    
+    .toolbox-group {
+        position: absolute;
+        top: 55px; /* 懸浮在按鈕下方 */
+        
+        /* ✨ 魔法對齊：直接貼齊右側邊緣，向左展開，絕對不會超出螢幕 */
+        right: 0; 
+        
+        /* ✨ 改回水平排列 */
+        flex-direction: row; 
+        align-items: center;    
+        justify-content: center;
+        
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(15px);
+        padding: 8px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        
+        /* 動畫初始狀態：稍微往上縮，並取消 translateX */
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-15px) scale(0.95);
+        
+        /* ✨ 動畫起點改為右上角，像是由選單按鈕與關閉按鈕下方展開 */
+        transform-origin: top right; 
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    
+    /* 展開時的狀態：只需平移 Y 軸與還原縮放 */
+    .toolbox-group.is-open {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+    }
+    
+    /* 修正手機版 Tooltip 殘留問題 (防禦性設定) */
+    .toolbox-group .toolbar-btn::after, .toolbox-group .toolbar-btn::before {
+        display: none !important;
+    }
 }

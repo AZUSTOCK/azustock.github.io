@@ -31,8 +31,8 @@
   
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="./style.css?v=1.3.0" />
-  <script defer src="./main.js?v=1.3.0"></script>
+  <link rel="stylesheet" href="./style.css?v=1.3.1" />
+  <script defer src="./main.js?v=1.3.1"></script>
 </head>
 <body>
 <button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
@@ -73,13 +73,69 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- ✨ 新增：全螢幕大圖預覽 (Lightbox) Modal -->
+  <!-- ✨ 進階版全螢幕大圖預覽 (Lightbox 2.0 終極版) -->
   <!-- ========================================== -->
   <div id="lightbox-modal" class="lightbox-hidden">
-    <button id="lightbox-close" onclick="window.closeLightbox()">&times;</button>
-    <!-- ✨ 移動至圖片上方 -->
+    <!-- 情境式毛玻璃背景 -->
+    <img id="lightbox-backdrop" src="" alt="">
+    
+    <!-- 頂部工具列 -->
+    <div id="lightbox-toolbar">
+      <!-- 左側：導覽膠囊 -->
+      <div class="toolbar-left">
+        <div id="lightbox-nav-capsule" class="lightbox-capsule">
+          <button id="lightbox-prev" class="lightbox-capsule-btn" onclick="window.navigateLightbox(-1, event)" data-tooltip="上一張">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <div class="lightbox-capsule-divider"></div>
+          <span id="lightbox-counter" class="lightbox-capsule-progress">1 / 1</span>
+          <div class="lightbox-capsule-divider"></div>
+          <button id="lightbox-next" class="lightbox-capsule-btn" onclick="window.navigateLightbox(1, event)" data-tooltip="下一張">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 右側：功能按鈕區 -->
+      <div class="toolbar-right">
+        <!-- ✨ 1. 工具箱群組 (桌機平排，手機版會變成下拉選單) -->
+        <div id="lightbox-toolbox" class="toolbox-group">
+          <button class="toolbar-btn" onclick="window.lightboxAction('zoom-in', event)" data-tooltip="放大">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+          </button>
+          <button class="toolbar-btn" onclick="window.lightboxAction('zoom-out', event)" data-tooltip="縮小">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+          </button>
+          <button class="toolbar-btn" onclick="window.lightboxAction('reset', event)" data-tooltip="初始狀態">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          </button>
+          <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" onclick="window.lightboxAction('new-tab', event)" data-tooltip="新分頁開啟">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          </button>
+        </div>
+
+        <!-- ✨ 2. 手機版專屬：展開工具箱的按鈕 (桌機版隱藏) -->
+        <button class="toolbar-btn toolbox-toggle-btn" onclick="window.toggleLightboxTools(event)" data-tooltip="更多選項">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+        </button>
+
+        <div class="toolbar-divider desktop-only-divider"></div>
+        <button class="toolbar-btn close-btn" onclick="window.closeLightbox()" data-tooltip="關閉">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 圖片主體容器 -->
+    <div class="lightbox-content-wrapper">
+      <div class="lightbox-img-wrapper">
+        <img id="lightbox-img" src="" alt="大圖預覽">
+      </div>
+    </div>
+    
+    <!-- 底部浮動說明文字膠囊 -->
     <div id="lightbox-caption" class="lightbox-caption"></div>
-    <img id="lightbox-img" src="" alt="大圖預覽">
   </div>
 
   <div id="filter-toast" class="filter-toast">

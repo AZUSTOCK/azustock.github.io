@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.3.0",          // 目前系統版本號
+    VERSION: "U1.3.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "light",     // 預設主題 (light / dark)
@@ -264,57 +264,254 @@ window.handleImageError = function(img) {
 };
 
 // ==========================================
-// ✨ 全域大圖預覽 (Lightbox) 引擎
+// ✨ 全域大圖預覽 (Lightbox 2.0) 控制引擎
 // ==========================================
+
+// 儲存目前的相簿狀態與縮放、平移比例
+window.lightboxState = { images: [], currentIndex: 0, zoom: 1, x: 0, y: 0 };
+
 window.openLightbox = function(btn, event) {
     event.stopPropagation();
-    
     const container = btn.closest('figure');
     if (!container) return;
     
     const targetImg = container.querySelector('img');
-    const captionText = container.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim(); // ✨ 抓取文字並移除按鈕名稱
+    const gallery = btn.closest('.gallery');
     
-    const lightboxModal = document.getElementById('lightbox-modal');
-    const lightboxImg = document.getElementById('lightbox-img');
-    const lightboxCaption = document.getElementById('lightbox-caption'); // ✨ 取得容器
+    // ✨ 核心修復：強制重置所有狀態與圖片屬性
+    window.lightboxState = { 
+        images: [], 
+        currentIndex: 0, 
+        zoom: 1, 
+        x: 0, 
+        y: 0 
+    };
 
-    if (targetImg && lightboxModal && lightboxImg) {
-        lightboxImg.src = targetImg.src;
-        // ✨ 同步塞入文字
-        if (lightboxCaption) {
-            lightboxCaption.innerText = captionText || "";
-        }
-        lightboxModal.classList.add('is-active');
+    // 取得圖片 DOM 並立即歸零樣式
+    const lightboxImg = document.getElementById('lightbox-img');
+    if (lightboxImg) {
+        lightboxImg.style.transition = 'none'; // 移除過渡，確保瞬間重置
+        lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
+        // 稍後恢復 transition，讓後續的縮放動畫正常運作
+        setTimeout(() => { lightboxImg.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'; }, 50);
     }
+    
+    // 判斷是否為相簿群組 (Gallery)
+    if (gallery) {
+        const figures = Array.from(gallery.querySelectorAll('figure'));
+        window.lightboxState.images = figures.map(fig => ({
+            src: fig.querySelector('img')?.src,
+            caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
+        })).filter(item => item.src);
+        
+        window.lightboxState.currentIndex = window.lightboxState.images.findIndex(item => item.src === targetImg.src);
+    } else {
+        window.lightboxState.images = [{
+            src: targetImg.src,
+            caption: container.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
+        }];
+    }
+
+    window.updateLightboxView();
+
+    const lightboxModal = document.getElementById('lightbox-modal');
+    if (lightboxModal) lightboxModal.classList.add('is-active');
+};
+
+window.updateLightboxView = function() {
+    const state = window.lightboxState;
+    if (state.images.length === 0) return;
+    
+    const currentItem = state.images[state.currentIndex];
+    
+    // 更新影像與背景
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxBackdrop = document.getElementById('lightbox-backdrop');
+    const lightboxCaption = document.getElementById('lightbox-caption');
+    
+    if (lightboxImg) {
+        state.zoom = 1; 
+        state.x = 0; 
+        state.y = 0; 
+        lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
+        lightboxImg.src = currentItem.src;
+    }
+    if (lightboxBackdrop) lightboxBackdrop.src = currentItem.src;
+    
+    // ✨ 精準控制說明文字的顯示與隱藏
+    if (lightboxCaption) {
+        lightboxCaption.innerText = currentItem.caption || "";
+        lightboxCaption.style.display = currentItem.caption ? "block" : "none";
+    }
+
+    // ✨ 更新膠囊導覽列與計數器
+    const navCapsule = document.getElementById('lightbox-nav-capsule');
+    const counter = document.getElementById('lightbox-counter');
+    const prevBtn = document.getElementById('lightbox-prev');
+    const nextBtn = document.getElementById('lightbox-next');
+
+    if (state.images.length > 1) {
+        if (navCapsule) navCapsule.style.display = 'inline-flex';
+        if (counter) counter.innerText = `${state.currentIndex + 1} / ${state.images.length}`;
+        
+        // 動態加上或移除 disabled 樣式
+        if (prevBtn) prevBtn.classList.toggle('disabled', state.currentIndex === 0);
+        if (nextBtn) nextBtn.classList.toggle('disabled', state.currentIndex === state.images.length - 1);
+    } else {
+        // 如果只有單張圖片，直接隱藏整個膠囊
+        if (navCapsule) navCapsule.style.display = 'none';
+    }
+};
+
+// 相簿前後切換邏輯
+window.navigateLightbox = function(direction, event) {
+    if (event) event.stopPropagation();
+    const state = window.lightboxState;
+    
+    if (direction === -1 && state.currentIndex > 0) {
+        state.currentIndex--;
+        window.updateLightboxView();
+    } else if (direction === 1 && state.currentIndex < state.images.length - 1) {
+        state.currentIndex++;
+        window.updateLightboxView();
+    }
+};
+
+// 工具列按鈕動作處理器
+window.lightboxAction = function(action, event) {
+    if (event) event.stopPropagation();
+    const img = document.getElementById('lightbox-img');
+    const state = window.lightboxState;
+    if (!img) return;
+
+    if (action === 'zoom-in') {
+        state.zoom = Math.min(state.zoom + 0.5, 4);
+    } else if (action === 'zoom-out') {
+        state.zoom = Math.max(state.zoom - 0.5, 0.5);
+    } else if (action === 'reset') {
+        state.zoom = 1;
+        state.x = 0; // 恢復 1:1 時也要把位置歸零
+        state.y = 0;
+    } else if (action === 'new-tab') {
+        window.open(img.src, '_blank');
+        return;
+    }
+    
+    // ✨ 統一在這裡套用縮放與平移
+    img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
+};
+
+// ✨ 手機版工具列開關
+window.toggleLightboxTools = function(event) {
+    if (event) event.stopPropagation();
+    const toolbox = document.getElementById('lightbox-toolbox');
+    if (toolbox) toolbox.classList.toggle('is-open');
 };
 
 window.closeLightbox = function() {
     const lightboxModal = document.getElementById('lightbox-modal');
-    const lightboxImg = document.getElementById('lightbox-img');
-    const lightboxCaption = document.getElementById('lightbox-caption');
-    
     if (lightboxModal) {
         lightboxModal.classList.remove('is-active');
+        // 延遲清空，避免關閉動畫破圖
         setTimeout(() => {
-            if (lightboxImg) lightboxImg.src = "";
-            if (lightboxCaption) lightboxCaption.innerText = ""; // ✨ 清空文字
+            document.getElementById('lightbox-img').src = "";
+            document.getElementById('lightbox-backdrop').src = "";
+            document.getElementById('lightbox-caption').innerText = "";
         }, 300);
     }
 };
 
-// 綁定點擊背景與 Esc 鍵關閉 Lightbox
+// ==========================================
+// ✨ Lightbox 滾輪縮放與拖曳 (Zoom & Panning) 引擎
+// ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    const lightboxModal = document.getElementById('lightbox-modal');
-    if (lightboxModal) {
-        lightboxModal.addEventListener('click', (e) => {
-            if (e.target === lightboxModal) window.closeLightbox();
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && lightboxModal.classList.contains('is-active')) {
-                window.closeLightbox();
-            }
-        });
+    const lightboxImg = document.getElementById('lightbox-img');
+    const wrapper = document.querySelector('.lightbox-img-wrapper');
+    let isDragging = false;
+    let startClientX = 0, startClientY = 0;
+
+    const updateTransform = () => {
+        const state = window.lightboxState;
+        if (lightboxImg) lightboxImg.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
+    };
+
+    // --- 1. 滑鼠滾輪縮放 (Wheel Zoom 游標追蹤版) ---
+    if (wrapper) {
+        wrapper.addEventListener('wheel', (e) => {
+            const state = window.lightboxState;
+            // 如果 Lightbox 沒開，就不干涉滾輪
+            if (!document.getElementById('lightbox-modal').classList.contains('is-active')) return;
+            
+            e.preventDefault(); // 阻止背景文章跟著滾動
+            
+            // 計算目標縮放比例
+            const delta = e.deltaY < 0 ? 1 : -1;
+            let newZoom = state.zoom * (1 + delta * 0.15); // 改用乘法讓縮放更平滑
+            newZoom = Math.max(0.5, Math.min(newZoom, 15)); // 放寬極限到 15 倍
+            
+            // ✨ 核心數學：以滑鼠游標為中心點進行平移補償
+            // 算出新的縮放率與舊的縮放率的比例差異
+            const ratio = newZoom / state.zoom - 1;
+            
+            // 取得畫面正中心座標
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            
+            // 根據滑鼠距離畫面中心的偏移量，反向平移圖片
+            state.x -= (e.clientX - centerX - state.x) * ratio;
+            state.y -= (e.clientY - centerY - state.y) * ratio;
+            
+            // 更新狀態並渲染
+            state.zoom = newZoom;
+            updateTransform();
+        }, { passive: false });
+    }
+    // --- 2. 拖曳平移 (Drag Panning) ---
+    const startDrag = (e) => {
+        // ✨ 核心修復：阻止瀏覽器預設的「圖片拖曳存檔」殘影行為
+        if (e.type === 'mousedown') e.preventDefault(); 
+
+        const state = window.lightboxState;
+        // if (state.zoom <= 1) return; // 只有在放大狀態才允許拖曳
+        
+        isDragging = true;
+        lightboxImg.classList.add('is-dragging');
+        
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        startClientX = clientX - state.x;
+        startClientY = clientY - state.y;
+    };
+
+    const onDrag = (e) => {
+        if (!isDragging) return;
+        e.preventDefault(); // 防止手機端滑動觸發重整
+        
+        const state = window.lightboxState;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        state.x = clientX - startClientX;
+        state.y = clientY - startClientY;
+        updateTransform();
+    };
+
+    const stopDrag = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        lightboxImg.classList.remove('is-dragging');
+    };
+
+    if (lightboxImg) {
+        // 滑鼠綁定
+        lightboxImg.addEventListener('mousedown', startDrag);
+        window.addEventListener('mousemove', onDrag);
+        window.addEventListener('mouseup', stopDrag);
+        // 觸控綁定
+        lightboxImg.addEventListener('touchstart', startDrag, { passive: false });
+        window.addEventListener('touchmove', onDrag, { passive: false });
+        window.addEventListener('touchend', stopDrag);
     }
 });
 
@@ -1083,7 +1280,14 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         modalOverlay.classList.add('active');
         document.body.style.overflow = 'hidden';
         
+        // 渲染完成後
         modalBody.innerHTML = marked.parse(markdownContent);
+
+        // ✨ 確保針對所有 vertical-wrapper 區域進行處理
+        const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
+        verticalWrappers.forEach(wrapper => {
+            window.applyIndentToVerticalWrapper(wrapper);
+        });
         document.querySelector('.modal-content').scrollTop = 0;
 
         const flatSequence = window.getArticleSequence(projectId);
@@ -1469,8 +1673,65 @@ function closeModal() {
 
 closeModalBtn.addEventListener('click', closeModal);
 modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalOverlay.classList.contains('active')) closeModal(); });
+
 modalOverlay.addEventListener('touchmove', (e) => { if (e.target === modalOverlay) e.preventDefault(); }, { passive: false });
+
+// ==========================================
+// ✨ 全域鍵盤快捷鍵引擎 (Unified Keyboard Engine)
+// ==========================================
+document.addEventListener('keydown', (e) => {
+    const lightboxModal = document.getElementById('lightbox-modal');
+    const isLightboxOpen = lightboxModal && lightboxModal.classList.contains('is-active');
+    
+    const modalOverlay = document.getElementById('md-modal');
+    const isArticleOpen = modalOverlay && modalOverlay.classList.contains('active');
+
+    // --- 🥊 第一層：Lightbox 大圖預覽 (最高優先權) ---
+    if (isLightboxOpen) {
+        if (e.key === 'Escape') {
+            const toolbox = document.getElementById('lightbox-toolbox');
+            const state = window.lightboxState;
+            
+            // 💡 聰明的 3 段式退回邏輯：
+            if (toolbox && toolbox.classList.contains('is-open')) {
+                toolbox.classList.remove('is-open'); // 1. 如果工具箱開著，先收起工具箱
+            } else if (state.zoom > 1) {
+                window.lightboxAction('reset');      // 2. 如果圖片有放大，先恢復 1:1 比例
+            } else {
+                window.closeLightbox();              // 3. 都沒有，才真正關閉 Lightbox
+            }
+            e.preventDefault();
+        }
+        
+        // 左右鍵切換相簿圖片
+        if (e.key === 'ArrowLeft') { window.navigateLightbox(-1); e.preventDefault(); }
+        if (e.key === 'ArrowRight') { window.navigateLightbox(1); e.preventDefault(); }
+        
+        // 鎖定上下鍵，防止背景文章在背後偷偷滾動
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+        
+        return; // 終止事件，絕不把按鍵傳給底下的文章 Modal
+    }
+
+    // --- 📖 第二層：文章 Modal 閱讀模式 ---
+    if (isArticleOpen) {
+        if (e.key === 'Escape') {
+            closeModal();
+            e.preventDefault();
+        }
+        
+        // ✨ 新增：左右鍵自動切換「上一篇 / 下一篇」文章
+        if (e.key === 'ArrowLeft') {
+            const prevBtn = document.querySelector('.nav-card.prev');
+            if (prevBtn) { prevBtn.click(); e.preventDefault(); }
+        }
+        if (e.key === 'ArrowRight') {
+            const nextBtn = document.querySelector('.nav-card.next');
+            if (nextBtn) { nextBtn.click(); e.preventDefault(); }
+        }
+        return;
+    }
+});
 
 // ==========================================
 // ✨ Mermaid 專業控制台引擎
@@ -1567,3 +1828,32 @@ function show404Modal(title, message) {
     modalOverlay.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
+
+// ✨ 專為 JSON/Markdown 轉 HTML 後的中文排版處理器
+window.applyIndentToVerticalWrapper = function(container) {
+    if (!container || container.getAttribute('data-indent') === 'false') return;
+
+    // ✨ 使用 Unicode 全形空格字元 (U+3000)，直接填入文字，不會被轉義為字串
+    const indent = '\u3000\u3000';
+
+    function traverse(node) {
+        node.childNodes.forEach(child => {
+            if (child.nodeType === Node.TEXT_NODE) {
+                // 檢查是否已經有縮排，避免重複執行
+                if (child.textContent.trim().length > 0 && !child.textContent.startsWith(indent)) {
+                    const lines = child.textContent.split('\n');
+                    const indentedLines = lines.map(line => {
+                        // 每一行開頭都加上全形空格
+                        return line.trim() ? indent + line.trim() : line;
+                    });
+                    child.textContent = indentedLines.join('\n');
+                }
+            } else if (child.tagName !== 'BR' && child.tagName !== 'SCRIPT' && child.tagName !== 'STYLE') {
+                // 遞迴處理非換行標籤
+                traverse(child);
+            }
+        });
+    }
+
+    traverse(container);
+};
