@@ -131,13 +131,7 @@ window.getArticleSequence = function(projectId) {
     const pinned = displayArticles.filter(item => item.art.pinned);
     const unpinned = displayArticles.filter(item => !item.art.pinned);
     
-    let renderUnpinned = [...unpinned];
-    // 核心邏輯：若 currentSort 為 'asc' (由舊到新)，則對非置頂文章進行處理
-    if (currentSort === 'asc') {
-        renderUnpinned = [...unpinned];
-    } else {
-        renderUnpinned = [...unpinned].reverse();
-    }
+    const renderUnpinned = currentSort === 'asc' ? [...unpinned] : [...unpinned].reverse();
     const finalArray = [...pinned, ...renderUnpinned];
     
     let flatSequence = [];
@@ -268,7 +262,14 @@ window.handleImageError = function(img) {
 // ==========================================
 
 // 儲存目前的相簿狀態與縮放、平移比例
-window.lightboxState = { images: [], currentIndex: 0, zoom: 1, x: 0, y: 0 };
+window.lightboxState = { 
+    images: [], 
+    currentIndex: 0, 
+    zoom: 1, 
+    x: 0, 
+    y: 0,
+    maxZoom: 1.5 // 預設 2 倍，之後會動態更新
+};
 
 window.openLightbox = function(btn, event) {
     event.stopPropagation();
@@ -276,47 +277,71 @@ window.openLightbox = function(btn, event) {
     if (!container) return;
     
     const targetImg = container.querySelector('img');
-    const gallery = btn.closest('.gallery');
+    const lightboxModal = document.getElementById('lightbox-modal');
+    const lightboxImg = document.getElementById('lightbox-img');
     
-    // ✨ 核心修復：強制重置所有狀態與圖片屬性
+    // 1. 初始化 Lightbox 狀態
     window.lightboxState = { 
         images: [], 
         currentIndex: 0, 
         zoom: 1, 
         x: 0, 
-        y: 0 
+        y: 0,
+        maxZoom: 2 // 先給一個預設安全值，等一下會動態精確計算
     };
 
-    // 取得圖片 DOM 並立即歸零樣式
-    const lightboxImg = document.getElementById('lightbox-img');
-    if (lightboxImg) {
-        lightboxImg.style.transition = 'none'; // 移除過渡，確保瞬間重置
-        lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
-        // 稍後恢復 transition，讓後續的縮放動畫正常運作
-        setTimeout(() => { lightboxImg.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'; }, 50);
-    }
-    
-    // 判斷是否為相簿群組 (Gallery)
-    if (gallery) {
-        const figures = Array.from(gallery.querySelectorAll('figure'));
-        window.lightboxState.images = figures.map(fig => ({
-            src: fig.querySelector('img')?.src,
-            caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
-        })).filter(item => item.src);
+    if (lightboxImg && lightboxModal) {
+        // 設定大圖來源
+        lightboxImg.src = targetImg.src; 
         
-        window.lightboxState.currentIndex = window.lightboxState.images.findIndex(item => item.src === targetImg.src);
-    } else {
-        window.lightboxState.images = [{
-            src: targetImg.src,
-            caption: container.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
-        }];
+        // 重置大圖定位與縮放
+        lightboxImg.style.transition = 'none';
+        lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
+
+        // 2. 顯示 Modal (必須先顯示，瀏覽器才能渲染並計算出 clientWidth)
+        lightboxModal.classList.add('is-active');
+
+        // 3. 定義「計算原圖 2 倍限制」的函數
+        const calculateMaxZoomForNatural = () => {
+            const naturalWidth = lightboxImg.naturalWidth; // 原圖真實像素寬度 (例如 2000)
+            const displayWidth = lightboxImg.clientWidth;   // Lightbox 大圖在 scale(1) 時的顯示寬度 (例如 1000)
+            
+            if (displayWidth > 0 && naturalWidth > 0) {
+                // 精確限制：最大放大寬度 = 原圖真實寬度 * 2
+                window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
+                console.log(`原圖寬: ${naturalWidth}px, 顯示寬: ${displayWidth}px, 最大縮放限制倍率: ${window.lightboxState.maxZoom}`);
+            } else {
+                window.lightboxState.maxZoom = 2; // 防呆備用值
+            }
+        };
+
+        // 4. 確保圖片載入後再進行計算 (快取直接讀取 complete，未載入則走 onload)
+        if (lightboxImg.complete) {
+            calculateMaxZoomForNatural();
+        } else {
+            lightboxImg.onload = calculateMaxZoomForNatural;
+        }
+
+        // 恢復動畫過渡效果
+        setTimeout(() => { 
+            lightboxImg.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'; 
+        }, 50);
     }
-
-    window.updateLightboxView();
-
-    const lightboxModal = document.getElementById('lightbox-modal');
-    if (lightboxModal) lightboxModal.classList.add('is-active');
 };
+
+window.addEventListener('resize', () => {
+    const lightboxModal = document.getElementById('lightbox-modal');
+    const lightboxImg = document.getElementById('lightbox-img');
+    
+    // 只有在 Lightbox 是開啟狀態時才重新計算
+    if (lightboxModal && lightboxModal.classList.contains('is-active') && lightboxImg) {
+        const naturalWidth = lightboxImg.naturalWidth;
+        const displayWidth = lightboxImg.clientWidth;
+        if (displayWidth > 0 && naturalWidth > 0) {
+            window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
+        }
+    }
+});
 
 window.updateLightboxView = function() {
     const state = window.lightboxState;
@@ -385,19 +410,26 @@ window.lightboxAction = function(action, event) {
     if (!img) return;
 
     if (action === 'zoom-in') {
-        state.zoom = Math.min(state.zoom + 0.5, 4);
+        // ✨ 改為使用計算出的 maxZoom
+        state.zoom = Math.min(state.zoom + 0.5, state.maxZoom);
     } else if (action === 'zoom-out') {
         state.zoom = Math.max(state.zoom - 0.5, 0.5);
     } else if (action === 'reset') {
         state.zoom = 1;
-        state.x = 0; // 恢復 1:1 時也要把位置歸零
+        state.x = 0;
         state.y = 0;
-    } else if (action === 'new-tab') {
+    } 
+    // ✨ 新增：僅將圖片位移歸零，但不改變縮放比例
+    else if (action === 'center') {
+        state.x = 0;
+        state.y = 0;
+    } 
+    else if (action === 'new-tab') {
         window.open(img.src, '_blank');
         return;
     }
     
-    // ✨ 統一在這裡套用縮放與平移
+    // 套用 transform
     img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
 };
 
@@ -493,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (initialPinchDistance) {
                     // 2. 算出新的縮放比例
                     let newZoom = initialZoom * (currentDistance / initialPinchDistance);
-                    newZoom = Math.max(0.5, Math.min(newZoom, 15)); // 限制在 0.5 到 15 倍之間
+                    newZoom = Math.max(1, Math.min(newZoom, window.lightboxState.maxZoom)); // 限制在最低與最大倍率之間
 
                     // 3. 找出雙指中心點，實現「往手指中心放大」的自然手感
                     const centerX = (activePointers[0].x + activePointers[1].x) / 2;
@@ -578,8 +610,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const state = window.lightboxState;
             const delta = e.deltaY < 0 ? 1 : -1;
-            let newZoom = state.zoom * (1 + delta * 0.15);
-            newZoom = Math.max(0.5, Math.min(newZoom, 15));
+            
+            // ✨ 將 15 倍的死值改為動態的 state.maxZoom
+            let newZoom = Math.max(1, Math.min(state.zoom * (1 + delta * 0.15), state.maxZoom));
+            newZoom = Math.max(1, Math.min(newZoom, state.maxZoom));
             
             const ratio = newZoom / state.zoom - 1;
             const centerX = window.innerWidth / 2;

@@ -306,7 +306,16 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* Modal 內部元件排版 */
 /* ========================= */
 .modal-top-bar { position: sticky; top: 0; margin: 0 -3rem 1.5rem -3rem; padding: 1.5rem 1.5rem 1.2rem 3rem; box-shadow: 0 -2px 0 0 var(--glass-bg); border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; background: var(--glass-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); z-index: 1060; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s ease, border-color 0.3s ease; }
-.modal-top-bar.is-index-mode { background: transparent; backdrop-filter: none; border-bottom-color: transparent; pointer-events: none; padding: 1.5rem 1.5rem 1.2rem 3rem; position: sticky; top: 0; margin: 0 -3rem -2rem -3rem; height: auto; box-shadow: none; }
+.modal-top-bar.is-index-mode { 
+    background: transparent; 
+    backdrop-filter: none; 
+    border-bottom-color: transparent; 
+    pointer-events: none; 
+    margin: 0 -3rem -2rem -3rem; 
+    height: auto; 
+    box-shadow: none; 
+    /* 已移除重複的 position, top, padding */
+}
 #modal-top-left, #modal-top-right { display: flex; align-items: center; margin: 0 !important; padding: 0 !important; }
 #modal-top-left { gap: 0.5rem; } #modal-top-right { gap: 1rem; }
 .modal-close-btn, .toc-toggle-btn { box-sizing: border-box !important; flex-shrink: 0 !important; }
@@ -433,30 +442,121 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================= */
 /* 浮動膠囊 (Filter Toast) 與 Tooltip */
 /* ========================= */
-.filter-toast { position: fixed; bottom: 2.5rem; left: 50%; transform: translate(-50%, 30px); opacity: 0; pointer-events: none; z-index: 1010; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--glass-border); color: var(--text); padding: 0.4rem 0.4rem 0.4rem 1rem; border-radius: 999px; font-size: 0.95rem; font-weight: bold; box-shadow: 0 10px 25px var(--shadow-base); display: flex; align-items: center; gap: 1rem; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
-.filter-toast.active { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+/* ========================= */
+/* 浮動膠囊 (Filter Toast) 與 Tooltip */
+/* ========================= */
+.filter-toast { 
+    position: fixed; 
+    bottom: 2.5rem; 
+    
+    /* ✨ 關鍵修正 1：移除 left: 50% 與 translate(-50%)，改用 margin 完美置中，消滅半像素誤差 */
+    left: 0; 
+    right: 0; 
+    margin: 0 auto; 
+    width: max-content; 
+    transform: translateY(30px); /* 僅在 Y 軸上做位移動畫 */
+    
+    opacity: 0; 
+    pointer-events: none; 
+    z-index: 1010; 
+    background: var(--nav-bg); 
+    backdrop-filter: blur(15px); 
+    border: 1px solid var(--glass-border); 
+    color: var(--text); 
+    padding: 0.4rem 0.4rem 0.4rem 1rem; 
+    border-radius: 999px; 
+    font-size: 0.95rem; 
+    font-weight: bold; 
+    box-shadow: 0 10px 25px var(--shadow-base); 
+    display: flex; 
+    align-items: center; 
+    gap: 1rem; 
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
+
+.filter-toast.active { 
+    /* ✨ 關鍵修正 2：對齊僅在 Y 軸位移的動畫 */
+    transform: translateY(0); 
+    opacity: 1; 
+    pointer-events: auto; 
+}
 .filter-toast:hover { background: var(--card); box-shadow: 0 10px 25px var(--shadow-hover); }
 .toast-content { display: flex; align-items: center; }
 .toast-tag-name { color: var(--accent-2); text-shadow: 0 0 8px var(--glow-1); }
 .toast-actions { display: flex; align-items: center; background: var(--tag-bg); border-radius: 999px; padding: 2px; }
-.toast-btn { background: transparent; border: none; color: var(--text); width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; padding: 0; position: relative; }
-.toast-btn:hover { background: var(--marquee-border); color: var(--accent); }
-.toast-btn.next-btn:active { align-items: center; transform: scale(0.9) translateY(2px); }
+.toast-btn { 
+    background: transparent; 
+    border: none; 
+    color: var(--text); 
+    width: 32px; 
+    height: 32px; 
+    border-radius: 50%; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    cursor: pointer; 
+    padding: 0; 
+    position: relative;
+    
+    /* 這裡維持原本的動畫過渡 */
+    transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s ease;
+    
+    /* 確保容器圖層穩定 */
+    transform: translateZ(0); 
+    pointer-events: auto;
 
-/* ✨ Toast 專屬關閉按鈕 (無外框 + 淡淡紅底) */
+    /* ✨ 關鍵修正 3：強制按鈕在整個生命週期中開啟 GPU 渲染，並鎖定中心點 */
+    will-change: transform;
+    transform-origin: center center;
+}
+
+/* ✨ 關鍵修正 4：將 scale(0.85) 改為 scale(0.875)，確保縮放後寬高依然是完美整數 (28px) */
+.toast-btn:active,
+.toast-btn.next-btn:active { 
+    transform: scale(0.875) translateZ(0); 
+}
+
+.toast-btn svg {
+    /* 原有設定 */
+    pointer-events: none; 
+    vector-effect: non-scaling-stroke; 
+    transform-origin: center center;
+    
+    /* ✨ 新增以下魔法屬性，徹底消除動畫結束後的跳動 */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0); 
+    will-change: transform;
+}
+
+.toast-btn svg {
+    /* 1. 防止點擊穿透圖標邊緣 */
+    pointer-events: none; 
+    
+    /* 2. 這是最關鍵的一行：強制 SVG 使用「幾何縮放」而不是「重繪路徑」 */
+    /* 這樣瀏覽器就會把它當成一張圖片來縮放，不會去重算 SVG 向量路徑，從而消除閃爍 */
+    vector-effect: non-scaling-stroke; 
+    
+    /* 3. 確保動畫中心點一致 */
+    transform-origin: center center;
+}
+
+.toast-btn:hover { background: var(--marquee-border); color: var(--accent); }
+
+/* ✨ Toast 專屬關閉按鈕 */
 .toast-btn.close-btn { 
     font-size: 1.2rem; 
     font-weight: bold; 
-    background: rgba(255, 50, 50, 0.15); /* ✨ 淡淡的紅色背景 */
-    border: none; /* 確保沒有外框 */
+    background: rgba(255, 50, 50, 0.15); 
+    border: none; 
     outline: none; 
+    /* 確保按鈕本身沒有位移導致的閃爍 */
+    transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-/* Hover 時的強調狀態維持不變 */
 .toast-btn.close-btn:hover { 
     background: var(--error-color); 
     color: #fff; 
-    box-shadow: 0 0 10px var(--error-shadow); 
 }
 .toast-divider { width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; }
 
@@ -646,7 +746,12 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     .modal-close-btn, .toc-toggle-btn { width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important; font-size: 1.5rem !important; padding: 0 !important; margin: 0 !important; display: flex !important; justify-content: center !important; align-items: center !important; }
     .modal-content { width: 100%; max-height: 100vh; max-height: 100dvh; padding: 0 1.5rem 2rem 1.5rem; }
     .modal-top-bar { top: 0; margin: 0 -1.5rem 1.5rem -1.5rem; padding: 1.5rem 1.5rem 1.2rem 1.5rem; border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; box-shadow: 0 -2px 0 0 var(--glass-bg); }
-    .modal-top-bar.is-index-mode { padding: 1.5rem 1.5rem 1.2rem 1.5rem; margin: 0 -1.5rem -2rem -1.5rem; height: auto; box-shadow: none; }
+    .modal-top-bar.is-index-mode { 
+        margin: 0 -1.5rem -2rem -1.5rem; 
+        height: auto; 
+        box-shadow: none; 
+        /* 已移除重複的 padding */
+    }
     .toc-toggle-btn .bar { width: 14px; }
     .toc-dropdown { right: -0.2rem; width: min(260px, calc(100dvw - 4.5rem)); }
 
@@ -955,11 +1060,6 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
         /* 確保展開時也帶有硬體加速 */
         transform: translateY(0) scale(1) translateZ(0);
         pointer-events: auto;
-    }
-    
-    /* 修正手機版 Tooltip 殘留問題 (防禦性設定) */
-    .toolbox-group .toolbar-btn::after, .toolbox-group .toolbar-btn::before {
-        display: none !important;
     }
 }
 
