@@ -277,6 +277,7 @@ window.openLightbox = function(btn, event) {
     if (!container) return;
     
     const targetImg = container.querySelector('img');
+    const gallery = btn.closest('.gallery'); // ✨ 補回尋找畫廊的邏輯
     const lightboxModal = document.getElementById('lightbox-modal');
     const lightboxImg = document.getElementById('lightbox-img');
     
@@ -287,8 +288,24 @@ window.openLightbox = function(btn, event) {
         zoom: 1, 
         x: 0, 
         y: 0,
-        maxZoom: 2 // 先給一個預設安全值，等一下會動態精確計算
+        maxZoom: 2 
     };
+
+    // ✨✨✨ 致命遺失點：您不小心刪掉的相簿圖片陣列讀取邏輯！ ✨✨✨
+    if (gallery) {
+        const figures = Array.from(gallery.querySelectorAll('figure'));
+        window.lightboxState.images = figures.map(fig => ({
+            src: fig.querySelector('img')?.src,
+            caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
+        })).filter(item => item.src);
+        
+        window.lightboxState.currentIndex = window.lightboxState.images.findIndex(item => item.src === targetImg.src);
+    } else {
+        window.lightboxState.images = [{
+            src: targetImg.src,
+            caption: container.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
+        }];
+    }
 
     if (lightboxImg && lightboxModal) {
         // 設定大圖來源
@@ -298,24 +315,25 @@ window.openLightbox = function(btn, event) {
         lightboxImg.style.transition = 'none';
         lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
 
-        // 2. 顯示 Modal (必須先顯示，瀏覽器才能渲染並計算出 clientWidth)
+        // 2. 顯示 Modal
         lightboxModal.classList.add('is-active');
+
+        // ✨ 補回這行，膠囊與按鈕才會真正被呼叫顯示出來！
+        window.updateLightboxView();
 
         // 3. 定義「計算原圖 2 倍限制」的函數
         const calculateMaxZoomForNatural = () => {
-            const naturalWidth = lightboxImg.naturalWidth; // 原圖真實像素寬度 (例如 2000)
-            const displayWidth = lightboxImg.clientWidth;   // Lightbox 大圖在 scale(1) 時的顯示寬度 (例如 1000)
+            const naturalWidth = lightboxImg.naturalWidth; 
+            const displayWidth = lightboxImg.clientWidth;   
             
             if (displayWidth > 0 && naturalWidth > 0) {
-                // 精確限制：最大放大寬度 = 原圖真實寬度 * 2
                 window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
-                console.log(`原圖寬: ${naturalWidth}px, 顯示寬: ${displayWidth}px, 最大縮放限制倍率: ${window.lightboxState.maxZoom}`);
             } else {
                 window.lightboxState.maxZoom = 2; // 防呆備用值
             }
         };
 
-        // 4. 確保圖片載入後再進行計算 (快取直接讀取 complete，未載入則走 onload)
+        // 4. 確保圖片載入後再進行計算
         if (lightboxImg.complete) {
             calculateMaxZoomForNatural();
         } else {
@@ -442,8 +460,13 @@ window.toggleLightboxTools = function(event) {
 
 window.closeLightbox = function() {
     const lightboxModal = document.getElementById('lightbox-modal');
+    const toolbox = document.getElementById('lightbox-toolbox');
     if (lightboxModal) {
         lightboxModal.classList.remove('is-active');
+
+        if (toolbox) {
+            toolbox.classList.remove('is-open');
+        }
         // 延遲清空，避免關閉動畫破圖
         setTimeout(() => {
             document.getElementById('lightbox-img').src = "";
