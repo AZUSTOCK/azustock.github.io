@@ -8,22 +8,27 @@ from update_paths import update_extensions_to_webp
 # 準備一個 Set 來記錄所有合法的 API 檔案絕對路徑，用於最後的清理階段
 valid_api_files = set()
 
-# 全域統計數據
+# 全域統計數據 (分類得更細緻)
 stats = {
-    "proj_total": 0, "proj_updated": 0, "proj_skipped": 0,
-    "art_total": 0,  "art_updated": 0,  "art_skipped": 0,
-    "og_total": 0,   "og_updated": 0,   "og_skipped": 0,
-    "thumb_total": 0, "thumb_updated": 0, "thumb_skipped": 0
+    "proj_total": 0, "proj_updated": 0, "proj_skipped": 0,       # 專案 index.html
+    "art_total": 0,  "art_updated": 0,  "art_skipped": 0,        # 文章 index.html
+    "json_total": 0, "json_updated": 0, "json_skipped": 0,       # 內文 contents.json
+    "og_total": 0,   "og_updated": 0,   "og_skipped": 0,         # 分享圖 OG.webp
+    "thumb_total": 0, "thumb_updated": 0, "thumb_skipped": 0,    # 封面縮圖 cover_thumb
+    "inline_thumb_total": 0, "inline_thumb_updated": 0, "inline_thumb_skipped": 0 # 內文縮圖 inline_thumb
 }
 
 # ==========================================
 # 🛠️ 輔助系統 (Helper Functions)
 # ==========================================
-def is_file_outdated(source_paths, target_path):
+def is_file_outdated(source_paths, target_path, force_overwrite=False):
     """
     智慧判斷目標檔案是否需要更新
-    只要目標檔案不存在，或是任何一個來源檔案的修改時間 (mtime) 大於目標檔案，就回傳 True
+    當 force_overwrite 為 True，或目標檔案不存在，或任何來源檔比目標檔新時回傳 True
     """
+    if force_overwrite:
+        return True
+        
     if not os.path.exists(target_path):
         return True
         
@@ -33,6 +38,13 @@ def is_file_outdated(source_paths, target_path):
             if os.path.getmtime(src) > target_time:
                 return True
     return False
+
+def print_conversion(tag, src_path, dest_path):
+    """輔助函式：印出圖片轉換前後的檔案大小"""
+    if os.path.exists(src_path) and os.path.exists(dest_path):
+        s_size = os.path.getsize(src_path) / 1024
+        d_size = os.path.getsize(dest_path) / 1024
+        print(f"  └─ {tag} {os.path.basename(dest_path)} ({s_size:.1f} KB -> {d_size:.1f} KB)")
 
 def create_og_image(original_path, output_path, bg_path=None):
     """將任意尺寸的圖片疊加到 1200x630 的背景圖中央，生成完美的 OG 分享圖"""
@@ -81,11 +93,9 @@ def load_detail_json(json_path):
 # ==========================================
 # 🚀 主生成器邏輯
 # ==========================================
-def generate_projects_json():
+def generate_projects_json(overwrite_json=False, overwrite_img=False):
     base_dir = 'projects'
     output_data = {"categories": [], "projects": []}
-
-    is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
     BASE_URL = "https://azustock.github.io"
     
     API_DIR = os.path.join("api")
@@ -189,13 +199,14 @@ def generate_projects_json():
             proj_og_local_path = os.path.join(proj_api_dir, proj_og_filename)
             bg_image_path = os.path.join("assets", "og_base.png")
             
-            # ✨ 處理專案 OG 圖片 (智慧更新)
+            # ✨ 處理專案 OG 圖片
             if 'cover_image' in clean_proj_data:
                 stats["og_total"] += 1
                 local_proj_cover = clean_proj_data['cover_image']
                 
-                if is_file_outdated([local_proj_cover, bg_image_path], proj_og_local_path):
+                if is_file_outdated([local_proj_cover, bg_image_path], proj_og_local_path, overwrite_img):
                     if create_og_image(local_proj_cover, proj_og_local_path, bg_image_path):
+                        print_conversion("🖼️ [專案OG圖]", local_proj_cover, proj_og_local_path)
                         proj_img = f"{BASE_URL}/api/{proj_id}/{proj_og_filename}"
                         stats["og_updated"] += 1
                     else:
@@ -205,25 +216,20 @@ def generate_projects_json():
                     stats["og_skipped"] += 1
                 valid_api_files.add(os.path.abspath(proj_og_local_path))
 
-                # ==========================================
-                # ✨ 新增：處理專案封面縮圖 (Thumbnail)
-                # ==========================================
+                # ✨ 處理專案封面縮圖 (Thumbnail)
                 proj_thumb_filename = "cover_thumb.webp"
                 proj_thumb_local_path = os.path.join(proj_api_dir, proj_thumb_filename)
+                stats["thumb_total"] += 1 
                 
-                stats["thumb_total"] += 1 # ✨ 總數 +1
-                
-                # 利用智慧更新判斷：如果原圖有改，才重新生成縮圖
-                if is_file_outdated([local_proj_cover], proj_thumb_local_path):
+                if is_file_outdated([local_proj_cover], proj_thumb_local_path, overwrite_img):
                     if generate_cover_thumbnail(local_proj_cover, proj_thumb_local_path, max_width=320, quality=90):
+                        print_conversion("🖼️ [專案縮圖]", local_proj_cover, proj_thumb_local_path)
                         proj_data['cover_image'] = f"./api/{proj_id}/{proj_thumb_filename}"
-                        stats["thumb_updated"] += 1 # ✨ 更新數 +1
+                        stats["thumb_updated"] += 1
                 else:
-                    # 如果不需更新，也要將 JSON 中的路徑導向縮圖
                     proj_data['cover_image'] = f"./api/{proj_id}/{proj_thumb_filename}"
-                    stats["thumb_skipped"] += 1 # ✨ 略過數 +1
+                    stats["thumb_skipped"] += 1 
                     
-                # 加入白名單，防止被清理函數刪除
                 valid_api_files.add(os.path.abspath(proj_thumb_local_path))
 
             else:
@@ -233,8 +239,8 @@ def generate_projects_json():
             proj_share_url = f"{BASE_URL}/api/{proj_id}/index.html"
             proj_html_path = os.path.join(proj_api_dir, "index.html")
             
-            # ✨ 處理專案 HTML (智慧更新)
-            if is_file_outdated([proj_detail_path, proj_og_local_path], proj_html_path):
+            # ✨ 處理專案 HTML
+            if is_file_outdated([proj_detail_path, proj_og_local_path], proj_html_path, overwrite_json):
                 with open(proj_html_path, "w", encoding="utf-8") as f:
                     f.write(html_template.format(
                         title=proj_title, description=proj_desc, 
@@ -247,7 +253,6 @@ def generate_projects_json():
             valid_api_files.add(os.path.abspath(proj_html_path))
 
             # 3. 掃描專案底下的文章 (Articles)
-            # ✨ 修正 1：指定去 articles 資料夾底下尋找
             articles_dir = os.path.join(proj_path, 'articles')
             
             if os.path.exists(articles_dir) and os.path.isdir(articles_dir):
@@ -266,10 +271,8 @@ def generate_projects_json():
                     meta_cover = sub_data.get('cover')
 
                     md_file_path = None
-                    # ✨ 修正 2：封面圖片的相對路徑加上 articles/
                     rel_base = f"{base_dir}/{cat_folder}/{proj_folder}/articles/{item}"
 
-                    # 🚨 修正縮排：這裡必須在上面的 for item 迴圈裡面！
                     for sub_item in os.listdir(item_path):
                         if sub_item.endswith('.md'):
                             md_file_path = os.path.join(item_path, sub_item)
@@ -285,48 +288,108 @@ def generate_projects_json():
                             content_filename = "contents.json"
                             content_filepath = os.path.join(art_dir, content_filename)
                             
-                            # ==========================================
-                            # ✨ 修正點 1：統一在最前面解析標題，確保後續 HTML 生成能拿到正確名稱
-                            # ==========================================
+                            # ✨ 統一讀取 Markdown
                             with open(md_file_path, 'r', encoding='utf-8') as md_file:
                                 raw_md_content = md_file.read() 
                                 
                             if sub_data.get('title') is None and raw_md_content.startswith('# '):
                                 meta_title = raw_md_content.split('\n')[0].replace('# ', '').strip()
                             
-                            # ✨ 處理 Markdown 轉 JSON (智慧更新)
-                            if is_file_outdated([md_file_path], content_filepath):
-                                content = raw_md_content # 直接拿剛剛讀好的
+                            content = raw_md_content 
+                            real_path = f"./projects/{cat_folder}/{proj_folder}/articles/{item}/"
+                            
+                            # ✨ 正則替換區：掃描與生成內文縮圖 (保留 Thumbnails 目錄架構)
+                            def replace_md_img(match):
+                                alt_text, url_part = match.group(1), match.group(2)
                                 
-                                # ✨ 修正 3：讓內文的圖片也能抓到正確的 articles/ 路徑
-                                real_path = f"./projects/{cat_folder}/{proj_folder}/articles/{item}/"
+                                parts = url_part.strip().split(maxsplit=1)
+                                url = parts[0]
+                                title_str = f" {parts[1]}" if len(parts) > 1 else ""
                                 
-                                def replace_md_img(match):
-                                    alt_text, url = match.group(1), match.group(2)
-                                    if not url.startswith(('http://', 'https://', 'data:')) and 'projects/' not in url:
-                                        url = f"{real_path}{url[2:] if url.startswith('./') else url}"
-                                    return f"![{alt_text}]({url})"
+                                if not url.startswith(('http://', 'https://', 'data:')) and 'projects/' not in url:
+                                    clean_url = url[2:] if url.startswith('./') else url
+                                    orig_url = f"{real_path}{clean_url}"
+                                    local_img_path = os.path.normpath(orig_url)
                                     
-                                content = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', replace_md_img, content)
+                                    if os.path.exists(local_img_path):
+                                        stats["inline_thumb_total"] += 1
+                                        safe_name = clean_url.replace('/', '_').replace('\\', '_')
+                                        
+                                        thumb_dir = os.path.join(art_dir, "thumbnails")
+                                        os.makedirs(thumb_dir, exist_ok=True)
+                                        
+                                        thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
+                                        thumb_local_path = os.path.join(thumb_dir, thumb_filename)
+                                        
+                                        if is_file_outdated([local_img_path], thumb_local_path, overwrite_img):
+                                            success = generate_cover_thumbnail(local_img_path, thumb_local_path, max_width=800, quality=85)
+                                            if success:
+                                                print_conversion("🖼️ [內文縮圖]", local_img_path, thumb_local_path)
+                                                stats["inline_thumb_updated"] += 1
+                                            else:
+                                                stats["inline_thumb_skipped"] += 1
+                                        else:
+                                            stats["inline_thumb_skipped"] += 1
+                                            
+                                        valid_api_files.add(os.path.abspath(thumb_local_path))
+                                        
+                                        thumb_url = f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}"
+                                        return f"![{alt_text}]({thumb_url}#full={orig_url}{title_str})"
+                                        
+                                return f"![{alt_text}]({url_part})"
+                                
+                            content = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', replace_md_img, content)
 
-                                def replace_html_img(match):
-                                    prefix, url, suffix = match.group(1), match.group(2), match.group(3)
-                                    if not url.startswith(('http://', 'https://', 'data:')) and 'projects/' not in url:
-                                        url = f"{real_path}{url[2:] if url.startswith('./') else url}"
-                                    return f"{prefix}{url}{suffix}"
+                            def replace_html_img(match):
+                                prefix, url, suffix = match.group(1), match.group(2), match.group(3)
+                                if not url.startswith(('http://', 'https://', 'data:')) and 'projects/' not in url:
+                                    clean_url = url[2:] if url.startswith('./') else url
+                                    orig_url = f"{real_path}{clean_url}"
+                                    local_img_path = os.path.normpath(orig_url)
                                     
-                                content = re.sub(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)', replace_html_img, content)
+                                    if os.path.exists(local_img_path):
+                                        stats["inline_thumb_total"] += 1
+                                        safe_name = clean_url.replace('/', '_').replace('\\', '_')
+                                        
+                                        thumb_dir = os.path.join(art_dir, "thumbnails")
+                                        os.makedirs(thumb_dir, exist_ok=True)
+                                        
+                                        thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
+                                        thumb_local_path = os.path.join(thumb_dir, thumb_filename)
+                                        
+                                        if is_file_outdated([local_img_path], thumb_local_path, overwrite_img):
+                                            success = generate_cover_thumbnail(local_img_path, thumb_local_path, max_width=800, quality=85)
+                                            if success:
+                                                print_conversion("🖼️ [內文縮圖]", local_img_path, thumb_local_path)
+                                                stats["inline_thumb_updated"] += 1
+                                            else:
+                                                stats["inline_thumb_skipped"] += 1
+                                        else:
+                                            stats["inline_thumb_skipped"] += 1
+                                            
+                                        valid_api_files.add(os.path.abspath(thumb_local_path))
+                                        
+                                        thumb_url = f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}"
+                                        
+                                        # ✨ 保留了修復引號閉合的程式碼
+                                        return f'{prefix}{thumb_url}" data-full="{orig_url}"{suffix[1:]}'
+                                        
+                                return f"{prefix}{url}{suffix}"
+                                
+                            content = re.sub(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)', replace_html_img, content)
 
+                            # ✨ 處理 Markdown 轉 JSON
+                            stats["json_total"] += 1
+                            if is_file_outdated([md_file_path], content_filepath, overwrite_json):
                                 with open(content_filepath, 'w', encoding='utf-8') as af:
                                     json.dump({"content": content}, af, ensure_ascii=False)
-                                    
-                                stats["art_updated"] += 1
+                                stats["json_updated"] += 1
                             else:
-                                stats["art_skipped"] += 1
+                                stats["json_skipped"] += 1
                                 
                             valid_api_files.add(os.path.abspath(content_filepath))
 
-                            # ✨ 單篇文章 Share 中轉頁處理 & OG 生成 (智慧更新)
+                            # ✨ 單篇文章 Share 中轉頁處理 & OG 生成
                             art_title = meta_title
                             art_desc = meta_desc if meta_desc else proj_desc
                             og_local_path = os.path.join(art_dir, "og.webp")
@@ -336,8 +399,9 @@ def generate_projects_json():
                                 local_cover_path = os.path.join(item_path, meta_cover)
                                 bg_image_path = os.path.join("assets", "og.png")
                                 
-                                if is_file_outdated([local_cover_path, bg_image_path], og_local_path):
+                                if is_file_outdated([local_cover_path, bg_image_path], og_local_path, overwrite_img):
                                     if create_og_image(local_cover_path, og_local_path, bg_image_path):
+                                        print_conversion("🖼️ [文章OG圖]", local_cover_path, og_local_path)
                                         art_img = f"{BASE_URL}/api/{proj_id}/{art_id}/og.webp"
                                         stats["og_updated"] += 1
                                     else:
@@ -347,24 +411,21 @@ def generate_projects_json():
                                     stats["og_skipped"] += 1
                                 valid_api_files.add(os.path.abspath(og_local_path))
 
-                                # ==========================================
-                                # ✨ 新增：處理文章封面縮圖 (Thumbnail)
-                                # ==========================================
+                                # ✨ 處理文章封面縮圖 (Thumbnail)
                                 art_thumb_filename = "cover_thumb.webp"
                                 art_thumb_local_path = os.path.join(art_dir, art_thumb_filename)
+                                stats["thumb_total"] += 1
                                 
-                                stats["thumb_total"] += 1 # ✨ 總數 +1
-                                
-                                if is_file_outdated([local_cover_path], art_thumb_local_path):
-                                    # 目錄的縮圖更小，寬度設定 160 即可
+                                if is_file_outdated([local_cover_path], art_thumb_local_path, overwrite_img):
                                     if generate_cover_thumbnail(local_cover_path, art_thumb_local_path, max_width=160, quality=90):
+                                        print_conversion("🖼️ [文章縮圖]", local_cover_path, art_thumb_local_path)
                                         meta_cover_url = f"./api/{proj_id}/{art_id}/{art_thumb_filename}"
-                                        stats["thumb_updated"] += 1 # ✨ 更新數 +1
+                                        stats["thumb_updated"] += 1 
                                     else:
-                                        meta_cover_url = f"{rel_base}/{meta_cover}" # 失敗則退回原圖
+                                        meta_cover_url = f"{rel_base}/{meta_cover}" 
                                 else:
                                     meta_cover_url = f"./api/{proj_id}/{art_id}/{art_thumb_filename}"
-                                    stats["thumb_skipped"] += 1 # ✨ 略過數 +1
+                                    stats["thumb_skipped"] += 1 
                                     
                                 valid_api_files.add(os.path.abspath(art_thumb_local_path))
 
@@ -375,7 +436,7 @@ def generate_projects_json():
                             art_share_url = f"{BASE_URL}/api/{proj_id}/{art_id}/index.html"
                             art_html_path = os.path.join(art_dir, "index.html")
 
-                            if is_file_outdated([art_detail_path, md_file_path, og_local_path], art_html_path):
+                            if is_file_outdated([art_detail_path, md_file_path, og_local_path], art_html_path, overwrite_json):
                                 with open(art_html_path, "w", encoding="utf-8") as f:
                                     f.write(html_template.format(
                                         title=f"{art_title} | {proj_title}", description=art_desc, 
@@ -415,15 +476,12 @@ def generate_projects_json():
                         except Exception as e:
                             print(f"⚠️ Error reading Markdown {md_file_path}: {e}")
 
-            # 修改 generate_projects_json 中 articles 的排序區塊
             if articles:
                 def article_sort(x):
                     pinned_val = 1 if x.get('pinned', False) else 0
-                    # 直接由小到大排序 (01, 02, 03...)
                     order_val = int(x.get('sort_order', 999))
                     return (-pinned_val, order_val)
 
-                # 這裡直接執行升冪排序，不需要判斷 default_sort
                 sorted_articles = sorted(articles, key=article_sort)
                 for art in sorted_articles:
                     if 'sort_order' in art: del art['sort_order']
@@ -440,23 +498,15 @@ def generate_projects_json():
     output_data["categories"].sort(key=safe_sort)
     cat_order_map = {cat['id']: cat['order'] for cat in output_data["categories"]}
 
-    # 修改 generate_projects.py 中的 proj_sort
     def proj_sort(x):
-        # 1. 優先根據類別的 order 排序
         cat_order = cat_order_map.get(x.get('category'), 999)
-        # 2. 其次根據是否置頂 (pinned 為 True 的排在前面)
         pinned_val = -1 if x.get('pinned', False) else 0
-        # 3. ✨ 加上負號：讓專案本身的 order 數值越大的排越前面 (由新到舊)
         p_order = -int(x.get('order', 999))
-        
         return (cat_order, pinned_val, p_order, x.get('id', ''))
 
     output_data["projects"].sort(key=proj_sort)
 
-    # 在 json.dump 之前
     print(f"✅ JSON 打包完成，包含 {len(output_data['projects'])} 個專案。")
-    for p in output_data['projects']:
-        print(f"   - [{p['category']}] {p['id']} (Order: {p['order']})")
 
     with open('all_projects.json', 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
@@ -476,7 +526,6 @@ def cleanup_old_api_files(api_dir="api"):
     deleted_files = 0
     deleted_dirs = 0
     
-    # Bottom-up 遍歷，這樣刪除完檔案後可以直接刪除空的父資料夾
     for root, dirs, files in os.walk(api_dir, topdown=False):
         for name in files:
             file_path = os.path.abspath(os.path.join(root, name))
@@ -485,7 +534,6 @@ def cleanup_old_api_files(api_dir="api"):
                 deleted_files += 1
                 print(f"🗑️ 刪除廢棄檔案: {os.path.relpath(file_path)}")
                 
-        # 檢查資料夾是否為空，若是則刪除
         for name in dirs:
             dir_path = os.path.join(root, name)
             if not os.listdir(dir_path):
@@ -497,19 +545,58 @@ def cleanup_old_api_files(api_dir="api"):
 
 
 if __name__ == "__main__":
-    convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=False)
+    # ✨ 判斷是否為 GitHub Actions 環境 (CI/CD)
+    is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
     
+    overwrite_webp = False
+    overwrite_json = False
+    overwrite_img = False
+
+    if is_github_actions:
+        print("\n🤖 [CI/CD 模式] 偵測到 GitHub Actions 環境。")
+        print("   -> 自動停用互動提問，啟用【全域智慧跳過】以加速佈署流程 (僅更新修改過的檔案)。\n")
+    else:
+        print("請選擇整體作業模式？ (包含圖片轉檔與 JSON 打包)")
+        print("  [1] 全域智慧跳過 (遇到舊檔且無修改則跳過，速度最快 - 預設)")
+        print("  [2] 全域強制複寫 (重新處理所有檔案與縮圖)")
+        print("  [3] 自訂義 (針對各項處理分別選擇)")
+        
+        choice = input("請選擇 [1, 2 或 3] (預設 1): ").strip()
+        
+        if choice == '2':
+            overwrite_webp = True
+            overwrite_json = True
+            overwrite_img = True
+        elif choice == '3':
+            print("\n-- 自訂義細項設定 --")
+            w_choice = input("  [A] 第一階段: 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            overwrite_webp = (w_choice == '2')
+            
+            j_choice = input("  [B] 第二階段: Markdown轉JSON與HTML [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            overwrite_json = (j_choice == '2')
+            
+            i_choice = input("  [C] 第三階段: OG分享圖與閱讀縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            overwrite_img = (i_choice == '2')
+
+    # --- 第一階段：轉換原圖 ---
+    convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
+    
+    # --- 第二階段：打包與生成縮圖 ---
     print(f"\n==========================================")
     print(f"📦 [第二階段] 開始解析 Markdown 並打包 JSON 資料庫...")
     print(f"==========================================")
-    generate_projects_json()
+    generate_projects_json(overwrite_json=overwrite_json, overwrite_img=overwrite_img)
     
+    # --- 輸出統計 ---
     print(f"\n📊 [處理統計]")
-    print(f"  - 專案 (Projects): 共 {stats['proj_total']} 個 | 更新 {stats['proj_updated']} 個 | 略過 {stats['proj_skipped']} 個")
-    print(f"  - 文章 (Articles): 共 {stats['art_total']} 個 | 更新 {stats['art_updated']} 個 | 略過 {stats['art_skipped']} 個")
-    print(f"  - 圖片 (OG Images): 共 {stats['og_total']} 個 | 更新 {stats['og_updated']} 個 | 略過 {stats['og_skipped']} 個")
-    print(f"  - 縮圖 (Thumbnails): 共 {stats['thumb_total']} 個 | 更新 {stats['thumb_updated']} 個 | 略過 {stats['thumb_skipped']} 個")
+    print(f"  - 專案 HTML (index)       : 共 {stats['proj_total']:>4} 個 | 更新 {stats['proj_updated']:>4} 個 | 略過 {stats['proj_skipped']:>4} 個")
+    print(f"  - 文章 HTML (index)       : 共 {stats['art_total']:>4} 個 | 更新 {stats['art_updated']:>4} 個 | 略過 {stats['art_skipped']:>4} 個")
+    print(f"  - 內文 JSON (contents)    : 共 {stats['json_total']:>4} 個 | 更新 {stats['json_updated']:>4} 個 | 略過 {stats['json_skipped']:>4} 個")
+    print(f"  - 分享圖 (OG webp)        : 共 {stats['og_total']:>4} 張 | 更新 {stats['og_updated']:>4} 張 | 略過 {stats['og_skipped']:>4} 張")
+    print(f"  - 封面縮圖 (cover_thumb)  : 共 {stats['thumb_total']:>4} 張 | 更新 {stats['thumb_updated']:>4} 張 | 略過 {stats['thumb_skipped']:>4} 張")
+    print(f"  - 內文縮圖 (inline_thumb) : 共 {stats['inline_thumb_total']:>4} 張 | 更新 {stats['inline_thumb_updated']:>4} 張 | 略過 {stats['inline_thumb_skipped']:>4} 張")
     
+    # --- 清理與收尾 ---
     cleanup_old_api_files()
     
     print(f"\n==========================================")
