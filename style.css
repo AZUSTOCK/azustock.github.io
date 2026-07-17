@@ -906,13 +906,18 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
 /* Lightbox 膠囊導覽列 */
 /* ========================= */
 .lightbox-capsule {
-    display: none; /* 預設隱藏，由 JS 控制顯示 */
-    align-items: center; height: 40px;
+    display: none; 
+    align-items: center; 
+    height: 40px;
     border: 1px solid rgba(255, 255, 255, 0.2); 
     border-radius: 999px;
     background: rgba(0, 0, 0, 0.4); 
     backdrop-filter: blur(8px);
-    box-sizing: border-box; transition: all 0.3s ease;
+    box-sizing: border-box; 
+    transition: all 0.3s ease;
+    
+    /* ✨ 加上這一行，確保膠囊可以被點擊 */
+    pointer-events: auto; 
 }
 .lightbox-capsule-btn {
     display: inline-flex; align-items: center; justify-content: center;

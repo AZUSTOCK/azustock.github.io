@@ -95,6 +95,19 @@
           </button>
         </div>
       </div>
+
+      <!-- 🎯 這就是您遺失的膠囊與前後切換按鈕！請把它補回中間 -->
+      <div class="lightbox-capsule" id="lightbox-nav-capsule">
+          <button class="lightbox-capsule-btn" id="lightbox-prev" onclick="window.navigateLightbox(-1, event)">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <span class="lightbox-capsule-divider"></span>
+          <span id="lightbox-counter" class="lightbox-capsule-progress">1 / 1</span>
+          <span class="lightbox-capsule-divider"></span>
+          <button class="lightbox-capsule-btn" id="lightbox-next" onclick="window.navigateLightbox(1, event)">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+      </div>
       
       <!-- 右側：功能按鈕區 -->
       <div class="toolbar-right">
