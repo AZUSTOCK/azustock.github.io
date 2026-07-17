@@ -425,73 +425,114 @@ window.closeLightbox = function() {
 // ✨ Lightbox 滾輪縮放與拖曳 (Zoom & Panning) 引擎
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // 裝置偵測與視窗處理
-    const isTouchDevice = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
-    if (isTouchDevice) document.body.classList.add('is-touch-device');
+    // 1. 視窗安全高度計算 (修正工具列擋住問題)
+    function adjustLightboxHeight() {
+        const modal = document.getElementById('lightbox-modal');
+        if (window.visualViewport && modal) {
+            modal.style.height = window.visualViewport.height + 'px';
+        }
+    }
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', adjustLightboxHeight);
+        window.visualViewport.addEventListener('scroll', adjustLightboxHeight);
+    }
 
+    // 2. 觸控裝置偵測 (用於 CSS 的 is-touch-device 標籤)
+    const isTouchDevice = (('ontouchstart' in window) || 
+                           (navigator.maxTouchPoints > 0) || 
+                           (navigator.msMaxTouchPoints > 0));
+    if (isTouchDevice) {
+        document.body.classList.add('is-touch-device');
+    }
+
+    // 3. ✨ Lightbox 拖曳引擎 (終極修復版)
     const wrapper = document.querySelector('.lightbox-img-wrapper');
-    // --- 拖曳平移引擎 ---
+    const lightboxImg = document.getElementById('lightbox-img');
     let isDragging = false;
     let startClientX = 0, startClientY = 0;
+    let activePointerId = null;
 
-    const onDrag = (e) => {
-        if (!isDragging) return;
+    if (lightboxImg) {
+        // 🛑 核心修復 1：徹底封殺電腦版的「原生圖片拖曳 (Ghost Drag)」
+        // 解決「按著沒反應，放開滑鼠才開始追蹤」的卡死問題
+        lightboxImg.addEventListener('dragstart', (e) => e.preventDefault());
         
-        // ✨ 確保拖曳動作不會被瀏覽器阻塞
-        // 移除不必要的 e.preventDefault()，若有跑版再加回
-        
-        window.lightboxState.x = e.clientX - startClientX;
-        window.lightboxState.y = e.clientY - startClientY;
-        
-        const img = document.getElementById('lightbox-img');
-        if (img) {
-            // ✨ 強制使用 requestAnimationFrame 確保同步重繪，解決延遲感
+        // 定義移動函數
+        const onDrag = (e) => {
+            if (!isDragging) return;
+            if (e.pointerId !== activePointerId) return; // 確保是同一根手指/滑鼠
+            
+            window.lightboxState.x = e.clientX - startClientX;
+            window.lightboxState.y = e.clientY - startClientY;
+            
+            // 使用 requestAnimationFrame 確保畫面更新與滑鼠同步無延遲
             requestAnimationFrame(() => {
-                img.style.transform = `translate(${window.lightboxState.x}px, ${window.lightboxState.y}px) scale(${window.lightboxState.zoom})`;
+                lightboxImg.style.transform = `translate(${window.lightboxState.x}px, ${window.lightboxState.y}px) scale(${window.lightboxState.zoom})`;
             });
-        }
-    };
+        };
 
-    const stopDrag = () => {
-        isDragging = false;
-        const img = document.getElementById('lightbox-img');
-        if (img) img.classList.remove('is-dragging');
-        window.removeEventListener('pointermove', onDrag);
-        window.removeEventListener('pointerup', stopDrag);
-    };
+        // 定義結束函數
+        const stopDrag = (e) => {
+            if (e && e.type !== 'pointercancel' && e.pointerId !== activePointerId) return;
 
-    // 綁定事件代理
-    if (wrapper) {
-        wrapper.addEventListener('pointerdown', (e) => {
-            if (e.target.id !== 'lightbox-img') return;
+            isDragging = false;
+            activePointerId = null;
+            lightboxImg.classList.remove('is-dragging');
             
+            // 釋放指標捕捉
+            if (e && lightboxImg.hasPointerCapture && lightboxImg.hasPointerCapture(e.pointerId)) {
+                lightboxImg.releasePointerCapture(e.pointerId);
+            }
+            
+            window.removeEventListener('pointermove', onDrag);
+            window.removeEventListener('pointerup', stopDrag);
+            window.removeEventListener('pointercancel', stopDrag);
+        };
+
+        // 綁定按下事件
+        lightboxImg.addEventListener('pointerdown', (e) => {
+            // 過濾多指操作的第二根手指，讓瀏覽器處理雙指縮放
+            if (e.pointerType === 'touch' && !e.isPrimary) return;
+
             isDragging = true;
-            e.target.classList.add('is-dragging');
+            activePointerId = e.pointerId;
+            lightboxImg.classList.add('is-dragging');
             
-            // 紀錄初始偏移量
+            // 🛑 核心修復 2：設定指標捕捉 (Pointer Capture)
+            // 這會強制所有後續的移動事件都鎖定在這張圖片上，徹底解決手機端「漂移」或因滑出邊界而中斷的問題
+            if (lightboxImg.setPointerCapture) {
+                lightboxImg.setPointerCapture(e.pointerId);
+            }
+
             startClientX = e.clientX - window.lightboxState.x;
             startClientY = e.clientY - window.lightboxState.y;
 
-            // 即刻掛載監聽器
             window.addEventListener('pointermove', onDrag);
             window.addEventListener('pointerup', stopDrag);
+            window.addEventListener('pointercancel', stopDrag); // 防禦系統中斷
         });
     }
-    
-    // 滾輪縮放 (維持不變)
-    if (wrapper) {
+
+    // 4. 滾輪縮放引擎
+    if (wrapper && lightboxImg) {
         wrapper.addEventListener('wheel', (e) => {
             if (!document.getElementById('lightbox-modal').classList.contains('is-active')) return;
             e.preventDefault();
+            
             const state = window.lightboxState;
             const delta = e.deltaY < 0 ? 1 : -1;
-            let newZoom = Math.max(0.5, Math.min(state.zoom * (1 + delta * 0.15), 15));
+            let newZoom = state.zoom * (1 + delta * 0.15);
+            newZoom = Math.max(0.5, Math.min(newZoom, 15));
+            
             const ratio = newZoom / state.zoom - 1;
-            state.x -= (e.clientX - (window.innerWidth / 2) - state.x) * ratio;
-            state.y -= (e.clientY - (window.innerHeight / 2) - state.y) * ratio;
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            
+            state.x -= (e.clientX - centerX - state.x) * ratio;
+            state.y -= (e.clientY - centerY - state.y) * ratio;
             state.zoom = newZoom;
-            const img = document.getElementById('lightbox-img');
-            if (img) img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
+            
+            lightboxImg.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
         }, { passive: false });
     }
 });
@@ -636,115 +677,135 @@ window.handleSpaLink = function(event, url) {
 };
 
 // === 1. 介面與導覽列邏輯 (Theme & Menu) ===
-d// ==========================================
-// ✨ Lightbox 滾輪縮放與拖曳 (Zoom & Panning) 引擎
-// ==========================================
+// === 1. 介面與導覽列邏輯 (Theme & Menu) ===
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. 視窗安全高度計算 (修正工具列擋住問題)
-    function adjustLightboxHeight() {
-        const modal = document.getElementById('lightbox-modal');
-        if (window.visualViewport) {
-            modal.style.height = window.visualViewport.height + 'px';
+    
+    const themeToggle = document.getElementById('theme-toggle');
+    const savedTheme = localStorage.getItem('theme');
+    const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+
+    let initialTheme = CONFIG.DEFAULT_THEME; 
+    if (savedTheme) initialTheme = savedTheme;
+    else if (prefersLight) initialTheme = 'light';
+
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+
+        if (window.mermaid) {
+            window.mermaid.initialize({
+                startOnLoad: false,
+                theme: theme === 'dark' ? 'dark' : 'default',
+                fontFamily: 'inherit',
+                securityLevel: 'loose' 
+            });
+            
+            document.querySelectorAll('.mermaid').forEach(el => {
+                const originalText = decodeURIComponent(el.getAttribute('data-original-text') || '');
+                if (originalText) {
+                    el.textContent = originalText; 
+                    el.removeAttribute('data-processed'); 
+                }
+            });
+            window.mermaid.run({ querySelector: '.mermaid' }).catch(() => {});
+        }
+    
+        const targetFaviconUrl = theme === 'light' ? CONFIG.FAVICON_LIGHT : CONFIG.FAVICON_DARK;
+        document.querySelectorAll("link[rel='icon']").forEach(link => link.href = targetFaviconUrl);
+
+        const iframe = document.querySelector('iframe.giscus-frame');
+        if (iframe && iframe.contentWindow) {
+            const newGiscusTheme = theme === 'light' ? 'light' : 'transparent_dark';
+            iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: newGiscusTheme } } }, 'https://giscus.app');
         }
     }
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', adjustLightboxHeight);
-        window.visualViewport.addEventListener('scroll', adjustLightboxHeight);
-    }
 
-    // 2. 觸控裝置偵測 (用於 CSS 的 is-touch-device 標籤)
-    const isTouchDevice = (('ontouchstart' in window) || 
-                           (navigator.maxTouchPoints > 0) || 
-                           (navigator.msMaxTouchPoints > 0));
-    if (isTouchDevice) {
-        document.body.classList.add('is-touch-device');
-    }
+    applyTheme(initialTheme);
 
-    // 3. ✨ Lightbox 拖曳引擎 (徹底修復漂移與卡頓版)
-    const wrapper = document.querySelector('.lightbox-img-wrapper');
-    const lightboxImg = document.getElementById('lightbox-img');
-    let isDragging = false;
-    let startClientX = 0, startClientY = 0;
-    let activePointerId = null; // ✨ 核心：紀錄當下是哪一根手指/滑鼠在拖曳
+    themeToggle.addEventListener('click', () => {
+        let currentAttr = document.documentElement.getAttribute('data-theme');
+        let newTheme = currentAttr === 'light' ? 'dark' : 'light';
+        applyTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+    });
 
-    // 定義移動函數
-    const onDrag = (e) => {
-        if (!isDragging) return;
-        // ✨ 核心過濾：如果移動的不是我們鎖定的那根手指（例如雙指縮放的第二根手指），直接忽略，防止漂移！
-        if (e.pointerId !== activePointerId) return;
-        
-        e.preventDefault();
-        
-        window.lightboxState.x = e.clientX - startClientX;
-        window.lightboxState.y = e.clientY - startClientY;
-        
-        const img = document.getElementById('lightbox-img');
-        if (img) img.style.transform = `translate(${window.lightboxState.x}px, ${window.lightboxState.y}px) scale(${window.lightboxState.zoom})`;
-    };
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) applyTheme(e.matches ? 'light' : 'dark');
+    });
 
-    // 定義結束函數
-    const stopDrag = (e) => {
-        // 確保放開的是我們鎖定的那根手指，或者是系統強制中斷 (pointercancel)
-        if (e && e.type !== 'pointercancel' && e.pointerId !== activePointerId) return;
+    const menuToggle = document.getElementById('menu-toggle');
+    const fullscreenMenu = document.getElementById('fullscreen-menu');
 
-        isDragging = false;
-        activePointerId = null; // 釋放鎖定
-        
-        const img = document.getElementById('lightbox-img');
-        if (img) img.classList.remove('is-dragging');
-        
-        window.removeEventListener('pointermove', onDrag);
-        window.removeEventListener('pointerup', stopDrag);
-        window.removeEventListener('pointercancel', stopDrag); // ✨ 監聽系統強制中斷事件
-    };
+    menuToggle.addEventListener('click', () => {
+        menuToggle.classList.toggle('open');
+        fullscreenMenu.classList.toggle('active');
+        document.body.style.overflow = fullscreenMenu.classList.contains('active') ? 'hidden' : '';
+    });
 
-    // 綁定按下事件
-    if (wrapper) {
-        wrapper.addEventListener('pointerdown', (e) => {
-            // 確保點到的是圖片
-            if (e.target.id !== 'lightbox-img') return;
-            // 過濾雙指的第二根手指
-            if (e.pointerType === 'touch' && !e.isPrimary) return;
+    // ==========================================
+    // ✨ 漢堡選單：事件代理 (Event Delegation) 點擊自動關閉
+    // ==========================================
+    // 不管未來動態載入了多少個 .nav-item，只要把事件掛在父層就永遠生效！
+    fullscreenMenu.addEventListener('click', (e) => {
+        if (e.target.closest('.nav-item')) {
+            menuToggle.classList.remove('open');
+            fullscreenMenu.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
 
-            // ✨ 絕對關鍵：阻止瀏覽器的「原生圖片殘影拖曳 (Ghost Drag)」，解決電腦版卡死不追蹤的問題！
-            e.preventDefault();
+    // ✨ 言の箱彩蛋
+    const siteTitle = document.querySelector('header h1');
+    const profileSection = document.querySelector('main section p');
+    let clickCount = 0;
+    let clickTimer = null;
+    const originalProfile = profileSection ? profileSection.innerHTML : '';
 
-            isDragging = true;
-            activePointerId = e.pointerId; // 鎖定這根手指/滑鼠
-            e.target.classList.add('is-dragging');
+    if (siteTitle && profileSection) {
+        siteTitle.style.cursor = 'pointer';
+        siteTitle.title = "System Override..."; 
+        window.isWhispering = false;
+
+        siteTitle.addEventListener('click', async () => {
+            if (window.isWhispering) return; 
             
-            // 計算滑鼠與圖片當下座標的偏差值
-            startClientX = e.clientX - window.lightboxState.x;
-            startClientY = e.clientY - window.lightboxState.y;
+            clickCount++;
+            clearTimeout(clickTimer);
+            
+            if (clickCount >= 5) {
+                window.isWhispering = true; 
+                clickCount = 0; 
+                profileSection.style.opacity = 0;
+                
+                try {
+                    const notes = await window.getKotobaList();
+                    if (notes.length === 0) throw new Error("無可用題庫");
+                    const randomNote = notes[Math.floor(Math.random() * notes.length)];
+                    
+                    setTimeout(() => {
+                        const logHeader = `<div style="color: var(--accent-2); font-family: 'Courier New', monospace; font-size: 0.85rem; margin-bottom: 0.5rem;">[ SYSTEM_LOG : KOTOBA_NO_BOX ]</div>`;
+                        profileSection.innerHTML = logHeader + marked.parse(randomNote);
+                        profileSection.style.opacity = 1;
+                    }, 300);
+                } catch (err) {
+                    console.error("言の箱載入失敗:", err);
+                    setTimeout(() => {
+                        profileSection.innerHTML = `<span style="color: var(--error-color);">[ERR] KOTOBA_NO_BOX_OFFLINE</span>`;
+                        profileSection.style.opacity = 1;
+                    }, 300);
+                }
 
-            window.addEventListener('pointermove', onDrag);
-            window.addEventListener('pointerup', stopDrag);
-            window.addEventListener('pointercancel', stopDrag); // 避免滑出螢幕或系統介入時卡死
+                setTimeout(() => {
+                    profileSection.style.opacity = 0;
+                    setTimeout(() => {
+                        profileSection.innerHTML = originalProfile;
+                        profileSection.style.opacity = 1;
+                        window.isWhispering = false; 
+                    }, 300);
+                }, 12000);
+            } else {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 1000);
+            }
         });
-    }
-
-    // 4. 滾輪縮放引擎 (維持不變)
-    if (wrapper) {
-        wrapper.addEventListener('wheel', (e) => {
-            if (!document.getElementById('lightbox-modal').classList.contains('is-active')) return;
-            e.preventDefault();
-            
-            const state = window.lightboxState;
-            const delta = e.deltaY < 0 ? 1 : -1;
-            let newZoom = state.zoom * (1 + delta * 0.15);
-            newZoom = Math.max(0.5, Math.min(newZoom, 15));
-            
-            const ratio = newZoom / state.zoom - 1;
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
-            
-            state.x -= (e.clientX - centerX - state.x) * ratio;
-            state.y -= (e.clientY - centerY - state.y) * ratio;
-            state.zoom = newZoom;
-            
-            const img = document.getElementById('lightbox-img');
-            if (img) img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
-        }, { passive: false });
     }
 });
 
