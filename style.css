@@ -765,13 +765,19 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
 .close-btn:hover { background: #ff4757; border-color: #ff4757; }
 
 /* 核心修復：主體內容容器 */
+/* 1. 確保內容容器給底部留出足夠的空間 (Safe Area) */
 .lightbox-content-wrapper {
-    position: relative; z-index: 10;
-    display: flex; flex-direction: column; justify-content: center; align-items: center;
-    width: 100%; height: 100%; 
+    position: relative; 
+    z-index: 10;
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center;
+    width: 100%; 
+    height: 100%; 
     
-    /* ✨ 修改底部 padding，從 30px 加大到 90px，確保圖片絕對不會碰到文字膠囊 */
-    padding: 80px 20px 90px 20px; 
+    /* ✨ 關鍵修正：將底部 padding 增加到 120px，避開瀏覽器工具列 */
+    padding: 80px 20px 120px 20px; 
     
     box-sizing: border-box;
     pointer-events: none;
@@ -814,11 +820,14 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
 /* ========================= */
 /* Lightbox 底部浮動說明文字 */
 /* ========================= */
+/* 2. 修改 caption 的定位，讓它錨定在 padding 區域內 */
 .lightbox-caption {
     position: absolute; 
-    bottom: 30px; 
+    /* ✨ 改用 bottom 屬性配合安全區域 */
+    bottom: 40px; 
     left: 50%; 
     transform: translateX(-50%);
+    
     background: rgba(0, 0, 0, 0.7); 
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.15);
@@ -826,14 +835,12 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     padding: 8px 24px;
     color: #fff; 
     font-size: 1rem; 
-    line-height: 1.5; 
-    text-align: center; 
     font-weight: 500;
-    pointer-events: none; /* 穿透點擊 */
+    pointer-events: none; 
     z-index: 50; 
     max-width: 90%;
     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-    display: none; /* 預設隱藏，有文字才顯示 */
+    display: none;
 }
 
 /* 核心修復：加入 min-height: 0 避免 Flexbox 溢出跑版 */
@@ -850,6 +857,11 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     box-shadow: 0 10px 40px rgba(0,0,0,0.5);
     transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     transform-origin: center center;
+    
+    /* ✨ 關鍵修正：禁止瀏覽器預設觸控手勢 (Pinch-to-zoom, Pan) */
+    /* 這會讓手機把所有的手指動作都傳給 JS，不會去縮放視窗 */
+    touch-action: none; 
+    
     cursor: grab;
 }
 #lightbox-img.is-dragging {
@@ -927,4 +939,16 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     .toolbox-group .toolbar-btn::after, .toolbox-group .toolbar-btn::before {
         display: none !important;
     }
+}
+
+/* 針對觸控裝置的優化 */
+body.is-touch-device .card:hover {
+    /* 觸控裝置通常沒有真正的 hover，這能避免 hover 後按鈕卡住不消失 */
+    transform: none; 
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+/* 觸控裝置上的 Lightbox 圖片，因為沒有滑鼠，調整 cursor 樣式 */
+body.is-touch-device #lightbox-img {
+    cursor: default; /* 改為預設，因為是用手指拖曳 */
 }
