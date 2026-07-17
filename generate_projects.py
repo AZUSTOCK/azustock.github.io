@@ -93,7 +93,7 @@ def load_detail_json(json_path):
 # ==========================================
 # 🚀 主生成器邏輯
 # ==========================================
-def generate_projects_json(overwrite_json=False, overwrite_img=False):
+def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_thumb=False):
     base_dir = 'projects'
     output_data = {"categories": [], "projects": []}
     BASE_URL = "https://azustock.github.io"
@@ -204,7 +204,7 @@ def generate_projects_json(overwrite_json=False, overwrite_img=False):
                 stats["og_total"] += 1
                 local_proj_cover = clean_proj_data['cover_image']
                 
-                if is_file_outdated([local_proj_cover, bg_image_path], proj_og_local_path, overwrite_img):
+                if is_file_outdated([local_proj_cover, bg_image_path], proj_og_local_path, overwrite_og):
                     if create_og_image(local_proj_cover, proj_og_local_path, bg_image_path):
                         print_conversion("🖼️ [專案OG圖]", local_proj_cover, proj_og_local_path)
                         proj_img = f"{BASE_URL}/api/{proj_id}/{proj_og_filename}"
@@ -221,8 +221,8 @@ def generate_projects_json(overwrite_json=False, overwrite_img=False):
                 proj_thumb_local_path = os.path.join(proj_api_dir, proj_thumb_filename)
                 stats["thumb_total"] += 1 
                 
-                if is_file_outdated([local_proj_cover], proj_thumb_local_path, overwrite_img):
-                    if generate_cover_thumbnail(local_proj_cover, proj_thumb_local_path, max_width=320, quality=90):
+                if is_file_outdated([local_proj_cover], proj_thumb_local_path, overwrite_thumb):
+                    if generate_cover_thumbnail(local_proj_cover, proj_thumb_local_path, max_width=180, quality=90):
                         print_conversion("🖼️ [專案縮圖]", local_proj_cover, proj_thumb_local_path)
                         proj_data['cover_image'] = f"./api/{proj_id}/{proj_thumb_filename}"
                         stats["thumb_updated"] += 1
@@ -321,7 +321,7 @@ def generate_projects_json(overwrite_json=False, overwrite_img=False):
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
-                                        if is_file_outdated([local_img_path], thumb_local_path, overwrite_img):
+                                        if is_file_outdated([local_img_path], thumb_local_path, overwrite_thumb):
                                             success = generate_cover_thumbnail(local_img_path, thumb_local_path, max_width=800, quality=85)
                                             if success:
                                                 print_conversion("🖼️ [內文縮圖]", local_img_path, thumb_local_path)
@@ -357,7 +357,7 @@ def generate_projects_json(overwrite_json=False, overwrite_img=False):
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
-                                        if is_file_outdated([local_img_path], thumb_local_path, overwrite_img):
+                                        if is_file_outdated([local_img_path], thumb_local_path, overwrite_thumb):
                                             success = generate_cover_thumbnail(local_img_path, thumb_local_path, max_width=800, quality=85)
                                             if success:
                                                 print_conversion("🖼️ [內文縮圖]", local_img_path, thumb_local_path)
@@ -399,7 +399,7 @@ def generate_projects_json(overwrite_json=False, overwrite_img=False):
                                 local_cover_path = os.path.join(item_path, meta_cover)
                                 bg_image_path = os.path.join("assets", "og.png")
                                 
-                                if is_file_outdated([local_cover_path, bg_image_path], og_local_path, overwrite_img):
+                                if is_file_outdated([local_cover_path, bg_image_path], og_local_path, overwrite_og):
                                     if create_og_image(local_cover_path, og_local_path, bg_image_path):
                                         print_conversion("🖼️ [文章OG圖]", local_cover_path, og_local_path)
                                         art_img = f"{BASE_URL}/api/{proj_id}/{art_id}/og.webp"
@@ -416,7 +416,7 @@ def generate_projects_json(overwrite_json=False, overwrite_img=False):
                                 art_thumb_local_path = os.path.join(art_dir, art_thumb_filename)
                                 stats["thumb_total"] += 1
                                 
-                                if is_file_outdated([local_cover_path], art_thumb_local_path, overwrite_img):
+                                if is_file_outdated([local_cover_path], art_thumb_local_path, overwrite_thumb):
                                     if generate_cover_thumbnail(local_cover_path, art_thumb_local_path, max_width=160, quality=90):
                                         print_conversion("🖼️ [文章縮圖]", local_cover_path, art_thumb_local_path)
                                         meta_cover_url = f"./api/{proj_id}/{art_id}/{art_thumb_filename}"
@@ -442,6 +442,11 @@ def generate_projects_json(overwrite_json=False, overwrite_img=False):
                                         title=f"{art_title} | {proj_title}", description=art_desc, 
                                         image=art_img, target_url=art_target_url, share_url=art_share_url
                                     ))
+                                # ✨ 補上更新計數
+                                stats["art_updated"] += 1
+                            else:
+                                # ✨ 補上略過計數
+                                stats["art_skipped"] += 1
                                     
                             valid_api_files.add(os.path.abspath(art_html_path))
 
@@ -550,7 +555,8 @@ if __name__ == "__main__":
     
     overwrite_webp = False
     overwrite_json = False
-    overwrite_img = False
+    overwrite_og = False
+    overwrite_thumb = False
 
     if is_github_actions:
         print("\n🤖 [CI/CD 模式] 偵測到 GitHub Actions 環境。")
@@ -566,17 +572,21 @@ if __name__ == "__main__":
         if choice == '2':
             overwrite_webp = True
             overwrite_json = True
-            overwrite_img = True
+            overwrite_og = True
+            overwrite_thumb = True
         elif choice == '3':
             print("\n-- 自訂義細項設定 --")
-            w_choice = input("  [A] 第一階段: 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            w_choice = input("  [A] 第一階段(1/4): 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_webp = (w_choice == '2')
             
-            j_choice = input("  [B] 第二階段: Markdown轉JSON與HTML [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            j_choice = input("  [B] 第二階段(2/4): Markdown轉JSON與HTML [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_json = (j_choice == '2')
             
-            i_choice = input("  [C] 第三階段: OG分享圖與閱讀縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
-            overwrite_img = (i_choice == '2')
+            o_choice = input("  [C] 第二階段3/4): OG 分享圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            overwrite_og = (o_choice == '2')
+            
+            t_choice = input("  [D] 第二階段(4/4): 封面與內文縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            overwrite_thumb = (t_choice == '2')
 
     # --- 第一階段：轉換原圖 ---
     convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
@@ -585,7 +595,7 @@ if __name__ == "__main__":
     print(f"\n==========================================")
     print(f"📦 [第二階段] 開始解析 Markdown 並打包 JSON 資料庫...")
     print(f"==========================================")
-    generate_projects_json(overwrite_json=overwrite_json, overwrite_img=overwrite_img)
+    generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb)
     
     # --- 輸出統計 ---
     print(f"\n📊 [處理統計]")

@@ -1059,7 +1059,7 @@ async function loadProjects() {
 
             const sectionMetaHtml = cat.meta ? `<span style="font-size: 1.1rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem;">- ${cat.meta}</span>` : '';
             const sectionDescHtml = cat.description ? `<p style="color: var(--muted); margin-top: 0.2rem; margin-bottom: 0; line-height: 1.6; max-width: 800px; font-size: 0.95rem;">${cat.description}</p>` : '';
-            const sectionImageHtml = cat.cover_image ? `<img src="${cat.cover_image}" alt="icon" loading="lazy" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" ...>` : '';
+            const sectionImageHtml = cat.cover_image ? `<img src="${cat.cover_image}" alt="icon" loading="lazy" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="width: 72px; height: 72px; border-radius: 16px; object-fit: cover; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); flex-shrink: 0;">` : '';
 
             portfolioSections.innerHTML += `
             <section id="${cat.id}-section">
@@ -1116,7 +1116,7 @@ async function loadProjects() {
 
                 const cardMetaHtml = data.meta ? `<span style="font-size: 0.95rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem;">- ${data.meta}</span>` : '';
                 const cardDescHtml = data.description ? `<p style="color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; margin-bottom: 1rem;">${data.description}</p>` : '';
-                const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" ...>` : '';
+                const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg);">` : '';                
                 const absolutePinHtml = data.pinned ? `<div class="card-pin">${GLOBAL_SVGS.pin}</div>` : '';
 
                 let metaParts = [];
