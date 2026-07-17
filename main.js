@@ -422,7 +422,7 @@ window.closeLightbox = function() {
 };
 
 // ==========================================
-// ✨ Lightbox 滾輪縮放與拖曳 (Zoom & Panning) 引擎
+// ✨ Lightbox 滾輪縮放、拖曳與多點觸控 (Pinch Zoom) 引擎
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     // 1. 視窗安全高度計算 (修正工具列擋住問題)
@@ -445,75 +445,132 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add('is-touch-device');
     }
 
-    // 3. ✨ Lightbox 拖曳引擎 (終極修復版)
+    // 3. ✨ Lightbox 多指觸控與拖曳引擎
     const wrapper = document.querySelector('.lightbox-img-wrapper');
     const lightboxImg = document.getElementById('lightbox-img');
+    
+    // 狀態變數
     let isDragging = false;
     let startClientX = 0, startClientY = 0;
-    let activePointerId = null;
+    
+    // 儲存目前在螢幕上的觸控點 (支援多指)
+    let activePointers = [];
+    let initialPinchDistance = null;
+    let initialZoom = 1;
 
     if (lightboxImg) {
-        // 🛑 核心修復 1：徹底封殺電腦版的「原生圖片拖曳 (Ghost Drag)」
-        // 解決「按著沒反應，放開滑鼠才開始追蹤」的卡死問題
+        // 🛑 封殺原生拖曳殘影
         lightboxImg.addEventListener('dragstart', (e) => e.preventDefault());
-        
-        // 定義移動函數
-        const onDrag = (e) => {
-            if (!isDragging) return;
-            if (e.pointerId !== activePointerId) return; // 確保是同一根手指/滑鼠
-            
-            window.lightboxState.x = e.clientX - startClientX;
-            window.lightboxState.y = e.clientY - startClientY;
-            
-            // 使用 requestAnimationFrame 確保畫面更新與滑鼠同步無延遲
-            requestAnimationFrame(() => {
-                lightboxImg.style.transform = `translate(${window.lightboxState.x}px, ${window.lightboxState.y}px) scale(${window.lightboxState.zoom})`;
-            });
+
+        const updateTransform = () => {
+            lightboxImg.style.transform = `translate(${window.lightboxState.x}px, ${window.lightboxState.y}px) scale(${window.lightboxState.zoom})`;
         };
 
-        // 定義結束函數
-        const stopDrag = (e) => {
-            if (e && e.type !== 'pointercancel' && e.pointerId !== activePointerId) return;
-
-            isDragging = false;
-            activePointerId = null;
-            lightboxImg.classList.remove('is-dragging');
-            
-            // 釋放指標捕捉
-            if (e && lightboxImg.hasPointerCapture && lightboxImg.hasPointerCapture(e.pointerId)) {
-                lightboxImg.releasePointerCapture(e.pointerId);
+        const onPointerMove = (e) => {
+            // 更新觸控點最新座標
+            const index = activePointers.findIndex(p => p.id === e.pointerId);
+            if (index !== -1) {
+                activePointers[index].x = e.clientX;
+                activePointers[index].y = e.clientY;
             }
-            
-            window.removeEventListener('pointermove', onDrag);
-            window.removeEventListener('pointerup', stopDrag);
-            window.removeEventListener('pointercancel', stopDrag);
+
+            // 【模式 A：單指平移】
+            if (activePointers.length === 1 && isDragging) {
+                e.preventDefault();
+                window.lightboxState.x = activePointers[0].x - startClientX;
+                window.lightboxState.y = activePointers[0].y - startClientY;
+                requestAnimationFrame(updateTransform);
+            } 
+            // 【模式 B：雙指縮放】
+            else if (activePointers.length === 2) {
+                e.preventDefault();
+                // 1. 計算兩指間的最新距離
+                const currentDistance = Math.hypot(
+                    activePointers[0].x - activePointers[1].x,
+                    activePointers[0].y - activePointers[1].y
+                );
+
+                if (initialPinchDistance) {
+                    // 2. 算出新的縮放比例
+                    let newZoom = initialZoom * (currentDistance / initialPinchDistance);
+                    newZoom = Math.max(0.5, Math.min(newZoom, 15)); // 限制在 0.5 到 15 倍之間
+
+                    // 3. 找出雙指中心點，實現「往手指中心放大」的自然手感
+                    const centerX = (activePointers[0].x + activePointers[1].x) / 2;
+                    const centerY = (activePointers[0].y + activePointers[1].y) / 2;
+                    const ratio = newZoom / window.lightboxState.zoom - 1;
+                    
+                    window.lightboxState.x -= (centerX - (window.innerWidth / 2) - window.lightboxState.x) * ratio;
+                    window.lightboxState.y -= (centerY - (window.innerHeight / 2) - window.lightboxState.y) * ratio;
+                    window.lightboxState.zoom = newZoom;
+                    
+                    requestAnimationFrame(updateTransform);
+                }
+            }
         };
 
-        // 綁定按下事件
+        const onPointerUp = (e) => {
+            // 移除放開的那根手指
+            activePointers = activePointers.filter(p => p.id !== e.pointerId);
+
+            // 如果手指剩下不到兩根，重置雙指縮放初始值
+            if (activePointers.length < 2) {
+                initialPinchDistance = null; 
+            }
+
+            // 狀態轉換
+            if (activePointers.length === 1) {
+                // 如果原本是雙指，放開一指後，剩下一指無縫接軌繼續「平移」
+                isDragging = true;
+                startClientX = activePointers[0].x - window.lightboxState.x;
+                startClientY = activePointers[0].y - window.lightboxState.y;
+            } else if (activePointers.length === 0) {
+                // 手指全放開，徹底停止所有動作
+                isDragging = false;
+                lightboxImg.classList.remove('is-dragging');
+                if (lightboxImg.hasPointerCapture && lightboxImg.hasPointerCapture(e.pointerId)) {
+                    lightboxImg.releasePointerCapture(e.pointerId);
+                }
+                
+                window.removeEventListener('pointermove', onPointerMove);
+                window.removeEventListener('pointerup', onPointerUp);
+                window.removeEventListener('pointercancel', onPointerUp);
+            }
+        };
+
         lightboxImg.addEventListener('pointerdown', (e) => {
-            // 過濾多指操作的第二根手指，讓瀏覽器處理雙指縮放
-            if (e.pointerType === 'touch' && !e.isPrimary) return;
+            if (e.target.id !== 'lightbox-img') return;
+            e.preventDefault(); // 🛑 核心：封殺瀏覽器原生點擊反應，交由 JS 全權接管
 
-            isDragging = true;
-            activePointerId = e.pointerId;
-            lightboxImg.classList.add('is-dragging');
-            
-            // 🛑 核心修復 2：設定指標捕捉 (Pointer Capture)
-            // 這會強制所有後續的移動事件都鎖定在這張圖片上，徹底解決手機端「漂移」或因滑出邊界而中斷的問題
-            if (lightboxImg.setPointerCapture) {
-                lightboxImg.setPointerCapture(e.pointerId);
+            // 紀錄按下的這根手指
+            activePointers.push({ id: e.pointerId, x: e.clientX, y: e.clientY });
+
+            if (activePointers.length === 1) {
+                // 【觸發單指平移】
+                isDragging = true;
+                lightboxImg.classList.add('is-dragging');
+                if (lightboxImg.setPointerCapture) lightboxImg.setPointerCapture(e.pointerId);
+                
+                startClientX = e.clientX - window.lightboxState.x;
+                startClientY = e.clientY - window.lightboxState.y;
+                
+                window.addEventListener('pointermove', onPointerMove);
+                window.addEventListener('pointerup', onPointerUp);
+                window.addEventListener('pointercancel', onPointerUp);
+            } else if (activePointers.length === 2) {
+                // 【觸發雙指縮放】
+                isDragging = false; // 暫停平移
+                // 記下雙指剛按下的初始距離與圖片當下縮放率
+                initialPinchDistance = Math.hypot(
+                    activePointers[0].x - activePointers[1].x,
+                    activePointers[0].y - activePointers[1].y
+                );
+                initialZoom = window.lightboxState.zoom;
             }
-
-            startClientX = e.clientX - window.lightboxState.x;
-            startClientY = e.clientY - window.lightboxState.y;
-
-            window.addEventListener('pointermove', onDrag);
-            window.addEventListener('pointerup', stopDrag);
-            window.addEventListener('pointercancel', stopDrag); // 防禦系統中斷
         });
     }
 
-    // 4. 滾輪縮放引擎
+    // 4. 滾輪縮放引擎 (維持現狀，給電腦使用)
     if (wrapper && lightboxImg) {
         wrapper.addEventListener('wheel', (e) => {
             if (!document.getElementById('lightbox-modal').classList.contains('is-active')) return;
@@ -676,7 +733,6 @@ window.handleSpaLink = function(event, url) {
     window.handleAppRouting(urlParams.get('p'), urlParams.get('a'));
 };
 
-// === 1. 介面與導覽列邏輯 (Theme & Menu) ===
 // === 1. 介面與導覽列邏輯 (Theme & Menu) ===
 document.addEventListener('DOMContentLoaded', () => {
     

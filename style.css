@@ -441,9 +441,23 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .toast-actions { display: flex; align-items: center; background: var(--tag-bg); border-radius: 999px; padding: 2px; }
 .toast-btn { background: transparent; border: none; color: var(--text); width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s ease; padding: 0; position: relative; }
 .toast-btn:hover { background: var(--marquee-border); color: var(--accent); }
-.toast-btn.next-btn:active { transform: scale(0.9) translateY(2px); }
-.toast-btn.close-btn { font-size: 1.2rem; font-weight: bold; color: var(--muted); }
-.toast-btn.close-btn:hover { background: var(--error-color); color: #fff; box-shadow: 0 0 10px var(--error-shadow); }
+.toast-btn.next-btn:active { align-items: center; transform: scale(0.9) translateY(2px); }
+
+/* ✨ Toast 專屬關閉按鈕 (無外框 + 淡淡紅底) */
+.toast-btn.close-btn { 
+    font-size: 1.2rem; 
+    font-weight: bold; 
+    background: rgba(255, 50, 50, 0.15); /* ✨ 淡淡的紅色背景 */
+    border: none; /* 確保沒有外框 */
+    outline: none; 
+}
+
+/* Hover 時的強調狀態維持不變 */
+.toast-btn.close-btn:hover { 
+    background: var(--error-color); 
+    color: #fff; 
+    box-shadow: 0 0 10px var(--error-shadow); 
+}
 .toast-divider { width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; }
 
 /* Custom Tooltip */
@@ -761,8 +775,8 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
 .toolbar-btn::before { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%) translateY(8px); border-width: 5px; border-style: solid; border-color: transparent transparent #fff transparent; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); margin-top: 0px; }
 .toolbar-btn:hover::after, .toolbar-btn:hover::before { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-.close-btn { background: rgba(255, 50, 50, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); }
-.close-btn:hover { background: #ff4757; border-color: #ff4757; }
+.toolbar-btn.close-btn { background: rgba(255, 50, 50, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); }
+.toolbar-btn.close-btn:hover { background: #ff4757; border-color: #ff4757; }
 
 /* 核心修復：主體內容容器 */
 /* 1. 確保內容容器給底部留出足夠的空間 (Safe Area) */
@@ -900,12 +914,11 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     
     .toolbox-group {
         position: absolute;
-        top: 55px; /* 懸浮在按鈕下方 */
-        
-        /* ✨ 魔法對齊：直接貼齊右側邊緣，向左展開，絕對不會超出螢幕 */
+        /* ✨ 修正 1：改用 top: 100% 確保它永遠精準貼在按鈕正下方，不寫死 55px */
+        top: 100%; 
+        margin-top: 15px; 
         right: 0; 
         
-        /* ✨ 改回水平排列 */
         flex-direction: row; 
         align-items: center;    
         justify-content: center;
@@ -917,21 +930,30 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
         border: 1px solid rgba(255, 255, 255, 0.15);
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         
-        /* 動畫初始狀態：稍微往上縮，並取消 translateX */
+        /* ✨ 修正 2：鎖定最大內容寬度，防止內部按鈕因為 Absolute 而換行導致高度跳動 */
+        width: max-content; 
+        
+        /* ✨ 修正 3：強制 GPU 渲染，消滅 iOS/Android 動畫結束時的閃爍與跳動 */
+        will-change: transform, opacity;
+        
         opacity: 0;
         visibility: hidden;
-        transform: translateY(-15px) scale(0.95);
-        
-        /* ✨ 動畫起點改為右上角，像是由選單按鈕與關閉按鈕下方展開 */
+        /* 加入 translateZ(0) 啟用 3D 硬體加速 */
+        transform: translateY(-15px) scale(0.95) translateZ(0);
         transform-origin: top right; 
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        
+        /* ✨ 修正 4：停用 transition: all，精準指定只做動畫的屬性 */
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), 
+                    opacity 0.3s ease, 
+                    visibility 0.3s ease;
     }
     
-    /* 展開時的狀態：只需平移 Y 軸與還原縮放 */
+    /* 展開時的狀態 */
     .toolbox-group.is-open {
         opacity: 1;
         visibility: visible;
-        transform: translateY(0) scale(1);
+        /* 確保展開時也帶有硬體加速 */
+        transform: translateY(0) scale(1) translateZ(0);
         pointer-events: auto;
     }
     
@@ -951,4 +973,23 @@ body.is-touch-device .card:hover {
 /* 觸控裝置上的 Lightbox 圖片，因為沒有滑鼠，調整 cursor 樣式 */
 body.is-touch-device #lightbox-img {
     cursor: default; /* 改為預設，因為是用手指拖曳 */
+}
+
+/* 🛑 徹底防禦手機雙擊放大 (Double Tap to Zoom) 帶來的干擾 */
+#lightbox-toolbar,
+.lightbox-capsule,
+#lightbox-modal button {
+    /* 告訴瀏覽器：這裡只能點擊，不准做雙擊放大或滑動！ */
+    touch-action: manipulation; 
+    
+    /* 防止狂點時不小心選取到字，導致畫面變藍或跳出選單 */
+    user-select: none;
+    -webkit-user-select: none; 
+}
+
+/* 確認整個 modal 底圖也不要被雙擊放大 */
+#lightbox-modal {
+    touch-action: none; /* 已經全權交由 JS 控制 */
+    user-select: none;
+    -webkit-user-select: none;
 }
