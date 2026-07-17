@@ -82,17 +82,17 @@
     <!-- 頂部工具列 -->
     <div id="lightbox-toolbar">
       <!-- 左側：導覽膠囊 -->
-      <div class="toolbar-left">
+      <div class="toolbar-left" id="lightbox-nav-container">
         <div id="lightbox-nav-capsule" class="lightbox-capsule">
-          <button id="lightbox-prev" class="lightbox-capsule-btn" onclick="window.navigateLightbox(-1, event)" data-tooltip="上一張">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-          <div class="lightbox-capsule-divider"></div>
-          <span id="lightbox-counter" class="lightbox-capsule-progress">1 / 1</span>
-          <div class="lightbox-capsule-divider"></div>
-          <button id="lightbox-next" class="lightbox-capsule-btn" onclick="window.navigateLightbox(1, event)" data-tooltip="下一張">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
+            <button id="lightbox-prev" class="lightbox-capsule-btn" onclick="window.navigateLightbox(-1, event)" data-tooltip="上一張">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <div class="lightbox-capsule-divider"></div>
+            <span id="lightbox-counter" class="lightbox-capsule-progress">1 / 1</span>
+            <div class="lightbox-capsule-divider"></div>
+            <button id="lightbox-next" class="lightbox-capsule-btn" onclick="window.navigateLightbox(1, event)" data-tooltip="下一張">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
         </div>
       </div>
       

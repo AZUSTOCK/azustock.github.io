@@ -224,7 +224,9 @@ window.getKotobaList = async function() {
 window.initScrollHints = function(container, hintLeft, hintRight) {
     if (!container || !hintLeft || !hintRight) return;
 
+    let scrollTimeout;
     const checkScroll = () => {
+        clearTimeout(scrollTimeout);
         const isScrollable = container.scrollWidth > container.clientWidth + 5;
         const isAtEnd = Math.ceil(container.scrollLeft + container.clientWidth) >= Math.floor(container.scrollWidth) - 10;
         const isAtStart = container.scrollLeft <= 10;
@@ -277,6 +279,7 @@ window.openLightbox = function(btn, event) {
     if (!container) return;
     
     const targetImg = container.querySelector('img');
+    const gallery = btn.closest('.gallery'); // ✨ 補回尋找畫廊的邏輯
     const lightboxModal = document.getElementById('lightbox-modal');
     const lightboxImg = document.getElementById('lightbox-img');
     
@@ -287,8 +290,24 @@ window.openLightbox = function(btn, event) {
         zoom: 1, 
         x: 0, 
         y: 0,
-        maxZoom: 2 // 先給一個預設安全值，等一下會動態精確計算
+        maxZoom: 2 
     };
+
+    // ✨✨✨ 致命遺失點：您不小心刪掉的相簿圖片陣列讀取邏輯！ ✨✨✨
+    if (gallery) {
+        const figures = Array.from(gallery.querySelectorAll('figure'));
+        window.lightboxState.images = figures.map(fig => ({
+            src: fig.querySelector('img')?.src,
+            caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
+        })).filter(item => item.src);
+        
+        window.lightboxState.currentIndex = window.lightboxState.images.findIndex(item => item.src === targetImg.src);
+    } else {
+        window.lightboxState.images = [{
+            src: targetImg.src,
+            caption: container.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
+        }];
+    }
 
     if (lightboxImg && lightboxModal) {
         // 設定大圖來源
@@ -298,24 +317,25 @@ window.openLightbox = function(btn, event) {
         lightboxImg.style.transition = 'none';
         lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
 
-        // 2. 顯示 Modal (必須先顯示，瀏覽器才能渲染並計算出 clientWidth)
+        // 2. 顯示 Modal
         lightboxModal.classList.add('is-active');
+
+        // ✨ 補回這行，膠囊與按鈕才會真正被呼叫顯示出來！
+        window.updateLightboxView();
 
         // 3. 定義「計算原圖 2 倍限制」的函數
         const calculateMaxZoomForNatural = () => {
-            const naturalWidth = lightboxImg.naturalWidth; // 原圖真實像素寬度 (例如 2000)
-            const displayWidth = lightboxImg.clientWidth;   // Lightbox 大圖在 scale(1) 時的顯示寬度 (例如 1000)
+            const naturalWidth = lightboxImg.naturalWidth; 
+            const displayWidth = lightboxImg.clientWidth;   
             
             if (displayWidth > 0 && naturalWidth > 0) {
-                // 精確限制：最大放大寬度 = 原圖真實寬度 * 2
                 window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
-                console.log(`原圖寬: ${naturalWidth}px, 顯示寬: ${displayWidth}px, 最大縮放限制倍率: ${window.lightboxState.maxZoom}`);
             } else {
                 window.lightboxState.maxZoom = 2; // 防呆備用值
             }
         };
 
-        // 4. 確保圖片載入後再進行計算 (快取直接讀取 complete，未載入則走 onload)
+        // 4. 確保圖片載入後再進行計算
         if (lightboxImg.complete) {
             calculateMaxZoomForNatural();
         } else {
@@ -442,8 +462,13 @@ window.toggleLightboxTools = function(event) {
 
 window.closeLightbox = function() {
     const lightboxModal = document.getElementById('lightbox-modal');
+    const toolbox = document.getElementById('lightbox-toolbox');
     if (lightboxModal) {
         lightboxModal.classList.remove('is-active');
+
+        if (toolbox) {
+            toolbox.classList.remove('is-open');
+        }
         // 延遲清空，避免關閉動畫破圖
         setTimeout(() => {
             document.getElementById('lightbox-img').src = "";
@@ -648,7 +673,7 @@ renderer.image = function(token_or_href, title, text) {
         return `<audio controls class="md-audio"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>`;
     }
 
-    const imgTag = `<img src="${href}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
+    const imgTag = `<img src="${href}" alt="${altText || ''}" class="is-loading"  onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
 
     if (imgTitle) {
         let figureClass = '';
@@ -1278,7 +1303,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 let dateHtml = art.date ? `<span style="font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0;">${art.date}</span>` : '';
                 let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                 
-                let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important;">` : `<div style="position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
+                let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="is-loading"  onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important;">` : `<div style="position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
                 let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
                 let iconHtml = `<div style="position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px;">${pinnedBadgeHtml}${baseIconHtml}</div>`;
                 let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
