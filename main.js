@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.3.1",          // 目前系統版本號
+    VERSION: "U1.3.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "light",     // 預設主題 (light / dark)
@@ -293,25 +293,30 @@ window.openLightbox = function(btn, event) {
         maxZoom: 2 
     };
 
-    // ✨✨✨ 致命遺失點：您不小心刪掉的相簿圖片陣列讀取邏輯！ ✨✨✨
+    // 相簿圖片陣列讀取邏輯
     if (gallery) {
         const figures = Array.from(gallery.querySelectorAll('figure'));
-        window.lightboxState.images = figures.map(fig => ({
-            src: fig.querySelector('img')?.src,
-            caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
-        })).filter(item => item.src);
+        window.lightboxState.images = figures.map(fig => {
+            const img = fig.querySelector('img');
+            return {
+                // ✨ 優先拿 data-full，沒有才退回 src
+                src: img?.getAttribute('data-full') || img?.src,
+                caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
+            }
+        }).filter(item => item.src);
         
-        window.lightboxState.currentIndex = window.lightboxState.images.findIndex(item => item.src === targetImg.src);
+        const targetFullSrc = targetImg.getAttribute('data-full') || targetImg.src;
+        window.lightboxState.currentIndex = window.lightboxState.images.findIndex(item => item.src === targetFullSrc);
     } else {
         window.lightboxState.images = [{
-            src: targetImg.src,
+            src: targetImg.getAttribute('data-full') || targetImg.src, // ✨ 優先拿 data-full
             caption: container.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
         }];
     }
 
     if (lightboxImg && lightboxModal) {
-        // 設定大圖來源
-        lightboxImg.src = targetImg.src; 
+        // ✨ 設定大圖來源為高畫質原圖
+        lightboxImg.src = targetImg.getAttribute('data-full') || targetImg.src; 
         
         // 重置大圖定位與縮放
         lightboxImg.style.transition = 'none';
@@ -475,6 +480,11 @@ window.closeLightbox = function() {
             document.getElementById('lightbox-backdrop').src = "";
             document.getElementById('lightbox-caption').innerText = "";
         }, 300);
+    }
+    
+    // ✨ 新增：強制清除當前元素焦點，消滅 Esc 退出時的奇怪按鈕外框
+    if (document.activeElement) {
+        document.activeElement.blur();
     }
 };
 
@@ -658,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================
 const renderer = new marked.Renderer();
 
-// 1. ✨ 修復與升級：攔截圖片，支援影音，並自動轉換 Figure 圖片說明！
+/// 1. ✨ 修復與升級：攔截圖片，支援影音，並自動轉換 Figure 圖片說明與高質感 Tooltip！
 renderer.image = function(token_or_href, title, text) {
     const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
     const altText = typeof token_or_href === 'object' ? token_or_href.text : text;
@@ -673,29 +683,41 @@ renderer.image = function(token_or_href, title, text) {
         return `<audio controls class="md-audio"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>`;
     }
 
-    const imgTag = `<img src="${href}" alt="${altText || ''}" class="is-loading"  onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
+    // 解析縮圖與原圖 (透過 Python 塞入的 #full= 傳遞)
+    let srcUrl = href;
+    let fullUrl = href;
+    if (href.includes('#full=')) {
+        const parts = href.split('#full=');
+        srcUrl = parts[0];
+        fullUrl = parts[1];
+    }
+
+    const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
+
+    // ✨ 統一的 SVG 放大鏡圖示
+    const zoomIconSvg = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`;
 
     if (imgTitle) {
+        // 【情境 A：有說明文字的圖】
         let figureClass = '';
         if (altText === 'float-right' || altText === 'float-left') {
             figureClass = ` class="${altText}"`;
         }
-        
-        // ✨ 新增：在有提示文字的圖片中，注入專屬放大按鈕
-        const zoomBtn = `
-        <button class="zoom-btn" title="查看大圖" onclick="window.openLightbox(this, event)">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                <line x1="11" y1="8" x2="11" y2="14"></line>
-                <line x1="8" y1="11" x2="14" y2="11"></line>
-            </svg>
-        </button>`;
-
+        const zoomBtn = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${zoomIconSvg}</button>`;
         return `<figure${figureClass}>${imgTag}<figcaption>${imgTitle}${zoomBtn}</figcaption></figure>`;
+    } else {
+        // 【情境 B：沒有說明文字的圖】
+        if (altText === 'icon' || altText === 'badge') return imgTag;
+        
+        // ✨ 修正 1：把 float-right / float-left 繼承給無圖說的 figure，修復排版
+        let figureClass = 'no-caption';
+        if (altText === 'float-right' || altText === 'float-left') {
+            figureClass += ` ${altText}`;
+        }
+        
+        const zoomBtn = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${zoomIconSvg}</button>`;
+        return `<figure class="${figureClass}">${imgTag}${zoomBtn}</figure>`;
     }
-
-    return imgTag;
 };
 
 // 2. ✨ 攔截 Mermaid 程式碼區塊
@@ -1038,7 +1060,7 @@ async function loadProjects() {
 
             const sectionMetaHtml = cat.meta ? `<span style="font-size: 1.1rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem;">- ${cat.meta}</span>` : '';
             const sectionDescHtml = cat.description ? `<p style="color: var(--muted); margin-top: 0.2rem; margin-bottom: 0; line-height: 1.6; max-width: 800px; font-size: 0.95rem;">${cat.description}</p>` : '';
-            const sectionImageHtml = cat.cover_image ? `<img src="${cat.cover_image}" alt="icon" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="width: 72px; height: 72px; border-radius: 16px; object-fit: cover; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); flex-shrink: 0;">` : '';
+            const sectionImageHtml = cat.cover_image ? `<img src="${cat.cover_image}" alt="icon" loading="lazy" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="width: 72px; height: 72px; border-radius: 16px; object-fit: cover; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); flex-shrink: 0;">` : '';
 
             portfolioSections.innerHTML += `
             <section id="${cat.id}-section">
@@ -1095,7 +1117,7 @@ async function loadProjects() {
 
                 const cardMetaHtml = data.meta ? `<span style="font-size: 0.95rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem;">- ${data.meta}</span>` : '';
                 const cardDescHtml = data.description ? `<p style="color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; margin-bottom: 1rem;">${data.description}</p>` : '';
-                const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg);">` : '';
+                const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg);">` : '';                
                 const absolutePinHtml = data.pinned ? `<div class="card-pin">${GLOBAL_SVGS.pin}</div>` : '';
 
                 let metaParts = [];
@@ -1303,7 +1325,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 let dateHtml = art.date ? `<span style="font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0;">${art.date}</span>` : '';
                 let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                 
-                let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="is-loading"  onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important;">` : `<div style="position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
+                let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="is-loading" loading="lazy"  onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important;">` : `<div style="position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
                 let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
                 let iconHtml = `<div style="position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px;">${pinnedBadgeHtml}${baseIconHtml}</div>`;
                 let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
@@ -1666,30 +1688,46 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         // ✨ 統一處理所有圖片區塊 (包含 Gallery、Float 與 Markdown 原生圖片)
         // ==========================================
         modalBody.querySelectorAll('figure').forEach(figure => {
-            // 1. 綁定點擊隱藏/顯示提示文字的功能
-            figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
-            
-            // 2. 動態注入放大鏡按鈕 (防呆：如果還沒有按鈕才加)
             const figcaption = figure.querySelector('figcaption');
             const img = figure.querySelector('img');
             
-            if (figcaption && img && !figcaption.querySelector('.zoom-btn')) {
-                const zoomBtn = document.createElement('button');
-                zoomBtn.className = 'zoom-btn';
-                zoomBtn.title = '查看大圖';
-                zoomBtn.innerHTML = `
-                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        <line x1="11" y1="8" x2="11" y2="14"></line>
-                        <line x1="8" y1="11" x2="14" y2="11"></line>
-                    </svg>
-                `;
-                // 阻止事件冒泡，點擊放大鏡時不會觸發外層的 hide-caption
-                zoomBtn.onclick = (event) => window.openLightbox(zoomBtn, event);
-                figcaption.appendChild(zoomBtn);
+            // 【情境 A：有說明文字的圖 (包含 Gallery 畫廊)】
+            if (figcaption) {
+                // 1. 點擊圖片任意處 (整個 figure) 會讓說明文字切換顯示/隱藏
+                // 加上 cursor: pointer 讓使用者知道這裡可以點擊互動
+                figure.style.cursor = 'pointer'; 
+                figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
+                
+                // 2. 動態注入放大鏡按鈕 (防呆：如果還沒有按鈕才加)
+                if (img && !figcaption.querySelector('.zoom-btn')) {
+                    const zoomBtn = document.createElement('button');
+                    zoomBtn.className = 'zoom-btn';
+                    // tooltip 已經在 CSS 隱藏了，所以這裡不需要再寫 title 或 data-tooltip
+                    zoomBtn.innerHTML = `
+                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            <line x1="11" y1="8" x2="11" y2="14"></line>
+                            <line x1="8" y1="11" x2="14" y2="11"></line>
+                        </svg>
+                    `;
+                    // 3. 🛑 關鍵防禦：阻止事件冒泡！
+                    // 點擊放大鏡時，直接進入 Lightbox，不會向上觸發 figure 的 hide-caption 事件
+                    zoomBtn.onclick = (event) => {
+                        event.stopPropagation();
+                        window.openLightbox(zoomBtn, event);
+                    };
+                    figcaption.appendChild(zoomBtn);
+                }
             }
+            
+            // 【情境 B：無圖說的圖】
+            // 浮動放大鏡 (zoom-btn floating) 已經由 Python 直接寫入 HTML 裡了。
+            // 這裡不需要針對 img 綁定任何點擊事件，維持最純粹的「點擊放大鏡才放大」邏輯。
         });
+        
+        // ⚠️ 請確保這段程式碼底下，沒有殘留任何類似 modalBody.querySelectorAll('img').forEach(...) 
+        // 企圖綁定 img.addEventListener('click') 的舊程式碼，如果有請直接刪除！
     }); 
 };
 
