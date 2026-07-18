@@ -561,11 +561,13 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .toast-divider { width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; }
 
 /* Custom Tooltip */
-.toast-btn::after, .mermaid-btn::after, .capsule-btn::after { content: attr(data-tooltip); position: absolute; top: -38px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--card); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-.toast-btn::before, .mermaid-btn::before, .capsule-btn::before { content: ''; position: absolute; top: -12px; left: 50%; transform: translateX(-50%) translateY(8px); border-width: 5px; border-style: solid; border-color: var(--text) transparent transparent transparent; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
-.toast-btn:hover::after, .toast-btn:hover::before, .mermaid-btn:hover::after, .mermaid-btn:hover::before, .capsule-btn:hover::after, .capsule-btn:hover::before { opacity: 1; transform: translateX(-50%) translateY(0); }
-.capsule-btn::after { top: 100%; margin-top: 10px; bottom: auto; transform: translateX(-50%) translateY(-8px); }
-.capsule-btn::before { top: 100%; margin-top: 0px; border-color: transparent transparent var(--text) transparent; transform: translateX(-50%) translateY(-8px); }
+.toast-btn::after, .mermaid-btn::after, .capsule-btn::after, .zoom-btn::after { content: attr(data-tooltip); position: absolute; top: -38px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--card); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.toast-btn::before, .mermaid-btn::before, .capsule-btn::before, .zoom-btn::before { content: ''; position: absolute; top: -12px; left: 50%; transform: translateX(-50%) translateY(8px); border-width: 5px; border-style: solid; border-color: var(--text) transparent transparent transparent; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.toast-btn:hover::after, .toast-btn:hover::before, .mermaid-btn:hover::after, .mermaid-btn:hover::before, .capsule-btn:hover::after, .capsule-btn:hover::before, .zoom-btn:hover::after, .zoom-btn:hover::before { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 覆寫：向下展開的 Tooltip (適用於浮動按鈕與膠囊按鈕，避免被圖片頂部裁切) */
+.capsule-btn::after, .zoom-btn.floating::after { top: 100%; margin-top: 10px; bottom: auto; transform: translateX(-50%) translateY(-8px); }
+.capsule-btn::before, .zoom-btn.floating::before { top: 100%; margin-top: 0px; border-color: transparent transparent var(--text) transparent; transform: translateX(-50%) translateY(-8px); }
 
 /* ========================================== */
 /* ✨ 動畫可擴充模組化引擎 (預設：VisionOS 景深) */
@@ -780,7 +782,7 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
 }
 
 /* ========================================== */
-/* 提示文字內的放大按鈕 (對齊修正版) */
+/* 提示文字內的放大按鈕 (防抖動升級版) */
 /* ========================================== */
 .zoom-btn {
     background: transparent; 
@@ -788,22 +790,92 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     color: var(--muted); 
     border-radius: 6px;
     padding: 4px;
-    margin-left: 4px; /* 稍微縮小一點距離會更緊湊 */
+    margin-left: 4px; 
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
     
-    /* ✨ 修正對齊的核心魔法 */
+    /* ✨ 修正 1：指定具體過渡屬性，拒絕 transition: all 造成的毛玻璃重算抖動 */
+    transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), 
+                color 0.25s ease, 
+                background-color 0.25s ease, 
+                opacity 0.25s ease;
+    
     vertical-align: middle;
     position: relative;
-    top: -2px; /* 向上微調 2px，如果覺得太高可以改為 -1px */
+    top: -2px;
+    
+    /* ✨ 修正 2：魔法防抖機制：強制開啟 GPU 加速，統一縮放矩陣 */
+    transform: translateZ(0) scale(1);
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+/* ✨ 修正 3：防止滑鼠碰到 SVG 內部路徑時，引發微小的移出/移入判定造成閃爍 */
+.zoom-btn svg {
+    pointer-events: none;
+    display: block;
 }
 
 .zoom-btn:hover {
     color: var(--accent); 
-    transform: scale(1.15); 
+    transform: translateZ(0) scale(1.15); 
+}
+
+/* ✨ 修正 4：直接隱藏不必要的放大提示氣泡 (解決擋圖問題) */
+.zoom-btn::after, .zoom-btn::before {
+    display: none !important;
+}
+
+
+/* ========================================== */
+/* 無圖說圖片的浮動放大鏡 (Floating Zoom) */
+/* ========================================== */
+figure.no-caption {
+    position: relative; 
+    display: inline-block; 
+    margin: 1.5rem auto; 
+    max-width: 100%;
+}
+figure.no-caption img {
+    margin: 0 !important; 
+    display: block;
+}
+.zoom-btn.floating {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    margin: 0;
+    
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    
+    opacity: 0.6; 
+    z-index: 10;
+    
+    /* 確保基礎狀態同樣綁定硬體加速 */
+    transform: translateZ(0) scale(1);
+}
+
+/* 滑鼠進入圖片範圍時 */
+figure.no-caption:hover .zoom-btn.floating {
+    opacity: 1;
+}
+
+/* 滑鼠停留在按鈕上時 */
+.zoom-btn.floating:hover {
+    background: var(--accent); 
+    color: #fff;
+    opacity: 1;
+    /* 維持與基礎狀態對齊的 1.15 倍縮放 */
+    transform: translateZ(0) scale(1.15);
 }
 
 /* ========================================== */
@@ -1014,7 +1086,8 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
 @media (max-width: 600px) {
     /* 隱藏觸控裝置 Tooltip */
     .toolbar-btn::after, .toolbar-btn::before,
-    .lightbox-capsule-btn::after, .lightbox-capsule-btn::before {
+    .lightbox-capsule-btn::after, .lightbox-capsule-btn::before,
+    .zoom-btn::after, .zoom-btn::before {
         display: none !important;
     }
     

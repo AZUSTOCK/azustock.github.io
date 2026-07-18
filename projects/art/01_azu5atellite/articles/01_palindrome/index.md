@@ -1,5 +1,8 @@
 # 『梓川風』
-![float-right](./basic.webp "基礎方塊")
+<figure class="float-right">
+  <img src="./basic.webp" alt="主視覺" loading="lazy" decoding="async">
+  <figcaption>基礎方塊</figcaption>
+</figure>
 
 ## 表情
 <div class="gallery" style="--g-width: 200px; --g-rows: 1;">
