@@ -268,6 +268,12 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .btt-btn { position: fixed; bottom: 2rem; right: 2rem; z-index: 990; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--accent); border-radius: 50%; width: 50px; height: 50px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.5s ease, border-color 0.5s ease; }
 .btt-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
 .btt-btn:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--card); box-shadow: 0 8px 20px var(--btn-hover-shadow); transform: translateY(-5px); }
+/* ✨ 魔法防禦：只在螢幕寬度小於 800px (有重疊風險時)，才將「返回頂部」按鈕往上推 */
+@media (max-width: 500px) {
+    body:has(.filter-toast.active) .btt-btn {
+        bottom: max(110px, calc(env(safe-area-inset-bottom) + 80px));
+    }
+}
 
 /* ========================= */
 /* Markdown Modal 與彈窗結構 */
@@ -442,19 +448,18 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================= */
 /* 浮動膠囊 (Filter Toast) 與 Tooltip */
 /* ========================= */
-/* ========================= */
-/* 浮動膠囊 (Filter Toast) 與 Tooltip */
-/* ========================= */
 .filter-toast { 
     position: fixed; 
-    bottom: 2.5rem; 
     
-    /* ✨ 關鍵修正 1：移除 left: 50% 與 translate(-50%)，改用 margin 完美置中，消滅半像素誤差 */
+    /* ✨ 同步修正：確保首頁的過濾提示膠囊也不會被擋住 */
+    bottom: 50px; 
+    bottom: max(50px, calc(env(safe-area-inset-bottom) + 20px));
+    
     left: 0; 
     right: 0; 
     margin: 0 auto; 
     width: max-content; 
-    transform: translateY(30px); /* 僅在 Y 軸上做位移動畫 */
+    transform: translateY(30px);
     
     opacity: 0; 
     pointer-events: none; 
@@ -772,6 +777,14 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     .nav-card .nav-label svg { width: 14px; height: 14px; }
     .nav-card.next .nav-label { flex-direction: row-reverse; }
     .nav-card .nav-title { font-size: 0.95rem; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* ✨ 手機版：稍微縮小返回頂部按鈕，並往右下角邊緣靠攏，榨出更多空間 */
+    .btt-btn {
+        width: 42px;
+        height: 42px;
+        right: 1rem;
+        /* 平常沒膠囊時，讓按鈕在手機上稍微降低一點，更符合拇指熱區 */
+        bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem));
+    }
 
     /* 捲軸提示漸層優化 */
     .scroll-hint { width: 40px !important; }
@@ -882,7 +895,11 @@ figure.no-caption:hover .zoom-btn.floating {
 /* 進階版全螢幕大圖 Lightbox Modal UI (修復版) */
 /* ========================================== */
 #lightbox-modal {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    position: fixed; top: 0; left: 0; width: 100vw; 
+    
+    height: 100vh; /* 舊版瀏覽器備用 */
+    height: 100dvh; /* ✨ 關鍵修正 1：啟用動態視窗高度，自動閃避 Chrome 底部動態工作列 */
+    
     background: #000;
     z-index: 9999;
     display: flex; justify-content: center; align-items: center;
@@ -1023,8 +1040,11 @@ figure.no-caption:hover .zoom-btn.floating {
 /* 2. 修改 caption 的定位，讓它錨定在 padding 區域內 */
 .lightbox-caption {
     position: absolute; 
-    /* ✨ 改用 bottom 屬性配合安全區域 */
-    bottom: 40px; 
+    
+    /* ✨ 關鍵修正 2：拉高預設底部距離，並加入 iPhone / Android 底部安全區 (Safe Area) 的動態計算 */
+    bottom: 60px; 
+    bottom: max(60px, calc(env(safe-area-inset-bottom) + 30px));
+    
     left: 50%; 
     transform: translateX(-50%);
     
