@@ -338,7 +338,13 @@
           "id": "domino",
           "title": "骨牌",
           "content_path": "./api/note/domino/contents.json",
-          "description": "堆疊",
+          "description": "堆疊"
+        },
+        {
+          "id": "bigger",
+          "title": "比大小",
+          "content_path": "./api/note/bigger/contents.json",
+          "cover_image": "./api/note/bigger/cover_thumb.webp",
           "is_new": true
         }
       ]
@@ -399,8 +405,7 @@
           "title": "　書",
           "content_path": "./api/azusa/Letter/contents.json",
           "description": "浪費",
-          "cover_image": "./api/azusa/Letter/cover_thumb.webp",
-          "is_new": true
+          "cover_image": "./api/azusa/Letter/cover_thumb.webp"
         }
       ]
     }
