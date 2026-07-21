@@ -750,7 +750,6 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     
     /* 頂部導覽防禦設定 */
     .modal-back-btn { height: 32px !important; padding: 0 0.8rem !important; margin: 0 !important; }
-    .modal-close-btn, .toc-toggle-btn { width: 32px !important; height: 32px !important; min-width: 32px !important; min-height: 32px !important; font-size: 1.5rem !important; padding: 0 !important; margin: 0 !important; display: flex !important; justify-content: center !important; align-items: center !important; }
     .modal-content { width: 100%; max-height: 100vh; max-height: 100dvh; padding: 0 1.5rem 2rem 1.5rem; }
     .modal-top-bar { top: 0; margin: 0 -1.5rem 1.5rem -1.5rem; padding: 1.5rem 1.5rem 1.2rem 1.5rem; border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; box-shadow: 0 -2px 0 0 var(--glass-bg); }
     .modal-top-bar.is-index-mode { 
