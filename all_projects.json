@@ -1,0 +1,413 @@
+{
+  "categories": [
+    {
+      "order": 1,
+      "id": "code",
+      "title": "Programming",
+      "meta": "程式設計與專案",
+      "description": "程式相關經歷與參與專案",
+      "cover_image": null
+    },
+    {
+      "order": 2,
+      "id": "art",
+      "title": "Art",
+      "meta": "繪畫創作",
+      "description": "",
+      "cover_image": null
+    },
+    {
+      "order": 3,
+      "id": "music",
+      "title": "Music",
+      "meta": "音樂創作",
+      "description": "",
+      "cover_image": null
+    },
+    {
+      "order": 4,
+      "id": "writing",
+      "title": "Interpretation",
+      "meta": "隨筆、散文",
+      "description": "文字創作",
+      "cover_image": null
+    }
+  ],
+  "projects": [
+    {
+      "id": "azubar",
+      "category": "code",
+      "title": "azubar",
+      "order": 1,
+      "default_sort": "desc",
+      "description": "一個小品進度條",
+      "date": "2026-06-08",
+      "version": "0.0.4.1",
+      "tags": [
+        "Python",
+        "azubar",
+        "Beta"
+      ],
+      "link": "https://github.com/Kazekawa-azusa/azubar",
+      "pinned": true,
+      "cover_image": "./api/azubar/cover_thumb.webp"
+    },
+    {
+      "id": "DCbot",
+      "category": "code",
+      "title": "Discord Bot Infrastructure",
+      "order": 3,
+      "default_sort": "desc",
+      "description": "多頻道、多 Thread 即時更新系統，透過 Queue 與 Scheduler 解決 Discord API Rate Limit 問題。",
+      "tags": [
+        "Python",
+        "Discord API",
+        "Queue",
+        "Concurrency"
+      ]
+    },
+    {
+      "id": "azustock",
+      "category": "code",
+      "title": "azustock",
+      "order": 2,
+      "default_sort": "desc",
+      "description": "即時股票模擬與報價系統，自行設計價格行為模型、成交撮合與高頻更新流程。",
+      "date": "2025-12-18",
+      "version": "0.0.1",
+      "tags": [
+        "Python",
+        "AsyncIO",
+        "Finance",
+        "System Design"
+      ],
+      "is_archived": true,
+      "cover_image": "./api/azustock/cover_thumb.webp"
+    },
+    {
+      "id": "azu5atellite",
+      "category": "art",
+      "title": "azu5atellite",
+      "order": 1,
+      "default_sort": "asc",
+      "description": "自繪與跑團的角色立繪。",
+      "tags": [
+        "Draw",
+        "azu5atellite"
+      ],
+      "pinned": true,
+      "cover_image": "./api/azu5atellite/cover_thumb.webp",
+      "articles": [
+        {
+          "id": "palindrome",
+          "title": "梓川風",
+          "content_path": "./api/azu5atellite/palindrome/contents.json",
+          "description": "Azusagawa Kaze",
+          "cover_image": "./api/azu5atellite/palindrome/cover_thumb.webp",
+          "tags": [
+            "梓川風",
+            "OC",
+            "azu5atellite"
+          ],
+          "pinned": true,
+          "is_updated": true
+        },
+        {
+          "id": "reporter",
+          "title": "高松彩空",
+          "content_path": "./api/azu5atellite/reporter/contents.json",
+          "description": "Takamatsu Sara",
+          "cover_image": "./api/azu5atellite/reporter/cover_thumb.webp",
+          "tags": [
+            "高松彩空",
+            "OC",
+            "azu5atellite"
+          ],
+          "is_updated": true
+        },
+        {
+          "id": "teto",
+          "title": "重音テト",
+          "content_path": "./api/azu5atellite/teto/contents.json",
+          "description": "Kasane teto",
+          "cover_image": "./api/azu5atellite/teto/cover_thumb.webp",
+          "tags": [
+            "重音テト",
+            "azu5atellite"
+          ]
+        },
+        {
+          "id": "satone",
+          "title": "聰音",
+          "content_path": "./api/azu5atellite/satone/contents.json",
+          "description": "Satone",
+          "cover_image": "./api/azu5atellite/satone/cover_thumb.webp",
+          "tags": [
+            "聰音",
+            "azu5atellite"
+          ]
+        },
+        {
+          "id": "toga",
+          "title": "戶賀有里",
+          "content_path": "./api/azu5atellite/toga/contents.json",
+          "description": "Toga Ari",
+          "cover_image": "./api/azu5atellite/toga/cover_thumb.webp",
+          "tags": [
+            "azu5atellite",
+            "OC",
+            "NEW"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "projectFV",
+      "category": "music",
+      "title": "[project FV]",
+      "order": 1,
+      "default_sort": "desc",
+      "description": "一個疑似是音樂專案的佔位卡片",
+      "tags": [
+        "Music",
+        "A2U5A"
+      ],
+      "is_wip": true
+    },
+    {
+      "id": "storyOFdiary",
+      "category": "writing",
+      "title": "日記的故事",
+      "order": 4,
+      "default_sort": "asc",
+      "description": "她和她的一段經歷",
+      "tags": [
+        "Story",
+        "Original",
+        "OC"
+      ],
+      "pinned": true,
+      "is_new": true,
+      "is_wip": true,
+      "groups": {
+        "introduction": {
+          "title": "INTRODUCTION",
+          "description": "人物介紹與故事背景",
+          "highlight": true
+        },
+        "main": {
+          "title": "MAIN STORY",
+          "description": "連載章節",
+          "highlight": false,
+          "default": true
+        }
+      },
+      "articles": [
+        {
+          "id": "introduction",
+          "title": "角色介紹",
+          "content_path": "./api/storyOFdiary/introduction/contents.json",
+          "cover_image": "./api/storyOFdiary/introduction/cover_thumb.webp",
+          "is_new": true,
+          "is_wip": true,
+          "group": "introduction"
+        },
+        {
+          "id": "twilight",
+          "title": "#1黃昏",
+          "content_path": "./api/storyOFdiary/twilight/contents.json",
+          "is_wip": true,
+          "group": "main"
+        },
+        {
+          "id": "visit",
+          "title": "#2拜訪",
+          "content_path": "./api/storyOFdiary/visit/contents.json",
+          "is_wip": true,
+          "group": "main"
+        },
+        {
+          "id": "bookstore",
+          "title": "#3書店",
+          "content_path": "./api/storyOFdiary/bookstore/contents.json",
+          "is_wip": true,
+          "group": "main"
+        },
+        {
+          "id": "cake",
+          "title": "#4蛋糕",
+          "content_path": "./api/storyOFdiary/cake/contents.json",
+          "is_wip": true,
+          "group": "main"
+        },
+        {
+          "id": "cram",
+          "title": "#5補習",
+          "content_path": "./api/storyOFdiary/cram/contents.json",
+          "is_new": true,
+          "is_wip": true,
+          "group": "main"
+        }
+      ]
+    },
+    {
+      "id": "note",
+      "category": "writing",
+      "title": "書架",
+      "order": 3,
+      "default_sort": "desc",
+      "description": "小品散文陳列處",
+      "tags": [
+        "Note"
+      ],
+      "articles": [
+        {
+          "id": "changer",
+          "title": "恆者",
+          "content_path": "./api/note/changer/contents.json",
+          "description": "改變是需要理由的，不變是無須過問的",
+          "cover_image": "./api/note/changer/cover_thumb.webp"
+        },
+        {
+          "id": "sunshine",
+          "title": "陽光",
+          "content_path": "./api/note/sunshine/contents.json",
+          "description": "我本可以忍受陽光，如果我未曾見過太陽",
+          "cover_image": "./api/note/sunshine/cover_thumb.webp"
+        },
+        {
+          "id": "boat",
+          "title": "船",
+          "content_path": "./api/note/boat/contents.json",
+          "description": "鐵達尼號沉了，對於落水的人而言，任何浮木都是船",
+          "cover_image": "./api/note/boat/cover_thumb.webp"
+        },
+        {
+          "id": "dreamer",
+          "title": "隨夢客",
+          "content_path": "./api/note/dreamer/contents.json",
+          "description": "我見，我來，我失明",
+          "cover_image": "./api/note/dreamer/cover_thumb.webp"
+        },
+        {
+          "id": "days",
+          "title": "明天、今天和明天的今天",
+          "content_path": "./api/note/days/contents.json",
+          "description": "人一思考，上帝就笑了",
+          "cover_image": "./api/note/days/cover_thumb.webp"
+        },
+        {
+          "id": "door",
+          "title": "房門",
+          "content_path": "./api/note/door/contents.json",
+          "description": "小小的房間裡...",
+          "cover_image": "./api/note/door/cover_thumb.webp"
+        },
+        {
+          "id": "bookworm",
+          "title": "書蟲",
+          "content_path": "./api/note/bookworm/contents.json",
+          "description": "她一旦..."
+        },
+        {
+          "id": "dress",
+          "title": "洋裝",
+          "content_path": "./api/note/dress/contents.json",
+          "description": "擁有 & 失去"
+        },
+        {
+          "id": "read",
+          "title": "閱讀",
+          "content_path": "./api/note/read/contents.json",
+          "description": "時間",
+          "cover_image": "./api/note/read/cover_thumb.webp"
+        },
+        {
+          "id": "box",
+          "title": "盒子",
+          "content_path": "./api/note/box/contents.json",
+          "description": "調味牛乳 & 玩具"
+        },
+        {
+          "id": "create",
+          "title": "創作",
+          "content_path": "./api/note/create/contents.json",
+          "description": "繪與書"
+        },
+        {
+          "id": "domino",
+          "title": "骨牌",
+          "content_path": "./api/note/domino/contents.json",
+          "description": "堆疊"
+        },
+        {
+          "id": "bigger",
+          "title": "比大小",
+          "content_path": "./api/note/bigger/contents.json",
+          "cover_image": "./api/note/bigger/cover_thumb.webp",
+          "is_new": true
+        }
+      ]
+    },
+    {
+      "id": "azusa",
+      "category": "writing",
+      "title": "梓",
+      "order": 1,
+      "default_sort": "desc",
+      "description": "致所有名為梓之人",
+      "tags": [
+        "azusa"
+      ],
+      "articles": [
+        {
+          "id": "introduce",
+          "title": "自介",
+          "content_path": "./api/azusa/introduce/contents.json",
+          "description": "梓"
+        },
+        {
+          "id": "awake",
+          "title": "致 梓",
+          "content_path": "./api/azusa/awake/contents.json",
+          "description": "一覺醒來...",
+          "cover_image": "./api/azusa/awake/cover_thumb.webp"
+        },
+        {
+          "id": "404",
+          "title": "自我介紹",
+          "content_path": "./api/azusa/404/contents.json",
+          "description": "查無此人",
+          "cover_image": "./api/azusa/404/cover_thumb.webp"
+        },
+        {
+          "id": "tavern",
+          "title": "社畜",
+          "content_path": "./api/azusa/tavern/contents.json",
+          "description": "酒館",
+          "cover_image": "./api/azusa/tavern/cover_thumb.webp"
+        },
+        {
+          "id": "quote",
+          "title": "名言",
+          "content_path": "./api/azusa/quote/contents.json",
+          "description": "誰？"
+        },
+        {
+          "id": "travel",
+          "title": "旅行",
+          "content_path": "./api/azusa/travel/contents.json",
+          "description": "直至",
+          "cover_image": "./api/azusa/travel/cover_thumb.webp"
+        },
+        {
+          "id": "Letter",
+          "title": "　書",
+          "content_path": "./api/azusa/Letter/contents.json",
+          "description": "浪費",
+          "cover_image": "./api/azusa/Letter/cover_thumb.webp"
+        }
+      ]
+    }
+  ]
+}
