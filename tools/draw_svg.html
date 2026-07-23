@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azustock SVG 向量手繪板 (Pro 完整功能版)</title>
+    <style>
+        :root {
+            --bg: #0f172a; --card: #1e293b; --text: #f8fafc;
+            --accent: #38bdf8; --accent-hover: #0ea5e9;
+            --border: #334155; --canvas-bg: #ffffff;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg); color: var(--text);
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+        }
+
+        .toolbar {
+            background-color: var(--card); border-bottom: 1px solid var(--border);
+            padding: 15px 20px; display: flex; gap: 15px; align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 10; flex-wrap: wrap;
+        }
+
+        .tool-group {
+            display: flex; align-items: center; gap: 10px;
+            background: rgba(0,0,0,0.2); padding: 8px 16px;
+            border-radius: 8px; border: 1px solid var(--border);
+        }
+
+        label { font-size: 0.9rem; font-weight: 600; color: #cbd5e1; white-space: nowrap; }
+
+        input[type="color"] { width: 32px; height: 32px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: transparent; }
+        input[type="range"] { cursor: pointer; width: 80px; }
+        input[type="number"] { 
+            width: 55px; background: var(--bg); color: var(--text); 
+            border: 1px solid var(--border); border-radius: 4px; 
+            padding: 4px 6px; font-size: 0.9rem; outline: none; font-family: monospace;
+        }
+        input[type="number"]:focus { border-color: var(--accent); }
+        
+        select {
+            background-color: var(--bg); color: var(--text);
+            border: 1px solid var(--border); padding: 6px 10px;
+            border-radius: 4px; font-size: 0.9rem; cursor: pointer;
+            outline: none; font-weight: 600;
+        }
+
+        button {
+            background-color: var(--card); color: var(--text);
+            border: 1px solid var(--border); padding: 8px 16px;
+            border-radius: 6px; font-size: 0.9rem; font-weight: bold;
+            cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        button:hover { background-color: var(--border); }
+        button.primary { background-color: var(--accent); color: #000; border-color: var(--accent); }
+        button.primary:hover { background-color: var(--accent-hover); }
+
+        .canvas-container {
+            flex: 1; padding: 20px; display: flex; justify-content: center; align-items: center;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); overflow: auto;
+        }
+
+        #drawing-svg {
+            background-color: var(--canvas-bg); box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border-radius: 12px; cursor: crosshair; touch-action: none;
+            background-image: linear-gradient(rgba(200,200,200,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(200,200,200,0.2) 1px, transparent 1px);
+            background-size: 20px 20px;
+            transition: filter 0.2s;
+        }
+
+        #drawing-svg.select-mode { cursor: default; }
+        #drawing-svg.select-mode * { cursor: pointer; pointer-events: visiblePainted; }
+        #drawing-svg.select-mode [data-selected="true"] { filter: drop-shadow(0px 0px 4px var(--accent)); }
+        
+        .handle { fill: #fff; stroke: var(--accent); stroke-width: 2px; cursor: pointer; }
+        .handle:hover { fill: var(--accent); }
+        .rot-handle:hover { filter: brightness(1.2); }
+
+        .flex-spacer { flex: 1; }
+        #props-panel { display: none; background: rgba(56, 189, 248, 0.1); border-color: var(--accent); }
+        .tip-bar { background: var(--card); padding: 5px 20px; font-size: 0.8rem; color: #94a3b8; border-bottom: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar">
+        <div class="tool-group">
+            <label for="tool-picker">工具</label>
+            <select id="tool-picker">
+                <option value="freehand">✍️ 自由畫</option>
+                <option value="line">📏 直線</option>
+                <option value="rect">🟦 矩形</option>
+                <option value="ellipse">⭕ 橢圓</option>
+                <option value="select">👆 選取 / 編輯</option>
+            </select>
+        </div>
+
+        <div class="tool-group">
+            <input type="color" id="color-picker" value="#0ea5e9" title="更換顏色">
+            <input type="range" id="weight-picker" min="1" max="50" value="4" title="粗細">
+        </div>
+
+        <div class="tool-group" id="props-panel"></div>
+
+        <div class="flex-spacer"></div>
+        <button id="btn-undo" title="快捷鍵: Ctrl+Z">↩️ 復原</button>
+        <button id="btn-clear">🗑️ 清空</button>
+        <button id="btn-copy">📋 複製 SVG</button>
+        <button id="btn-download" class="primary">💾 下載</button>
+    </div>
+    
+    <div class="tip-bar">
+        💡 提示：繪圖或<b>拖曳控制點</b>時按住 <b>Shift</b> 可進行等比例/角度約束。選取模式下可改端點座標、拖曳綠點旋轉、<b>對自由畫或直線連點兩下新增/刪除節點</b>。
+    </div>
+
+    <div class="canvas-container">
+        <svg id="drawing-svg" width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+            <g id="handles-group"></g>
+        </svg>
+    </div>
+
+    <script>
+        const svg = document.getElementById('drawing-svg');
+        const handlesGroup = document.getElementById('handles-group');
+        const toolPicker = document.getElementById('tool-picker');
+        const colorPicker = document.getElementById('color-picker');
+        const weightPicker = document.getElementById('weight-picker');
+        const propsPanel = document.getElementById('props-panel');
+        
+        let isDrawing = false, isDraggingShape = false, isDraggingHandle = false, isDraggingRot = false;
+        let currentElement = null, selectedElement = null;
+        let startX = 0, startY = 0, dragStartX = 0, dragStartY = 0;
+        let activeHandleIndex = -1;
+
+        toolPicker.addEventListener('change', (e) => {
+            svg.classList.toggle('select-mode', e.target.value === 'select');
+            if (e.target.value !== 'select') { activeHandleIndex = -1; selectElement(null); }
+        });
+
+        function getMousePosition(evt) {
+            const CTM = svg.getScreenCTM();
+            if(evt.touches) evt = evt.touches[0];
+            return { x: (evt.clientX - CTM.e) / CTM.a, y: (evt.clientY - CTM.f) / CTM.d };
+        }
+
+        function getLocalMousePosition(evt, element) {
+            const CTM = element.getScreenCTM();
+            if (!CTM) return getMousePosition(evt);
+            if(evt.touches) evt = evt.touches[0];
+            const pt = svg.createSVGPoint();
+            pt.x = evt.clientX; pt.y = evt.clientY;
+            return pt.matrixTransform(CTM.inverse());
+        }
+
+        function parsePath(d) {
+            const regex = /([ML])\s*([\d.-]+)[\s,]+([\d.-]+)/g;
+            let match, points = [];
+            while ((match = regex.exec(d)) !== null) points.push({ type: match[1], x: parseFloat(match[2]), y: parseFloat(match[3]) });
+            return points;
+        }
+        function serializePath(points) { return points.map(p => `${p.type} ${p.x} ${p.y}`).join(' '); }
+
+        function getHandleCoords(el, idx) {
+            const type = el.tagName;
+            if (type === 'rect') {
+                let x = parseFloat(el.getAttribute('x')), y = parseFloat(el.getAttribute('y'));
+                let w = parseFloat(el.getAttribute('width')), h = parseFloat(el.getAttribute('height'));
+                if (idx === 0) return {x, y}; if (idx === 1) return {x: x+w, y};
+                if (idx === 2) return {x, y: y+h}; if (idx === 3) return {x: x+w, y: y+h};
+            } else if (type === 'ellipse') {
+                const ex = parseFloat(el.getAttribute('cx')), ey = parseFloat(el.getAttribute('cy'));
+                const rx = parseFloat(el.getAttribute('rx')), ry = parseFloat(el.getAttribute('ry'));
+                if (idx === 0) return {x: ex, y: ey-ry}; if (idx === 1) return {x: ex+rx, y: ey};
+                if (idx === 2) return {x: ex, y: ey+ry}; if (idx === 3) return {x: ex-rx, y: ey};
+            } else if (type === 'line') {
+                if (idx === 0) return {x: parseFloat(el.getAttribute('x1')), y: parseFloat(el.getAttribute('y1'))};
+                if (idx === 1) return {x: parseFloat(el.getAttribute('x2')), y: parseFloat(el.getAttribute('y2'))};
+            } else if (type === 'path') {
+                const points = parsePath(el.getAttribute('d'));
+                if (points[idx]) return {x: points[idx].x, y: points[idx].y};
+            }
+            return {x: 0, y: 0};
+        }
+
+        function updateShapeFromHandle(el, idx, x, y, shiftKey) {
+            const type = el.tagName;
+            if (type === 'rect') {
+                let rx = parseFloat(el.getAttribute('x')), ry = parseFloat(el.getAttribute('y'));
+                let rw = parseFloat(el.getAttribute('width')), rh = parseFloat(el.getAttribute('height'));
+                if (idx === 0) { rw += rx - x; rh += ry - y; rx = x; ry = y; }
+                else if (idx === 1) { rw = x - rx; rh += ry - y; ry = y; }
+                else if (idx === 2) { rw += rx - x; rx = x; rh = y - ry; }
+                else if (idx === 3) { rw = x - rx; rh = y - ry; }
+                
+                if (shiftKey) {
+                    let maxD = Math.max(Math.abs(rw), Math.abs(rh));
+                    rw = maxD; rh = maxD;
+                }
+                el.setAttribute('x', rx); el.setAttribute('y', ry);
+                el.setAttribute('width', Math.max(1, rw)); el.setAttribute('height', Math.max(1, rh));
+            } else if (type === 'ellipse') {
+                const ex = parseFloat(el.getAttribute('cx')), ey = parseFloat(el.getAttribute('cy'));
+                if (idx === 0 || idx === 2) {
+                    let ry = Math.max(1, Math.abs(y - ey));
+                    el.setAttribute('ry', ry);
+                    if (shiftKey) el.setAttribute('rx', ry);
+                } else {
+                    let rx = Math.max(1, Math.abs(x - ex));
+                    el.setAttribute('rx', rx);
+                    if (shiftKey) el.setAttribute('ry', rx);
+                }
+            } else if (type === 'line') {
+                let x1 = parseFloat(el.getAttribute('x1')), y1 = parseFloat(el.getAttribute('y1'));
+                let x2 = parseFloat(el.getAttribute('x2')), y2 = parseFloat(el.getAttribute('y2'));
+                if (shiftKey) {
+                    let ax = idx === 0 ? x2 : x1, ay = idx === 0 ? y2 : y1;
+                    let dx = x - ax, dy = y - ay;
+                    if (Math.abs(dx) > Math.abs(dy)) y = ay; else x = ax;
+                }
+                if (idx === 0) { el.setAttribute('x1', x); el.setAttribute('y1', y); }
+                else { el.setAttribute('x2', x); el.setAttribute('y2', y); }
+            } else if (type === 'path') {
+                const points = parsePath(el.getAttribute('d'));
+                if (points[idx]) {
+                    if (shiftKey && idx > 0) {
+                        let prev = points[idx - 1];
+                        if (Math.abs(x - prev.x) > Math.abs(y - prev.y)) y = prev.y; else x = prev.x;
+                    }
+                    points[idx].x = x; points[idx].y = y; el.setAttribute('d', serializePath(points));
+                }
+            }
+        }
+
+        function buildPropsPanel() {
+            if (!selectedElement) { propsPanel.style.display = 'none'; return; }
+            propsPanel.style.display = 'flex';
+            propsPanel.innerHTML = '';
+            
+            const createInput = (label, id, val) => {
+                const lbl = document.createElement('label');
+                lbl.innerHTML = `${label}: <input type="number" id="prop-${id}" value="${Math.round(val)}" step="1">`;
+                lbl.querySelector('input').addEventListener('input', (e) => applyPropChange(id, parseFloat(e.target.value)));
+                return lbl;
+            };
+
+            if (activeHandleIndex !== -1) {
+                const coords = getHandleCoords(selectedElement, activeHandleIndex);
+                propsPanel.appendChild(createInput('🎯端點 X', 'hx', coords.x));
+                propsPanel.appendChild(createInput('🎯端點 Y', 'hy', coords.y));
+            } else {
+                const bbox = selectedElement.getBBox();
+                propsPanel.appendChild(createInput('形狀 X', 'gx', bbox.x));
+                propsPanel.appendChild(createInput('形狀 Y', 'gy', bbox.y));
+                if (selectedElement.tagName === 'rect') {
+                    propsPanel.appendChild(createInput('寬', 'w', selectedElement.getAttribute('width')));
+                    propsPanel.appendChild(createInput('高', 'h', selectedElement.getAttribute('height')));
+                }
+            }
+            propsPanel.appendChild(createInput('旋轉(°)', 'rot', selectedElement.dataset.rot || 0));
+        }
+
+        function updatePropsPanel() {
+            if (!selectedElement) return;
+            const updateVal = (id, val) => { const el = document.getElementById(`prop-${id}`); if (el && !isNaN(val)) el.value = Math.round(val); };
+            
+            if (activeHandleIndex !== -1) {
+                const coords = getHandleCoords(selectedElement, activeHandleIndex);
+                updateVal('hx', coords.x); updateVal('hy', coords.y);
+            } else {
+                const bbox = selectedElement.getBBox();
+                updateVal('gx', bbox.x); updateVal('gy', bbox.y);
+                if (selectedElement.tagName === 'rect') {
+                    updateVal('w', selectedElement.getAttribute('width'));
+                    updateVal('h', selectedElement.getAttribute('height'));
+                }
+            }
+            updateVal('rot', selectedElement.dataset.rot || 0);
+        }
+
+        function applyPropChange(id, val) {
+            if (!selectedElement || isNaN(val)) return;
+            
+            if (id === 'hx' || id === 'hy') {
+                if (activeHandleIndex === -1) return;
+                const coords = getHandleCoords(selectedElement, activeHandleIndex);
+                updateShapeFromHandle(selectedElement, activeHandleIndex, id === 'hx' ? val : coords.x, id === 'hy' ? val : coords.y, false);
+                updateCenter(selectedElement);
+            } else if (id === 'gx' || id === 'gy') {
+                const bbox = selectedElement.getBBox();
+                moveShape(selectedElement, id === 'gx' ? val - bbox.x : 0, id === 'gy' ? val - bbox.y : 0);
+            } else if (id === 'w') { selectedElement.setAttribute('width', Math.max(1, val)); updateCenter(selectedElement); }
+            else if (id === 'h') { selectedElement.setAttribute('height', Math.max(1, val)); updateCenter(selectedElement); }
+            else if (id === 'rot') { selectedElement.dataset.rot = val; updateTransform(selectedElement); }
+            
+            renderHandles();
+        }
+
+        function renderHandles() {
+            handlesGroup.innerHTML = '';
+            if (!selectedElement) return;
+
+            const rot = selectedElement.dataset.rot || 0;
+            const cx = parseFloat(selectedElement.dataset.cx || 0);
+            const cy = parseFloat(selectedElement.dataset.cy || 0);
+            handlesGroup.setAttribute('transform', rot ? `rotate(${rot}, ${cx}, ${cy})` : '');
+
+            const type = selectedElement.tagName;
+            const createH = (x, y, idx) => {
+                const h = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                h.setAttribute("cx", x); h.setAttribute("cy", y); h.setAttribute("r", 6);
+                h.setAttribute("class", "handle"); h.dataset.index = idx;
+                if (idx === activeHandleIndex) { h.style.fill = 'var(--accent)'; h.style.stroke = '#fff'; }
+                handlesGroup.appendChild(h);
+            };
+
+            if (type === 'rect') {
+                let x = parseFloat(selectedElement.getAttribute('x')), y = parseFloat(selectedElement.getAttribute('y'));
+                let w = parseFloat(selectedElement.getAttribute('width')), h = parseFloat(selectedElement.getAttribute('height'));
+                createH(x, y, 0); createH(x+w, y, 1); createH(x, y+h, 2); createH(x+w, y+h, 3);
+            } else if (type === 'ellipse') {
+                const ex = parseFloat(selectedElement.getAttribute('cx')), ey = parseFloat(selectedElement.getAttribute('cy'));
+                const rx = parseFloat(selectedElement.getAttribute('rx')), ry = parseFloat(selectedElement.getAttribute('ry'));
+                createH(ex, ey-ry, 0); createH(ex+rx, ey, 1); createH(ex, ey+ry, 2); createH(ex-rx, ey, 3);
+            } else if (type === 'line') {
+                createH(parseFloat(selectedElement.getAttribute('x1')), parseFloat(selectedElement.getAttribute('y1')), 0);
+                createH(parseFloat(selectedElement.getAttribute('x2')), parseFloat(selectedElement.getAttribute('y2')), 1);
+            } else if (type === 'path') {
+                parsePath(selectedElement.getAttribute('d')).forEach((p, i) => createH(p.x, p.y, i));
+            }
+
+            const bbox = selectedElement.getBBox();
+            const rotY = bbox.y - 35;
+            
+            const rLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            rLine.setAttribute("x1", cx); rLine.setAttribute("y1", bbox.y);
+            rLine.setAttribute("x2", cx); rLine.setAttribute("y2", rotY);
+            rLine.setAttribute("stroke", "#10b981"); rLine.setAttribute("stroke-dasharray", "4");
+            handlesGroup.appendChild(rLine);
+
+            const rHandle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            rHandle.setAttribute("cx", cx); rHandle.setAttribute("cy", rotY); rHandle.setAttribute("r", 7);
+            rHandle.setAttribute("class", "handle rot-handle"); rHandle.dataset.isRot = "true";
+            rHandle.style.fill = "#10b981"; rHandle.style.stroke = "#fff";
+            handlesGroup.appendChild(rHandle);
+
+            svg.appendChild(handlesGroup);
+        }
+
+        function updateTransform(el) {
+            const rot = parseFloat(el.dataset.rot || 0);
+            if (rot !== 0) el.setAttribute('transform', `rotate(${rot}, ${el.dataset.cx || 0}, ${el.dataset.cy || 0})`);
+            else el.removeAttribute('transform');
+        }
+
+        function updateCenter(el) {
+            if (!parseFloat(el.dataset.rot)) {
+                const bbox = el.getBBox();
+                el.dataset.cx = bbox.x + bbox.width / 2; el.dataset.cy = bbox.y + bbox.height / 2;
+            }
+        }
+
+        function moveShape(el, dx, dy) {
+            const type = el.tagName;
+            if (type === 'rect') {
+                el.setAttribute('x', parseFloat(el.getAttribute('x')) + dx);
+                el.setAttribute('y', parseFloat(el.getAttribute('y')) + dy);
+            } else if (type === 'ellipse') {
+                el.setAttribute('cx', parseFloat(el.getAttribute('cx')) + dx);
+                el.setAttribute('cy', parseFloat(el.getAttribute('cy')) + dy);
+            } else if (type === 'line') {
+                el.setAttribute('x1', parseFloat(el.getAttribute('x1')) + dx); el.setAttribute('y1', parseFloat(el.getAttribute('y1')) + dy);
+                el.setAttribute('x2', parseFloat(el.getAttribute('x2')) + dx); el.setAttribute('y2', parseFloat(el.getAttribute('y2')) + dy);
+            } else if (type === 'path') {
+                const points = parsePath(el.getAttribute('d'));
+                points.forEach(p => { p.x += dx; p.y += dy; });
+                el.setAttribute('d', serializePath(points));
+            }
+            el.dataset.cx = parseFloat(el.dataset.cx || 0) + dx; el.dataset.cy = parseFloat(el.dataset.cy || 0) + dy;
+            updateTransform(el);
+        }
+
+        function selectElement(el) {
+            if (selectedElement) selectedElement.removeAttribute('data-selected');
+            if (el && el !== svg && el.id !== 'handles-group') {
+                selectedElement = el;
+                selectedElement.setAttribute('data-selected', 'true');
+                buildPropsPanel(); renderHandles();
+            } else {
+                selectedElement = null; activeHandleIndex = -1;
+                propsPanel.style.display = 'none'; handlesGroup.innerHTML = '';
+            }
+        }
+
+        function createSVGElement(tag) {
+            const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+            el.setAttribute("fill", "none"); el.setAttribute("stroke", colorPicker.value);
+            el.setAttribute("stroke-width", weightPicker.value);
+            el.setAttribute("stroke-linecap", "round"); el.setAttribute("stroke-linejoin", "round");
+            return el;
+        }
+
+        svg.addEventListener('pointerdown', (e) => {
+            const tool = toolPicker.value;
+            const pos = getMousePosition(e);
+
+            if (tool === 'select') {
+                if (e.target.classList.contains('handle')) {
+                    e.stopPropagation();
+                    if (e.target.dataset.isRot) {
+                        isDraggingRot = true;
+                    } else {
+                        isDraggingHandle = true;
+                        activeHandleIndex = parseInt(e.target.dataset.index);
+                        buildPropsPanel();
+                        renderHandles();
+                    }
+                } else if (e.target !== svg && e.target.id !== 'handles-group') {
+                    activeHandleIndex = -1;
+                    selectElement(e.target);
+                    isDraggingShape = true; dragStartX = pos.x; dragStartY = pos.y;
+                } else {
+                    activeHandleIndex = -1;
+                    selectElement(null);
+                }
+                return;
+            }
+
+            selectElement(null);
+            isDrawing = true; startX = pos.x; startY = pos.y;
+            
+            if (tool === 'freehand') { currentElement = createSVGElement("path"); currentElement.setAttribute("d", `M ${startX} ${startY}`); } 
+            else if (tool === 'line') { currentElement = createSVGElement("line"); currentElement.setAttribute("x1", startX); currentElement.setAttribute("y1", startY); currentElement.setAttribute("x2", startX); currentElement.setAttribute("y2", startY); } 
+            else if (tool === 'rect') { currentElement = createSVGElement("rect"); currentElement.setAttribute("x", startX); currentElement.setAttribute("y", startY); currentElement.setAttribute("width", 0); currentElement.setAttribute("height", 0); } 
+            else if (tool === 'ellipse') { currentElement = createSVGElement("ellipse"); currentElement.setAttribute("cx", startX); currentElement.setAttribute("cy", startY); currentElement.setAttribute("rx", 0); currentElement.setAttribute("ry", 0); }
+            svg.insertBefore(currentElement, handlesGroup);
+        });
+
+        svg.addEventListener('pointermove', (e) => {
+            if (isDraggingRot && selectedElement) {
+                e.preventDefault();
+                const pos = getMousePosition(e);
+                const cx = parseFloat(selectedElement.dataset.cx || 0);
+                const cy = parseFloat(selectedElement.dataset.cy || 0);
+                let angle = Math.atan2(pos.y - cy, pos.x - cx) * (180 / Math.PI) + 90;
+                if (e.shiftKey) angle = Math.round(angle / 15) * 15;
+                
+                selectedElement.dataset.rot = angle;
+                updateTransform(selectedElement);
+                renderHandles(); updatePropsPanel();
+                return;
+            }
+
+            if (isDraggingHandle && selectedElement && activeHandleIndex !== -1) {
+                const localPos = getLocalMousePosition(e, handlesGroup);
+                updateShapeFromHandle(selectedElement, activeHandleIndex, localPos.x, localPos.y, e.shiftKey);
+                updateCenter(selectedElement); renderHandles(); updatePropsPanel();
+                return;
+            }
+
+            if (isDraggingShape && selectedElement) {
+                e.preventDefault();
+                const pos = getMousePosition(e);
+                moveShape(selectedElement, pos.x - dragStartX, pos.y - dragStartY);
+                dragStartX = pos.x; dragStartY = pos.y;
+                renderHandles(); updatePropsPanel();
+                return;
+            }
+
+            if (!isDrawing || !currentElement) return;
+            e.preventDefault();
+            let pos = getMousePosition(e);
+            let dx = pos.x - startX, dy = pos.y - startY;
+            const tool = toolPicker.value;
+
+            if (e.shiftKey) {
+                if (tool === 'line') { if (Math.abs(dx) > Math.abs(dy)) pos.y = startY; else pos.x = startX; } 
+                else if (tool === 'rect' || tool === 'ellipse') {
+                    let maxDist = Math.max(Math.abs(dx), Math.abs(dy));
+                    pos.x = startX + (dx < 0 ? -maxDist : maxDist); pos.y = startY + (dy < 0 ? -maxDist : maxDist);
+                }
+            }
+
+            if (tool === 'freehand') { currentElement.setAttribute("d", currentElement.getAttribute("d") + ` L ${pos.x} ${pos.y}`); } 
+            else if (tool === 'line') { currentElement.setAttribute("x2", pos.x); currentElement.setAttribute("y2", pos.y); } 
+            else if (tool === 'rect') { currentElement.setAttribute("x", Math.min(startX, pos.x)); currentElement.setAttribute("y", Math.min(startY, pos.y)); currentElement.setAttribute("width", Math.abs(pos.x - startX)); currentElement.setAttribute("height", Math.abs(pos.y - startY)); } 
+            else if (tool === 'ellipse') { currentElement.setAttribute("cx", (startX + pos.x) / 2); currentElement.setAttribute("cy", (startY + pos.y) / 2); currentElement.setAttribute("rx", Math.abs(pos.x - startX) / 2); currentElement.setAttribute("ry", Math.abs(pos.y - startY) / 2); }
+        });
+
+        function endAction() {
+            if (isDrawing && currentElement) { updateCenter(currentElement); currentElement.dataset.rot = 0; }
+            isDrawing = false; currentElement = null;
+            isDraggingShape = false; isDraggingHandle = false; isDraggingRot = false;
+        }
+
+        svg.addEventListener('pointerup', endAction);
+        svg.addEventListener('pointerleave', endAction);
+
+        svg.addEventListener('dblclick', (e) => {
+            if (toolPicker.value !== 'select' || !selectedElement) return;
+
+            // 雙擊端點刪除節點 (僅限 path 或是經轉換後的直線)
+            if (e.target.classList.contains('handle') && !e.target.dataset.isRot && selectedElement.tagName === 'path') {
+                const idx = parseInt(e.target.dataset.index);
+                const points = parsePath(selectedElement.getAttribute('d'));
+                if (points.length > 2) {
+                    points.splice(idx, 1);
+                    if(idx === 0 && points.length > 0) points[0].type = 'M';
+                    selectedElement.setAttribute('d', serializePath(points));
+                    updateCenter(selectedElement);
+                    activeHandleIndex = -1;
+                    buildPropsPanel(); renderHandles();
+                }
+                return;
+            }
+
+            // 雙擊路徑或直線本身：插入新節點 (直線會自動轉成 path 進行編輯)
+            if (e.target === selectedElement && (selectedElement.tagName === 'path' || selectedElement.tagName === 'line')) {
+                if (selectedElement.tagName === 'line') {
+                    const x1 = parseFloat(selectedElement.getAttribute('x1')), y1 = parseFloat(selectedElement.getAttribute('y1'));
+                    const x2 = parseFloat(selectedElement.getAttribute('x2')), y2 = parseFloat(selectedElement.getAttribute('y2'));
+                    
+                    const pathEl = createSVGElement('path');
+                    pathEl.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y2}`);
+                    pathEl.dataset.cx = selectedElement.dataset.cx;
+                    pathEl.dataset.cy = selectedElement.dataset.cy;
+                    pathEl.dataset.rot = selectedElement.dataset.rot || 0;
+                    if (selectedElement.hasAttribute('transform')) pathEl.setAttribute('transform', selectedElement.getAttribute('transform'));
+                    
+                    svg.replaceChild(pathEl, selectedElement);
+                    selectedElement = pathEl;
+                }
+
+                const localPos = getLocalMousePosition(e, handlesGroup);
+                const points = parsePath(selectedElement.getAttribute('d'));
+                let minDist = Infinity, insertIdx = -1;
+
+                for(let i = 0; i < points.length - 1; i++) {
+                    const p = localPos, v = points[i], w = points[i+1];
+                    const l2 = (v.x - w.x)**2 + (v.y - w.y)**2;
+                    let t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - v.x)*(w.x - v.x) + (p.y - v.y)*(w.y - v.y)) / l2));
+                    const dist = Math.hypot(p.x - (v.x + t*(w.x - v.x)), p.y - (v.y + t*(w.y - v.y)));
+                    if(dist < minDist) { minDist = dist; insertIdx = i + 1; }
+                }
+                if (insertIdx !== -1 && minDist < 30) {
+                    points.splice(insertIdx, 0, { type: 'L', x: localPos.x, y: localPos.y });
+                    selectedElement.setAttribute('d', serializePath(points));
+                    updateCenter(selectedElement); renderHandles(); updatePropsPanel();
+                }
+            }
+        });
+
+        function undo() {
+            let lastEl = svg.lastElementChild;
+            if (lastEl === handlesGroup) lastEl = handlesGroup.previousElementSibling;
+            if (lastEl) { if (selectedElement === lastEl) { activeHandleIndex = -1; selectElement(null); } svg.removeChild(lastEl); }
+        }
+        document.getElementById('btn-undo').addEventListener('click', undo);
+        document.addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'z') undo(); });
+        
+        document.getElementById('btn-clear').addEventListener('click', () => { 
+            if(confirm('清空畫布？')) { Array.from(svg.children).forEach(c => { if(c.id !== 'handles-group') svg.removeChild(c); }); activeHandleIndex = -1; selectElement(null); }
+        });
+
+        function getSvgString() {
+            const cloneSvg = svg.cloneNode(true);
+            cloneSvg.style = ''; cloneSvg.removeAttribute('id'); cloneSvg.classList.remove('select-mode');
+            const selected = cloneSvg.querySelector('[data-selected]');
+            if (selected) selected.removeAttribute('data-selected');
+            const hg = cloneSvg.querySelector('#handles-group');
+            if (hg) hg.remove();
+            return new XMLSerializer().serializeToString(cloneSvg);
+        }
+
+        document.getElementById('btn-copy').addEventListener('click', (e) => {
+            const svgString = getSvgString();
+            const isForDataUri = confirm('需要轉換成 JSON 用的 Data URI 格式嗎？\n[確定] Data URI\n[取消] 純 SVG 碼');
+            navigator.clipboard.writeText(isForDataUri ? 'data:image/svg+xml,' + encodeURIComponent(svgString) : svgString).then(() => {
+                const btn = e.target, original = btn.innerHTML; btn.innerHTML = "✅ 已複製！"; setTimeout(() => btn.innerHTML = original, 2000);
+            });
+        });
+
+        document.getElementById('btn-download').addEventListener('click', () => {
+            const blob = new Blob([getSvgString()], { type: "image/svg+xml;charset=utf-8" }), link = document.createElement("a");
+            link.href = URL.createObjectURL(blob); link.download = `azustock_drawing_${Date.now()}.svg`;
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        });
+    </script>
+</body>
+</html>

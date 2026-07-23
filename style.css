@@ -36,20 +36,44 @@
     --scrollbar-bg: transparent; --scrollbar-thumb: rgba(0, 0, 0, 0.15); --scrollbar-hover: rgba(64, 120, 153, 0.4); 
 }
 
-/* 🎨 群組標籤專屬色彩系統 */
+/* ================================== */
+/* 🎨 群組標籤專屬色彩系統 (校色優化版) */
+/* ================================== */
+
+/* 1. 淺色模式 (Light Mode) - 沉穩專業 */
 :root {
-    --group-c1: #e11d48; --c1-text: #4f7d5b;
-    --group-c2: #059669; --c2-text: #064e3b;
-    --group-c3: #ea580c; --c3-text: #7c2d12;
-    --group-c4: #7c3aed; --c4-text: #4c1d95;
-    --group-c5: #0284c7; --c5-text: #082f49;
+    /* 🔴 玫瑰紅 (搭配深酒紅文字) */
+    --group-c1: #E11D48; --c1-text: #881337;
+    
+    /* 🟢 翡翠綠 (搭配極深綠文字) */
+    --group-c2: #059669; --c2-text: #064E3B;
+    
+    /* 🟠 活力橘 (搭配深咖啡文字) */
+    --group-c3: #EA580C; --c3-text: #7C2D12;
+    
+    /* 🟣 皇家紫 (搭配深紫文字) */
+    --group-c4: #7C3AED; --c4-text: #4C1D95;
+    
+    /* 🔵 海洋藍 (搭配深海藍文字) */
+    --group-c5: #0284C7; --c5-text: #082F49;
 }
+
+/* 2. 深色模式 (Dark Mode) - 霓虹穿透力 */
 [data-theme="dark"] {
-    --group-c1: #fb7185; --c1-text: #fff1f2;
-    --group-c2: #4ade80; --c2-text: #dcfce7;
-    --group-c3: #fb923c; --c3-text: #ffedd5;
-    --group-c4: #c084fc; --c4-text: #f5f3ff;
-    --group-c5: #38bdf8; --c5-text: #e0f2fe;
+    /* 🔴 霓虹玫紅 (提高亮度，不會再被暗色背景吃掉) */
+    --group-c1: #FF4D79; --c1-text: #FFE4E6;
+    
+    /* 🟢 螢光薄荷 (極高彩度的綠，發光效果極佳) */
+    --group-c2: #10E781; --c2-text: #D1FAE5;
+    
+    /* 🟠 亮眼橘金 (加入黃色調，大幅提升深色背景的對比度) */
+    --group-c3: #FF9F1C; --c3-text: #FFEDD5;
+    
+    /* 🟣 賽博亮紫 (拉高明度，避免原本的紫藍色在暗處消失) */
+    --group-c4: #C77DFF; --c4-text: #F3E8FF;
+    
+    /* 🔵 冰晶天藍 (極致亮的湖水藍，充滿科技感) */
+    --group-c5: #00E5FF; --c5-text: #E0F2FE;
 }
 
 body {
@@ -161,7 +185,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================= */
 /* 漢堡與主題選單系統 */
 /* ========================= */
-.menu-btn { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; transition: all 0.3s ease, background-color 0.5s ease, border-color 0.5s ease; }
+.menu-btn { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.5s ease, border-color 0.5s ease; }
 .menu-btn .bar { width: 30px; height: 3px; background-color: var(--accent); transition: all 0.3s ease-in-out; }
 .menu-btn.open { border-color: var(--accent-2); }
 .menu-btn.open .bar { background-color: var(--accent-2); }
@@ -265,7 +289,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     transform: rotate(0deg);
 }
 
-.btt-btn { position: fixed; bottom: 2rem; right: 2rem; z-index: 990; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--accent); border-radius: 50%; width: 50px; height: 50px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.5s ease, border-color 0.5s ease; }
+.btt-btn { position: fixed; bottom: 2rem; right: 2rem; z-index: 990; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--accent); border-radius: 50%; width: 50px; height: 50px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transform: translateY(20px); transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.5s ease, border-color 0.5s ease; }
 .btt-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
 .btt-btn:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--card); box-shadow: 0 8px 20px var(--btn-hover-shadow); transform: translateY(-5px); }
 /* ✨ 魔法防禦：只在螢幕寬度小於 800px (有重疊風險時)，才將「返回頂部」按鈕往上推 */
@@ -1194,3 +1218,91 @@ body.is-touch-device #lightbox-img {
     user-select: none;
     -webkit-user-select: none;
 }
+
+/* ========================================================== */
+/* ✨ 類別沉浸式升級 (V2)：科技對角框 + 自訂 JSON 浮水印 + 卡片微光 */
+/* ========================================================== */
+
+/* 1. 基礎設定 (無漸層底線版) */
+main section {
+    position: relative;
+    /* 預設主題色，供內部卡片與標題繼承 */
+    --sec-color: var(--accent); 
+}
+
+/* 方案 D：雙軌數據流 (Dual Track) */
+main section h2 {
+    position: relative;
+    display: inline-flex !important; 
+    padding-left: 1.2rem;
+    border-left: none !important;
+    margin-left: 0;
+}
+/* 主軌道 (粗 / 靜止) */
+main section h2::before {
+    content: '';
+    position: absolute;
+    left: 0; 
+    top: 10%; 
+    bottom: 10%;
+    width: 4px;
+    background: var(--sec-color);
+    border-radius: 4px;
+}
+
+
+/* 3. JSON 驅動的動態 SVG 浮水印 */
+main section::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    width: 250px;
+    height: 250px;
+    
+    /* ✨ 加上這兩行：限制最大寬高，當專案很少時，浮水印會自動等比例縮小，絕不溢出！ */
+    max-height: calc(100% - 20px);
+    max-width: 40vw; 
+
+    opacity: 0.04;
+    z-index: 0;
+    pointer-events: none;
+    
+    background-color: var(--sec-color);
+    
+    /* ✨ 魔法在此：優先讀取 JS 傳入的 --custom-watermark，沒有的話就用預設的立體方塊 */
+    --default-watermark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5'%3E%3Cpolygon points='12 2 2 7 12 12 22 7 12 2'/%3E%3Cpolyline points='2 17 12 22 22 17'/%3E%3Cpolyline points='2 12 12 17 22 12'/%3E%3C/svg%3E");
+    
+    -webkit-mask-image: var(--custom-watermark, var(--default-watermark)); 
+    mask-image: var(--custom-watermark, var(--default-watermark));
+    
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: right top; mask-position: right top;
+    
+    transform: rotate(-10deg) scale(1);
+    transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s ease;
+}
+
+main section:hover::before {
+    transform: rotate(0deg) scale(1.1);
+    opacity: 0.08; 
+}
+
+
+/* 4. 保留群組自動分色機制 */
+main section:nth-of-type(5n+1) { --sec-color: var(--group-c1); }
+main section:nth-of-type(5n+2) { --sec-color: var(--group-c2); }
+main section:nth-of-type(5n+3) { --sec-color: var(--group-c3); }
+main section:nth-of-type(5n+4) { --sec-color: var(--group-c4); }
+main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
+
+
+/* 5. 保留完美的卡片專屬微光 */
+.card { --card-glow: var(--sec-color, var(--accent-2)); }
+.card.show:hover { 
+    transform: translateY(-5px) translateZ(0); 
+    box-shadow: 0 15px 35px color-mix(in srgb, var(--card-glow) 22%, transparent); 
+    border-color: color-mix(in srgb, var(--card-glow) 40%, transparent);
+}
+.card:hover .action-btn { color: var(--card-glow) !important; }

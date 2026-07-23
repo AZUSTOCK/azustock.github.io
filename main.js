@@ -81,6 +81,37 @@ document.documentElement.style.setProperty('--marquee-speed', `${CONFIG.MARQUEE_
 window.siteProjects = [];
 
 // ==========================================
+// ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
+// ==========================================
+window.lockScroll = function() {
+    // 1. 計算目前的捲軸寬度 (視窗內部總寬 - 文件實際可用寬度)
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    
+    // 2. 補償 Body，抵銷捲軸消失的空間
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
+    document.body.style.overflow = 'hidden';
+
+    // 3. ✨ 補償 Fixed 定位的懸浮按鈕 (防止它們往右跳動)
+    // 利用 margin-right 補償，不干擾原本的 transform 動畫
+    const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
+    fixedElements.forEach(el => {
+        el.style.marginRight = `${scrollbarWidth}px`;
+    });
+};
+
+window.unlockScroll = function() {
+    // 恢復 Body 原狀
+    document.body.style.paddingRight = '';
+    document.body.style.overflow = '';
+
+    // 恢復懸浮按鈕原狀
+    const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
+    fixedElements.forEach(el => {
+        el.style.marginRight = '';
+    });
+};
+
+// ==========================================
 // ✨ 共用路徑與路由處理器 (重構優化)
 // ==========================================
 window.getCleanBasePath = function() {
@@ -875,7 +906,9 @@ document.addEventListener('DOMContentLoaded', () => {
     menuToggle.addEventListener('click', () => {
         menuToggle.classList.toggle('open');
         fullscreenMenu.classList.toggle('active');
-        document.body.style.overflow = fullscreenMenu.classList.contains('active') ? 'hidden' : '';
+        // ✨ 替換為防跳動版本
+        if (fullscreenMenu.classList.contains('active')) window.lockScroll();
+        else window.unlockScroll();
     });
 
     // ==========================================
@@ -886,7 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('.nav-item')) {
             menuToggle.classList.remove('open');
             fullscreenMenu.classList.remove('active');
-            document.body.style.overflow = '';
+            window.unlockScroll(); // ✨ 替換為防跳動版本
         }
     });
 
@@ -1062,8 +1095,11 @@ async function loadProjects() {
             const sectionDescHtml = cat.description ? `<p style="color: var(--muted); margin-top: 0.2rem; margin-bottom: 0; line-height: 1.6; max-width: 800px; font-size: 0.95rem;">${cat.description}</p>` : '';
             const sectionImageHtml = cat.cover_image ? `<img src="${cat.cover_image}" alt="icon" loading="lazy" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="width: 72px; height: 72px; border-radius: 16px; object-fit: cover; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); flex-shrink: 0;">` : '';
 
+            // ✨ 如果 JSON 裡有設定 watermark_url，就轉成 CSS 變數注入到 section 中
+            const watermarkStyle = cat.watermark_url ? ` style="--custom-watermark: url('${cat.watermark_url}');"` : '';
+
             portfolioSections.innerHTML += `
-            <section id="${cat.id}-section">
+            <section id="${cat.id}-section"${watermarkStyle}>
                 <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.8rem;">
                 <div style="flex: 1;">
                     <h2 style="display: flex; align-items: baseline; flex-wrap: wrap; margin-bottom: 0;">${cat.title}${sectionMetaHtml}</h2>
@@ -1398,7 +1434,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         });
 
         modalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        window.lockScroll(); // ✨ 替換為防跳動版本
         
         const modalContainer = document.querySelector('.modal-content');
         modalContainer.scrollTop = (restoreScroll && window.lastIndexScrollPos !== undefined) ? window.lastIndexScrollPos : 0;
@@ -1438,7 +1474,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     switchModalContent(() => {
         document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
         modalOverlay.classList.add('active');
-        document.body.style.overflow = 'hidden';
+        window.lockScroll(); // ✨ 替換為防跳動版本
         
         // 渲染完成後
         modalBody.innerHTML = marked.parse(markdownContent);
@@ -1826,7 +1862,7 @@ window.scrollToNextCard = function(event) {
 window.openMarkdownModal = function(markdownText) {
     modalBody.innerHTML = marked.parse(markdownText);
     modalOverlay.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    window.lockScroll(); // ✨ 替換為防跳動版本
     document.querySelector('.modal-content').scrollTop = 0;
 };
 
@@ -1843,7 +1879,7 @@ window.goBackInHistory = function() {
 function closeModal() {
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
-    document.body.style.overflow = '';
+    window.unlockScroll(); // ✨ 替換為防跳動版本
     window.history.replaceState(null, '', window.location.pathname);
 }
 
@@ -2002,7 +2038,7 @@ function show404Modal(title, message) {
         </div>`;
 
     modalOverlay.classList.add('active');
-    document.body.style.overflow = 'hidden';
+    window.lockScroll(); // ✨ 替換為防跳動版本
 }
 
 // ✨ 專為 JSON/Markdown 轉 HTML 後的中文排版處理器
