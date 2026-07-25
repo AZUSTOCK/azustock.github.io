@@ -1366,7 +1366,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 let iconHtml = `<div style="position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px;">${pinnedBadgeHtml}${baseIconHtml}</div>`;
                 let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
 
-                return `<li class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}"${colorStyle}><a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" style="display: flex; align-items: center; gap: 1rem; text-decoration: none; padding: 0.5rem; border-radius: 0.8rem; transition: background-color 0.2s;">${iconHtml}<div style="display: flex; align-items: center; width: 100%; flex-wrap: wrap; row-gap: 0.4rem;"><div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem;"><span style="font-size: 1.15rem; color: var(--accent); font-weight: bold;">${art.title}${statusBadgeHtml}</span>${descHtml}</div>${dateHtml}</div></a></li>`;
+                /* ✨ 加入 ID，讓系統返回時可以精準找到這篇文章 */
+                return `<li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}"${colorStyle}><a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" style="display: flex; align-items: center; gap: 1rem; text-decoration: none; padding: 0.5rem; border-radius: 0.8rem; transition: background-color 0.2s;">${iconHtml}<div style="display: flex; align-items: center; width: 100%; flex-wrap: wrap; row-gap: 0.4rem;"><div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem;"><span style="font-size: 1.15rem; color: var(--accent); font-weight: bold;">${art.title}${statusBadgeHtml}</span>${descHtml}</div>${dateHtml}</div></a></li>`;
             };
 
             let html = '';
@@ -1434,10 +1435,32 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         });
 
         modalOverlay.classList.add('active');
-        window.lockScroll(); // ✨ 替換為防跳動版本
+        window.lockScroll(); 
         
         const modalContainer = document.querySelector('.modal-content');
-        modalContainer.scrollTop = (restoreScroll && window.lastIndexScrollPos !== undefined) ? window.lastIndexScrollPos : 0;
+        
+        /* ✨ 尋找並跳轉到最後閱讀的文章節點 */
+        if (restoreScroll && window.lastReadArticleIndex !== undefined) {
+            const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
+            if (targetItem) {
+                // 扣除 120px，避開頂部固定的透明標題列，確保文章剛好落在視線中央
+                modalContainer.scrollTop = Math.max(0, targetItem.offsetTop - 120);
+                
+                // ✨ 動畫魔法：加上模擬 Hover，停留 1.5 秒後自動消退
+                // 使用 setTimeout 確保捲軸移動完成後才開始動畫
+                setTimeout(() => {
+                    targetItem.classList.add('simulate-hover');
+                    setTimeout(() => {
+                        targetItem.classList.remove('simulate-hover');
+                    }, 1500); // 動畫停留時間 (1.5秒)
+                }, 100); 
+                
+            } else {
+                modalContainer.scrollTop = 0;
+            }
+        } else {
+            modalContainer.scrollTop = 0;
+        }
     }); 
 };
 
@@ -1450,8 +1473,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         window.historyStack.push({ projectId, articleIndex });
     }
 
-    const modalContainer = document.querySelector('.modal-content');
-    if (modalContainer) window.lastIndexScrollPos = modalContainer.scrollTop;
+    /* ✨ 紀錄最後閱讀的文章索引，供返回目錄時精準定位 (取代舊的像素紀錄法) */
+    window.lastReadArticleIndex = articleIndex;
 
     const proj = window.siteProjects.find(p => p.id === projectId);
     const article = proj.articles[articleIndex];

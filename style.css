@@ -726,6 +726,76 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .article-li[style*="--tab-color: var(--group-c4)"] a:hover span:not(.status-badge) { color: var(--c4-text) !important; }
 .article-li[style*="--tab-color: var(--group-c5)"] a:hover span:not(.status-badge) { color: var(--c5-text) !important; }
 
+/* ========================================== */
+/* ✨ 統一的磁吸平移與 Hover 動畫 (包含返回目錄自動觸發) */
+/* ========================================== */
+
+/* 1. 定義共用的基礎狀態 */
+.article-li a, 
+#modal-body li a {
+    display: block; 
+    border-left: 4px solid transparent !important;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; 
+}
+
+/* 2. 定義共用的 Hover 狀態 (加入 .simulate-hover 同步觸發) */
+.article-li a:hover, 
+#modal-body li a:hover,
+.article-li.simulate-hover a,
+#modal-body li.simulate-hover a {
+    background: var(--tag-bg) !important;
+    border-left: 4px solid var(--accent) !important;
+    transform: translateX(10px); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+/* 3. 專屬文字變亮效果 */
+#modal-body li a:hover span[style*="font-size: 1.15rem"],
+.article-li a:hover span[style*="font-size: 1.15rem"],
+#modal-body li.simulate-hover a span[style*="font-size: 1.15rem"],
+.article-li.simulate-hover a span[style*="font-size: 1.15rem"] {
+    color: var(--accent-hover) !important;
+    text-shadow: 0 0 8px var(--glow-1);
+}
+
+/* 4. is-normal 的專屬 Hover */
+.article-li.is-normal a:hover,
+.article-li.is-normal.simulate-hover a {
+    background: var(--tag-bg) !important; 
+    border-left: 4px solid var(--accent) !important; 
+    transform: translateX(8px); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+/* 5. is-highlight 的複雜特效與顏色判斷 */
+.article-li.is-highlight { padding: 0; margin-bottom: 0.8rem; border-bottom: none; background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 12%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 2%, transparent) 100%); border-left: 6px solid var(--tab-color, var(--accent)); border-radius: 4px 12px 12px 4px; transition: background 0.2s ease, transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+
+.article-li.is-highlight:hover,
+.article-li.is-highlight.simulate-hover { transform: translateX(8px); background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 18%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 5%, transparent) 100%); }
+
+.article-li.is-highlight a { padding: 0.6rem 1rem !important; border-radius: 0 0.6rem 0.6rem 0 !important; }
+
+#modal-body .article-li.is-highlight a:hover,
+#modal-body .article-li.is-highlight.simulate-hover a { background-color: color-mix(in srgb, var(--tab-color, var(--accent)) 15%, transparent) !important; border-left-color: transparent !important; transform: none !important; }
+
+#modal-body .article-li.is-highlight a:hover span:not(.status-badge),
+#modal-body .article-li.is-highlight.simulate-hover a span:not(.status-badge) { color: var(--c1-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c1)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c1)"].simulate-hover a span:not(.status-badge) { color: var(--c1-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c2)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c2)"].simulate-hover a span:not(.status-badge) { color: var(--c2-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c3)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c3)"].simulate-hover a span:not(.status-badge) { color: var(--c3-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c4)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c4)"].simulate-hover a span:not(.status-badge) { color: var(--c4-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c5)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c5)"].simulate-hover a span:not(.status-badge) { color: var(--c5-text) !important; }
+
 /* 導覽卡片與膠囊 */
 .article-nav-cards { display: flex; gap: 1.2rem; margin-top: 2rem; padding-top: 2rem; border-top: 2px dashed var(--card-border); flex-wrap: wrap; clear: both; width: 100%; }
 .nav-card { flex: 1; min-width: 240px; padding: 1.2rem 1.5rem; background: var(--box-bg); border: 1px solid var(--box-border); border-radius: 0.8rem; text-decoration: none !important; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; flex-direction: column; gap: 0.4rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
@@ -1264,7 +1334,7 @@ main section::before {
     max-height: calc(100% - 20px);
     max-width: 40vw; 
 
-    opacity: 0.04;
+    opacity: 0.08;
     z-index: 0;
     pointer-events: none;
     
@@ -1286,7 +1356,7 @@ main section::before {
 
 main section:hover::before {
     transform: rotate(0deg) scale(1.1);
-    opacity: 0.08; 
+    opacity: 0.25; 
 }
 
 

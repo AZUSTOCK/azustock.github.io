@@ -6,6 +6,7 @@
       "title": "Programming",
       "meta": "程式設計與專案",
       "description": "程式相關經歷與參與專案",
+      "watermark_url": "",
       "cover_image": null
     },
     {
@@ -14,6 +15,7 @@
       "title": "Art",
       "meta": "繪畫創作",
       "description": "",
+      "watermark_url": "",
       "cover_image": null
     },
     {
@@ -22,6 +24,7 @@
       "title": "Music",
       "meta": "音樂創作",
       "description": "",
+      "watermark_url": "",
       "cover_image": null
     },
     {
@@ -30,6 +33,7 @@
       "title": "Interpretation",
       "meta": "隨筆、散文",
       "description": "文字創作",
+      "watermark_url": "",
       "cover_image": null
     }
   ],
