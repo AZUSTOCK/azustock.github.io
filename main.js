@@ -1332,7 +1332,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
 
         modalBody.innerHTML = `
-            <div class="article-header-wrapper" style="margin-top: 0; padding-right: 1.5rem;">
+            <!-- ✨ 修正：套用毛玻璃固定樣式 -->
+            <div class="article-header-wrapper sticky-index-header">
                 <div class="header-left" style="min-width: 0; flex: 1 1 auto;"><h1 style="margin:0; padding:0; border:none; word-break: break-word;">${proj.title} - 目錄</h1></div>
                 <div class="header-right">
                     <span style="font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: var(--tag-bg); padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap;">共 ${proj.articles.length} 篇</span>

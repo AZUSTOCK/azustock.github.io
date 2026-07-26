@@ -1437,3 +1437,46 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .new-jump-toast svg {
     display: block;
 }
+
+/* ========================================== */
+/* ✨ 目錄頁頂部標題列：全寬毛玻璃 (文字上移 + 避開 X 按鈕版) */
+/* ========================================== */
+.sticky-index-header {
+    /* 確保它永遠固定在畫面上方，隨捲軸滾動時「絕對不移動」 */
+    position: sticky;
+    top: 0; 
+    z-index: 105; 
+    
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    
+    /* 背景向外拉伸，填滿左右邊界 */
+    margin-top: -2.5rem; 
+    margin-left: -3rem;
+    margin-right: -3rem;
+    
+    /* ✨ 關鍵修改：
+       上(1.5rem): 文字上移，排版緊湊
+       右(6.5rem): 原本 3rem + 額外 3.5rem，完美閃避右上角 X 按鈕！
+       下(1rem)  : 留出與清單的呼吸空間
+       左(3rem)  : 貼齊原本的左側文字
+    */
+    padding: 1.5rem 6.5rem 1rem 3rem;
+    
+    border-bottom: 1px solid var(--card-border);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+}
+
+/* 📱 手機版微調 */
+@media (max-width: 600px) {
+    .sticky-index-header {
+        margin-top: -2rem;
+        margin-left: -1.5rem;
+        margin-right: -1.5rem;
+        
+        /* ✨ 手機版同步加大右側 padding，避開手機版的 X 按鈕 */
+        /* 右(4.5rem): 原本 1.5rem + 額外 3rem */
+        padding: 1.2rem 4.5rem 0.8rem 1.5rem;
+    }
+}
