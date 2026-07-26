@@ -3,5 +3,5 @@
   "title": "Art",
   "meta": "繪畫創作",
   "description": "",
-  "watermark_url": "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 18V5l12-2v13%22%3E%3C/path%3E%3Ccircle cx=%226%22 cy=%2218%22 r=%223%22%3E%3C/circle%3E%3Ccircle cx=%2218%22 cy=%2216%22 r=%223%22%3E%3C/circle%3E%3C/svg%3E"
+  "watermark_url": "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2213.5%22 cy=%226.5%22 r=%22.5%22 fill=%22%23000000%22%3E%3C/circle%3E%3Ccircle cx=%2217.5%22 cy=%2210.5%22 r=%22.5%22 fill=%22%23000000%22%3E%3C/circle%3E%3Ccircle cx=%228.5%22 cy=%227.5%22 r=%22.5%22 fill=%22%23000000%22%3E%3C/circle%3E%3Ccircle cx=%226.5%22 cy=%2212.5%22 r=%22.5%22 fill=%22%23000000%22%3E%3C/circle%3E%3Cpath d=%22M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.504 5.555-5.55C21.996 6.45 17.5 2 12 2z%22%3E%3C/path%3E%3C/svg%3E"
 }

@@ -1311,12 +1311,13 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
     window.historyStack = []; 
 
     switchModalContent(() => {
-        /* ✨ 修正：將 modalContainer 提早宣告，讓底下的膠囊與清單都能讀取到它！ */
         const modalContainer = document.querySelector('.modal-content');
         
-        document.getElementById('modal-top-left').innerHTML = `<button class="modal-back-btn" style="opacity: 0; pointer-events: none; visibility: hidden;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> <span>返回索引</span></button>`;
-        document.getElementById('toc-mount-point').innerHTML = `<div class="toc-wrapper" style="opacity: 0; pointer-events: none; visibility: hidden;"><div class="toc-toggle-btn"><span class="bar"></span><span class="bar"></span><span class="bar"></span></div></div>`;
-        document.querySelector('.modal-top-bar').classList.add('is-index-mode');
+        // ✨ 1. 將目錄模式解除，讓頂部列恢復文章模式的毛玻璃與固定效果
+        document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
+        
+        // 清空 TOC，目錄頁不需要目錄導覽
+        document.getElementById('toc-mount-point').innerHTML = ``;
 
         const proj = window.siteProjects.find(p => p.id === projectId);
         if (!proj || !proj.articles) return;
@@ -1329,32 +1330,41 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         window.history.replaceState({ path: spaUrl }, '', spaUrl);
         const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
 
-        let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
-
-        modalBody.innerHTML = `
-            <div class="article-header-wrapper sticky-index-header">
-                <div class="header-left" style="min-width: 0; flex: 1 1 auto;"><h1 style="margin:0; padding:0; border:none; word-break: break-word;">${proj.title} - 目錄</h1></div>
-                <div class="header-right">
+        // ✨ 2. 把標題、共幾篇、排序、分享，全部用 flex-wrap 塞進 modal-top-left
+        // 這樣長度超過時會自動往下換行，不會擠壓到右邊的 X 按鈕
+        document.getElementById('modal-top-left').innerHTML = `
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; padding-right: 1rem;">
+                <h1 style="margin: 0; padding: 0; border: none; line-height: 1.3; font-size: clamp(1.2rem, 4vw, 1.5rem); color: var(--accent); word-break: break-word;">${proj.title} - 目錄</h1>
+                <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
                     <span style="font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: var(--tag-bg); padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap;">共 ${proj.articles.length} 篇</span>
-                    <button id="toggle-sort-btn" class="share-link-btn" style="width: auto; padding: 0 0.8rem;">
+                    <button id="toggle-sort-btn" class="share-link-btn" style="width: auto; padding: 0 0.8rem; margin: 0;">
                         <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
                         <span id="sort-btn-text" style="margin-left: 4px;"></span>
                     </button>
-                    <button class="share-link-btn" id="index-share-btn">${GLOBAL_SVGS.link} <span style="margin-left: 4px;">複製連結</span></button> 
+                    <button class="share-link-btn" id="index-share-btn" style="margin: 0;">
+                        ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">複製連結</span>
+                    </button> 
                 </div>
             </div>
-            <div id="article-list-container" style="transition: opacity 0.2s ease;"></div>
         `;
 
-        const shareBtn = modalBody.querySelector('#index-share-btn');
+        let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
+
+        // ✨ 3. modalBody 中現在只需要保留文章清單容器，去除原本的標題區塊
+        modalBody.innerHTML = `
+            <div id="article-list-container" style="transition: opacity 0.2s ease; margin-top: 0.5rem;"></div>
+        `;
+
+        // ✨ 4. 因為按鈕被移出 modalBody，抓取元素的方法改為全局的 getElementById
+        const shareBtn = document.getElementById('index-share-btn');
         if (shareBtn) {
-            shareBtn.removeAttribute('id');
             shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
         }
 
         const listContainer = modalBody.querySelector('#article-list-container');
-        const sortBtn = modalBody.querySelector('#toggle-sort-btn');
+        const sortBtn = document.getElementById('toggle-sort-btn');
 
+        // --- 以下的 renderList() 等原本的邏輯完全保持不變 ---
         const renderList = () => {
             const finalArray = window.getArticleSequence(projectId);
             const themePalette = ['var(--group-c1)', 'var(--group-c2)', 'var(--group-c3)', 'var(--group-c4)', 'var(--group-c5)'];

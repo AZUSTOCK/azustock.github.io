@@ -2,5 +2,6 @@
   "order": 3,
   "title": "Music",
   "meta": "音樂創作",
-  "description": ""
+  "description": "",
+  "watermark_url": "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 18V5l12-2v13%22%3E%3C/path%3E%3Ccircle cx=%226%22 cy=%2218%22 r=%223%22%3E%3C/circle%3E%3Ccircle cx=%2218%22 cy=%2216%22 r=%223%22%3E%3C/circle%3E%3C/svg%3E"
 }
