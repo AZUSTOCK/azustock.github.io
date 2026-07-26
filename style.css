@@ -36,20 +36,44 @@
     --scrollbar-bg: transparent; --scrollbar-thumb: rgba(0, 0, 0, 0.15); --scrollbar-hover: rgba(64, 120, 153, 0.4); 
 }
 
-/* 🎨 群組標籤專屬色彩系統 */
+/* ================================== */
+/* 🎨 群組標籤專屬色彩系統 (校色優化版) */
+/* ================================== */
+
+/* 1. 淺色模式 (Light Mode) - 沉穩專業 */
 :root {
-    --group-c1: #e11d48; --c1-text: #4f7d5b;
-    --group-c2: #059669; --c2-text: #064e3b;
-    --group-c3: #ea580c; --c3-text: #7c2d12;
-    --group-c4: #7c3aed; --c4-text: #4c1d95;
-    --group-c5: #0284c7; --c5-text: #082f49;
+    /* 🔴 玫瑰紅 (搭配深酒紅文字) */
+    --group-c1: #E11D48; --c1-text: #881337;
+    
+    /* 🟢 翡翠綠 (搭配極深綠文字) */
+    --group-c2: #059669; --c2-text: #064E3B;
+    
+    /* 🟠 活力橘 (搭配深咖啡文字) */
+    --group-c3: #EA580C; --c3-text: #7C2D12;
+    
+    /* 🟣 皇家紫 (搭配深紫文字) */
+    --group-c4: #7C3AED; --c4-text: #4C1D95;
+    
+    /* 🔵 海洋藍 (搭配深海藍文字) */
+    --group-c5: #0284C7; --c5-text: #082F49;
 }
+
+/* 2. 深色模式 (Dark Mode) - 霓虹穿透力 */
 [data-theme="dark"] {
-    --group-c1: #fb7185; --c1-text: #fff1f2;
-    --group-c2: #4ade80; --c2-text: #dcfce7;
-    --group-c3: #fb923c; --c3-text: #ffedd5;
-    --group-c4: #c084fc; --c4-text: #f5f3ff;
-    --group-c5: #38bdf8; --c5-text: #e0f2fe;
+    /* 🔴 霓虹玫紅 (提高亮度，不會再被暗色背景吃掉) */
+    --group-c1: #FF4D79; --c1-text: #FFE4E6;
+    
+    /* 🟢 螢光薄荷 (極高彩度的綠，發光效果極佳) */
+    --group-c2: #10E781; --c2-text: #D1FAE5;
+    
+    /* 🟠 亮眼橘金 (加入黃色調，大幅提升深色背景的對比度) */
+    --group-c3: #FF9F1C; --c3-text: #FFEDD5;
+    
+    /* 🟣 賽博亮紫 (拉高明度，避免原本的紫藍色在暗處消失) */
+    --group-c4: #C77DFF; --c4-text: #F3E8FF;
+    
+    /* 🔵 冰晶天藍 (極致亮的湖水藍，充滿科技感) */
+    --group-c5: #00E5FF; --c5-text: #E0F2FE;
 }
 
 body {
@@ -81,7 +105,14 @@ section h2 { font-size: 1.6rem; margin-bottom: 1.2rem; border-left: 4px solid va
     background: var(--card); border-radius: 1.1rem; padding: 1.4rem 1.6rem;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06); border: 1px solid rgba(64, 120, 153, 0.1); position: relative; 
     opacity: 0; transform: translateY(40px) translateZ(0);
-    transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
+    
+    /* ✨ 完美同步：讓位移、陰影、邊框光暈共享同一個高質感貝茲曲線 */
+    transition: 
+        opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+        transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+        box-shadow 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+        border-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+        
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; transform-style: preserve-3d; 
 }
 .card.show { opacity: 1; transform: translateY(0) translateZ(0); }
@@ -161,7 +192,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================= */
 /* 漢堡與主題選單系統 */
 /* ========================= */
-.menu-btn { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; transition: all 0.3s ease, background-color 0.5s ease, border-color 0.5s ease; }
+.menu-btn { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.5s ease, border-color 0.5s ease; }
 .menu-btn .bar { width: 30px; height: 3px; background-color: var(--accent); transition: all 0.3s ease-in-out; }
 .menu-btn.open { border-color: var(--accent-2); }
 .menu-btn.open .bar { background-color: var(--accent-2); }
@@ -265,7 +296,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     transform: rotate(0deg);
 }
 
-.btt-btn { position: fixed; bottom: 2rem; right: 2rem; z-index: 990; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--accent); border-radius: 50%; width: 50px; height: 50px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transform: translateY(20px); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.5s ease, border-color 0.5s ease; }
+.btt-btn { position: fixed; bottom: 2rem; right: 2rem; z-index: 990; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--accent); border-radius: 50%; width: 50px; height: 50px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transform: translateY(20px); transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.5s ease, border-color 0.5s ease; }
 .btt-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
 .btt-btn:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--card); box-shadow: 0 8px 20px var(--btn-hover-shadow); transform: translateY(-5px); }
 /* ✨ 魔法防禦：只在螢幕寬度小於 800px (有重疊風險時)，才將「返回頂部」按鈕往上推 */
@@ -312,18 +343,24 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* Modal 內部元件排版 */
 /* ========================= */
 .modal-top-bar { position: sticky; top: 0; margin: 0 -3rem 1.5rem -3rem; padding: 1.5rem 1.5rem 1.2rem 3rem; box-shadow: 0 -2px 0 0 var(--glass-bg); border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; background: var(--glass-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); z-index: 1060; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s ease, border-color 0.3s ease; }
-.modal-top-bar.is-index-mode { 
-    background: transparent; 
-    backdrop-filter: none; 
-    border-bottom-color: transparent; 
-    pointer-events: none; 
-    margin: 0 -3rem -2rem -3rem; 
-    height: auto; 
-    box-shadow: none; 
-    /* 已移除重複的 position, top, padding */
+#modal-top-left { 
+    display: flex; 
+    align-items: center; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    gap: 0.5rem; 
 }
-#modal-top-left, #modal-top-right { display: flex; align-items: center; margin: 0 !important; padding: 0 !important; }
-#modal-top-left { gap: 0.5rem; } #modal-top-right { gap: 1rem; }
+
+#modal-top-right { 
+    display: flex; 
+    align-items: center; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    gap: 1rem; 
+    
+    /* ✨ 關鍵修改：強制靠上對齊，當左邊換行撐高容器時，X 按鈕會乖乖留在頂部 */
+    align-self: flex-start; 
+}
 .modal-close-btn, .toc-toggle-btn { box-sizing: border-box !important; flex-shrink: 0 !important; }
 
 .modal-back-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; box-sizing: border-box; height: 36px; padding: 0 1rem; margin: 0; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
@@ -675,9 +712,11 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
-/* 3. 專屬文字變亮效果 (維持原樣) */
-#modal-body li a:hover span[style*="font-size: 1.15rem"],
-.article-li a:hover span[style*="font-size: 1.15rem"] {
+/* 3. 專屬文字變亮效果 (改由 Class 觸發) */
+#modal-body li a:hover .article-item-title,
+.article-li a:hover .article-item-title,
+#modal-body li.simulate-hover a .article-item-title,
+.article-li.simulate-hover a .article-item-title {
     color: var(--accent-hover) !important;
     text-shadow: 0 0 8px var(--glow-1);
 }
@@ -701,6 +740,76 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .article-li[style*="--tab-color: var(--group-c3)"] a:hover span:not(.status-badge) { color: var(--c3-text) !important; }
 .article-li[style*="--tab-color: var(--group-c4)"] a:hover span:not(.status-badge) { color: var(--c4-text) !important; }
 .article-li[style*="--tab-color: var(--group-c5)"] a:hover span:not(.status-badge) { color: var(--c5-text) !important; }
+
+/* ========================================== */
+/* ✨ 統一的磁吸平移與 Hover 動畫 (包含返回目錄自動觸發) */
+/* ========================================== */
+
+/* 1. 定義共用的基礎狀態 */
+.article-li a, 
+#modal-body li a {
+    display: block; 
+    border-left: 4px solid transparent !important;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; 
+}
+
+/* 2. 定義共用的 Hover 狀態 (加入 .simulate-hover 同步觸發) */
+.article-li a:hover, 
+#modal-body li a:hover,
+.article-li.simulate-hover a,
+#modal-body li.simulate-hover a {
+    background: var(--tag-bg) !important;
+    border-left: 4px solid var(--accent) !important;
+    transform: translateX(10px); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+/* 3. 專屬文字變亮效果 */
+#modal-body li a:hover span[style*="font-size: 1.15rem"],
+.article-li a:hover span[style*="font-size: 1.15rem"],
+#modal-body li.simulate-hover a span[style*="font-size: 1.15rem"],
+.article-li.simulate-hover a span[style*="font-size: 1.15rem"] {
+    color: var(--accent-hover) !important;
+    text-shadow: 0 0 8px var(--glow-1);
+}
+
+/* 4. is-normal 的專屬 Hover */
+.article-li.is-normal a:hover,
+.article-li.is-normal.simulate-hover a {
+    background: var(--tag-bg) !important; 
+    border-left: 4px solid var(--accent) !important; 
+    transform: translateX(8px); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+/* 5. is-highlight 的複雜特效與顏色判斷 */
+.article-li.is-highlight { padding: 0; margin-bottom: 0.8rem; border-bottom: none; background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 12%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 2%, transparent) 100%); border-left: 6px solid var(--tab-color, var(--accent)); border-radius: 4px 12px 12px 4px; transition: background 0.2s ease, transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+
+.article-li.is-highlight:hover,
+.article-li.is-highlight.simulate-hover { transform: translateX(8px); background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 18%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 5%, transparent) 100%); }
+
+.article-li.is-highlight a { padding: 0.6rem 1rem !important; border-radius: 0 0.6rem 0.6rem 0 !important; }
+
+#modal-body .article-li.is-highlight a:hover,
+#modal-body .article-li.is-highlight.simulate-hover a { background-color: color-mix(in srgb, var(--tab-color, var(--accent)) 15%, transparent) !important; border-left-color: transparent !important; transform: none !important; }
+
+#modal-body .article-li.is-highlight a:hover span:not(.status-badge),
+#modal-body .article-li.is-highlight.simulate-hover a span:not(.status-badge) { color: var(--c1-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c1)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c1)"].simulate-hover a span:not(.status-badge) { color: var(--c1-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c2)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c2)"].simulate-hover a span:not(.status-badge) { color: var(--c2-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c3)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c3)"].simulate-hover a span:not(.status-badge) { color: var(--c3-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c4)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c4)"].simulate-hover a span:not(.status-badge) { color: var(--c4-text) !important; }
+
+.article-li[style*="--tab-color: var(--group-c5)"] a:hover span:not(.status-badge),
+.article-li[style*="--tab-color: var(--group-c5)"].simulate-hover a span:not(.status-badge) { color: var(--c5-text) !important; }
 
 /* 導覽卡片與膠囊 */
 .article-nav-cards { display: flex; gap: 1.2rem; margin-top: 2rem; padding-top: 2rem; border-top: 2px dashed var(--card-border); flex-wrap: wrap; clear: both; width: 100%; }
@@ -752,12 +861,6 @@ img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg
     .modal-back-btn { height: 32px !important; padding: 0 0.8rem !important; margin: 0 !important; }
     .modal-content { width: 100%; max-height: 100vh; max-height: 100dvh; padding: 0 1.5rem 2rem 1.5rem; }
     .modal-top-bar { top: 0; margin: 0 -1.5rem 1.5rem -1.5rem; padding: 1.5rem 1.5rem 1.2rem 1.5rem; border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; box-shadow: 0 -2px 0 0 var(--glass-bg); }
-    .modal-top-bar.is-index-mode { 
-        margin: 0 -1.5rem -2rem -1.5rem; 
-        height: auto; 
-        box-shadow: none; 
-        /* 已移除重複的 padding */
-    }
     .toc-toggle-btn .bar { width: 14px; }
     .toc-dropdown { right: -0.2rem; width: min(260px, calc(100dvw - 4.5rem)); }
 
@@ -1162,13 +1265,21 @@ figure.no-caption:hover .zoom-btn.floating {
         transform: translateY(0) scale(1) translateZ(0);
         pointer-events: auto;
     }
+
+    #article-list-container { transition: opacity 0.2s ease; padding-bottom: 20px; }
 }
 
-/* 針對觸控裝置的優化 */
-body.is-touch-device .card:hover {
-    /* 觸控裝置通常沒有真正的 hover，這能避免 hover 後按鈕卡住不消失 */
-    transform: none; 
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+/* 針對觸控裝置的優化 (改用純 CSS 原生判定，避免誤判筆電) */
+@media (hover: none) {
+    .card:hover {
+        transform: none !important; 
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+    }
+    
+    /* 確保手機點擊後也不會殘留發光外框 */
+    .card.show:hover {
+        border-color: rgba(64, 120, 153, 0.1) !important;
+    }
 }
 
 /* 觸控裝置上的 Lightbox 圖片，因為沒有滑鼠，調整 cursor 樣式 */
@@ -1193,4 +1304,251 @@ body.is-touch-device #lightbox-img {
     touch-action: none; /* 已經全權交由 JS 控制 */
     user-select: none;
     -webkit-user-select: none;
+}
+
+/* ========================================================== */
+/* ✨ 類別沉浸式升級 (V2)：科技對角框 + 自訂 JSON 浮水印 + 卡片微光 */
+/* ========================================================== */
+
+/* 1. 基礎設定 (無漸層底線版) */
+main section {
+    position: relative;
+    /* 預設主題色，供內部卡片與標題繼承 */
+    --sec-color: var(--accent); 
+}
+
+/* 方案 D：雙軌數據流 (Dual Track) */
+main section h2 {
+    position: relative;
+    display: inline-flex !important; 
+    padding-left: 1.2rem;
+    border-left: none !important;
+    margin-left: 0;
+}
+/* 主軌道 (粗 / 靜止) */
+main section h2::before {
+    content: '';
+    position: absolute;
+    left: 0; 
+    top: 10%; 
+    bottom: 10%;
+    width: 4px;
+    background: var(--sec-color);
+    border-radius: 4px;
+}
+
+
+/* 3. JSON 驅動的動態 SVG 浮水印 */
+main section::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    width: 250px;
+    height: 250px;
+    
+    /* ✨ 加上這兩行：限制最大寬高，當專案很少時，浮水印會自動等比例縮小，絕不溢出！ */
+    max-height: calc(100% - 20px);
+    max-width: 40vw; 
+
+    opacity: 0.08;
+    z-index: 0;
+    pointer-events: none;
+    
+    background-color: var(--sec-color);
+    
+    /* ✨ 魔法在此：優先讀取 JS 傳入的 --custom-watermark，沒有的話就用預設的立體方塊 */
+    --default-watermark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5'%3E%3Cpolygon points='12 2 2 7 12 12 22 7 12 2'/%3E%3Cpolyline points='2 17 12 22 22 17'/%3E%3Cpolyline points='2 12 12 17 22 12'/%3E%3C/svg%3E");
+    
+    -webkit-mask-image: var(--custom-watermark, var(--default-watermark)); 
+    mask-image: var(--custom-watermark, var(--default-watermark));
+    
+    -webkit-mask-size: contain; mask-size: contain;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+    -webkit-mask-position: right top; mask-position: right top;
+    
+    transform: rotate(-10deg) scale(1);
+    transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s ease;
+}
+
+main section:hover::before {
+    transform: rotate(0deg) scale(1.1);
+    opacity: 0.25; 
+}
+
+
+/* 4. 保留群組自動分色機制 */
+main section:nth-of-type(5n+1) { --sec-color: var(--group-c1); }
+main section:nth-of-type(5n+2) { --sec-color: var(--group-c2); }
+main section:nth-of-type(5n+3) { --sec-color: var(--group-c3); }
+main section:nth-of-type(5n+4) { --sec-color: var(--group-c4); }
+main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
+
+
+/* 5. 保留完美的卡片專屬微光 */
+.card { --card-glow: var(--sec-color, var(--accent-2)); }
+.card.show:hover { 
+    transform: translateY(-5px) translateZ(0); 
+    box-shadow: 0 15px 35px color-mix(in srgb, var(--card-glow) 22%, transparent); 
+    border-color: color-mix(in srgb, var(--card-glow) 40%, transparent);
+}
+.card:hover .action-btn { color: var(--card-glow) !important; }
+
+/* ========================================== */
+/* ✨ 目錄浮動跳轉膠囊 (NEW 標籤位置提示) */
+/* ========================================== */
+.new-jump-toast {
+    position: absolute;
+    bottom: max(30px, calc(env(safe-area-inset-bottom) + 20px));
+    left: 50%;
+    transform: translateX(-50%) translateY(40px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1070; /* 確保在 Modal 之上 */
+    background: var(--nav-bg); 
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--error-color);
+    color: var(--error-color); 
+    padding: 0.5rem 1.2rem;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    box-shadow: 0 10px 25px var(--error-shadow);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 觸發顯示時的狀態 */
+.new-jump-toast.is-visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 懸停時按鈕會被填滿紅色 */
+.new-jump-toast:hover {
+    background: var(--error-color);
+    color: #fff;
+    transform: translateX(-50%) translateY(-4px);
+    box-shadow: 0 12px 30px var(--error-shadow);
+}
+
+/* 向下的箭頭彈跳動畫 */
+@keyframes jump-arrow-bounce-down {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(4px); }
+}
+
+/* 向上的箭頭彈跳動畫 */
+@keyframes jump-arrow-bounce-up {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+/* 確保 SVG 沒有原本的舊動畫衝突 */
+.new-jump-toast svg {
+    display: block;
+}
+
+.watermark-profile {
+  --custom-watermark: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2%22%3E%3C/path%3E%3Ccircle cx=%2212%22 cy=%227%22 r=%224%22%3E%3C/circle%3E%3C/svg%3E');
+}
+
+/* ========================================== */
+/* ✨ 目錄頁與文章列表模組 (從 JS 抽離) */
+/* ========================================== */
+
+/* 1. 目錄頂部標題與按鈕區塊 */
+.index-header-container { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 1rem; }
+.index-header-title { 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    border: none !important; 
+    color: var(--accent) !important; 
+    word-break: break-word; 
+    font-weight: bold !important;
+    display: inline-block;
+    
+    /* 確保手機版依然大氣，桌機版也不會過度膨脹 */
+    font-size: clamp(1.85rem, 6vw, 2.1rem) !important; 
+    
+    line-height: 1.1 !important; 
+}
+.index-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.article-count-badge { font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent) !important; background: var(--tag-bg) !important; padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap; }
+button.share-link-btn.sm { width: auto !important; padding: 0 0.8rem !important; margin: 0 !important; height: 30px !important; }
+
+/* 2. 文章列表 (Article List) */
+.article-list-ul { list-style: none !important; padding-left: 0 !important; }
+/* ✨ 關鍵修復：強制使用 flex，覆蓋掉原有的 display: block */
+.article-li a.article-link { display: flex !important; align-items: center; gap: 1rem; text-decoration: none !important; padding: 0.5rem; border-radius: 0.8rem; }
+
+.article-item-icon-wrap { position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+img.article-item-cover { position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important; }
+.article-item-fallback { position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box; }
+.article-item-content { display: flex; align-items: center; width: 100%; flex-wrap: wrap; row-gap: 0.4rem; }
+.article-item-title-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
+span.article-item-title { font-size: 1.15rem; color: var(--accent); font-weight: bold; }
+span.article-item-desc { font-size: 0.95rem; color: var(--muted); line-height: 1.4; }
+span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0; }
+
+/* 3. 群組標題 (Group Header) */
+.group-header-title { font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; }
+.group-header-desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
+
+
+/* ========================================== */
+/* ✨ 主頁錨點跳轉 UX 優化系統 (外推強化版) */
+/* ========================================== */
+
+/* 1. 啟動全站原生的平滑捲動 (Smooth Scrolling) */
+html {
+    scroll-behavior: smooth;
+}
+
+/* 2. 智慧對齊 (Scroll Margin) */
+main section {
+    scroll-margin-top: 100px; 
+    position: relative; /* 確保 ::after 能夠依附這個區塊 */
+}
+
+/* 3. 創建一層專屬的「外推光暈層」 */
+main section::after {
+    content: '';
+    position: absolute;
+    
+    /* ✨ 核心魔法：往外推的距離。上下左右各推開 24px */
+    top: -24px;
+    bottom: -24px;
+    left: -24px;
+    right: -24px;
+    
+    border-radius: 20px;
+    pointer-events: none; /* 絕對不阻擋滑鼠點擊 */
+    z-index: 0;           /* 墊在內容背後與浮水印同層 */
+    opacity: 0;
+}
+
+/* 4. 外推放大呼吸燈動畫 */
+@keyframes target-section-glow-expand {
+    0%, 100% { 
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    30% { 
+        opacity: 1;
+        transform: scale(1);
+        /* 底色微亮 */
+        background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); 
+        /* ✨ 陰影大幅往外暈染 (第四個參數 Spread 設定為 15px 將陰影往外擠) */
+        box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent);
+    }
+}
+
+/* 當網址 Hash 對應到該區塊時，觸發動畫 */
+main section:target::after {
+    animation: target-section-glow-expand 3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }

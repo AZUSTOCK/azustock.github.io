@@ -146,6 +146,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             "title": cat_data.get('title', clean_title),
             "meta": cat_data.get('meta', ''),            
             "description": cat_data.get('description', ''), 
+            "watermark_url": cat_data.get('watermark_url', ''), 
             "cover_image": f"{base_dir}/{cat_folder}/{cat_cover}" if cat_cover else None
         })
 
