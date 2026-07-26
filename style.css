@@ -337,14 +337,19 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================= */
 .modal-top-bar { position: sticky; top: 0; margin: 0 -3rem 1.5rem -3rem; padding: 1.5rem 1.5rem 1.2rem 3rem; box-shadow: 0 -2px 0 0 var(--glass-bg); border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; background: var(--glass-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); z-index: 1060; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s ease, border-color 0.3s ease; }
 .modal-top-bar.is-index-mode { 
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: 0 !important; /* ✨ 捨棄所有的負邊距 */
+    
     background: transparent; 
     backdrop-filter: none; 
     border-bottom-color: transparent; 
     pointer-events: none; 
-    margin: 0 -3rem -2rem -3rem; 
     height: auto; 
     box-shadow: none; 
-    /* 已移除重複的 position, top, padding */
+    z-index: 1060; /* 確保 X 按鈕依舊在最上層可點擊 */
 }
 #modal-top-left, #modal-top-right { display: flex; align-items: center; margin: 0 !important; padding: 0 !important; }
 #modal-top-left { gap: 0.5rem; } #modal-top-right { gap: 1rem; }
@@ -1439,10 +1444,17 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 }
 
 /* ========================================== */
-/* ✨ 目錄頁頂部標題列：全寬毛玻璃 (文字上移 + 避開 X 按鈕版) */
+/* ✨ 破解 CSS 渲染引擎陷阱 ＆ 從父層解決排版 */
+/* ========================================== */
+#modal-body:has(.sticky-index-header) {
+    will-change: auto !important; /* 破解 Sticky 鐵籠 */
+    margin-top: 0 !important;     /* ✨ 確保沒有任何負邊距干擾 */
+}
+
+/* ========================================== */
+/* ✨ 目錄頁頂部標題列：全寬毛玻璃 (純淨 Sticky 版) */
 /* ========================================== */
 .sticky-index-header {
-    /* 確保它永遠固定在畫面上方，隨捲軸滾動時「絕對不移動」 */
     position: sticky;
     top: 0; 
     z-index: 105; 
@@ -1451,17 +1463,12 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     
-    /* 背景向外拉伸，填滿左右邊界 */
-    margin-top: -2.5rem; 
+    /* 左右拉伸填滿 Modal */
+    margin-top: 0; 
     margin-left: -3rem;
     margin-right: -3rem;
     
-    /* ✨ 關鍵修改：
-       上(1.5rem): 文字上移，排版緊湊
-       右(6.5rem): 原本 3rem + 額外 3.5rem，完美閃避右上角 X 按鈕！
-       下(1rem)  : 留出與清單的呼吸空間
-       左(3rem)  : 貼齊原本的左側文字
-    */
+    /* 靠右側留出 6.5rem 給絕對定位的 X 按鈕 */
     padding: 1.5rem 6.5rem 1rem 3rem;
     
     border-bottom: 1px solid var(--card-border);
@@ -1471,12 +1478,8 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 /* 📱 手機版微調 */
 @media (max-width: 600px) {
     .sticky-index-header {
-        margin-top: -2rem;
         margin-left: -1.5rem;
         margin-right: -1.5rem;
-        
-        /* ✨ 手機版同步加大右側 padding，避開手機版的 X 按鈕 */
-        /* 右(4.5rem): 原本 1.5rem + 額外 3rem */
         padding: 1.2rem 4.5rem 0.8rem 1.5rem;
     }
 }

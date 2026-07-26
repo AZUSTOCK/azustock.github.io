@@ -1332,7 +1332,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
 
         modalBody.innerHTML = `
-            <!-- ✨ 修正：套用毛玻璃固定樣式 -->
             <div class="article-header-wrapper sticky-index-header">
                 <div class="header-left" style="min-width: 0; flex: 1 1 auto;"><h1 style="margin:0; padding:0; border:none; word-break: break-word;">${proj.title} - 目錄</h1></div>
                 <div class="header-right">
