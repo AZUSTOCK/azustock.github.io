@@ -105,7 +105,14 @@ section h2 { font-size: 1.6rem; margin-bottom: 1.2rem; border-left: 4px solid va
     background: var(--card); border-radius: 1.1rem; padding: 1.4rem 1.6rem;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06); border: 1px solid rgba(64, 120, 153, 0.1); position: relative; 
     opacity: 0; transform: translateY(40px) translateZ(0);
-    transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s ease;
+    
+    /* ✨ 完美同步：讓位移、陰影、邊框光暈共享同一個高質感貝茲曲線 */
+    transition: 
+        opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+        transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+        box-shadow 0.6s cubic-bezier(0.25, 0.8, 0.25, 1),
+        border-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+        
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; transform-style: preserve-3d; 
 }
 .card.show { opacity: 1; transform: translateY(0) translateZ(0); }
@@ -1262,11 +1269,17 @@ figure.no-caption:hover .zoom-btn.floating {
     #article-list-container { transition: opacity 0.2s ease; padding-bottom: 20px; }
 }
 
-/* 針對觸控裝置的優化 */
-body.is-touch-device .card:hover {
-    /* 觸控裝置通常沒有真正的 hover，這能避免 hover 後按鈕卡住不消失 */
-    transform: none; 
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+/* 針對觸控裝置的優化 (改用純 CSS 原生判定，避免誤判筆電) */
+@media (hover: none) {
+    .card:hover {
+        transform: none !important; 
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
+    }
+    
+    /* 確保手機點擊後也不會殘留發光外框 */
+    .card.show:hover {
+        border-color: rgba(64, 120, 153, 0.1) !important;
+    }
 }
 
 /* 觸控裝置上的 Lightbox 圖片，因為沒有滑鼠，調整 cursor 樣式 */
@@ -1487,3 +1500,57 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 /* 3. 群組標題 (Group Header) */
 .group-header-title { font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; }
 .group-header-desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
+
+
+/* ========================================== */
+/* ✨ 主頁錨點跳轉 UX 優化系統 (外推強化版) */
+/* ========================================== */
+
+/* 1. 啟動全站原生的平滑捲動 (Smooth Scrolling) */
+html {
+    scroll-behavior: smooth;
+}
+
+/* 2. 智慧對齊 (Scroll Margin) */
+main section {
+    scroll-margin-top: 100px; 
+    position: relative; /* 確保 ::after 能夠依附這個區塊 */
+}
+
+/* 3. 創建一層專屬的「外推光暈層」 */
+main section::after {
+    content: '';
+    position: absolute;
+    
+    /* ✨ 核心魔法：往外推的距離。上下左右各推開 24px */
+    top: -24px;
+    bottom: -24px;
+    left: -24px;
+    right: -24px;
+    
+    border-radius: 20px;
+    pointer-events: none; /* 絕對不阻擋滑鼠點擊 */
+    z-index: 0;           /* 墊在內容背後與浮水印同層 */
+    opacity: 0;
+}
+
+/* 4. 外推放大呼吸燈動畫 */
+@keyframes target-section-glow-expand {
+    0%, 100% { 
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    30% { 
+        opacity: 1;
+        transform: scale(1);
+        /* 底色微亮 */
+        background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); 
+        /* ✨ 陰影大幅往外暈染 (第四個參數 Spread 設定為 15px 將陰影往外擠) */
+        box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent);
+    }
+}
+
+/* 當網址 Hash 對應到該區塊時，觸發動畫 */
+main section:target::after {
+    animation: target-section-glow-expand 3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
