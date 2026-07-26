@@ -1267,6 +1267,16 @@ function switchModalContent(updateDOMCallback) {
     const tocMount = document.getElementById('toc-mount-point');
     const modalContainer = document.querySelector('.modal-content');
     
+    // ✨ 核心修正：每次切換 Modal 內容時，強制卸載目錄頁的滾動監聽並隱藏 NEW 膠囊
+    if (window.indexScrollHandler && modalContainer) {
+        modalContainer.removeEventListener('scroll', window.indexScrollHandler);
+        window.indexScrollHandler = null;
+    }
+    const jumpToast = document.getElementById('new-jump-toast');
+    if (jumpToast) {
+        jumpToast.classList.remove('is-visible');
+    }
+
     if (isModalOpen) {
         const currentHeight = modalContainer.offsetHeight; 
         modalContainer.style.height = currentHeight + 'px';
@@ -1302,7 +1312,6 @@ function switchModalContent(updateDOMCallback) {
         if (tocMount) tocMount.classList.remove('content-fade-out');
     }
 }
-
 // ==========================================
 // 打開該專案的「目錄頁面」
 // ==========================================
@@ -1313,10 +1322,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
     switchModalContent(() => {
         const modalContainer = document.querySelector('.modal-content');
         
-        // ✨ 1. 移除 is-index-mode，讓目錄頂部列恢復與文章模式相同的標準毛玻璃固定列
+        // 1. 將目錄模式解除，讓頂部列恢復標準毛玻璃固定列
         document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
         
-        // 清空內文 TOC 選單點
+        // 清空 TOC
         document.getElementById('toc-mount-point').innerHTML = ``;
 
         const proj = window.siteProjects.find(p => p.id === projectId);
@@ -1330,8 +1339,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         window.history.replaceState({ path: spaUrl }, '', spaUrl);
         const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
 
-        // ✨ 2. 將目錄標題與功能按鈕直接注入 modal-top-left，與右側 X 按鈕融合於同一列
-        // 透過 line-height: 1.2 與 flex 垂直置中，讓字體放大至 1.35rem 時依然完全不撐高容器
+        // 2. 將目錄標題與功能按鈕直接注入 modal-top-left
         document.getElementById('modal-top-left').innerHTML = `
             <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 1rem;">
                 <h1 style="margin: 0; padding: 0; border: none; line-height: 1; font-size: 2rem; font-weight: bold; color: var(--accent); word-break: break-word;">${proj.title} - 目錄</h1>
@@ -1350,7 +1358,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
         let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
 
-        // ✨ 3. modalBody 內部僅保留文章列表，不再重複渲染標題列
+        // 3. modalBody 內部僅保留文章列表
         modalBody.innerHTML = `
             <div id="article-list-container" style="transition: opacity 0.2s ease;"></div>
         `;
@@ -1372,7 +1380,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 let dateHtml = art.date ? `<span style="font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0;">${art.date}</span>` : '';
                 let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                 
-                let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="is-loading" loading="lazy"  onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important;">` : `<div style="position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
+                let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important;">` : `<div style="position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
                 let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
                 let iconHtml = `<div style="position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px;">${pinnedBadgeHtml}${baseIconHtml}</div>`;
                 let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
@@ -1384,7 +1392,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             if (proj.groups && Object.keys(proj.groups).length > 0) {
                 let colorIndex = 0; 
-                let isFirstGroup = true; // ✨ 追蹤是否為第一個群組
+                let isFirstGroup = true; 
                 
                 for (const [groupId, groupData] of Object.entries(proj.groups)) {
                     const groupArticles = finalArray.filter(item => item.art.group === groupId);
@@ -1398,7 +1406,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                     let titleColorStyle = groupColor ? `color: ${groupColor}; border-bottom-color: ${groupColor};` : `color: var(--accent); border-bottom-color: var(--divider-line);`;
                     
-                    // ✨ 第一個群組的上方間距改為 0.8rem，其餘維持 1.8rem
                     const topMargin = isFirstGroup ? '0rem' : '1.8rem';
                     
                     html += `<div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;"><div style="font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; ${titleColorStyle}">${groupData.title || groupId}</div>${groupData.description ? `<div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem;">${groupData.description}</div>` : ''}</div><ul style="list-style:none; padding-left:0; margin:0;">`;
@@ -1415,7 +1422,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     html += `</ul>`;
                 }
             } else {
-                // ✨ 無群組時的上方間距也改為 0.8rem
                 html += `<ul style="list-style:none; padding-left:0; margin-top:0rem;">`;
                 finalArray.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
                 html += `</ul>`;
@@ -1444,13 +1450,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                     window.indexScrollHandler = () => {
                         const modalRect = modalContainer.getBoundingClientRect();
-                        
-                        let countAbove = 0;
-                        let countVisible = 0;
-                        let countBelow = 0;
-                        
-                        let closestAbove = null;
-                        let closestBelow = null;
+                        let countAbove = 0, countVisible = 0, countBelow = 0;
+                        let closestAbove = null, closestBelow = null;
 
                         newArticles.forEach(article => {
                             const rect = article.getBoundingClientRect();
@@ -1498,7 +1499,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                                 const rect = article.getBoundingClientRect();
                                 if (rect.top < modalRect.bottom && rect.bottom > modalRect.top) {
                                     article.classList.add('simulate-hover');
-                                    setTimeout(() => article.classList.remove('simulate-hover'), 1500);
+                                    setTimeout(() => article.classList.remove('simulate-hover'), 700);
                                 }
                             });
                         }, 500);
@@ -1552,7 +1553,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     targetItem.classList.add('simulate-hover');
                     setTimeout(() => {
                         targetItem.classList.remove('simulate-hover');
-                    }, 1500);
+                    }, 700);
                 }, 100); 
             } else {
                 modalContainer.scrollTop = 0;
@@ -1566,17 +1567,21 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 // ==========================================
 // 打開具體的「文章內文」
 // ==========================================
-window.openArticle = async function(projectId, articleIndex, isFromHistory = false) {
-    // ✨ 修正：一進入文章，立刻強制隱藏目錄的浮動膠囊
+window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0) {
     const jumpToast = document.getElementById('new-jump-toast');
     if (jumpToast) jumpToast.classList.remove('is-visible');
 
     if (!isFromHistory) {
         if (!window.historyStack) window.historyStack = [];
-        window.historyStack.push({ projectId, articleIndex });
+        if (window.historyStack.length > 0) {
+            const modalContainer = document.querySelector('.modal-content');
+            if (modalContainer) {
+                window.historyStack[window.historyStack.length - 1].scrollTop = modalContainer.scrollTop;
+            }
+        }
+        window.historyStack.push({ projectId, articleIndex, scrollTop: 0 });
     }
 
-    /* ✨ 紀錄最後閱讀的文章索引，供返回目錄時精準定位 (取代舊的像素紀錄法) */
     window.lastReadArticleIndex = articleIndex;
 
     const proj = window.siteProjects.find(p => p.id === projectId);
@@ -1600,22 +1605,23 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     switchModalContent(() => {
         document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
         modalOverlay.classList.add('active');
-        window.lockScroll(); // ✨ 替換為防跳動版本
+        window.lockScroll();
         
-        // 渲染完成後
         modalBody.innerHTML = marked.parse(markdownContent);
 
-        // ✨ 確保針對所有 vertical-wrapper 區域進行處理
         const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
         verticalWrappers.forEach(wrapper => {
             window.applyIndentToVerticalWrapper(wrapper);
         });
-        document.querySelector('.modal-content').scrollTop = 0;
+
+        const modalContainer = document.querySelector('.modal-content');
+        if (modalContainer) {
+            modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
+        }
 
         const flatSequence = window.getArticleSequence(projectId);
         const seqIndex = flatSequence.findIndex(item => item.idx === articleIndex);
 
-        // --- 內部導航按鈕產生器 ---
         const generateNavBtn = (item, type) => {
             const isPrev = type === 'prev';
             const iconSvg = isPrev ? `<path d="M15 18l-6-6 6-6"/>` : `<path d="M9 18l6-6-6-6"/>`;
@@ -1625,7 +1631,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg></button>` };
             }
             
-            const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg> ${text}` : `${text} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>`}</div><div class="nav-title">${item.art.title}</div></a>`;
+            const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg> ${text}` : `${text} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>`}</div><div class="nav-title">${item.art.title}</div></a>`;
             const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${text}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg></button>`;
             return { cardHtml, btnHtml };
         };
@@ -1660,7 +1666,6 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         };
         renderMermaid();
 
-        // --- 處理標題與 Meta ---
         const firstH1 = modalBody.querySelector('h1');
         if (firstH1) {
             const wrapper = document.createElement('div');
@@ -1846,25 +1851,17 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             hintLeft.addEventListener('click', () => scrollOneItem(-1));
         });
 
-        // ==========================================
-        // ✨ 統一處理所有圖片區塊 (包含 Gallery、Float 與 Markdown 原生圖片)
-        // ==========================================
         modalBody.querySelectorAll('figure').forEach(figure => {
             const figcaption = figure.querySelector('figcaption');
             const img = figure.querySelector('img');
             
-            // 【情境 A：有說明文字的圖 (包含 Gallery 畫廊)】
             if (figcaption) {
-                // 1. 點擊圖片任意處 (整個 figure) 會讓說明文字切換顯示/隱藏
-                // 加上 cursor: pointer 讓使用者知道這裡可以點擊互動
                 figure.style.cursor = 'pointer'; 
                 figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
                 
-                // 2. 動態注入放大鏡按鈕 (防呆：如果還沒有按鈕才加)
                 if (img && !figcaption.querySelector('.zoom-btn')) {
                     const zoomBtn = document.createElement('button');
                     zoomBtn.className = 'zoom-btn';
-                    // tooltip 已經在 CSS 隱藏了，所以這裡不需要再寫 title 或 data-tooltip
                     zoomBtn.innerHTML = `
                         <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
@@ -1873,8 +1870,6 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                             <line x1="8" y1="11" x2="14" y2="11"></line>
                         </svg>
                     `;
-                    // 3. 🛑 關鍵防禦：阻止事件冒泡！
-                    // 點擊放大鏡時，直接進入 Lightbox，不會向上觸發 figure 的 hide-caption 事件
                     zoomBtn.onclick = (event) => {
                         event.stopPropagation();
                         window.openLightbox(zoomBtn, event);
@@ -1882,14 +1877,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     figcaption.appendChild(zoomBtn);
                 }
             }
-            
-            // 【情境 B：無圖說的圖】
-            // 浮動放大鏡 (zoom-btn floating) 已經由 Python 直接寫入 HTML 裡了。
-            // 這裡不需要針對 img 綁定任何點擊事件，維持最純粹的「點擊放大鏡才放大」邏輯。
         });
-        
-        // ⚠️ 請確保這段程式碼底下，沒有殘留任何類似 modalBody.querySelectorAll('img').forEach(...) 
-        // 企圖綁定 img.addEventListener('click') 的舊程式碼，如果有請直接刪除！
     }); 
 };
 
@@ -1999,7 +1987,8 @@ window.goBackInHistory = function() {
     if (!window.historyStack || window.historyStack.length <= 1) return;
     window.historyStack.pop(); 
     const prev = window.historyStack[window.historyStack.length - 1]; 
-    window.openArticle(prev.projectId, prev.articleIndex, true); 
+    // ✨ 將儲存的 scrollTop 傳入，實現精準位置還原
+    window.openArticle(prev.projectId, prev.articleIndex, true, prev.scrollTop || 0); 
 };
 
 function closeModal() {
