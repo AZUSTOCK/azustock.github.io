@@ -1464,20 +1464,18 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 /* 1. 目錄頂部標題與按鈕區塊 */
 .index-header-container { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 1rem; }
 .index-header-title { 
-    /* ✨ 關鍵修復：設定 margin 右側為 2.8rem，強制推開右邊的膠囊按鈕 */
-    margin: 0 3rem 0 0 !important; 
+    margin: 0 !important; 
     padding: 0 !important; 
     border: none !important; 
-    line-height: 1 !important; 
     color: var(--accent) !important; 
     word-break: break-word; 
     font-weight: bold !important;
-    
-    /* 完美套用視覺放大至 2rem 但不撐高容器的技巧 */
-    font-size: 1.35rem !important; 
-    transform: scale(1.48); 
-    transform-origin: left center; 
     display: inline-block;
+    
+    /* 確保手機版依然大氣，桌機版也不會過度膨脹 */
+    font-size: clamp(1.85rem, 6vw, 2.1rem) !important; 
+    
+    line-height: 1.1 !important; 
 }
 .index-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .article-count-badge { font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent) !important; background: var(--tag-bg) !important; padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap; }
