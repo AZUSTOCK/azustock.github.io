@@ -944,6 +944,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (clickCount >= 5) {
                 window.isWhispering = true; 
                 clickCount = 0; 
+                
+                // ✨ 1. 核心修改：在文字消失前，先鎖死當下的精準高度
+                const currentHeight = profileSection.offsetHeight;
+                profileSection.style.height = currentHeight + 'px';
+                // 防止句子萬一比原本的自介還長，設定可以內部滾動而不撐破外框
+                profileSection.style.overflowY = 'auto'; 
+                
                 profileSection.style.opacity = 0;
                 
                 try {
@@ -952,8 +959,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const randomNote = notes[Math.floor(Math.random() * notes.length)];
                     
                     setTimeout(() => {
-                        const logHeader = `<div style="color: var(--accent-2); font-family: 'Courier New', monospace; font-size: 0.85rem; margin-bottom: 0.5rem;">[ SYSTEM_LOG : KOTOBA_NO_BOX ]</div>`;
-                        profileSection.innerHTML = logHeader + marked.parse(randomNote);
+                        // 1. 將 margin-bottom 從 0.5rem 縮減為 0
+                        const logHeader = `<div style="color: var(--accent-2); font-family: 'Courier New', monospace; font-size: 0.85rem; margin-bottom: 0;">[ SYSTEM_LOG : KOTOBA_NO_BOX ]</div>`;
+                        
+                        // 2. 在 Markdown 解析結果外包一層 div，用 margin-top: -0.6rem 把文字往上吸
+                        const parsedNote = `<div style="margin-top: -1rem; margin-bottom: 0;">${marked.parse(randomNote)}</div>`;
+                        
+                        profileSection.innerHTML = logHeader + parsedNote;
                         profileSection.style.opacity = 1;
                     }, 300);
                 } catch (err) {
@@ -970,6 +982,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         profileSection.innerHTML = originalProfile;
                         profileSection.style.opacity = 1;
                         window.isWhispering = false; 
+                        
+                        // ✨ 2. 核心修改：彩蛋結束、還原預設文字後，解除高度鎖定
+                        profileSection.style.height = '';
+                        profileSection.style.overflowY = '';
                     }, 300);
                 }, 12000);
             } else {
@@ -1312,6 +1328,65 @@ function switchModalContent(updateDOMCallback) {
         if (tocMount) tocMount.classList.remove('content-fade-out');
     }
 }
+
+function switchModalContent(updateDOMCallback, afterUpdateCallback = null) {
+    const isModalOpen = modalOverlay.classList.contains('active');
+    const topLeft = document.getElementById('modal-top-left');
+    const tocMount = document.getElementById('toc-mount-point');
+    const modalContainer = document.querySelector('.modal-content');
+    
+    if (window.indexScrollHandler && modalContainer) {
+        modalContainer.removeEventListener('scroll', window.indexScrollHandler);
+        window.indexScrollHandler = null;
+    }
+    const jumpToast = document.getElementById('new-jump-toast');
+    if (jumpToast) {
+        jumpToast.classList.remove('is-visible');
+    }
+
+    if (isModalOpen) {
+        const currentHeight = modalContainer.offsetHeight; 
+        modalContainer.style.height = currentHeight + 'px';
+
+        modalBody.classList.add('content-fade-out');
+        if (topLeft) topLeft.classList.add('content-fade-out');
+        if (tocMount) tocMount.classList.add('content-fade-out');
+        
+        setTimeout(() => {
+            modalContainer.style.transition = 'none'; 
+            updateDOMCallback();
+            void modalBody.offsetHeight; 
+            
+            modalContainer.style.height = ''; 
+            const newHeight = modalContainer.offsetHeight;
+            modalContainer.style.height = currentHeight + 'px';
+            void modalContainer.offsetHeight; 
+            modalContainer.style.transition = ''; 
+            
+            requestAnimationFrame(() => {
+                modalContainer.style.height = newHeight + 'px';
+                
+                // ✨ 在畫面還是透明時（fade-in 動畫前）執行捲軸跳轉，實現 0 延遲無縫切換
+                if (afterUpdateCallback) afterUpdateCallback();
+
+                modalBody.classList.remove('content-fade-out'); 
+                if (topLeft) topLeft.classList.remove('content-fade-out');
+                if (tocMount) tocMount.classList.remove('content-fade-out');
+
+                setTimeout(() => { modalContainer.style.height = ''; }, 320); 
+            });
+        }, 120); 
+    } else {
+        updateDOMCallback();
+        // ✨ 如果是第一次打開，確保在 DOM 更新後立刻定位
+        if (afterUpdateCallback) afterUpdateCallback();
+        
+        modalBody.classList.remove('content-fade-out');
+        if (topLeft) topLeft.classList.remove('content-fade-out');
+        if (tocMount) tocMount.classList.remove('content-fade-out');
+    }
+}
+
 // ==========================================
 // 打開該專案的「目錄頁面」
 // ==========================================
@@ -1319,249 +1394,247 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
     window.isRendering = false; 
     window.historyStack = []; 
 
-    switchModalContent(() => {
-        const modalContainer = document.querySelector('.modal-content');
-        
-        // 1. 將目錄模式解除，讓頂部列恢復標準毛玻璃固定列
-        document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
-        
-        // 清空 TOC
-        document.getElementById('toc-mount-point').innerHTML = ``;
+    switchModalContent(
+        () => {
+            const modalContainer = document.querySelector('.modal-content');
+            
+            document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
+            document.getElementById('toc-mount-point').innerHTML = ``;
 
-        const proj = window.siteProjects.find(p => p.id === projectId);
-        if (!proj || !proj.articles) return;
+            const proj = window.siteProjects.find(p => p.id === projectId);
+            if (!proj || !proj.articles) return;
 
-        let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
-        sessionStorage.setItem(`sort_${projectId}`, currentSort);
+            let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
+            sessionStorage.setItem(`sort_${projectId}`, currentSort);
 
-        const cleanPath = window.getCleanBasePath();
-        const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}`;
-        window.history.replaceState({ path: spaUrl }, '', spaUrl);
-        const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
+            const cleanPath = window.getCleanBasePath();
+            const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}`;
+            window.history.replaceState({ path: spaUrl }, '', spaUrl);
+            const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
 
-        // 2. 將目錄標題與功能按鈕直接注入 modal-top-left
-        document.getElementById('modal-top-left').innerHTML = `
-            <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 1rem;">
-                <h1 style="margin: 0; padding: 0; border: none; line-height: 1; font-size: 2rem; font-weight: bold; color: var(--accent); word-break: break-word;">${proj.title} - 目錄</h1>
-                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                    <span style="font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: var(--tag-bg); padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap;">共 ${proj.articles.length} 篇</span>
-                    <button id="toggle-sort-btn" class="share-link-btn" style="width: auto; padding: 0 0.8rem; margin: 0; height: 30px;">
-                        <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
-                        <span id="sort-btn-text" style="margin-left: 4px;"></span>
-                    </button>
-                    <button class="share-link-btn" id="index-share-btn" style="margin: 0; height: 30px;">
-                        ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">複製連結</span>
-                    </button> 
+            document.getElementById('modal-top-left').innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 1rem;">
+                    <h1 style="margin: 0; padding: 0; border: none; line-height: 1; font-size: 2rem; font-weight: bold; color: var(--accent); word-break: break-word;">${proj.title} - 目錄</h1>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <span style="font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: var(--tag-bg); padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap;">共 ${proj.articles.length} 篇</span>
+                        <button id="toggle-sort-btn" class="share-link-btn" style="width: auto; padding: 0 0.8rem; margin: 0; height: 30px;">
+                            <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
+                            <span id="sort-btn-text" style="margin-left: 4px;"></span>
+                        </button>
+                        <button class="share-link-btn" id="index-share-btn" style="margin: 0; height: 30px;">
+                            ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">複製連結</span>
+                        </button> 
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
 
-        let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
+            let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
 
-        // 3. modalBody 內部僅保留文章列表
-        modalBody.innerHTML = `
-            <div id="article-list-container" style="transition: opacity 0.2s ease;"></div>
-        `;
+            modalBody.innerHTML = `
+                <div id="article-list-container" style="transition: opacity 0.2s ease;"></div>
+            `;
 
-        const shareBtn = document.getElementById('index-share-btn');
-        if (shareBtn) {
-            shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
-        }
+            const shareBtn = document.getElementById('index-share-btn');
+            if (shareBtn) {
+                shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
+            }
 
-        const listContainer = modalBody.querySelector('#article-list-container');
-        const sortBtn = document.getElementById('toggle-sort-btn');
+            const listContainer = modalBody.querySelector('#article-list-container');
+            const sortBtn = document.getElementById('toggle-sort-btn');
 
-        const renderList = () => {
-            const finalArray = window.getArticleSequence(projectId);
-            const themePalette = ['var(--group-c1)', 'var(--group-c2)', 'var(--group-c3)', 'var(--group-c4)', 'var(--group-c5)'];
+            const renderList = () => {
+                const finalArray = window.getArticleSequence(projectId);
+                const themePalette = ['var(--group-c1)', 'var(--group-c2)', 'var(--group-c3)', 'var(--group-c4)', 'var(--group-c5)'];
 
-            const generateLi = (art, idx, isHighlightGroup, customColor) => {
-                let descHtml = art.description ? `<span style="font-size: 0.95rem; color: var(--muted); line-height: 1.4;">- ${art.description}</span>` : '';
-                let dateHtml = art.date ? `<span style="font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0;">${art.date}</span>` : '';
-                let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
-                
-                let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important;">` : `<div style="position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
-                let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                let iconHtml = `<div style="position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px;">${pinnedBadgeHtml}${baseIconHtml}</div>`;
-                let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
+                const generateLi = (art, idx, isHighlightGroup, customColor) => {
+                    let descHtml = art.description ? `<span style="font-size: 0.95rem; color: var(--muted); line-height: 1.4;">- ${art.description}</span>` : '';
+                    let dateHtml = art.date ? `<span style="font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0;">${art.date}</span>` : '';
+                    let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                    
+                    let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important;">` : `<div style="position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
+                    let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                    let iconHtml = `<div style="position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px;">${pinnedBadgeHtml}${baseIconHtml}</div>`;
+                    let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
 
-                return `<li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}"${colorStyle}><a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" style="display: flex; align-items: center; gap: 1rem; text-decoration: none; padding: 0.5rem; border-radius: 0.8rem; transition: background-color 0.2s;">${iconHtml}<div style="display: flex; align-items: center; width: 100%; flex-wrap: wrap; row-gap: 0.4rem;"><div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem;"><span style="font-size: 1.15rem; color: var(--accent); font-weight: bold;">${art.title}${statusBadgeHtml}</span>${descHtml}</div>${dateHtml}</div></a></li>`;
-            };
+                    return `<li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}"${colorStyle}><a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" style="display: flex; align-items: center; gap: 1rem; text-decoration: none; padding: 0.5rem; border-radius: 0.8rem; transition: background-color 0.2s;">${iconHtml}<div style="display: flex; align-items: center; width: 100%; flex-wrap: wrap; row-gap: 0.4rem;"><div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem;"><span style="font-size: 1.15rem; color: var(--accent); font-weight: bold;">${art.title}${statusBadgeHtml}</span>${descHtml}</div>${dateHtml}</div></a></li>`;
+                };
 
-            let html = '';
+                let html = '';
 
-            if (proj.groups && Object.keys(proj.groups).length > 0) {
-                let colorIndex = 0; 
-                let isFirstGroup = true; 
-                
-                for (const [groupId, groupData] of Object.entries(proj.groups)) {
-                    const groupArticles = finalArray.filter(item => item.art.group === groupId);
-                    if (groupArticles.length === 0) continue;
+                if (proj.groups && Object.keys(proj.groups).length > 0) {
+                    let colorIndex = 0; 
+                    let isFirstGroup = true; 
+                    
+                    for (const [groupId, groupData] of Object.entries(proj.groups)) {
+                        const groupArticles = finalArray.filter(item => item.art.group === groupId);
+                        if (groupArticles.length === 0) continue;
 
-                    let groupColor = groupData.color;
-                    if (groupData.highlight && !groupColor) {
-                        groupColor = themePalette[colorIndex % themePalette.length];
-                        colorIndex++; 
+                        let groupColor = groupData.color;
+                        if (groupData.highlight && !groupColor) {
+                            groupColor = themePalette[colorIndex % themePalette.length];
+                            colorIndex++; 
+                        }
+
+                        let titleColorStyle = groupColor ? `color: ${groupColor}; border-bottom-color: ${groupColor};` : `color: var(--accent); border-bottom-color: var(--divider-line);`;
+                        
+                        const topMargin = isFirstGroup ? '0rem' : '1.8rem';
+                        
+                        html += `<div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;"><div style="font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; ${titleColorStyle}">${groupData.title || groupId}</div>${groupData.description ? `<div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem;">${groupData.description}</div>` : ''}</div><ul style="list-style:none; padding-left:0; margin:0;">`;
+                        groupArticles.forEach(({art, idx}) => { html += generateLi(art, idx, groupData.highlight, groupColor); });
+                        html += `</ul>`;
+                        
+                        isFirstGroup = false;
+                    }
+                    const ungrouped = finalArray.filter(item => !item.art.group);
+                    if (ungrouped.length > 0) {
+                        const topMargin = isFirstGroup ? '0rem' : '1.5rem';
+                        html += `<ul style="list-style:none; padding-left:0; margin-top:${topMargin};">`;
+                        ungrouped.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
+                        html += `</ul>`;
+                    }
+                } else {
+                    html += `<ul style="list-style:none; padding-left:0; margin-top:0rem;">`;
+                    finalArray.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
+                    html += `</ul>`;
+                }
+                listContainer.innerHTML = html;
+
+                const initJumpToast = () => {
+                    const newArticles = Array.from(listContainer.querySelectorAll('.article-li'))
+                        .filter(li => li.querySelector('.status-badge[data-status="NEW"]'));
+                    
+                    let jumpToast = document.getElementById('new-jump-toast');
+                    if (!jumpToast) {
+                        jumpToast = document.createElement('button');
+                        jumpToast.id = 'new-jump-toast';
+                        jumpToast.className = 'new-jump-toast';
+                        modalOverlay.appendChild(jumpToast);
                     }
 
-                    let titleColorStyle = groupColor ? `color: ${groupColor}; border-bottom-color: ${groupColor};` : `color: var(--accent); border-bottom-color: var(--divider-line);`;
-                    
-                    const topMargin = isFirstGroup ? '0rem' : '1.8rem';
-                    
-                    html += `<div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;"><div style="font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; ${titleColorStyle}">${groupData.title || groupId}</div>${groupData.description ? `<div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem;">${groupData.description}</div>` : ''}</div><ul style="list-style:none; padding-left:0; margin:0;">`;
-                    groupArticles.forEach(({art, idx}) => { html += generateLi(art, idx, groupData.highlight, groupColor); });
-                    html += `</ul>`;
-                    
-                    isFirstGroup = false;
-                }
-                const ungrouped = finalArray.filter(item => !item.art.group);
-                if (ungrouped.length > 0) {
-                    const topMargin = isFirstGroup ? '0rem' : '1.5rem';
-                    html += `<ul style="list-style:none; padding-left:0; margin-top:${topMargin};">`;
-                    ungrouped.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
-                    html += `</ul>`;
-                }
-            } else {
-                html += `<ul style="list-style:none; padding-left:0; margin-top:0rem;">`;
-                finalArray.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
-                html += `</ul>`;
-            }
-            listContainer.innerHTML = html;
+                    if (window.indexScrollHandler) {
+                        modalContainer.removeEventListener('scroll', window.indexScrollHandler);
+                        window.indexScrollHandler = null;
+                    }
 
-            const initJumpToast = () => {
-                const newArticles = Array.from(listContainer.querySelectorAll('.article-li'))
-                    .filter(li => li.querySelector('.status-badge[data-status="NEW"]'));
-                
-                let jumpToast = document.getElementById('new-jump-toast');
-                if (!jumpToast) {
-                    jumpToast = document.createElement('button');
-                    jumpToast.id = 'new-jump-toast';
-                    jumpToast.className = 'new-jump-toast';
-                    modalOverlay.appendChild(jumpToast);
-                }
+                    if (newArticles.length > 0) {
+                        let targetArticle = null;
 
-                if (window.indexScrollHandler) {
-                    modalContainer.removeEventListener('scroll', window.indexScrollHandler);
-                    window.indexScrollHandler = null;
-                }
-
-                if (newArticles.length > 0) {
-                    let targetArticle = null;
-
-                    window.indexScrollHandler = () => {
-                        const modalRect = modalContainer.getBoundingClientRect();
-                        let countAbove = 0, countVisible = 0, countBelow = 0;
-                        let closestAbove = null, closestBelow = null;
-
-                        newArticles.forEach(article => {
-                            const rect = article.getBoundingClientRect();
-                            if (rect.bottom < modalRect.top + 120) {
-                                countAbove++;
-                                closestAbove = article; 
-                            } else if (rect.top > modalRect.bottom - 20) {
-                                countBelow++;
-                                if (!closestBelow) closestBelow = article; 
-                            } else {
-                                countVisible++;
-                            }
-                        });
-
-                        if (countBelow > 0) {
-                            targetArticle = closestBelow;
-                            const prefix = countVisible > 0 ? '下方還有' : '發現';
-                            jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> ${prefix} ${countBelow} 篇新內容`;
-                            jumpToast.classList.add('is-visible');
-                        } else if (countAbove > 0) {
-                            targetArticle = closestAbove;
-                            const prefix = countVisible > 0 ? '上方還有' : '發現';
-                            jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-up 1.5s infinite ease-in-out;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg> ${prefix} ${countAbove} 篇新內容`;
-                            jumpToast.classList.add('is-visible');
-                        } else {
-                            targetArticle = null;
-                            jumpToast.classList.remove('is-visible');
-                        }
-                    };
-                    
-                    modalContainer.addEventListener('scroll', window.indexScrollHandler);
-                    setTimeout(window.indexScrollHandler, 100);
-
-                    jumpToast.onclick = () => {
-                        if (!targetArticle) return;
-                        modalContainer.scrollTo({
-                            top: targetArticle.offsetTop - 120,
-                            behavior: 'smooth'
-                        });
-                        jumpToast.classList.remove('is-visible'); 
-                        
-                        setTimeout(() => {
+                        window.indexScrollHandler = () => {
                             const modalRect = modalContainer.getBoundingClientRect();
+                            let countAbove = 0, countVisible = 0, countBelow = 0;
+                            let closestAbove = null, closestBelow = null;
+
                             newArticles.forEach(article => {
                                 const rect = article.getBoundingClientRect();
-                                if (rect.top < modalRect.bottom && rect.bottom > modalRect.top) {
-                                    article.classList.add('simulate-hover');
-                                    setTimeout(() => article.classList.remove('simulate-hover'), 700);
+                                if (rect.bottom < modalRect.top + 120) {
+                                    countAbove++;
+                                    closestAbove = article; 
+                                } else if (rect.top > modalRect.bottom - 20) {
+                                    countBelow++;
+                                    if (!closestBelow) closestBelow = article; 
+                                } else {
+                                    countVisible++;
                                 }
                             });
-                        }, 500);
-                    };
-                } else {
-                    jumpToast.classList.remove('is-visible');
-                }
+
+                            if (countBelow > 0) {
+                                targetArticle = closestBelow;
+                                const prefix = countVisible > 0 ? '下方還有' : '發現';
+                                jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> ${prefix} ${countBelow} 篇新內容`;
+                                jumpToast.classList.add('is-visible');
+                            } else if (countAbove > 0) {
+                                targetArticle = closestAbove;
+                                const prefix = countVisible > 0 ? '上方還有' : '發現';
+                                jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-up 1.5s infinite ease-in-out;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg> ${prefix} ${countAbove} 篇新內容`;
+                                jumpToast.classList.add('is-visible');
+                            } else {
+                                targetArticle = null;
+                                jumpToast.classList.remove('is-visible');
+                            }
+                        };
+                        
+                        modalContainer.addEventListener('scroll', window.indexScrollHandler);
+                        setTimeout(window.indexScrollHandler, 100);
+
+                        jumpToast.onclick = () => {
+                            if (!targetArticle) return;
+                            modalContainer.scrollTo({
+                                top: targetArticle.offsetTop - 120,
+                                behavior: 'smooth'
+                            });
+                            jumpToast.classList.remove('is-visible'); 
+                            
+                            setTimeout(() => {
+                                const modalRect = modalContainer.getBoundingClientRect();
+                                newArticles.forEach(article => {
+                                    const rect = article.getBoundingClientRect();
+                                    if (rect.top < modalRect.bottom && rect.bottom > modalRect.top) {
+                                        article.classList.add('simulate-hover');
+                                        setTimeout(() => article.classList.remove('simulate-hover'), 700);
+                                    }
+                                });
+                            }, 500);
+                        };
+                    } else {
+                        jumpToast.classList.remove('is-visible');
+                    }
+                };
+
+                initJumpToast();
             };
 
-            initJumpToast();
-        };
+            const updateSortBtnUI = () => {
+                const isAsc = currentSort === 'asc';
+                sortBtn.classList.toggle('is-asc', isAsc);
+                sortBtn.classList.toggle('is-desc', !isAsc);
+                sortBtn.querySelector('#sort-btn-text').innerText = isAsc ? '由舊到新' : '由新到舊';
+            };
 
-        const updateSortBtnUI = () => {
-            const isAsc = currentSort === 'asc';
-            sortBtn.classList.toggle('is-asc', isAsc);
-            sortBtn.classList.toggle('is-desc', !isAsc);
-            sortBtn.querySelector('#sort-btn-text').innerText = isAsc ? '由舊到新' : '由新到舊';
-        };
+            updateSortBtnUI();
+            renderList();
 
-        updateSortBtnUI();
-        renderList();
+            sortBtn.addEventListener('click', () => {
+                if (window.isRendering) return;
+                sortBtn.disabled = true; 
+                window.isRendering = true;
 
-        sortBtn.addEventListener('click', () => {
-            if (window.isRendering) return;
-            sortBtn.disabled = true; 
-            window.isRendering = true;
-
-            currentSort = currentSort === 'desc' ? 'asc' : 'desc';
-            sessionStorage.setItem(`sort_${projectId}`, currentSort); 
-            
-            listContainer.style.transition = 'opacity 0.2s ease';
-            listContainer.style.opacity = '0';
-            updateSortBtnUI(); 
-            
-            setTimeout(() => {
-                renderList();      
-                void listContainer.offsetWidth;
-                listContainer.style.opacity = '1';
-                setTimeout(() => { window.isRendering = false; sortBtn.disabled = false; }, 200); 
-            }, 200); 
-        });
-
-        modalOverlay.classList.add('active');
-        window.lockScroll(); 
+                currentSort = currentSort === 'desc' ? 'asc' : 'desc';
+                sessionStorage.setItem(`sort_${projectId}`, currentSort); 
                 
-        if (restoreScroll && window.lastReadArticleIndex !== undefined) {
-            const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
-            if (targetItem) {
-                modalContainer.scrollTop = Math.max(0, targetItem.offsetTop - 120);
+                listContainer.style.transition = 'opacity 0.2s ease';
+                listContainer.style.opacity = '0';
+                updateSortBtnUI(); 
+                
                 setTimeout(() => {
+                    renderList();      
+                    void listContainer.offsetWidth;
+                    listContainer.style.opacity = '1';
+                    setTimeout(() => { window.isRendering = false; sortBtn.disabled = false; }, 200); 
+                }, 200); 
+            });
+
+            modalOverlay.classList.add('active');
+            window.lockScroll(); 
+        },
+        () => {
+            // ✨ 完全無延遲的定位邏輯
+            const modalContainer = document.querySelector('.modal-content');
+            if (restoreScroll && window.lastReadArticleIndex !== undefined) {
+                const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
+                if (targetItem) {
+                    modalContainer.scrollTop = Math.max(0, targetItem.offsetTop - 120);
                     targetItem.classList.add('simulate-hover');
                     setTimeout(() => {
                         targetItem.classList.remove('simulate-hover');
                     }, 700);
-                }, 100); 
+                } else {
+                    modalContainer.scrollTop = 0;
+                }
             } else {
                 modalContainer.scrollTop = 0;
             }
-        } else {
-            modalContainer.scrollTop = 0;
         }
-    }); 
+    ); 
 };
 
 // ==========================================
@@ -1602,283 +1675,287 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         document.body.style.cursor = '';
     }
 
-    switchModalContent(() => {
-        document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
-        modalOverlay.classList.add('active');
-        window.lockScroll();
-        
-        modalBody.innerHTML = marked.parse(markdownContent);
-
-        const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
-        verticalWrappers.forEach(wrapper => {
-            window.applyIndentToVerticalWrapper(wrapper);
-        });
-
-        const modalContainer = document.querySelector('.modal-content');
-        if (modalContainer) {
-            modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
-        }
-
-        const flatSequence = window.getArticleSequence(projectId);
-        const seqIndex = flatSequence.findIndex(item => item.idx === articleIndex);
-
-        const generateNavBtn = (item, type) => {
-            const isPrev = type === 'prev';
-            const iconSvg = isPrev ? `<path d="M15 18l-6-6 6-6"/>` : `<path d="M9 18l6-6-6-6"/>`;
-            const text = isPrev ? '上一篇' : '下一篇';
+    switchModalContent(
+        () => {
+            document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
+            modalOverlay.classList.add('active');
+            window.lockScroll();
             
-            if (!item) {
-                return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg></button>` };
-            }
-            
-            const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg> ${text}` : `${text} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>`}</div><div class="nav-title">${item.art.title}</div></a>`;
-            const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${text}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg></button>`;
-            return { cardHtml, btnHtml };
-        };
+            modalBody.innerHTML = marked.parse(markdownContent);
 
-        const prevData = seqIndex > 0 ? generateNavBtn(flatSequence[seqIndex - 1], 'prev') : generateNavBtn(null, 'prev');
-        const nextData = seqIndex < flatSequence.length - 1 ? generateNavBtn(flatSequence[seqIndex + 1], 'next') : generateNavBtn(null, 'next');
-
-        if (prevData.cardHtml || nextData.cardHtml) {
-            const navContainer = document.createElement('div');
-            navContainer.className = 'article-nav-cards';
-            navContainer.innerHTML = prevData.cardHtml + nextData.cardHtml;
-            modalBody.appendChild(navContainer);
-        }
-
-        modalBody.querySelectorAll('img').forEach(img => {
-            if (!img.getAttribute('onerror')) {
-                img.classList.add('is-loading');
-                img.setAttribute('loading', 'lazy'); 
-                img.setAttribute('onerror', 'window.handleImageError(this)');
-                img.addEventListener('load', function() { this.classList.remove('is-loading'); });
-                if (img.complete && img.naturalHeight === 0) window.handleImageError(img);
-            }
-        });
-
-        const renderMermaid = () => {
-            if (window.mermaid) {
-                document.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
-                window.mermaid.run({ querySelector: '.mermaid' }).then(() => window.initMermaidDrag()).catch(e => console.warn('Mermaid 語法錯誤:', e));
-            } else {
-                setTimeout(renderMermaid, 300);
-            }
-        };
-        renderMermaid();
-
-        const firstH1 = modalBody.querySelector('h1');
-        if (firstH1) {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'article-header-wrapper';
-            wrapper.style.marginTop = (firstH1 === modalBody.firstElementChild) ? '0' : '0.8rem';
-
-            firstH1.style.borderBottom = 'none';
-            firstH1.style.paddingBottom = '0';
-            firstH1.style.margin = '0';
-            firstH1.parentNode.insertBefore(wrapper, firstH1);
-
-            const leftGroup = document.createElement('div');
-            leftGroup.className = 'header-left';
-            leftGroup.appendChild(firstH1);
-            if (article.date) {
-                const dateSpan = document.createElement('div');
-                dateSpan.className = 'article-date';
-                dateSpan.innerText = article.date;
-                leftGroup.appendChild(dateSpan);
-            }
-            wrapper.appendChild(leftGroup);
-
-            const rightGroup = document.createElement('div');
-            rightGroup.className = 'header-right';
-            const statusBadge = window.getStatusBadgeHtml(article, false);
-            if (statusBadge) {
-                const tagContainer = document.createElement('div');
-                tagContainer.className = 'status-badge-container';
-                tagContainer.innerHTML = statusBadge;
-                rightGroup.appendChild(tagContainer);
-            }
-
-            const cleanPath = window.getCleanBasePath();
-            const articleSlug = article.id || articleIndex;
-            const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleSlug}`;
-            window.history.replaceState({ path: spaUrl }, '', spaUrl);
-            const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/${articleSlug}/index.html`;
-
-            const shareBtn = document.createElement('button');
-            shareBtn.className = 'share-link-btn';
-            shareBtn.innerHTML = `${GLOBAL_SVGS.link} <span>複製連結</span>`;
-            shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
-
-            rightGroup.appendChild(shareBtn);
-            wrapper.appendChild(rightGroup);
-        }
-
-        const topLeft = document.getElementById('modal-top-left');
-        let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></button>` : '';
-        let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
-
-        topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
-
-        const tocMount = document.getElementById('toc-mount-point');
-        tocMount.innerHTML = ''; 
-        const headings = modalBody.querySelectorAll('h1, h2, h3'); 
-        if (headings.length > 1) {
-            const tocWrapper = document.createElement('div');
-            tocWrapper.className = 'toc-wrapper';
-
-            const tocBtn = document.createElement('div');
-            tocBtn.className = 'toc-toggle-btn';
-            tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
-
-            const tocDropdown = document.createElement('div');
-            tocDropdown.className = 'toc-dropdown';
-            tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
-            const tocList = tocDropdown.querySelector('.toc-list');
-
-            headings.forEach((h, index) => {
-                h.id = `article-heading-${index}`;
-                const li = document.createElement('li');
-                li.className = `toc-${h.tagName.toLowerCase()}`; 
-                const a = document.createElement('a');
-                a.innerText = h.innerText;
-                a.href = "javascript:void(0)"; 
-                a.onclick = () => {
-                    const targetTop = h.getBoundingClientRect().top - document.querySelector('.modal-content').getBoundingClientRect().top + document.querySelector('.modal-content').scrollTop - 90;
-                    document.querySelector('.modal-content').scrollTo({ top: targetTop, behavior: 'smooth' });
-                    h.classList.add('highlight-flash');
-                    setTimeout(() => h.classList.remove('highlight-flash'), 1000);
-                    tocBtn.classList.remove('open');
-                    tocDropdown.classList.remove('active');
-                };
-                li.appendChild(a);
-                tocList.appendChild(li);
+            const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
+            verticalWrappers.forEach(wrapper => {
+                window.applyIndentToVerticalWrapper(wrapper);
             });
 
-            tocBtn.onclick = () => { tocBtn.classList.toggle('open'); tocDropdown.classList.toggle('active'); };
-            tocWrapper.appendChild(tocBtn);
-            tocWrapper.appendChild(tocDropdown);
-            tocMount.appendChild(tocWrapper);
-        }
+            const flatSequence = window.getArticleSequence(projectId);
+            const seqIndex = flatSequence.findIndex(item => item.idx === articleIndex);
 
-        modalBody.querySelectorAll('.gallery').forEach(gallery => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'scroll-wrapper';
-            gallery.parentNode.insertBefore(wrapper, gallery);
-
-            const hintLeft = document.createElement('div');
-            hintLeft.className = 'scroll-hint hint-left';
-            const hintRight = document.createElement('div');
-            hintRight.className = 'scroll-hint hint-right';
-            
-            wrapper.appendChild(hintLeft);
-            wrapper.appendChild(gallery);
-            wrapper.appendChild(hintRight);
-
-            const initialStyle = gallery.getAttribute('style') || '';
-            const manualRows = (initialStyle.match(/--g-rows:\s*(\d+)/)) ? parseInt(initialStyle.match(/--g-rows:\s*(\d+)/)[1]) : null;
-
-            window.initScrollHints(gallery, hintLeft, hintRight);
-
-            const originalCheckScroll = () => {
-                const totalItems = gallery.querySelectorAll('figure').length;
-                if (totalItems > 0) {
-                    let shouldWrap = false;
-                    if (!manualRows && totalItems > 1) {
-                        const containerWidth = gallery.clientWidth;
-                        if (containerWidth > 0) {
-                            const matchWidth = initialStyle.match(/--g-width:\s*(\d+)px/);
-                            let baseWidth = matchWidth ? parseInt(matchWidth[1]) : 200;
-                            if (((baseWidth * totalItems) + (16 * (totalItems - 1))) >= containerWidth * 1.5) shouldWrap = true;
-                        }
-                    }
-
-                    const isCurrentlyWrapped = gallery.getAttribute('data-wrapped') === 'true';
-                    if (shouldWrap !== isCurrentlyWrapped) {
-                        if (shouldWrap) {
-                            gallery.style.display = 'flex';
-                            gallery.style.flexWrap = 'wrap';
-                            gallery.style.justifyContent = 'flex-start'; 
-                            gallery.style.gridAutoFlow = '';
-                            gallery.style.gridTemplateColumns = '';
-                            gallery.style.gridTemplateRows = '';
-                            gallery.setAttribute('data-wrapped', 'true');
-                        } else {
-                            gallery.style.display = 'grid';
-                            gallery.style.flexWrap = '';
-                            gallery.style.justifyContent = '';
-                            gallery.style.gridAutoFlow = 'column';
-                            gallery.style.gridTemplateColumns = `minmax(var(--g-width), var(--g-width))`;
-                            gallery.style.gridTemplateRows = 'auto';
-                            gallery.setAttribute('data-wrapped', 'false');
-                        }
-                    }
+            const generateNavBtn = (item, type) => {
+                const isPrev = type === 'prev';
+                const iconSvg = isPrev ? `<path d="M15 18l-6-6 6-6"/>` : `<path d="M9 18l6-6-6-6"/>`;
+                const text = isPrev ? '上一篇' : '下一篇';
+                
+                if (!item) {
+                    return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg></button>` };
                 }
-                const isScrollable = gallery.scrollWidth > gallery.clientWidth + 5;
-                const isAtEnd = Math.ceil(gallery.scrollLeft + gallery.clientWidth) >= Math.floor(gallery.scrollWidth) - 10;
-                const isAtStart = gallery.scrollLeft <= 10;
-
-                hintRight.classList.toggle('visible', isScrollable && !isAtEnd);
-                hintLeft.classList.toggle('visible', isScrollable && !isAtStart);
+                
+                const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg> ${text}` : `${text} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>`}</div><div class="nav-title">${item.art.title}</div></a>`;
+                const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${text}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg></button>`;
+                return { cardHtml, btnHtml };
             };
 
-            gallery.addEventListener('scroll', originalCheckScroll);
-            new ResizeObserver(originalCheckScroll).observe(gallery);
-            setTimeout(originalCheckScroll, 150);
+            const prevData = seqIndex > 0 ? generateNavBtn(flatSequence[seqIndex - 1], 'prev') : generateNavBtn(null, 'prev');
+            const nextData = seqIndex < flatSequence.length - 1 ? generateNavBtn(flatSequence[seqIndex + 1], 'next') : generateNavBtn(null, 'next');
 
-            const scrollOneItem = (direction) => {
-                const figures = Array.from(gallery.querySelectorAll('figure'));
-                if (figures.length === 0) return;
-                const containerCenter = gallery.getBoundingClientRect().left + gallery.clientWidth / 2;
-                let closestIndex = 0;
-                let minDistance = Infinity;
+            if (prevData.cardHtml || nextData.cardHtml) {
+                const navContainer = document.createElement('div');
+                navContainer.className = 'article-nav-cards';
+                navContainer.innerHTML = prevData.cardHtml + nextData.cardHtml;
+                modalBody.appendChild(navContainer);
+            }
 
-                figures.forEach((figure, index) => {
-                    const distance = Math.abs(containerCenter - (figure.getBoundingClientRect().left + figure.offsetWidth / 2));
-                    if (distance < minDistance) { minDistance = distance; closestIndex = index; }
+            modalBody.querySelectorAll('img').forEach(img => {
+                if (!img.getAttribute('onerror')) {
+                    img.classList.add('is-loading');
+                    img.setAttribute('loading', 'lazy'); 
+                    img.setAttribute('onerror', 'window.handleImageError(this)');
+                    img.addEventListener('load', function() { this.classList.remove('is-loading'); });
+                    if (img.complete && img.naturalHeight === 0) window.handleImageError(img);
+                }
+            });
+
+            const renderMermaid = () => {
+                if (window.mermaid) {
+                    document.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
+                    window.mermaid.run({ querySelector: '.mermaid' }).then(() => window.initMermaidDrag()).catch(e => console.warn('Mermaid 語法錯誤:', e));
+                } else {
+                    setTimeout(renderMermaid, 300);
+                }
+            };
+            renderMermaid();
+
+            const firstH1 = modalBody.querySelector('h1');
+            if (firstH1) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'article-header-wrapper';
+                wrapper.style.marginTop = (firstH1 === modalBody.firstElementChild) ? '0' : '0.8rem';
+
+                firstH1.style.borderBottom = 'none';
+                firstH1.style.paddingBottom = '0';
+                firstH1.style.margin = '0';
+                firstH1.parentNode.insertBefore(wrapper, firstH1);
+
+                const leftGroup = document.createElement('div');
+                leftGroup.className = 'header-left';
+                leftGroup.appendChild(firstH1);
+                if (article.date) {
+                    const dateSpan = document.createElement('div');
+                    dateSpan.className = 'article-date';
+                    dateSpan.innerText = article.date;
+                    leftGroup.appendChild(dateSpan);
+                }
+                wrapper.appendChild(leftGroup);
+
+                const rightGroup = document.createElement('div');
+                rightGroup.className = 'header-right';
+                const statusBadge = window.getStatusBadgeHtml(article, false);
+                if (statusBadge) {
+                    const tagContainer = document.createElement('div');
+                    tagContainer.className = 'status-badge-container';
+                    tagContainer.innerHTML = statusBadge;
+                    rightGroup.appendChild(tagContainer);
+                }
+
+                const cleanPath = window.getCleanBasePath();
+                const articleSlug = article.id || articleIndex;
+                const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleSlug}`;
+                window.history.replaceState({ path: spaUrl }, '', spaUrl);
+                const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/${articleSlug}/index.html`;
+
+                const shareBtn = document.createElement('button');
+                shareBtn.className = 'share-link-btn';
+                shareBtn.innerHTML = `${GLOBAL_SVGS.link} <span>複製連結</span>`;
+                shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
+
+                rightGroup.appendChild(shareBtn);
+                wrapper.appendChild(rightGroup);
+            }
+
+            const topLeft = document.getElementById('modal-top-left');
+            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></button>` : '';
+            let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
+
+            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
+
+            const tocMount = document.getElementById('toc-mount-point');
+            tocMount.innerHTML = ''; 
+            const headings = modalBody.querySelectorAll('h1, h2, h3'); 
+            if (headings.length > 1) {
+                const tocWrapper = document.createElement('div');
+                tocWrapper.className = 'toc-wrapper';
+
+                const tocBtn = document.createElement('div');
+                tocBtn.className = 'toc-toggle-btn';
+                tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
+
+                const tocDropdown = document.createElement('div');
+                tocDropdown.className = 'toc-dropdown';
+                tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
+                const tocList = tocDropdown.querySelector('.toc-list');
+
+                headings.forEach((h, index) => {
+                    h.id = `article-heading-${index}`;
+                    const li = document.createElement('li');
+                    li.className = `toc-${h.tagName.toLowerCase()}`; 
+                    const a = document.createElement('a');
+                    a.innerText = h.innerText;
+                    a.href = "javascript:void(0)"; 
+                    a.onclick = () => {
+                        const targetTop = h.getBoundingClientRect().top - document.querySelector('.modal-content').getBoundingClientRect().top + document.querySelector('.modal-content').scrollTop - 90;
+                        document.querySelector('.modal-content').scrollTo({ top: targetTop, behavior: 'smooth' });
+                        h.classList.add('highlight-flash');
+                        setTimeout(() => h.classList.remove('highlight-flash'), 1000);
+                        tocBtn.classList.remove('open');
+                        tocDropdown.classList.remove('active');
+                    };
+                    li.appendChild(a);
+                    tocList.appendChild(li);
                 });
 
-                let targetIndex = Math.max(0, Math.min(closestIndex + direction, figures.length - 1));
-                let scrollAmount = (figures[targetIndex].getBoundingClientRect().left + figures[targetIndex].offsetWidth / 2) - containerCenter;
-
-                const maxScrollLeft = gallery.scrollWidth - gallery.clientWidth;
-                if (direction > 0 && scrollAmount > maxScrollLeft - gallery.scrollLeft) scrollAmount = maxScrollLeft - gallery.scrollLeft;
-                else if (direction < 0 && Math.abs(scrollAmount) > gallery.scrollLeft) scrollAmount = -gallery.scrollLeft;
-
-                gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-            };
-
-            hintRight.addEventListener('click', () => scrollOneItem(1));
-            hintLeft.addEventListener('click', () => scrollOneItem(-1));
-        });
-
-        modalBody.querySelectorAll('figure').forEach(figure => {
-            const figcaption = figure.querySelector('figcaption');
-            const img = figure.querySelector('img');
-            
-            if (figcaption) {
-                figure.style.cursor = 'pointer'; 
-                figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
-                
-                if (img && !figcaption.querySelector('.zoom-btn')) {
-                    const zoomBtn = document.createElement('button');
-                    zoomBtn.className = 'zoom-btn';
-                    zoomBtn.innerHTML = `
-                        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            <line x1="11" y1="8" x2="11" y2="14"></line>
-                            <line x1="8" y1="11" x2="14" y2="11"></line>
-                        </svg>
-                    `;
-                    zoomBtn.onclick = (event) => {
-                        event.stopPropagation();
-                        window.openLightbox(zoomBtn, event);
-                    };
-                    figcaption.appendChild(zoomBtn);
-                }
+                tocBtn.onclick = () => { tocBtn.classList.toggle('open'); tocDropdown.classList.toggle('active'); };
+                tocWrapper.appendChild(tocBtn);
+                tocWrapper.appendChild(tocDropdown);
+                tocMount.appendChild(tocWrapper);
             }
-        });
-    }); 
+
+            modalBody.querySelectorAll('.gallery').forEach(gallery => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'scroll-wrapper';
+                gallery.parentNode.insertBefore(wrapper, gallery);
+
+                const hintLeft = document.createElement('div');
+                hintLeft.className = 'scroll-hint hint-left';
+                const hintRight = document.createElement('div');
+                hintRight.className = 'scroll-hint hint-right';
+                
+                wrapper.appendChild(hintLeft);
+                wrapper.appendChild(gallery);
+                wrapper.appendChild(hintRight);
+
+                const initialStyle = gallery.getAttribute('style') || '';
+                const manualRows = (initialStyle.match(/--g-rows:\s*(\d+)/)) ? parseInt(initialStyle.match(/--g-rows:\s*(\d+)/)[1]) : null;
+
+                window.initScrollHints(gallery, hintLeft, hintRight);
+
+                const originalCheckScroll = () => {
+                    const totalItems = gallery.querySelectorAll('figure').length;
+                    if (totalItems > 0) {
+                        let shouldWrap = false;
+                        if (!manualRows && totalItems > 1) {
+                            const containerWidth = gallery.clientWidth;
+                            if (containerWidth > 0) {
+                                const matchWidth = initialStyle.match(/--g-width:\s*(\d+)px/);
+                                let baseWidth = matchWidth ? parseInt(matchWidth[1]) : 200;
+                                if (((baseWidth * totalItems) + (16 * (totalItems - 1))) >= containerWidth * 1.5) shouldWrap = true;
+                            }
+                        }
+
+                        const isCurrentlyWrapped = gallery.getAttribute('data-wrapped') === 'true';
+                        if (shouldWrap !== isCurrentlyWrapped) {
+                            if (shouldWrap) {
+                                gallery.style.display = 'flex';
+                                gallery.style.flexWrap = 'wrap';
+                                gallery.style.justifyContent = 'flex-start'; 
+                                gallery.style.gridAutoFlow = '';
+                                gallery.style.gridTemplateColumns = '';
+                                gallery.style.gridTemplateRows = '';
+                                gallery.setAttribute('data-wrapped', 'true');
+                            } else {
+                                gallery.style.display = 'grid';
+                                gallery.style.flexWrap = '';
+                                gallery.style.justifyContent = '';
+                                gallery.style.gridAutoFlow = 'column';
+                                gallery.style.gridTemplateColumns = `minmax(var(--g-width), var(--g-width))`;
+                                gallery.style.gridTemplateRows = 'auto';
+                                gallery.setAttribute('data-wrapped', 'false');
+                            }
+                        }
+                    }
+                    const isScrollable = gallery.scrollWidth > gallery.clientWidth + 5;
+                    const isAtEnd = Math.ceil(gallery.scrollLeft + gallery.clientWidth) >= Math.floor(gallery.scrollWidth) - 10;
+                    const isAtStart = gallery.scrollLeft <= 10;
+
+                    hintRight.classList.toggle('visible', isScrollable && !isAtEnd);
+                    hintLeft.classList.toggle('visible', isScrollable && !isAtStart);
+                };
+
+                gallery.addEventListener('scroll', originalCheckScroll);
+                new ResizeObserver(originalCheckScroll).observe(gallery);
+                setTimeout(originalCheckScroll, 150);
+
+                const scrollOneItem = (direction) => {
+                    const figures = Array.from(gallery.querySelectorAll('figure'));
+                    if (figures.length === 0) return;
+                    const containerCenter = gallery.getBoundingClientRect().left + gallery.clientWidth / 2;
+                    let closestIndex = 0;
+                    let minDistance = Infinity;
+
+                    figures.forEach((figure, index) => {
+                        const distance = Math.abs(containerCenter - (figure.getBoundingClientRect().left + figure.offsetWidth / 2));
+                        if (distance < minDistance) { minDistance = distance; closestIndex = index; }
+                    });
+
+                    let targetIndex = Math.max(0, Math.min(closestIndex + direction, figures.length - 1));
+                    let scrollAmount = (figures[targetIndex].getBoundingClientRect().left + figures[targetIndex].offsetWidth / 2) - containerCenter;
+
+                    const maxScrollLeft = gallery.scrollWidth - gallery.clientWidth;
+                    if (direction > 0 && scrollAmount > maxScrollLeft - gallery.scrollLeft) scrollAmount = maxScrollLeft - gallery.scrollLeft;
+                    else if (direction < 0 && Math.abs(scrollAmount) > gallery.scrollLeft) scrollAmount = -gallery.scrollLeft;
+
+                    gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                };
+
+                hintRight.addEventListener('click', () => scrollOneItem(1));
+                hintLeft.addEventListener('click', () => scrollOneItem(-1));
+            });
+
+            modalBody.querySelectorAll('figure').forEach(figure => {
+                const figcaption = figure.querySelector('figcaption');
+                const img = figure.querySelector('img');
+                
+                if (figcaption) {
+                    figure.style.cursor = 'pointer'; 
+                    figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
+                    
+                    if (img && !figcaption.querySelector('.zoom-btn')) {
+                        const zoomBtn = document.createElement('button');
+                        zoomBtn.className = 'zoom-btn';
+                        zoomBtn.innerHTML = `
+                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                <line x1="11" y1="8" x2="11" y2="14"></line>
+                                <line x1="8" y1="11" x2="14" y2="11"></line>
+                            </svg>
+                        `;
+                        zoomBtn.onclick = (event) => {
+                            event.stopPropagation();
+                            window.openLightbox(zoomBtn, event);
+                        };
+                        figcaption.appendChild(zoomBtn);
+                    }
+                }
+            });
+        },
+        () => {
+            // ✨ 完全無延遲的定位邏輯
+            const modalContainer = document.querySelector('.modal-content');
+            if (modalContainer) {
+                modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
+            }
+        }
+    ); 
 };
 
 // === 5. 標籤點擊聚焦邏輯 ===
