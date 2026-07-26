@@ -1256,6 +1256,8 @@ figure.no-caption:hover .zoom-btn.floating {
         transform: translateY(0) scale(1) translateZ(0);
         pointer-events: auto;
     }
+
+    #article-list-container { transition: opacity 0.2s ease; padding-bottom: 20px; }
 }
 
 /* 針對觸控裝置的優化 */
@@ -1376,3 +1378,62 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     border-color: color-mix(in srgb, var(--card-glow) 40%, transparent);
 }
 .card:hover .action-btn { color: var(--card-glow) !important; }
+
+/* ========================================== */
+/* ✨ 目錄浮動跳轉膠囊 (NEW 標籤位置提示) */
+/* ========================================== */
+.new-jump-toast {
+    position: absolute;
+    bottom: max(30px, calc(env(safe-area-inset-bottom) + 20px));
+    left: 50%;
+    transform: translateX(-50%) translateY(40px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1070; /* 確保在 Modal 之上 */
+    background: var(--nav-bg); 
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--error-color);
+    color: var(--error-color); 
+    padding: 0.5rem 1.2rem;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    box-shadow: 0 10px 25px var(--error-shadow);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 觸發顯示時的狀態 */
+.new-jump-toast.is-visible {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 懸停時按鈕會被填滿紅色 */
+.new-jump-toast:hover {
+    background: var(--error-color);
+    color: #fff;
+    transform: translateX(-50%) translateY(-4px);
+    box-shadow: 0 12px 30px var(--error-shadow);
+}
+
+/* 向下的箭頭彈跳動畫 */
+@keyframes jump-arrow-bounce-down {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(4px); }
+}
+
+/* 向上的箭頭彈跳動畫 */
+@keyframes jump-arrow-bounce-up {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+}
+
+/* 確保 SVG 沒有原本的舊動畫衝突 */
+.new-jump-toast svg {
+    display: block;
+}

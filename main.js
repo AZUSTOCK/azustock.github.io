@@ -1311,6 +1311,9 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
     window.historyStack = []; 
 
     switchModalContent(() => {
+        /* ✨ 修正：將 modalContainer 提早宣告，讓底下的膠囊與清單都能讀取到它！ */
+        const modalContainer = document.querySelector('.modal-content');
+        
         document.getElementById('modal-top-left').innerHTML = `<button class="modal-back-btn" style="opacity: 0; pointer-events: none; visibility: hidden;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> <span>返回索引</span></button>`;
         document.getElementById('toc-mount-point').innerHTML = `<div class="toc-wrapper" style="opacity: 0; pointer-events: none; visibility: hidden;"><div class="toc-toggle-btn"><span class="bar"></span><span class="bar"></span><span class="bar"></span></div></div>`;
         document.querySelector('.modal-top-bar').classList.add('is-index-mode');
@@ -1402,6 +1405,116 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 html += `</ul>`;
             }
             listContainer.innerHTML = html;
+
+            // ✨ 新增：初始化浮動跳轉膠囊 (NEW Tag 提示雙向引擎 - 支援多筆動態追蹤)
+            const initJumpToast = () => {
+                const newArticles = Array.from(listContainer.querySelectorAll('.article-li'))
+                    .filter(li => li.querySelector('.status-badge[data-status="NEW"]'));
+                
+                let jumpToast = document.getElementById('new-jump-toast');
+                if (!jumpToast) {
+                    jumpToast = document.createElement('button');
+                    jumpToast.id = 'new-jump-toast';
+                    jumpToast.className = 'new-jump-toast';
+                    modalOverlay.appendChild(jumpToast);
+                }
+
+                if (window.indexScrollHandler) {
+                    modalContainer.removeEventListener('scroll', window.indexScrollHandler);
+                    window.indexScrollHandler = null;
+                }
+
+                if (newArticles.length > 0) {
+                    // 用來儲存「點擊膠囊後，要跳轉到哪一篇文章」
+                    let targetArticle = null;
+
+                    window.indexScrollHandler = () => {
+                        const modalRect = modalContainer.getBoundingClientRect();
+                        
+                        let countAbove = 0;
+                        let countVisible = 0;
+                        let countBelow = 0;
+                        
+                        let closestAbove = null;
+                        let closestBelow = null;
+
+                        // 掃描所有帶有 NEW 的文章
+                        newArticles.forEach(article => {
+                            const rect = article.getBoundingClientRect();
+                            
+                            // 判斷是否在上方視線外 (扣除 120px 透明標題列)
+                            if (rect.bottom < modalRect.top + 120) {
+                                countAbove++;
+                                // 因為是依序掃描，所以最後被標記的 closestAbove 就會是最靠近畫面上緣的那篇
+                                closestAbove = article; 
+                            } 
+                            // 判斷是否在下方視線外 (扣除 20px 緩衝)
+                            else if (rect.top > modalRect.bottom - 20) {
+                                countBelow++;
+                                // 抓第一篇落在下方的
+                                if (!closestBelow) closestBelow = article; 
+                            } 
+                            // 剛好落在視線範圍內
+                            else {
+                                countVisible++;
+                            }
+                        });
+
+                        // ✨ 決策邏輯：決定膠囊要顯示什麼，以及點擊後要去哪
+                        if (countBelow > 0) {
+                            // 優先提示下方，符合一般往下閱讀的動線
+                            targetArticle = closestBelow;
+                            const prefix = countVisible > 0 ? '下方還有' : '發現';
+                            jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> ${prefix} ${countBelow} 篇新內容`;
+                            jumpToast.classList.add('is-visible');
+                        } 
+                        else if (countAbove > 0) {
+                            // 下方沒了，只剩上方有，箭頭改朝上
+                            targetArticle = closestAbove;
+                            const prefix = countVisible > 0 ? '上方還有' : '發現';
+                            jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-up 1.5s infinite ease-in-out;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg> ${prefix} ${countAbove} 篇新內容`;
+                            jumpToast.classList.add('is-visible');
+                        } 
+                        else {
+                            // 所有帶有 NEW 的文章都已經在畫面上，隱藏膠囊
+                            targetArticle = null;
+                            jumpToast.classList.remove('is-visible');
+                        }
+                    };
+                    
+                    // 綁定事件並立刻檢查一次
+                    modalContainer.addEventListener('scroll', window.indexScrollHandler);
+                    setTimeout(window.indexScrollHandler, 100);
+
+                    // 點擊膠囊的跳轉行為
+                    jumpToast.onclick = () => {
+                        if (!targetArticle) return;
+                        
+                        modalContainer.scrollTo({
+                            top: targetArticle.offsetTop - 120,
+                            behavior: 'smooth'
+                        });
+                        jumpToast.classList.remove('is-visible'); 
+                        
+                        // 抵達後，讓「所有進入畫面中」的新文章一起閃爍引導視覺
+                        setTimeout(() => {
+                            const modalRect = modalContainer.getBoundingClientRect();
+                            newArticles.forEach(article => {
+                                const rect = article.getBoundingClientRect();
+                                // 判斷文章是否落在當前的可視範圍內 (包含一點點緩衝區)
+                                if (rect.top < modalRect.bottom && rect.bottom > modalRect.top) {
+                                    article.classList.add('simulate-hover');
+                                    setTimeout(() => article.classList.remove('simulate-hover'), 1500);
+                                }
+                            });
+                        }, 500);
+                    };
+                } else {
+                    jumpToast.classList.remove('is-visible');
+                }
+            };
+
+            initJumpToast(); // 執行膠囊初始化
         };
 
         const updateSortBtnUI = () => {
@@ -1436,9 +1549,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
         modalOverlay.classList.add('active');
         window.lockScroll(); 
-        
-        const modalContainer = document.querySelector('.modal-content');
-        
+                
         /* ✨ 尋找並跳轉到最後閱讀的文章節點 */
         if (restoreScroll && window.lastReadArticleIndex !== undefined) {
             const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
@@ -1468,6 +1579,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 // 打開具體的「文章內文」
 // ==========================================
 window.openArticle = async function(projectId, articleIndex, isFromHistory = false) {
+    // ✨ 修正：一進入文章，立刻強制隱藏目錄的浮動膠囊
+    const jumpToast = document.getElementById('new-jump-toast');
+    if (jumpToast) jumpToast.classList.remove('is-visible');
+
     if (!isFromHistory) {
         if (!window.historyStack) window.historyStack = [];
         window.historyStack.push({ projectId, articleIndex });
@@ -1902,7 +2017,12 @@ window.goBackInHistory = function() {
 function closeModal() {
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
-    window.unlockScroll(); // ✨ 替換為防跳動版本
+    window.unlockScroll(); // 防跳動版本
+
+    // ✨ 關閉彈窗時，一併隱藏跳轉膠囊
+    const jumpToast = document.getElementById('new-jump-toast');
+    if (jumpToast) jumpToast.classList.remove('is-visible');
+
     window.history.replaceState(null, '', window.location.pathname);
 }
 
