@@ -1313,10 +1313,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
     switchModalContent(() => {
         const modalContainer = document.querySelector('.modal-content');
         
-        // ✨ 1. 將目錄模式解除，讓頂部列恢復文章模式的毛玻璃與固定效果
+        // ✨ 1. 移除 is-index-mode，讓目錄頂部列恢復與文章模式相同的標準毛玻璃固定列
         document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
         
-        // 清空 TOC，目錄頁不需要目錄導覽
+        // 清空內文 TOC 選單點
         document.getElementById('toc-mount-point').innerHTML = ``;
 
         const proj = window.siteProjects.find(p => p.id === projectId);
@@ -1330,18 +1330,18 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         window.history.replaceState({ path: spaUrl }, '', spaUrl);
         const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
 
-        // ✨ 2. 把標題、共幾篇、排序、分享，全部用 flex-wrap 塞進 modal-top-left
-        // 這樣長度超過時會自動往下換行，不會擠壓到右邊的 X 按鈕
+        // ✨ 2. 將目錄標題與功能按鈕直接注入 modal-top-left，與右側 X 按鈕融合於同一列
+        // 透過 line-height: 1.2 與 flex 垂直置中，讓字體放大至 1.35rem 時依然完全不撐高容器
         document.getElementById('modal-top-left').innerHTML = `
-            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem; padding-right: 1rem;">
-                <h1 style="margin: 0; padding: 0; border: none; line-height: 1.3; font-size: clamp(1.2rem, 4vw, 1.5rem); color: var(--accent); word-break: break-word;">${proj.title} - 目錄</h1>
-                <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 1rem;">
+                <h1 style="margin: 0; padding: 0; border: none; line-height: 1; font-size: 2rem; font-weight: bold; color: var(--accent); word-break: break-word;">${proj.title} - 目錄</h1>
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                     <span style="font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: var(--tag-bg); padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap;">共 ${proj.articles.length} 篇</span>
-                    <button id="toggle-sort-btn" class="share-link-btn" style="width: auto; padding: 0 0.8rem; margin: 0;">
+                    <button id="toggle-sort-btn" class="share-link-btn" style="width: auto; padding: 0 0.8rem; margin: 0; height: 30px;">
                         <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
                         <span id="sort-btn-text" style="margin-left: 4px;"></span>
                     </button>
-                    <button class="share-link-btn" id="index-share-btn" style="margin: 0;">
+                    <button class="share-link-btn" id="index-share-btn" style="margin: 0; height: 30px;">
                         ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">複製連結</span>
                     </button> 
                 </div>
@@ -1350,12 +1350,11 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
         let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
 
-        // ✨ 3. modalBody 中現在只需要保留文章清單容器，去除原本的標題區塊
+        // ✨ 3. modalBody 內部僅保留文章列表，不再重複渲染標題列
         modalBody.innerHTML = `
-            <div id="article-list-container" style="transition: opacity 0.2s ease; margin-top: 0.5rem;"></div>
+            <div id="article-list-container" style="transition: opacity 0.2s ease;"></div>
         `;
 
-        // ✨ 4. 因為按鈕被移出 modalBody，抓取元素的方法改為全局的 getElementById
         const shareBtn = document.getElementById('index-share-btn');
         if (shareBtn) {
             shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
@@ -1364,7 +1363,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         const listContainer = modalBody.querySelector('#article-list-container');
         const sortBtn = document.getElementById('toggle-sort-btn');
 
-        // --- 以下的 renderList() 等原本的邏輯完全保持不變 ---
         const renderList = () => {
             const finalArray = window.getArticleSequence(projectId);
             const themePalette = ['var(--group-c1)', 'var(--group-c2)', 'var(--group-c3)', 'var(--group-c4)', 'var(--group-c5)'];
@@ -1379,7 +1377,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 let iconHtml = `<div style="position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px;">${pinnedBadgeHtml}${baseIconHtml}</div>`;
                 let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
 
-                /* ✨ 加入 ID，讓系統返回時可以精準找到這篇文章 */
                 return `<li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}"${colorStyle}><a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" style="display: flex; align-items: center; gap: 1rem; text-decoration: none; padding: 0.5rem; border-radius: 0.8rem; transition: background-color 0.2s;">${iconHtml}<div style="display: flex; align-items: center; width: 100%; flex-wrap: wrap; row-gap: 0.4rem;"><div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem;"><span style="font-size: 1.15rem; color: var(--accent); font-weight: bold;">${art.title}${statusBadgeHtml}</span>${descHtml}</div>${dateHtml}</div></a></li>`;
             };
 
@@ -1387,6 +1384,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             if (proj.groups && Object.keys(proj.groups).length > 0) {
                 let colorIndex = 0; 
+                let isFirstGroup = true; // ✨ 追蹤是否為第一個群組
+                
                 for (const [groupId, groupData] of Object.entries(proj.groups)) {
                     const groupArticles = finalArray.filter(item => item.art.group === groupId);
                     if (groupArticles.length === 0) continue;
@@ -1399,24 +1398,30 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                     let titleColorStyle = groupColor ? `color: ${groupColor}; border-bottom-color: ${groupColor};` : `color: var(--accent); border-bottom-color: var(--divider-line);`;
                     
-                    html += `<div class="group-header" style="margin-top: 1.8rem; margin-bottom: 0.8rem;"><div style="font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; ${titleColorStyle}">${groupData.title || groupId}</div>${groupData.description ? `<div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem;">${groupData.description}</div>` : ''}</div><ul style="list-style:none; padding-left:0; margin:0;">`;
+                    // ✨ 第一個群組的上方間距改為 0.8rem，其餘維持 1.8rem
+                    const topMargin = isFirstGroup ? '0rem' : '1.8rem';
+                    
+                    html += `<div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;"><div style="font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; ${titleColorStyle}">${groupData.title || groupId}</div>${groupData.description ? `<div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem;">${groupData.description}</div>` : ''}</div><ul style="list-style:none; padding-left:0; margin:0;">`;
                     groupArticles.forEach(({art, idx}) => { html += generateLi(art, idx, groupData.highlight, groupColor); });
                     html += `</ul>`;
+                    
+                    isFirstGroup = false;
                 }
                 const ungrouped = finalArray.filter(item => !item.art.group);
                 if (ungrouped.length > 0) {
-                    html += `<ul style="list-style:none; padding-left:0; margin-top:1.5rem;">`;
+                    const topMargin = isFirstGroup ? '0rem' : '1.5rem';
+                    html += `<ul style="list-style:none; padding-left:0; margin-top:${topMargin};">`;
                     ungrouped.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
                     html += `</ul>`;
                 }
             } else {
-                html += `<ul style="list-style:none; padding-left:0; margin-top:1.5rem;">`;
+                // ✨ 無群組時的上方間距也改為 0.8rem
+                html += `<ul style="list-style:none; padding-left:0; margin-top:0rem;">`;
                 finalArray.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
                 html += `</ul>`;
             }
             listContainer.innerHTML = html;
 
-            // ✨ 新增：初始化浮動跳轉膠囊 (NEW Tag 提示雙向引擎 - 支援多筆動態追蹤)
             const initJumpToast = () => {
                 const newArticles = Array.from(listContainer.querySelectorAll('.article-li'))
                     .filter(li => li.querySelector('.status-badge[data-status="NEW"]'));
@@ -1435,7 +1440,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 }
 
                 if (newArticles.length > 0) {
-                    // 用來儲存「點擊膠囊後，要跳轉到哪一篇文章」
                     let targetArticle = null;
 
                     window.indexScrollHandler = () => {
@@ -1448,70 +1452,50 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         let closestAbove = null;
                         let closestBelow = null;
 
-                        // 掃描所有帶有 NEW 的文章
                         newArticles.forEach(article => {
                             const rect = article.getBoundingClientRect();
-                            
-                            // 判斷是否在上方視線外 (扣除 120px 透明標題列)
                             if (rect.bottom < modalRect.top + 120) {
                                 countAbove++;
-                                // 因為是依序掃描，所以最後被標記的 closestAbove 就會是最靠近畫面上緣的那篇
                                 closestAbove = article; 
-                            } 
-                            // 判斷是否在下方視線外 (扣除 20px 緩衝)
-                            else if (rect.top > modalRect.bottom - 20) {
+                            } else if (rect.top > modalRect.bottom - 20) {
                                 countBelow++;
-                                // 抓第一篇落在下方的
                                 if (!closestBelow) closestBelow = article; 
-                            } 
-                            // 剛好落在視線範圍內
-                            else {
+                            } else {
                                 countVisible++;
                             }
                         });
 
-                        // ✨ 決策邏輯：決定膠囊要顯示什麼，以及點擊後要去哪
                         if (countBelow > 0) {
-                            // 優先提示下方，符合一般往下閱讀的動線
                             targetArticle = closestBelow;
                             const prefix = countVisible > 0 ? '下方還有' : '發現';
                             jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> ${prefix} ${countBelow} 篇新內容`;
                             jumpToast.classList.add('is-visible');
-                        } 
-                        else if (countAbove > 0) {
-                            // 下方沒了，只剩上方有，箭頭改朝上
+                        } else if (countAbove > 0) {
                             targetArticle = closestAbove;
                             const prefix = countVisible > 0 ? '上方還有' : '發現';
                             jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-up 1.5s infinite ease-in-out;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg> ${prefix} ${countAbove} 篇新內容`;
                             jumpToast.classList.add('is-visible');
-                        } 
-                        else {
-                            // 所有帶有 NEW 的文章都已經在畫面上，隱藏膠囊
+                        } else {
                             targetArticle = null;
                             jumpToast.classList.remove('is-visible');
                         }
                     };
                     
-                    // 綁定事件並立刻檢查一次
                     modalContainer.addEventListener('scroll', window.indexScrollHandler);
                     setTimeout(window.indexScrollHandler, 100);
 
-                    // 點擊膠囊的跳轉行為
                     jumpToast.onclick = () => {
                         if (!targetArticle) return;
-                        
                         modalContainer.scrollTo({
                             top: targetArticle.offsetTop - 120,
                             behavior: 'smooth'
                         });
                         jumpToast.classList.remove('is-visible'); 
                         
-                        // 抵達後，讓「所有進入畫面中」的新文章一起閃爍引導視覺
                         setTimeout(() => {
                             const modalRect = modalContainer.getBoundingClientRect();
                             newArticles.forEach(article => {
                                 const rect = article.getBoundingClientRect();
-                                // 判斷文章是否落在當前的可視範圍內 (包含一點點緩衝區)
                                 if (rect.top < modalRect.bottom && rect.bottom > modalRect.top) {
                                     article.classList.add('simulate-hover');
                                     setTimeout(() => article.classList.remove('simulate-hover'), 1500);
@@ -1524,7 +1508,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 }
             };
 
-            initJumpToast(); // 執行膠囊初始化
+            initJumpToast();
         };
 
         const updateSortBtnUI = () => {
@@ -1560,22 +1544,16 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         modalOverlay.classList.add('active');
         window.lockScroll(); 
                 
-        /* ✨ 尋找並跳轉到最後閱讀的文章節點 */
         if (restoreScroll && window.lastReadArticleIndex !== undefined) {
             const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
             if (targetItem) {
-                // 扣除 120px，避開頂部固定的透明標題列，確保文章剛好落在視線中央
                 modalContainer.scrollTop = Math.max(0, targetItem.offsetTop - 120);
-                
-                // ✨ 動畫魔法：加上模擬 Hover，停留 1.5 秒後自動消退
-                // 使用 setTimeout 確保捲軸移動完成後才開始動畫
                 setTimeout(() => {
                     targetItem.classList.add('simulate-hover');
                     setTimeout(() => {
                         targetItem.classList.remove('simulate-hover');
-                    }, 1500); // 動畫停留時間 (1.5秒)
+                    }, 1500);
                 }, 100); 
-                
             } else {
                 modalContainer.scrollTop = 0;
             }
