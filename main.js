@@ -1277,58 +1277,6 @@ if (!window.modalBodyObserver) {
     window.modalBodyObserver.observe(modalBody);
 }
 
-function switchModalContent(updateDOMCallback) {
-    const isModalOpen = modalOverlay.classList.contains('active');
-    const topLeft = document.getElementById('modal-top-left');
-    const tocMount = document.getElementById('toc-mount-point');
-    const modalContainer = document.querySelector('.modal-content');
-    
-    // ✨ 核心修正：每次切換 Modal 內容時，強制卸載目錄頁的滾動監聽並隱藏 NEW 膠囊
-    if (window.indexScrollHandler && modalContainer) {
-        modalContainer.removeEventListener('scroll', window.indexScrollHandler);
-        window.indexScrollHandler = null;
-    }
-    const jumpToast = document.getElementById('new-jump-toast');
-    if (jumpToast) {
-        jumpToast.classList.remove('is-visible');
-    }
-
-    if (isModalOpen) {
-        const currentHeight = modalContainer.offsetHeight; 
-        modalContainer.style.height = currentHeight + 'px';
-
-        modalBody.classList.add('content-fade-out');
-        if (topLeft) topLeft.classList.add('content-fade-out');
-        if (tocMount) tocMount.classList.add('content-fade-out');
-        
-        setTimeout(() => {
-            modalContainer.style.transition = 'none'; 
-            updateDOMCallback();
-            void modalBody.offsetHeight; 
-            
-            modalContainer.style.height = ''; 
-            const newHeight = modalContainer.offsetHeight;
-            modalContainer.style.height = currentHeight + 'px';
-            void modalContainer.offsetHeight; 
-            modalContainer.style.transition = ''; 
-            
-            requestAnimationFrame(() => {
-                modalContainer.style.height = newHeight + 'px';
-                modalBody.classList.remove('content-fade-out'); 
-                if (topLeft) topLeft.classList.remove('content-fade-out');
-                if (tocMount) tocMount.classList.remove('content-fade-out');
-
-                setTimeout(() => { modalContainer.style.height = ''; }, 320); 
-            });
-        }, 120); 
-    } else {
-        updateDOMCallback();
-        modalBody.classList.remove('content-fade-out');
-        if (topLeft) topLeft.classList.remove('content-fade-out');
-        if (tocMount) tocMount.classList.remove('content-fade-out');
-    }
-}
-
 function switchModalContent(updateDOMCallback, afterUpdateCallback = null) {
     const isModalOpen = modalOverlay.classList.contains('active');
     const topLeft = document.getElementById('modal-top-left');
@@ -1412,16 +1360,17 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             window.history.replaceState({ path: spaUrl }, '', spaUrl);
             const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
 
+            // 2. 將目錄標題與功能按鈕直接注入 modal-top-left
             document.getElementById('modal-top-left').innerHTML = `
-                <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 1rem;">
-                    <h1 style="margin: 0; padding: 0; border: none; line-height: 1; font-size: 2rem; font-weight: bold; color: var(--accent); word-break: break-word;">${proj.title} - 目錄</h1>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                        <span style="font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent); background: var(--tag-bg); padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap;">共 ${proj.articles.length} 篇</span>
-                        <button id="toggle-sort-btn" class="share-link-btn" style="width: auto; padding: 0 0.8rem; margin: 0; height: 30px;">
+                <div class="index-header-container">
+                    <h1 class="index-header-title">${proj.title} - 目錄</h1>
+                    <div class="index-header-actions">
+                        <span class="article-count-badge">共 ${proj.articles.length} 篇</span>
+                        <button id="toggle-sort-btn" class="share-link-btn sm">
                             <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
                             <span id="sort-btn-text" style="margin-left: 4px;"></span>
                         </button>
-                        <button class="share-link-btn" id="index-share-btn" style="margin: 0; height: 30px;">
+                        <button class="share-link-btn sm" id="index-share-btn">
                             ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">複製連結</span>
                         </button> 
                     </div>
@@ -1447,16 +1396,32 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 const themePalette = ['var(--group-c1)', 'var(--group-c2)', 'var(--group-c3)', 'var(--group-c4)', 'var(--group-c5)'];
 
                 const generateLi = (art, idx, isHighlightGroup, customColor) => {
-                    let descHtml = art.description ? `<span style="font-size: 0.95rem; color: var(--muted); line-height: 1.4;">- ${art.description}</span>` : '';
-                    let dateHtml = art.date ? `<span style="font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0;">${art.date}</span>` : '';
+                    let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                    let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
                     let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                     
-                    let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important;">` : `<div style="position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
+                    let baseIconHtml = art.cover_image 
+                        ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
+                        : `<div class="article-item-fallback"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
+                    
                     let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                    let iconHtml = `<div style="position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px;">${pinnedBadgeHtml}${baseIconHtml}</div>`;
+                    let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${baseIconHtml}</div>`;
                     let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
 
-                    return `<li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}"${colorStyle}><a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" style="display: flex; align-items: center; gap: 1rem; text-decoration: none; padding: 0.5rem; border-radius: 0.8rem; transition: background-color 0.2s;">${iconHtml}<div style="display: flex; align-items: center; width: 100%; flex-wrap: wrap; row-gap: 0.4rem;"><div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem;"><span style="font-size: 1.15rem; color: var(--accent); font-weight: bold;">${art.title}${statusBadgeHtml}</span>${descHtml}</div>${dateHtml}</div></a></li>`;
+                    return `
+                        <li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}"${colorStyle}>
+                            <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                ${iconHtml}
+                                <div class="article-item-content">
+                                    <div class="article-item-title-row">
+                                        <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                        ${descHtml}
+                                    </div>
+                                    ${dateHtml}
+                                </div>
+                            </a>
+                        </li>
+                    `;
                 };
 
                 let html = '';
@@ -1476,10 +1441,15 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         }
 
                         let titleColorStyle = groupColor ? `color: ${groupColor}; border-bottom-color: ${groupColor};` : `color: var(--accent); border-bottom-color: var(--divider-line);`;
-                        
                         const topMargin = isFirstGroup ? '0rem' : '1.8rem';
                         
-                        html += `<div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;"><div style="font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; ${titleColorStyle}">${groupData.title || groupId}</div>${groupData.description ? `<div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem;">${groupData.description}</div>` : ''}</div><ul style="list-style:none; padding-left:0; margin:0;">`;
+                        html += `
+                            <div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
+                                <div class="group-header-title" style="${titleColorStyle}">${groupData.title || groupId}</div>
+                                ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
+                            </div>
+                            <ul class="article-list-ul">
+                        `;
                         groupArticles.forEach(({art, idx}) => { html += generateLi(art, idx, groupData.highlight, groupColor); });
                         html += `</ul>`;
                         
@@ -1488,12 +1458,12 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     const ungrouped = finalArray.filter(item => !item.art.group);
                     if (ungrouped.length > 0) {
                         const topMargin = isFirstGroup ? '0rem' : '1.5rem';
-                        html += `<ul style="list-style:none; padding-left:0; margin-top:${topMargin};">`;
+                        html += `<ul class="article-list-ul" style="margin-top:${topMargin};">`;
                         ungrouped.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
                         html += `</ul>`;
                     }
                 } else {
-                    html += `<ul style="list-style:none; padding-left:0; margin-top:0rem;">`;
+                    html += `<ul class="article-list-ul" style="margin-top:0rem;">`;
                     finalArray.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
                     html += `</ul>`;
                 }

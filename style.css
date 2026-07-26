@@ -336,8 +336,24 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* Modal 內部元件排版 */
 /* ========================= */
 .modal-top-bar { position: sticky; top: 0; margin: 0 -3rem 1.5rem -3rem; padding: 1.5rem 1.5rem 1.2rem 3rem; box-shadow: 0 -2px 0 0 var(--glass-bg); border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; background: var(--glass-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); z-index: 1060; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s ease, border-color 0.3s ease; }
-#modal-top-left, #modal-top-right { display: flex; align-items: center; margin: 0 !important; padding: 0 !important; }
-#modal-top-left { gap: 0.5rem; } #modal-top-right { gap: 1rem; }
+#modal-top-left { 
+    display: flex; 
+    align-items: center; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    gap: 0.5rem; 
+}
+
+#modal-top-right { 
+    display: flex; 
+    align-items: center; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    gap: 1rem; 
+    
+    /* ✨ 關鍵修改：強制靠上對齊，當左邊換行撐高容器時，X 按鈕會乖乖留在頂部 */
+    align-self: flex-start; 
+}
 .modal-close-btn, .toc-toggle-btn { box-sizing: border-box !important; flex-shrink: 0 !important; }
 
 .modal-back-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; box-sizing: border-box; height: 36px; padding: 0 1rem; margin: 0; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
@@ -689,9 +705,11 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
-/* 3. 專屬文字變亮效果 (維持原樣) */
-#modal-body li a:hover span[style*="font-size: 1.15rem"],
-.article-li a:hover span[style*="font-size: 1.15rem"] {
+/* 3. 專屬文字變亮效果 (改由 Class 觸發) */
+#modal-body li a:hover .article-item-title,
+.article-li a:hover .article-item-title,
+#modal-body li.simulate-hover a .article-item-title,
+.article-li.simulate-hover a .article-item-title {
     color: var(--accent-hover) !important;
     text-shadow: 0 0 8px var(--glow-1);
 }
@@ -1425,3 +1443,47 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .watermark-profile {
   --custom-watermark: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2%22%3E%3C/path%3E%3Ccircle cx=%2212%22 cy=%227%22 r=%224%22%3E%3C/circle%3E%3C/svg%3E');
 }
+
+/* ========================================== */
+/* ✨ 目錄頁與文章列表模組 (從 JS 抽離) */
+/* ========================================== */
+
+/* 1. 目錄頂部標題與按鈕區塊 */
+.index-header-container { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 1rem; }
+.index-header-title { 
+    /* ✨ 關鍵修復：設定 margin 右側為 2.8rem，強制推開右邊的膠囊按鈕 */
+    margin: 0 3rem 0 0 !important; 
+    padding: 0 !important; 
+    border: none !important; 
+    line-height: 1 !important; 
+    color: var(--accent) !important; 
+    word-break: break-word; 
+    font-weight: bold !important;
+    
+    /* 完美套用視覺放大至 2rem 但不撐高容器的技巧 */
+    font-size: 1.35rem !important; 
+    transform: scale(1.48); 
+    transform-origin: left center; 
+    display: inline-block;
+}
+.index-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.article-count-badge { font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent) !important; background: var(--tag-bg) !important; padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap; }
+button.share-link-btn.sm { width: auto !important; padding: 0 0.8rem !important; margin: 0 !important; height: 30px !important; }
+
+/* 2. 文章列表 (Article List) */
+.article-list-ul { list-style: none !important; padding-left: 0 !important; }
+/* ✨ 關鍵修復：強制使用 flex，覆蓋掉原有的 display: block */
+.article-li a.article-link { display: flex !important; align-items: center; gap: 1rem; text-decoration: none !important; padding: 0.5rem; border-radius: 0.8rem; }
+
+.article-item-icon-wrap { position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+img.article-item-cover { position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important; }
+.article-item-fallback { position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box; }
+.article-item-content { display: flex; align-items: center; width: 100%; flex-wrap: wrap; row-gap: 0.4rem; }
+.article-item-title-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
+span.article-item-title { font-size: 1.15rem; color: var(--accent); font-weight: bold; }
+span.article-item-desc { font-size: 0.95rem; color: var(--muted); line-height: 1.4; }
+span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0; }
+
+/* 3. 群組標題 (Group Header) */
+.group-header-title { font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; }
+.group-header-desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
