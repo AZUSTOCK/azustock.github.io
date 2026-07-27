@@ -1068,9 +1068,10 @@ async function loadProjects() {
             if (uniqueTags.length > 0) {
                 const stockContent = uniqueTags.map((tag, i) => {
                     if (tag.startsWith('KOTOBA_NO_BOX:')) {
-                        return `<span class="kotoba-whisper">${tag.replace('KOTOBA_NO_BOX:', '')}</span>`;
+                        // ✨ 加上 onclick="window.centerKotobaTag(event)" 屬性
+                        return `<span class="kotoba-whisper" onclick="window.centerKotobaTag(event)">${tag.replace('KOTOBA_NO_BOX:', '')}</span>`;
                     }
-                    const isUp = i % 2 !== 0; 
+                    const isUp = i % 2 !== 0;
                     const change = (Math.random() * 3 + 0.1).toFixed(2); 
                     const arrow = isUp ? '▲' : '▼';
                     const colorClass = isUp ? 'stock-up' : 'stock-down';
@@ -1086,7 +1087,8 @@ async function loadProjects() {
                 `;
 
                 container.onclick = (e) => {
-                    if (window.currentActiveTag && !e.target.closest('.clickable-ticker-tag')) window.clearFilter();
+                    // ✨ 同時監聽 一般Tag 與 言の箱 的狀態，點擊背景時解除過濾
+                    if ((window.currentActiveTag || window.isKotobaActive) && !e.target.closest('.clickable-ticker-tag') && !e.target.closest('.kotoba-whisper')) window.clearFilter();
                 };
 
                 container.onmouseenter = () => document.querySelectorAll('.marquee-content').forEach(m => { if (m.marqueePlayer) m.marqueePlayer.pause(); });
@@ -1933,15 +1935,76 @@ window.currentActiveTag = null;
 window.highlightedCards = []; 
 window.currentCardIndex = 0;  
 
+// ==========================================
+// ✨ 言の箱專屬：置中閱讀與點擊切換引擎
+// ==========================================
+window.isKotobaActive = false;
+
+window.centerKotobaTag = function(event) {
+    if (event) event.stopPropagation();
+    
+    // ✨ 如果已經是啟用狀態，再次點擊就解除 (恢復跑馬燈輪播)
+    if (window.isKotobaActive) {
+        window.clearFilter();
+        return;
+    }
+    
+    // 1. 清除任何卡片過濾狀態與舊的跑馬燈動畫
+    window.clearFilter();
+    window.isKotobaActive = true;
+    
+    const firstContent = document.querySelector('.marquee-content');
+    const targetTagEl = firstContent.querySelector('.kotoba-whisper');
+    
+    if (targetTagEl) {
+        // 2. 讓點擊的言之箱文字亮起來 (套用高光特效)
+        document.querySelectorAll('.kotoba-whisper').forEach(t => {
+            t.style.color = 'var(--accent-2)';
+            t.style.textShadow = '0 0 10px var(--glow-1)';
+            t.style.opacity = '1';
+        });
+
+        const contentWidth = firstContent.offsetWidth;
+        let targetX = ((firstContent.parentElement.clientWidth / 2) - (targetTagEl.offsetLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
+        if (targetX > 0) targetX -= contentWidth;
+        
+        // 3. 執行與一般 Tag 相同的置中動畫，並且「無限期停在該處」，等待使用者下一次操作
+        document.querySelectorAll('.marquee-content').forEach(m => {
+            if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
+            let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
+            if (currentX > 0) currentX -= contentWidth;
+            
+            m.style.transition = 'none';
+            m.style.transform = `translateX(${currentX}px)`;
+            m.style.animation = 'none';
+            
+            void m.offsetWidth; // 強制重繪
+            
+            const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
+
+            m.style.transition = `transform ${duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
+            m.style.transform = `translateX(${targetX}px)`;
+        });
+    }
+};
+
 window.clearFilter = function(event) {
     if (event) event.stopPropagation(); 
     window.currentActiveTag = null;
     window.highlightedCards = []; 
     window.currentCardIndex = 0;  
+    window.isKotobaActive = false; // ✨ 重置言の箱狀態
     
     document.querySelectorAll('.card').forEach(c => c.classList.remove('highlighted', 'jump-bump'));
     document.querySelectorAll('.active-tag').forEach(t => t.classList.remove('active-tag'));
     
+    // ✨ 清除言の箱的專屬高光特效
+    document.querySelectorAll('.kotoba-whisper').forEach(t => {
+        t.style.color = '';
+        t.style.textShadow = '';
+        t.style.opacity = '';
+    });
+
     const toast = document.getElementById('filter-toast');
     if (toast) toast.classList.remove('active');
 

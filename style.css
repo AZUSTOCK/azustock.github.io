@@ -165,7 +165,18 @@ section h2 { font-size: 1.6rem; margin-bottom: 1.2rem; border-left: 4px solid va
 .marquee-container:hover .marquee-content { animation-play-state: paused; }
 @keyframes marquee-seamless { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
-.kotoba-whisper { font-family: "Noto Serif TC", "Songti TC", serif; font-style: italic; font-size: 0.95rem; color: var(--muted); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: default; }
+.kotoba-whisper { 
+    font-family: "Noto Serif TC", "Songti TC", serif; 
+    font-style: italic; 
+    font-size: 0.95rem; 
+    color: var(--muted); 
+    letter-spacing: 0.08em; 
+    opacity: 0.8; 
+    transition: all 0.5s ease; 
+    
+    /* ✨ 加上滑鼠指標，讓使用者知道可以點擊 */
+    cursor: pointer; 
+}
 .kotoba-whisper:hover { color: var(--accent-2); text-shadow: 0 0 10px var(--glow-1); opacity: 1; }
 .stock-up, .stock-down { margin-left: 8px; font-weight: bold; transition: color 0.5s ease; }
 [data-theme="dark"] .stock-up { color: #DB3069; } [data-theme="dark"] .stock-down { color: #44D4BE; }
@@ -1462,7 +1473,7 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 /* ========================================== */
 
 /* 1. 目錄頂部標題與按鈕區塊 */
-.index-header-container { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 1rem; }
+.index-header-container { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 0rem; }
 .index-header-title { 
     margin: 0 !important; 
     padding: 0 !important; 
