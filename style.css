@@ -334,12 +334,22 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .card:hover .card-pin, .modal-content a:hover .modal-pin { transform: scale(1.15) rotate(8deg) translate(10%, -10%); box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--accent-2); }
 .modal-content a:hover .modal-pin { transform: scale(1.15) rotate(-8deg) translate(-10%, -10%); }
 
-/* 標籤色盤 */
+/* ========================================== */
+/* ✨ 標籤色盤 (包含版本日誌 SemVer 擴充) */
+/* ========================================== */
+/* 1. 一般狀態 */
 [data-status="NEW"]      { --s-color: var(--error-color); --s-shadow: var(--error-shadow); }
 [data-status="UPDATED"]  { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); }
 [data-status="WIP"]      { --s-color: #F59E0B;            --s-shadow: rgba(245, 158, 11, 0.4); } 
 [data-status="ARCHIVED"] { --s-color: var(--muted);       --s-shadow: transparent; }           
 [data-status="OC"]       { --s-color: #A855F7;            --s-shadow: rgba(168, 85, 247, 0.4); }
+
+/* 2. 版本更新專屬 (Changelog) */
+[data-status="MAJOR"]    { --s-color: #E11D48;            --s-shadow: rgba(225, 29, 72, 0.6); } /* 重大更新：強烈玫瑰紅，視覺衝擊最大 */
+[data-status="HOTFIX"]   { --s-color: #FF5722;            --s-shadow: rgba(255, 87, 34, 0.6); } /* 緊急修復：警戒橘，代表火速救援 */
+[data-status="FEATURE"]  { --s-color: #10B981;            --s-shadow: rgba(16, 185, 129, 0.5); } /* 新功能：翡翠綠，代表正向的新增 */
+[data-status="REFACTOR"] { --s-color: #6366F1;            --s-shadow: rgba(99, 102, 241, 0.5); } /* 架構重構：科技靛，代表底層技術的穩健升級 */
+[data-status="PATCH"]    { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); } /* 微幅修正：標準藍，代表平穩的修正 */
 
 @keyframes badge-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .status-badge, .tag.status-tag { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; vertical-align: middle; cursor: default; transition: transform 0.4s ease, box-shadow 0.4s ease; background-image: linear-gradient(110deg, var(--s-color) 35%, rgba(255,255,255,0.4) 50%, var(--s-color) 65%) !important; background-color: var(--s-color) !important; background-size: 200% 100% !important; color: #fff !important; box-shadow: 0 0 8px var(--s-shadow); border: none !important; animation: badge-sweep 2.5s infinite linear; }

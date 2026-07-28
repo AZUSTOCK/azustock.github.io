@@ -1,6 +1,6 @@
 {
   "version": "U1.3.3",
   "date": "2026-07-26",
-  "status": "UPDATE",
-  "description": "新增浮水印、主頁錨點跳轉與 simulate-hover 互動特效，並優化捲軸樣式。"
+  "status": "FEATURE",
+  "description": "新增浮水印、主頁錨點跳轉與 simulate-hover 互動特效"
 }
