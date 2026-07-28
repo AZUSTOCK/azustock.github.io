@@ -197,8 +197,6 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .copyright-box { max-width: 800px; width: 100%; background: var(--box-bg); border: 1px solid var(--box-border); border-radius: 0.8rem; padding: 1.5rem 2rem; text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1.6; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); transition: background-color 0.5s ease, border-color 0.5s ease; }
 .copyright-box p { margin: 0 0 0.8rem 0; }
 .copyright-footer { border-top: 1px solid var(--divider-line); transition: border-color 0.5s ease; margin-bottom: 0 !important; font-family: 'Courier New', monospace; font-size: 0.8rem; opacity: 0.8; padding-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
-.sys-version { background: var(--tag-bg); color: var(--muted); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.05em; border: 1px solid var(--card-border); transition: all 0.3s ease; cursor: default; }
-.sys-version:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
 
 /* ========================= */
 /* 漢堡與主題選單系統 */
