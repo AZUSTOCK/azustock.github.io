@@ -8,9 +8,14 @@
 * **Scikit-learn / Kaggle** - Machine Learning & Datasets
 
 ### Audio & Synthesizers
-* **Synthesizer V Studio** - Vocal Synthesis Core
+* **OpenUtau** - Vocal Synthesis Core
+* **VOCALOID6** - Vocal Synthesis Core
 * **FL Studio** - Audio Mixing & Mastering
 
+### Sprcial Thanks
+* **はんごうすいはん** - Inspiration
+
 ---
-**And You**
-感謝你的到訪與閱讀。
+**And You**  
+感謝你的到訪。
+Thank you for visiting

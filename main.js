@@ -41,6 +41,29 @@ window.STATUS_LIST = [
 ];
 
 // ==========================================
+// ✨ 從 CSS 動態讀取標籤顏色的魔法引擎 (Single Source of Truth)
+// ==========================================
+window.getStatusColorFromCSS = function(status) {
+    // 建立快取，相同的標籤只會去讀取一次 CSS，效能極佳
+    if (!window._statusColorCache) window._statusColorCache = {};
+    if (window._statusColorCache[status]) return window._statusColorCache[status];
+    
+    // 建立隱藏的測試元素，套用對應的狀態
+    const dummy = document.createElement('span');
+    dummy.setAttribute('data-status', status);
+    dummy.style.display = 'none';
+    document.body.appendChild(dummy);
+    
+    // 從 DOM 提取 CSS 檔案中寫的 --s-color (例如會讀到 "var(--error-color)")
+    const color = getComputedStyle(dummy).getPropertyValue('--s-color').trim();
+    document.body.removeChild(dummy);
+    
+    // 如果 CSS 沒寫，預設給主題高光色
+    window._statusColorCache[status] = color || 'var(--accent)';
+    return window._statusColorCache[status];
+};
+
+// ==========================================
 // ✨ 新增：動態非同步引入 Mermaid 引擎 (ESM 模組)
 // ==========================================
 window.mermaid = null;
@@ -2340,7 +2363,7 @@ window.showCreditsModal = async function() {
                     <div class="index-header-container">
                         <h1 class="index-header-title">Credits</h1>
                         <div class="index-header-actions">
-                            <span class="article-count-badge">Special Thanks</span>
+                            <span class="article-count-badge">Acknowledgments</span>
                         </div>
                     </div>
                 `;
@@ -2372,15 +2395,14 @@ window.showCreditsModal = async function() {
 };
 
 // ==========================================
-// ✨ 升級版系統日誌：支援兩層式架構與平滑動畫過場 (修復字體與自訂顏色)
+// ✨ 升級版系統日誌：支援兩層式架構與平滑動畫過場 (全動態讀取 CSS 版)
 // ==========================================
-window.cachedChangelogs = null; // 建立全域快取
+window.cachedChangelogs = null; 
 
 window.showChangelogModal = async function() {
     document.body.style.cursor = 'wait';
     let fetchError = false;
 
-    // 1. 若無快取，才在背景抓取資料
     if (!window.cachedChangelogs) {
         try {
             const response = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
@@ -2393,7 +2415,7 @@ window.showChangelogModal = async function() {
     }
     document.body.style.cursor = '';
 
-    // 共用標題渲染
+    // 共用標題渲染 (邏輯同步精簡)
     function renderChangelogHeader(isDetail = false, logData = null) {
         const modalTopLeft = document.getElementById('modal-top-left');
         if (!modalTopLeft) return;
@@ -2410,10 +2432,9 @@ window.showChangelogModal = async function() {
         } else {
             let badgeHTML = '';
             if (logData) {
-                // ✨ 修正：確保詳細頁面的標題也會套用自訂的 data-status
-                if (logData.status === 'LATEST') badgeHTML = '<span class="status-badge" data-status="NEW">LATEST</span>';
-                else if (logData.status === 'ARCHIVED') badgeHTML = '<span class="status-badge" data-status="ARCHIVED">ARCHIVED</span>';
-                else badgeHTML = `<span class="status-badge" data-status="${logData.status}">${logData.status}</span>`;
+                // 自動對應 CSS 的狀態名稱
+                let activeStatus = logData.status === 'LATEST' ? 'NEW' : logData.status;
+                badgeHTML = `<span class="status-badge" data-status="${activeStatus}">${logData.status}</span>`;
             }
 
             modalTopLeft.innerHTML = `
@@ -2432,7 +2453,7 @@ window.showChangelogModal = async function() {
         }
     }
 
-    // 2. 渲染第一層：索引清單 (套用動畫切換引擎)
+    // 2. 渲染第一層：索引清單
     window.renderChangelogIndex = function() {
         switchModalContent(
             () => {
@@ -2446,36 +2467,17 @@ window.showChangelogModal = async function() {
                 if (fetchError || !window.cachedChangelogs) {
                     modalBody.innerHTML = `
                         <div style="text-align:center; padding: 3rem 0; color: var(--error-color);">
-                            <p>System Error: 無法載入版本日誌。<br>請確認是否已執行 Python 腳本產生 changelogs.json</p>
+                            <p>System Error: 無法載入版本日誌。</p>
                         </div>
                     `;
                 } else {
                     let listHTML = '<ul class="article-list-ul">';
                     window.cachedChangelogs.forEach(log => {
-                        let badgeHTML = '';
-                        let tabColor = 'var(--accent)'; 
                         
-                        // ✨ 修正：建立顏色映射表，讓左側清單裝飾線能跟隨標籤變色
-                        const statusColors = {
-                            'MAJOR': '#E11D48',
-                            'HOTFIX': '#FF5722',
-                            'FEATURE': '#10B981',
-                            'REFACTOR': '#6366F1',
-                            'PATCH': 'var(--accent)',
-                            'UPDATED': 'var(--accent)'
-                        };
-                        
-                        if (log.status === 'LATEST') {
-                            badgeHTML = '<span class="status-badge title-badge" data-status="NEW">LATEST</span>';
-                            tabColor = 'var(--error-color)'; 
-                        } else if (log.status === 'ARCHIVED') {
-                            badgeHTML = '<span class="status-badge title-badge" data-status="ARCHIVED">ARCHIVED</span>';
-                            tabColor = 'var(--muted)';       
-                        } else {
-                            // ✨ 修正：動態套用 JSON 中設定的 status，不再寫死為 UPDATED
-                            badgeHTML = `<span class="status-badge title-badge" data-status="${log.status}">${log.status}</span>`;
-                            tabColor = statusColors[log.status] || 'var(--accent)';
-                        }
+                        // ✨ 魔法發生地：推導狀態，並向 CSS 請求色彩！
+                        let activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
+                        let tabColor = window.getStatusColorFromCSS(activeStatus);
+                        let badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
 
                         listHTML += `
                             <li class="article-li is-highlight" style="--tab-color: ${tabColor}; margin-bottom: 1rem;">
@@ -2493,7 +2495,6 @@ window.showChangelogModal = async function() {
                                     </div>
                                     <div class="article-item-content">
                                         <div class="article-item-title-row">
-                                            <!-- ✨ 修正：將 font-family: monospace 獨立包裝在版號上，標籤不繼承等寬字體 -->
                                             <span class="article-item-title"><span style="font-family: monospace; color: var(--accent-2); font-size: 1.15rem;">${log.version}</span>${badgeHTML}</span>
                                             <span class="article-item-desc">- ${log.description}</span>
                                         </div>
@@ -2514,7 +2515,7 @@ window.showChangelogModal = async function() {
         );
     };
 
-    // 3. 渲染第二層：詳細記錄 (套用動畫切換引擎)
+    // 3. 渲染第二層：詳細記錄
     window.renderChangelogDetail = function(logId) {
         const targetLog = window.cachedChangelogs.find(l => l.id === logId);
         if (!targetLog) return;
