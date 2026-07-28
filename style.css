@@ -1568,3 +1568,51 @@ main section::after {
 main section:target::after {
     animation: target-section-glow-expand 3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
+
+/* ========================================== */
+/* ✨ Footer 底部通用按鈕系統 (解除瀏覽器封印版) */
+/* ========================================== */
+.footer-btn {
+    background: var(--tag-bg);
+    color: var(--muted);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    /* font-family: 'Courier New', monospace; */
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    
+    /* 🛑 核心封印解除：消滅預設的灰色漸層與實體邊框 */
+    outline: none;
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+.footer-btn svg {
+    display: block;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), fill 0.3s ease;
+}
+
+/* 懸停發光互動 */
+.footer-btn:hover {
+    background: var(--accent-2);
+    color: var(--card);
+    border-color: var(--accent-2);
+    box-shadow: 0 0 10px var(--accent-2);
+}
+.footer-btn:hover svg {
+    fill: var(--card); /* 懸停時愛心填滿 */
+    transform: scale(1.15);
+}
+.footer-btn.version-btn {
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+}
+.footer-btn.version-btn span {
+    color: inherit; /* 讓文字顏色跟隨按鈕變色 */
+}

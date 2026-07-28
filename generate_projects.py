@@ -19,6 +19,59 @@ stats = {
 }
 
 # ==========================================
+# 📝 升級版系統日誌生成器 (Changelog Generator)
+# ==========================================
+def generate_changelogs_json():
+    base_dir = 'logs'
+    output_data = []
+
+    if not os.path.exists(base_dir):
+        os.makedirs(base_dir, exist_ok=True)
+        print(f"📁 已自動建立 '{base_dir}' 資料夾。")
+        return
+
+    for version_folder in sorted(os.listdir(base_dir), reverse=True):
+        folder_path = os.path.join(base_dir, version_folder)
+        if not os.path.isdir(folder_path): continue
+
+        version = version_folder
+        date = "2026-01-01"
+        status = "UPDATE"
+        description = "系統更新與優化記錄。"
+        content = ""
+
+        # 讀取 detail.json
+        detail_path = os.path.join(folder_path, 'detail.json')
+        if os.path.exists(detail_path):
+            detail = load_detail_json(detail_path)
+            date = detail.get('date', date)
+            status = detail.get('status', status)
+            version = detail.get('version', version)
+            description = detail.get('description', description)
+
+        # 讀取 md 檔案
+        for file in os.listdir(folder_path):
+            if file.endswith('.md'):
+                with open(os.path.join(folder_path, file), 'r', encoding='utf-8') as f:
+                    content = f.read()
+                break
+        
+        if content:
+            output_data.append({
+                "id": version_folder,
+                "version": version,
+                "date": date,
+                "status": status,
+                "description": description,
+                "content": content
+            })
+
+    with open('changelogs.json', 'w', encoding='utf-8') as f:
+        json.dump(output_data, f, ensure_ascii=False, indent=2)
+
+    print(f"✅ 升級版版本日誌 (Changelog) 打包完成，共 {len(output_data)} 筆紀錄。")
+
+# ==========================================
 # 🛠️ 輔助系統 (Helper Functions)
 # ==========================================
 def is_file_outdated(source_paths, target_path, force_overwrite=False):
@@ -598,6 +651,9 @@ if __name__ == "__main__":
     print(f"==========================================")
     generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb)
     
+    # ✨ 呼叫剛寫好的日誌生成器
+    generate_changelogs_json()
+
     # --- 輸出統計 ---
     print(f"\n📊 [處理統計]")
     print(f"  - 專案 HTML (index)       : 共 {stats['proj_total']:>4} 個 | 更新 {stats['proj_updated']:>4} 個 | 略過 {stats['proj_skipped']:>4} 個")

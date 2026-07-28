@@ -211,12 +211,24 @@
    <div class="copyright-box">
       <p>© 2026 風川梓 (Azustock). All rights reserved.</p>
       
-      <p class="copyright-footer" style="justify-content: center;">
+      <!-- 左右留白的 Footer Flex 容器 -->
+      <p class="copyright-footer" style="justify-content: center; gap: 1rem; flex-wrap: wrap;">
         <span>Hosted on GitHub Pages.</span>
+        
+        <!-- ✨ 1. 致謝按鈕 (已套用全新的 footer-btn 類別) -->
+        <button id="credits-btn" class="footer-btn" onclick="window.showCreditsModal()" data-tooltip="Credits">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+            致謝
+        </button>
       </p>
       
       <p style="text-align: right; margin-top: 0.5rem; margin-bottom: 0;">
-        <span id="sys-version" class="sys-version"></span>
+        <!-- ✨ 2. 版本號按鈕 (點擊呼叫版本日誌) -->
+        <button id="sys-version-btn" class="footer-btn version-btn" onclick="window.showChangelogModal()">
+            <span id="sys-version">U1.3.4</span>
+        </button>
       </p>
     </div>
   </footer>

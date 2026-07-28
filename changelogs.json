@@ -1,0 +1,10 @@
+[
+  {
+    "id": "U1.3.3",
+    "version": "U1.3.3",
+    "date": "2026-07-26",
+    "status": "UPDATE",
+    "description": "新增浮水印、主頁錨點跳轉與 simulate-hover 互動特效，並優化捲軸樣式。",
+    "content": "# add\n1. watermark\n2. sticky-index-header\n3. main section jump css\n4. crop_tool WIP\n5. simulate-hover\n\n# adjust\n1. scroll jump\n2. article-header-wrapper merge to modal-top-bar\n3. style from js to css"
+  }
+]
