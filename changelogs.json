@@ -1,17 +1,17 @@
 [
   {
-    "id": "U1.3.4",
-    "version": "U1.3.4",
+    "id": "U1.4.0",
+    "version": "U1.4.0",
     "date": "2026-07-28",
     "status": "FEATURE",
-    "description": "新增感謝頁面、版本紀錄",
-    "content": "## add\n1. credits\n2. version logs\n3. new badges\n\n## adjust\n1. modal-top-right gap"
+    "description": "新增感謝頁面、版本紀錄、PDF閱讀器",
+    "content": "## add\n1. credits\n2. version logs\n3. new badges\n4. PDF reader\n\n## adjust\n1. modal-top-right gap"
   },
   {
     "id": "U1.3.3",
     "version": "U1.3.3",
     "date": "2026-07-26",
-    "status": "FEATURE",
+    "status": "PATCH",
     "description": "新增浮水印、主頁錨點跳轉與 simulate-hover 互動特效",
     "content": "## add\n1. watermark\n2. sticky-index-header\n3. main section jump css\n4. crop_tool WIP\n5. simulate-hover\n\n## adjust\n1. scroll jump\n2. article-header-wrapper merge to modal-top-bar\n3. style from js to css"
   },
@@ -19,7 +19,7 @@
     "id": "U1.3.2",
     "version": "U1.3.2",
     "date": "2026-07-18",
-    "status": "FEATURE",
+    "status": "HOTFIX",
     "description": "新增縮圖，改善讀取速度與大圖預覽修正",
     "content": "## add\n1. thumbnail\n\n## change\n1. generate_projects.py\n2. css\n\n## adjust\n1. lightbox\n2. css"
   },
@@ -27,7 +27,7 @@
     "id": "U1.3.1",
     "version": "U1.3.1",
     "date": "2026-07-17",
-    "status": "FEATURE",
+    "status": "PATCH",
     "description": "新增大圖預覽、鍵盤行為",
     "content": "## add\n1. Light box css\n2. keyboard action\n3. vertical-wrapper intent\n\n## adjust\n1. Light box css\n\n## fix\n1. toolbar-left\n2. load image"
   },
