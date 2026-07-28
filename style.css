@@ -197,8 +197,6 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .copyright-box { max-width: 800px; width: 100%; background: var(--box-bg); border: 1px solid var(--box-border); border-radius: 0.8rem; padding: 1.5rem 2rem; text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1.6; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); transition: background-color 0.5s ease, border-color 0.5s ease; }
 .copyright-box p { margin: 0 0 0.8rem 0; }
 .copyright-footer { border-top: 1px solid var(--divider-line); transition: border-color 0.5s ease; margin-bottom: 0 !important; font-family: 'Courier New', monospace; font-size: 0.8rem; opacity: 0.8; padding-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
-.sys-version { background: var(--tag-bg); color: var(--muted); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.05em; border: 1px solid var(--card-border); transition: all 0.3s ease; cursor: default; }
-.sys-version:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
 
 /* ========================= */
 /* 漢堡與主題選單系統 */
@@ -334,12 +332,22 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .card:hover .card-pin, .modal-content a:hover .modal-pin { transform: scale(1.15) rotate(8deg) translate(10%, -10%); box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--accent-2); }
 .modal-content a:hover .modal-pin { transform: scale(1.15) rotate(-8deg) translate(-10%, -10%); }
 
-/* 標籤色盤 */
+/* ========================================== */
+/* ✨ 標籤色盤 (包含版本日誌 SemVer 擴充) */
+/* ========================================== */
+/* 1. 一般狀態 */
 [data-status="NEW"]      { --s-color: var(--error-color); --s-shadow: var(--error-shadow); }
 [data-status="UPDATED"]  { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); }
 [data-status="WIP"]      { --s-color: #F59E0B;            --s-shadow: rgba(245, 158, 11, 0.4); } 
 [data-status="ARCHIVED"] { --s-color: var(--muted);       --s-shadow: transparent; }           
 [data-status="OC"]       { --s-color: #A855F7;            --s-shadow: rgba(168, 85, 247, 0.4); }
+
+/* 2. 版本更新專屬 (Changelog) */
+[data-status="MAJOR"]    { --s-color: #E11D48;            --s-shadow: rgba(225, 29, 72, 0.6); } /* 重大更新：強烈玫瑰紅，視覺衝擊最大 */
+[data-status="HOTFIX"]   { --s-color: #FF5722;            --s-shadow: rgba(255, 87, 34, 0.6); } /* 緊急修復：警戒橘，代表火速救援 */
+[data-status="FEATURE"]  { --s-color: #10B981;            --s-shadow: rgba(16, 185, 129, 0.5); } /* 新功能：翡翠綠，代表正向的新增 */
+[data-status="REFACTOR"] { --s-color: #6366F1;            --s-shadow: rgba(99, 102, 241, 0.5); } /* 架構重構：科技靛，代表底層技術的穩健升級 */
+[data-status="PATCH"]    { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); } /* 微幅修正：標準藍，代表平穩的修正 */
 
 @keyframes badge-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .status-badge, .tag.status-tag { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; vertical-align: middle; cursor: default; transition: transform 0.4s ease, box-shadow 0.4s ease; background-image: linear-gradient(110deg, var(--s-color) 35%, rgba(255,255,255,0.4) 50%, var(--s-color) 65%) !important; background-color: var(--s-color) !important; background-size: 200% 100% !important; color: #fff !important; box-shadow: 0 0 8px var(--s-shadow); border: none !important; animation: badge-sweep 2.5s infinite linear; }
@@ -367,10 +375,15 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     align-items: center; 
     margin: 0 !important; 
     padding: 0 !important; 
-    gap: 1rem; 
     
-    /* ✨ 關鍵修改：強制靠上對齊，當左邊換行撐高容器時，X 按鈕會乖乖留在頂部 */
+    /* ✨ 預設為 0rem，當只有一個關閉按鈕時，把不必要的間距省下來還給左邊 */
+    gap: 0rem; 
     align-self: flex-start; 
+}
+
+/* ✨ 現代 CSS 魔法：當內部有 TOC 目錄按鈕時，才自動拉開 1rem 的間距 */
+#modal-top-right:has(.toc-wrapper) {
+    gap: 1rem;
 }
 .modal-close-btn, .toc-toggle-btn { box-sizing: border-box !important; flex-shrink: 0 !important; }
 
@@ -1562,4 +1575,52 @@ main section::after {
 /* 當網址 Hash 對應到該區塊時，觸發動畫 */
 main section:target::after {
     animation: target-section-glow-expand 3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* ========================================== */
+/* ✨ Footer 底部通用按鈕系統 (解除瀏覽器封印版) */
+/* ========================================== */
+.footer-btn {
+    background: var(--tag-bg);
+    color: var(--muted);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    /* font-family: 'Courier New', monospace; */
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    
+    /* 🛑 核心封印解除：消滅預設的灰色漸層與實體邊框 */
+    outline: none;
+    box-shadow: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+.footer-btn svg {
+    display: block;
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), fill 0.3s ease;
+}
+
+/* 懸停發光互動 */
+.footer-btn:hover {
+    background: var(--accent-2);
+    color: var(--card);
+    border-color: var(--accent-2);
+    box-shadow: 0 0 10px var(--accent-2);
+}
+.footer-btn:hover svg {
+    fill: var(--card); /* 懸停時愛心填滿 */
+    transform: scale(1.15);
+}
+.footer-btn.version-btn {
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+}
+.footer-btn.version-btn span {
+    color: inherit; /* 讓文字顏色跟隨按鈕變色 */
 }

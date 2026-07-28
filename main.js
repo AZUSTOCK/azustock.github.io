@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.3.3",          // 目前系統版本號
+    VERSION: "U1.4.0",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "light",     // 預設主題 (light / dark)
@@ -33,7 +33,35 @@ const GLOBAL_SVGS = {
 // 二維陣列設計：
 // 1. 內層陣列代表「互斥群組」，排越前面的優先級越高 (例如 UPDATED 贏過 NEW)
 // 2. 外層陣列代表「全域排序」，排越前面的 Tag 會顯示在卡片越左邊
-window.STATUS_LIST = [['UPDATED', 'NEW', 'ARCHIVED'], ['WIP'], ['OC']];
+// 將 MAJOR 與 HOTFIX 放在最前面，確保它們不會被其他標籤蓋掉
+window.STATUS_LIST = [
+    ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED'], 
+    ['WIP'], 
+    ['OC']
+];
+
+// ==========================================
+// ✨ 從 CSS 動態讀取標籤顏色的魔法引擎 (Single Source of Truth)
+// ==========================================
+window.getStatusColorFromCSS = function(status) {
+    // 建立快取，相同的標籤只會去讀取一次 CSS，效能極佳
+    if (!window._statusColorCache) window._statusColorCache = {};
+    if (window._statusColorCache[status]) return window._statusColorCache[status];
+    
+    // 建立隱藏的測試元素，套用對應的狀態
+    const dummy = document.createElement('span');
+    dummy.setAttribute('data-status', status);
+    dummy.style.display = 'none';
+    document.body.appendChild(dummy);
+    
+    // 從 DOM 提取 CSS 檔案中寫的 --s-color (例如會讀到 "var(--error-color)")
+    const color = getComputedStyle(dummy).getPropertyValue('--s-color').trim();
+    document.body.removeChild(dummy);
+    
+    // 如果 CSS 沒寫，預設給主題高光色
+    window._statusColorCache[status] = color || 'var(--accent)';
+    return window._statusColorCache[status];
+};
 
 // ==========================================
 // ✨ 新增：動態非同步引入 Mermaid 引擎 (ESM 模組)
@@ -706,6 +734,32 @@ renderer.image = function(token_or_href, title, text) {
     const imgTitle = typeof token_or_href === 'object' ? token_or_href.title : title; 
     
     if (!href) return '';
+
+    /// 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
+    if (href.match(/\.pdf$/i)) {
+        // ✨ 使用你系統預設的文章/文件 SVG 圖示
+        const docSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+        
+        return `
+        <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base);">
+            <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
+                
+                <!-- 左側：系統文件 SVG 與檔名 -->
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
+                    ${docSvg}
+                    <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
+                </div>
+                
+                <!-- 右側：新分頁開啟按鈕 -->
+                <a href="${href}" target="_blank" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    新分頁開啟
+                </a>
+            </div>
+            
+            <iframe src="${href}" width="100%" height="600px" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+        </div>`;
+    }
 
     if (href.match(/\.(mp4|webm|ogg)$/i)) {
         return `<video controls class="md-video"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`;
@@ -2298,4 +2352,214 @@ window.applyIndentToVerticalWrapper = function(container) {
     }
 
     traverse(container);
+};
+
+// ==========================================
+// ✨ 隱藏彩蛋：動態讀取 credits.md (整合平滑動畫版)
+// ==========================================
+window.showCreditsModal = async function() {
+    document.body.style.cursor = 'wait'; // 先讓游標顯示讀取中
+    let mdText = "載入失敗";
+    let isError = false;
+    
+    // 1. 先在背景抓取資料
+    try {
+        const response = await fetch(`./credits.md?t=${new Date().getTime()}`);
+        if (!response.ok) throw new Error('找不到 credits.md 檔案');
+        mdText = await response.text();
+    } catch (error) {
+        console.error("Credits 讀取失敗:", error);
+        isError = true;
+    } finally {
+        document.body.style.cursor = ''; // 恢復游標
+    }
+
+    // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
+    switchModalContent(
+        () => {
+            const modalOverlay = document.getElementById('md-modal');
+            const modalBody = document.getElementById('modal-body');
+            const modalTopLeft = document.getElementById('modal-top-left');
+            const tocMountPoint = document.getElementById('toc-mount-point');
+            
+            if (tocMountPoint) tocMountPoint.innerHTML = '';
+            
+            if (modalTopLeft) {
+                modalTopLeft.innerHTML = `
+                    <div class="index-header-container">
+                        <h1 class="index-header-title">Credits</h1>
+                        <div class="index-header-actions">
+                            <span class="article-count-badge">Acknowledgments</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (isError) {
+                modalBody.innerHTML = `
+                    <div style="text-align:center; padding: 3rem 0; color: var(--error-color);">
+                        <p>System Error: 無法載入致謝名單。</p>
+                    </div>
+                `;
+            } else {
+                modalBody.innerHTML = `
+                    <div class="credits-markdown-wrapper markdown-body" style="margin-top: -0.5rem;">
+                        ${marked.parse(mdText)}
+                    </div>
+                `;
+            }
+            
+            // 開啟 Modal 並鎖定捲軸
+            modalOverlay.classList.add('active');
+            window.lockScroll();
+        },
+        () => {
+            // 動畫結束後確保畫面在最頂端
+            document.querySelector('.modal-content').scrollTop = 0;
+        }
+    );
+};
+
+// ==========================================
+// ✨ 升級版系統日誌：支援兩層式架構與平滑動畫過場 (全動態讀取 CSS 版)
+// ==========================================
+window.cachedChangelogs = null; 
+
+window.showChangelogModal = async function() {
+    document.body.style.cursor = 'wait';
+    let fetchError = false;
+
+    if (!window.cachedChangelogs) {
+        try {
+            const response = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
+            if (!response.ok) throw new Error('找不到 changelogs.json');
+            window.cachedChangelogs = await response.json();
+        } catch (error) {
+            console.error(error);
+            fetchError = true;
+        }
+    }
+    document.body.style.cursor = '';
+
+    // 共用標題渲染 (邏輯同步精簡)
+    function renderChangelogHeader(isDetail = false, logData = null) {
+        const modalTopLeft = document.getElementById('modal-top-left');
+        if (!modalTopLeft) return;
+        
+        if (!isDetail) {
+            modalTopLeft.innerHTML = `
+                <div class="index-header-container">
+                    <h1 class="index-header-title">System Changelog</h1>
+                    <div class="index-header-actions">
+                        <span class="article-count-badge">Update History</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            let badgeHTML = '';
+            if (logData) {
+                // 自動對應 CSS 的狀態名稱
+                let activeStatus = logData.status === 'LATEST' ? 'NEW' : logData.status;
+                badgeHTML = `<span class="status-badge" data-status="${activeStatus}">${logData.status}</span>`;
+            }
+
+            modalTopLeft.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;">
+                    <button class="modal-back-btn" onclick="window.renderChangelogIndex()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        返回清單
+                    </button>
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <span style="font-family: monospace; font-weight: 900; color: var(--accent); font-size: 1.5rem; letter-spacing: 0.05em; line-height: 1; transform: translateY(1px);">${logData ? logData.version : ''}</span>
+                        ${badgeHTML}
+                        <span style="font-family: monospace; color: var(--muted); font-size: 0.9rem; margin-left: 0.2rem; transform: translateY(2px);">${logData ? logData.date : ''}</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // 2. 渲染第一層：索引清單
+    window.renderChangelogIndex = function() {
+        switchModalContent(
+            () => {
+                const modalOverlay = document.getElementById('md-modal');
+                const modalBody = document.getElementById('modal-body');
+                const tocMountPoint = document.getElementById('toc-mount-point');
+                
+                if (tocMountPoint) tocMountPoint.innerHTML = '';
+                renderChangelogHeader(false);
+
+                if (fetchError || !window.cachedChangelogs) {
+                    modalBody.innerHTML = `
+                        <div style="text-align:center; padding: 3rem 0; color: var(--error-color);">
+                            <p>System Error: 無法載入版本日誌。</p>
+                        </div>
+                    `;
+                } else {
+                    let listHTML = '<ul class="article-list-ul">';
+                    window.cachedChangelogs.forEach(log => {
+                        
+                        // ✨ 魔法發生地：推導狀態，並向 CSS 請求色彩！
+                        let activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
+                        let tabColor = window.getStatusColorFromCSS(activeStatus);
+                        let badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
+
+                        listHTML += `
+                            <li class="article-li is-highlight" style="--tab-color: ${tabColor}; margin-bottom: 1rem;">
+                                <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${log.id}')">
+                                    <div class="article-item-icon-wrap">
+                                        <div class="article-item-fallback" style="color: ${tabColor};">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                <polyline points="10 9 9 9 8 9"></polyline>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="article-item-content">
+                                        <div class="article-item-title-row">
+                                            <span class="article-item-title"><span style="font-family: monospace; color: var(--accent-2); font-size: 1.15rem;">${log.version}</span>${badgeHTML}</span>
+                                            <span class="article-item-desc">- ${log.description}</span>
+                                        </div>
+                                        <span class="article-item-date">${log.date}</span>
+                                    </div>
+                                </a>
+                            </li>
+                        `;
+                    });
+                    listHTML += '</ul>';
+                    modalBody.innerHTML = listHTML;
+                }
+                
+                modalOverlay.classList.add('active');
+                window.lockScroll();
+            },
+            () => document.querySelector('.modal-content').scrollTop = 0
+        );
+    };
+
+    // 3. 渲染第二層：詳細記錄
+    window.renderChangelogDetail = function(logId) {
+        const targetLog = window.cachedChangelogs.find(l => l.id === logId);
+        if (!targetLog) return;
+
+        switchModalContent(
+            () => {
+                renderChangelogHeader(true, targetLog);
+                const modalBody = document.getElementById('modal-body');
+                modalBody.innerHTML = `
+                    <div class="markdown-body" style="margin-top: -0.5rem;">
+                        ${marked.parse(targetLog.content)}
+                    </div>
+                `;
+            },
+            () => document.querySelector('.modal-content').scrollTop = 0
+        );
+    };
+
+    // 初始進入：顯示第一層索引
+    window.renderChangelogIndex();
 };
