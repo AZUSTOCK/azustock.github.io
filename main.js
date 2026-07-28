@@ -735,6 +735,32 @@ renderer.image = function(token_or_href, title, text) {
     
     if (!href) return '';
 
+    /// 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
+    if (href.match(/\.pdf$/i)) {
+        // ✨ 使用你系統預設的文章/文件 SVG 圖示
+        const docSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
+        
+        return `
+        <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base);">
+            <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
+                
+                <!-- 左側：系統文件 SVG 與檔名 -->
+                <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
+                    ${docSvg}
+                    <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
+                </div>
+                
+                <!-- 右側：新分頁開啟按鈕 -->
+                <a href="${href}" target="_blank" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    新分頁開啟
+                </a>
+            </div>
+            
+            <iframe src="${href}" width="100%" height="600px" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+        </div>`;
+    }
+
     if (href.match(/\.(mp4|webm|ogg)$/i)) {
         return `<video controls class="md-video"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`;
     }

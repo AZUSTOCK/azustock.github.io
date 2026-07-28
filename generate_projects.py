@@ -354,16 +354,28 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             
                             # ✨ 正則替換區：掃描與生成內文縮圖 (保留 Thumbnails 目錄架構)
                             def replace_md_img(match):
-                                alt_text, url_part = match.group(1), match.group(2)
+                                alt_text, url_part = match.group(1), match.group(2).strip()
                                 
-                                parts = url_part.strip().split(maxsplit=1)
-                                url = parts[0]
-                                title_str = f" {parts[1]}" if len(parts) > 1 else ""
+                                # ✨ 關鍵修復 1：支援檔名中帶有空白 (改用正規表示式精準抓取 Title 引號)
+                                title_match = re.search(r'(.*?)\s+(["\'])(.*?)\2$', url_part)
+                                if title_match:
+                                    url = title_match.group(1)
+                                    title_str = f' {title_match.group(2)}{title_match.group(3)}{title_match.group(2)}'
+                                else:
+                                    url = url_part
+                                    title_str = ""
                                 
                                 if not url.startswith(('http://', 'https://', 'data:')) and 'projects/' not in url:
                                     clean_url = url[2:] if url.startswith('./') else url
                                     orig_url = f"{real_path}{clean_url}"
                                     local_img_path = os.path.normpath(orig_url)
+                                    
+                                    # ✨ 關鍵修復 2：過濾 PDF 與影音檔案，直接映射真實路徑，不丟進縮圖引擎
+                                    valid_image_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'}
+                                    ext = os.path.splitext(local_img_path)[1].lower()
+                                    
+                                    if ext not in valid_image_exts:
+                                        return f"![{alt_text}]({orig_url}{title_str})"
                                     
                                     if os.path.exists(local_img_path):
                                         stats["inline_thumb_total"] += 1
@@ -400,6 +412,13 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     clean_url = url[2:] if url.startswith('./') else url
                                     orig_url = f"{real_path}{clean_url}"
                                     local_img_path = os.path.normpath(orig_url)
+                                    
+                                    # ✨ 關鍵修復 3：同步過濾 HTML <img> 標籤寫法的非圖片檔案
+                                    valid_image_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'}
+                                    ext = os.path.splitext(local_img_path)[1].lower()
+                                    
+                                    if ext not in valid_image_exts:
+                                        return f"{prefix}{orig_url}{suffix}"
                                     
                                     if os.path.exists(local_img_path):
                                         stats["inline_thumb_total"] += 1
