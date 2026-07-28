@@ -367,10 +367,15 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     align-items: center; 
     margin: 0 !important; 
     padding: 0 !important; 
-    gap: 1rem; 
     
-    /* ✨ 關鍵修改：強制靠上對齊，當左邊換行撐高容器時，X 按鈕會乖乖留在頂部 */
+    /* ✨ 預設為 0rem，當只有一個關閉按鈕時，把不必要的間距省下來還給左邊 */
+    gap: 0rem; 
     align-self: flex-start; 
+}
+
+/* ✨ 現代 CSS 魔法：當內部有 TOC 目錄按鈕時，才自動拉開 1rem 的間距 */
+#modal-top-right:has(.toc-wrapper) {
+    gap: 1rem;
 }
 .modal-close-btn, .toc-toggle-btn { box-sizing: border-box !important; flex-shrink: 0 !important; }
 
