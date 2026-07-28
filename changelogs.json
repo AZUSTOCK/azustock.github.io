@@ -5,7 +5,7 @@
     "date": "2026-07-28",
     "status": "FEATURE",
     "description": "新增感謝頁面、版本紀錄、PDF閱讀器",
-    "content": "## add\n1. credits\n2. version logs\n3. new badges\n4. PDF reader\n\n## adjust\n1. modal-top-right gap"
+    "content": "## add\n1. credits\n2. version logs\n3. new badges\n4. PDF reader\n\n## adjust\n1. modal-top-right gap\n2. css"
   },
   {
     "id": "U1.3.3",

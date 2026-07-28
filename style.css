@@ -1423,7 +1423,7 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 /* ========================================== */
 .new-jump-toast {
     position: absolute;
-    bottom: max(30px, calc(env(safe-area-inset-bottom) + 20px));
+    bottom: 50px; 
     left: 50%;
     transform: translateX(-50%) translateY(40px);
     opacity: 0;
@@ -1443,6 +1443,14 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     gap: 8px;
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* ✨ 手機版專屬 (螢幕寬度小於 600px 時自動觸發) */
+@media (max-width: 600px) {
+    .new-jump-toast {
+        /* 讓膠囊更貼近螢幕底部 (基礎高度降為 25px)，同時保留動態安全區的防禦 */
+        bottom: max(25px, calc(env(safe-area-inset-bottom) + 15px));
+    }
 }
 
 /* 觸發顯示時的狀態 */
