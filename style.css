@@ -1632,3 +1632,33 @@ main section:target::after {
 .footer-btn.version-btn span {
     color: inherit; /* 讓文字顏色跟隨按鈕變色 */
 }
+
+/* ========================================== */
+/* ✨ 針對行動裝置的 PDF 顯示優化 */
+/* ========================================== */
+@media (max-width: 768px) {
+    /* 1. 隱藏無法滑動的 iframe 預覽區 */
+    .pdf-container iframe {
+        display: none !important;
+    }
+    
+    /* 2. 生成一塊友善的提示區塊代替原本的預覽畫面 */
+    .pdf-container {
+        position: relative;
+    }
+    
+    .pdf-container::after {
+        content: '行動裝置不支援內嵌 PDF 預覽\A請點擊右上角「新分頁開啟」以原生閱讀器瀏覽。';
+        white-space: pre-wrap;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        height: 180px;
+        background: var(--bg);
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.8;
+        padding: 1.5rem;
+    }
+}
