@@ -112,31 +112,15 @@ window.siteProjects = [];
 // ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
 window.lockScroll = function() {
-    if (document.body.style.overflow === 'hidden') return; // ✨ 防呆：已鎖定就不重算
-
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-
-    document.body.style.paddingRight = `${scrollbarWidth}px`;
+    // 防呆：如果已經鎖定，就直接返回，防止重複執行導致閃爍 (解決問題 1)
+    if (document.body.style.overflow === 'hidden') return;
+    
+    // 只做鎖定，不做 Padding 補償，因為 CSS 已經處理好了
     document.body.style.overflow = 'hidden';
-
-    // 補償懸浮按鈕
-    const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
-    fixedElements.forEach(el => { el.style.marginRight = `${scrollbarWidth}px`; });
-
-    // ✨ 補償滿版彈窗的中心點，徹底消滅 8.5px 的視覺偏移！
-    const overlays = document.querySelectorAll('.modal-overlay, .fullscreen-nav, #lightbox-modal');
-    overlays.forEach(el => { el.style.paddingRight = `${scrollbarWidth}px`; });
 };
 
 window.unlockScroll = function() {
-    document.body.style.paddingRight = '';
     document.body.style.overflow = '';
-
-    const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
-    fixedElements.forEach(el => { el.style.marginRight = ''; });
-
-    const overlays = document.querySelectorAll('.modal-overlay, .fullscreen-nav, #lightbox-modal');
-    overlays.forEach(el => { el.style.paddingRight = ''; });
 };
 
 // ==========================================
@@ -963,7 +947,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fullscreenMenu.classList.contains('active')) {
             window.lockScroll();
         } else {
-            setTimeout(() => window.unlockScroll(), 600); // ✨ 等待選單滑出畫面再解鎖
+            // ✨ 延遲 600 毫秒，等選單完全滑出畫面後，再解鎖捲軸！
+            setTimeout(() => window.unlockScroll(), 600); 
         }
     });
 
@@ -974,7 +959,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('.nav-item')) {
             menuToggle.classList.remove('open');
             fullscreenMenu.classList.remove('active');
-            setTimeout(() => window.unlockScroll(), 600); // ✨ 等待選單滑出畫面再解鎖
+            // ✨ 同上，點擊連結關閉時也要延遲 600 毫秒！
+            setTimeout(() => window.unlockScroll(), 600); 
         }
     });
 
@@ -2160,7 +2146,7 @@ function closeModal() {
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
     
-    // ✨ 延遲 300 毫秒解鎖，配合 Modal 的 opacity 淡出動畫
+    // ✨ 延遲 300 毫秒解鎖，配合 Modal 的 opacity: 0.3s 動畫
     setTimeout(() => window.unlockScroll(), 300); 
 
     const jumpToast = document.getElementById('new-jump-toast');
