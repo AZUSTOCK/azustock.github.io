@@ -1,5 +1,13 @@
 [
   {
+    "id": "U1.4.1",
+    "version": "U1.4.1",
+    "date": "2026-07-29",
+    "status": "REFACTOR",
+    "description": "CSS重構、捲軸相關",
+    "content": "## change\n1. css\n2. index.html\n\n## adjust\n1. Tooltip\n2. style follow theme\n\n## fix\n1. scroll bar associated\n2. mobile PDF"
+  },
+  {
     "id": "U1.4.0",
     "version": "U1.4.0",
     "date": "2026-07-28",
