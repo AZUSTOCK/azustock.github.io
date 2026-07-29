@@ -343,7 +343,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .toast-btn.close-btn:hover { background: var(--error-color); color: #fff; }
 .toast-divider { width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; }
 
-.new-jump-toast { position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%) translateY(40px); opacity: 0; pointer-events: none; z-index: 1070; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--error-color); color: var(--error-color); padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.95rem; font-weight: 700; box-shadow: 0 10px 25px var(--error-shadow); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.new-jump-toast { position: fixed; bottom: 55px; left: 50%; transform: translateX(-50%) translateY(40px); opacity: 0; pointer-events: none; z-index: 1070; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--error-color); color: var(--error-color); padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.95rem; font-weight: 700; box-shadow: 0 10px 25px var(--error-shadow); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
 .new-jump-toast.is-visible { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
 .new-jump-toast:hover { background: var(--error-color); color: #fff; transform: translateX(-50%) translateY(-4px); box-shadow: 0 12px 30px var(--error-shadow); }
 .new-jump-toast svg { display: block; }
