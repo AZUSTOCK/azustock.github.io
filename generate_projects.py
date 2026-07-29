@@ -111,6 +111,7 @@ def generate_changelogs_json():
         status = "UPDATE"
         description = "系統更新與優化記錄。"
         content = ""
+        is_hidden = False # ✨ 新增一個隱藏開關
 
         # 讀取 detail.json
         detail_path = os.path.join(folder_path, 'detail.json')
@@ -120,6 +121,16 @@ def generate_changelogs_json():
             status = detail.get('status', status)
             version = detail.get('version', version)
             description = detail.get('description', description)
+            # ✨ 如果 JSON 裡有寫 "hidden": true，就會被捕捉
+            is_hidden = detail.get('hidden', False)
+
+        # 🛡️ 終極防護過濾魔法：只要觸發以下「任何一個」條件，就絕對不打包！
+        # 1. JSON 裡的版本號有 3 個點以上 (如 U1.4.1.1)
+        # 2. 資料夾名稱有 3 個點以上 (如 logs/U1.4.1.1)
+        # 3. JSON 裡手動設定了 "hidden": true
+        if str(version).count('.') >= 3 or str(version_folder).count('.') >= 3 or is_hidden:
+            print(f"  ⏭️ 隱藏內部測試紀錄: {version_folder} (不會顯示於前端)")
+            continue
 
         # 讀取 md 檔案
         for file in os.listdir(folder_path):
@@ -141,7 +152,7 @@ def generate_changelogs_json():
     with open('changelogs.json', 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ 升級版版本日誌 (Changelog) 打包完成，共 {len(output_data)} 筆紀錄。")
+    print(f"✅ 升級版版本日誌 (Changelog) 打包完成，共對外發布 {len(output_data)} 筆紀錄。")
 
 
 # ==========================================

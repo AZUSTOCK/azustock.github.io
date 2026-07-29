@@ -45,6 +45,6 @@
     "date": "2026-07-16",
     "status": "REFACTOR",
     "description": "git repository 重構",
-    "content": "## change\n1. git repository\n\n## fix\n1. security\n\n## notice\n因應資料庫重構，先前版本不可考。"
+    "content": "## refactor\n1. git repository\n\n## fix\n1. security\n\n## notice\n因應資料庫重構，先前版本不可考。"
   }
 ]
