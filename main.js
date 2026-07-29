@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.4.0",          // 目前系統版本號
+    VERSION: "U1.4.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "light",     // 預設主題 (light / dark)
@@ -112,31 +112,15 @@ window.siteProjects = [];
 // ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
 window.lockScroll = function() {
-    // 1. 計算目前的捲軸寬度 (視窗內部總寬 - 文件實際可用寬度)
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    // 防呆：如果已經鎖定，就直接返回，防止重複執行導致閃爍 (解決問題 1)
+    if (document.body.style.overflow === 'hidden') return;
     
-    // 2. 補償 Body，抵銷捲軸消失的空間
-    document.body.style.paddingRight = `${scrollbarWidth}px`;
+    // 只做鎖定，不做 Padding 補償，因為 CSS 已經處理好了
     document.body.style.overflow = 'hidden';
-
-    // 3. ✨ 補償 Fixed 定位的懸浮按鈕 (防止它們往右跳動)
-    // 利用 margin-right 補償，不干擾原本的 transform 動畫
-    const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
-    fixedElements.forEach(el => {
-        el.style.marginRight = `${scrollbarWidth}px`;
-    });
 };
 
 window.unlockScroll = function() {
-    // 恢復 Body 原狀
-    document.body.style.paddingRight = '';
     document.body.style.overflow = '';
-
-    // 恢復懸浮按鈕原狀
-    const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
-    fixedElements.forEach(el => {
-        el.style.marginRight = '';
-    });
 };
 
 // ==========================================
@@ -960,20 +944,23 @@ document.addEventListener('DOMContentLoaded', () => {
     menuToggle.addEventListener('click', () => {
         menuToggle.classList.toggle('open');
         fullscreenMenu.classList.toggle('active');
-        // ✨ 替換為防跳動版本
-        if (fullscreenMenu.classList.contains('active')) window.lockScroll();
-        else window.unlockScroll();
+        if (fullscreenMenu.classList.contains('active')) {
+            window.lockScroll();
+        } else {
+            // ✨ 延遲 600 毫秒，等選單完全滑出畫面後，再解鎖捲軸！
+            setTimeout(() => window.unlockScroll(), 600); 
+        }
     });
 
     // ==========================================
     // ✨ 漢堡選單：事件代理 (Event Delegation) 點擊自動關閉
     // ==========================================
-    // 不管未來動態載入了多少個 .nav-item，只要把事件掛在父層就永遠生效！
     fullscreenMenu.addEventListener('click', (e) => {
         if (e.target.closest('.nav-item')) {
             menuToggle.classList.remove('open');
             fullscreenMenu.classList.remove('active');
-            window.unlockScroll(); // ✨ 替換為防跳動版本
+            // ✨ 同上，點擊連結關閉時也要延遲 600 毫秒！
+            setTimeout(() => window.unlockScroll(), 600); 
         }
     });
 
@@ -2158,9 +2145,10 @@ window.goBackInHistory = function() {
 function closeModal() {
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
-    window.unlockScroll(); // 防跳動版本
+    
+    // ✨ 延遲 300 毫秒解鎖，配合 Modal 的 opacity: 0.3s 動畫
+    setTimeout(() => window.unlockScroll(), 300); 
 
-    // ✨ 關閉彈窗時，一併隱藏跳轉膠囊
     const jumpToast = document.getElementById('new-jump-toast');
     if (jumpToast) jumpToast.classList.remove('is-visible');
 
