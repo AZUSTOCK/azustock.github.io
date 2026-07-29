@@ -278,7 +278,15 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .menu-btn.open:hover { background: var(--btn-hover-bg); border-color: var(--error-color); box-shadow: 0 0 10px var(--error-shadow); }
 .menu-btn.open:hover .bar:nth-child(1), .menu-btn.open:hover .bar:nth-child(3) { background-color: var(--error-color); box-shadow: 0 0 10px var(--error-shadow); }
 
-.fullscreen-nav { position: fixed; top: 0; left: 0; width: 100vw; box-sizing: border-box; height: 100vh; height: 100dvh; background: var(--nav-bg); backdrop-filter: blur(10px); z-index: 999; display: flex; align-items: flex-start; overflow-y: auto; transform: translateY(-100%); transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease; }
+.fullscreen-nav { 
+    position: fixed; top: 0; left: 0; 
+    
+    /* ✨ 維持 100% 確保排版不偏移，並用 box-shadow 把顏色溢出到右側軌道 */
+    width: 100%; box-sizing: border-box; 
+    box-shadow: 30px 0 0 0 var(--nav-bg); 
+    
+    height: 100vh; height: 100dvh; background: var(--nav-bg); backdrop-filter: blur(10px); z-index: 999; display: flex; align-items: flex-start; overflow-y: auto; transform: translateY(-100%); transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease; 
+}
 .fullscreen-nav.active { transform: translateY(0); }
 .nav-links { list-style: none; padding: 6rem 0; margin: auto; text-align: center; width: 100%; }
 .nav-item { display: inline-block; font-family: 'Courier New', monospace; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: bold; color: var(--text); text-decoration: none; margin: 1.5rem 0; text-transform: uppercase; transition: all 0.3s ease; }
@@ -342,13 +350,28 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 @keyframes jump-arrow-bounce-down { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 @keyframes jump-arrow-bounce-up { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
-/* 全域共用 Tooltip 氣泡 */
-.toast-btn::after, .mermaid-btn::after, .capsule-btn::after, .zoom-btn::after { content: attr(data-tooltip); position: absolute; top: -38px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--card); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-.toast-btn::before, .mermaid-btn::before, .capsule-btn::before, .zoom-btn::before { content: ''; position: absolute; top: -12px; left: 50%; transform: translateX(-50%) translateY(8px); border-width: 5px; border-style: solid; border-color: var(--text) transparent transparent transparent; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
-.toast-btn:hover::after, .toast-btn:hover::before, .mermaid-btn:hover::after, .mermaid-btn:hover::before, .capsule-btn:hover::after, .capsule-btn:hover::before, .zoom-btn:hover::after, .zoom-btn:hover::before { opacity: 1; transform: translateX(-50%) translateY(0); }
-.capsule-btn::after, .zoom-btn.floating::after { top: 100%; margin-top: 10px; bottom: auto; transform: translateX(-50%) translateY(-8px); }
-.capsule-btn::before, .zoom-btn.floating::before { top: 100%; margin-top: 0px; border-color: transparent transparent var(--text) transparent; transform: translateX(-50%) translateY(-8px); }
+/* ========================================================================== */
+/* ✨ 全域共用 Tooltip 氣泡 (完整支援所有按鈕) */
+/* ========================================================================== */
+.toast-btn::after, .mermaid-btn::after, .capsule-btn::after, .zoom-btn::after, .toolbar-btn::after, .lightbox-capsule-btn::after, .footer-btn::after { 
+    content: attr(data-tooltip); position: absolute; top: -38px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--card); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; 
+}
+.toast-btn::before, .mermaid-btn::before, .capsule-btn::before, .zoom-btn::before, .toolbar-btn::before, .lightbox-capsule-btn::before, .footer-btn::before { 
+    content: ''; position: absolute; top: -12px; left: 50%; transform: translateX(-50%) translateY(8px); border-width: 5px; border-style: solid; border-color: var(--text) transparent transparent transparent; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 10000; 
+}
 
+/* 顯示 Hover 狀態 */
+.toast-btn:hover::after, .toast-btn:hover::before, .mermaid-btn:hover::after, .mermaid-btn:hover::before, .capsule-btn:hover::after, .capsule-btn:hover::before, .zoom-btn:hover::after, .zoom-btn:hover::before, .toolbar-btn:hover::after, .toolbar-btn:hover::before, .lightbox-capsule-btn:hover::after, .lightbox-capsule-btn:hover::before, .footer-btn:hover::after, .footer-btn:hover::before { 
+    opacity: 1; transform: translateX(-50%) translateY(0); 
+}
+
+/* ⬇️ 關鍵覆寫：讓貼在頂部的按鈕，Tooltip 改為「往下彈出」，以免被螢幕邊緣切掉 */
+.capsule-btn::after, .zoom-btn.floating::after, .toolbar-btn::after, .lightbox-capsule-btn::after { 
+    top: 100%; margin-top: 10px; bottom: auto; transform: translateX(-50%) translateY(-8px); 
+}
+.capsule-btn::before, .zoom-btn.floating::before, .toolbar-btn::before, .lightbox-capsule-btn::before { 
+    top: 100%; margin-top: 0px; border-color: transparent transparent var(--text) transparent; transform: translateX(-50%) translateY(-8px); 
+}
 
 /* ========================================================================== */
 /* 🏠 第四層：首頁專屬視圖 (Homepage View)                                      */
@@ -410,7 +433,15 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 /* ========================================================================== */
 
 /* 5-1. Modal 基礎結構 */
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; box-sizing: border-box; height: 100vh; height: 100dvh; background: var(--glass-bg); backdrop-filter: blur(8px); z-index: 1050; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; will-change: opacity; overscroll-behavior: none; }
+.modal-overlay { 
+    position: fixed; top: 0; left: 0; 
+    
+    /* ✨ 維持 100% 確保排版不偏移，並用 box-shadow 把顏色溢出到右側軌道 */
+    width: 100%; box-sizing: border-box; 
+    box-shadow: 30px 0 0 0 var(--glass-bg); 
+    
+    height: 100vh; height: 100dvh; background: var(--glass-bg); backdrop-filter: blur(8px); z-index: 1050; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; will-change: opacity; overscroll-behavior: none; 
+}
 .modal-overlay.active { opacity: 1; pointer-events: auto; }
 .modal-content { 
     background: var(--card); border: 1px solid var(--card-border); 
@@ -681,45 +712,65 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 /* ========================================================================== */
 
 /* 7-1. Modal 基礎佈局 */
-#lightbox-modal { position: fixed; top: 0; left: 0; width: 100%; box-sizing: border-box; height: 100vh; height: 100dvh; background: #000; z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+#lightbox-modal { 
+    position: fixed; top: 0; left: 0; 
+    width: 100%; box-sizing: border-box; 
+    
+    /* ✨ 讓防抖動陰影與背景色都完美跟隨系統 Theme */
+    box-shadow: 30px 0 0 0 var(--bg); 
+    background: var(--bg); 
+    
+    height: 100vh; height: 100dvh; z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; 
+}
 #lightbox-modal.is-active { opacity: 1; visibility: visible; }
-#lightbox-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(40px) brightness(0.3); transform: scale(1.1); z-index: 1; pointer-events: none; }
+#lightbox-backdrop { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; 
+    filter: blur(40px); /* 移除強制暗化 */
+    opacity: 0.35;      /* ✨ 改用透明度，讓底層的主題色 var(--bg) 漂亮地透出來 */
+    transform: scale(1.1); z-index: 1; pointer-events: none; 
+}
 
 /* 7-2. 工具列 */
-#lightbox-toolbar { position: absolute; top: 0; left: 0; width: 100%; height: 70px; background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent); z-index: 50; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; box-sizing: border-box; pointer-events: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+#lightbox-toolbar { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 70px; 
+    background: linear-gradient(to bottom, var(--bg), transparent); /* ✨ 漸層跟隨主題 */
+    z-index: 50; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; box-sizing: border-box; pointer-events: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; 
+}
 .toolbar-left, .toolbar-right{ display: flex; align-items: center; gap: 8px; pointer-events: auto; }
-#lightbox-counter { color: #fff; font-family: monospace; font-size: 1.1rem; opacity: 0.8; letter-spacing: 0.05em; margin-left: 10px; }
+#lightbox-counter { color: var(--text); font-family: monospace; font-size: 1.1rem; font-weight: bold; letter-spacing: 0.05em; margin-left: 10px; }
 
-.toolbar-btn { background: rgba(255, 255, 255, 0.1); border: none; color: #fff; width: 40px; height: 40px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(4px); position: relative; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
-.toolbar-btn:hover { background: var(--accent); transform: scale(1.1) translateZ(0); }
+/* 工具列按鈕 (動態主題適應) */
+.toolbar-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 40px; height: 40px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(4px); position: relative; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
+.toolbar-btn:hover { background: var(--accent); color: var(--card); border-color: var(--accent); transform: scale(1.1) translateZ(0); }
 .toolbar-btn[onclick*="zoom-out"]:hover svg { transform: scale(0.85); transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
 .toolbar-btn svg { display: block; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
-.toolbar-btn.close-btn { background: rgba(255, 50, 50, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); }
-.toolbar-btn.close-btn:hover { background: #ff4757; border-color: #ff4757; }
-.toolbar-divider { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.2); margin: 0 4px; }
+.toolbar-btn.close-btn { background: rgba(255, 50, 50, 0.15); border: 1px solid rgba(255, 50, 50, 0.3); color: var(--error-color); }
+.toolbar-btn.close-btn:hover { background: var(--error-color); color: var(--card); border-color: var(--error-color); }
+.toolbar-divider { width: 1px; height: 24px; background: var(--divider-line); margin: 0 4px; }
 
-/* 7-3. 相簿膠囊 */
-.lightbox-capsule { display: none; position: static; transform: none; align-items: center; height: 40px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 999px; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); box-sizing: border-box; transition: all 0.3s ease; pointer-events: auto; margin-left: 10px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-.lightbox-capsule-btn { display: inline-flex; align-items: center; justify-content: center; height: 100%; background: transparent; border: none; color: #fff; cursor: pointer; padding: 0 0.8rem; transition: all 0.2s ease; position: relative; }
+/* 7-3. 相簿膠囊 (動態主題適應) */
+.lightbox-capsule { display: none; position: static; transform: none; align-items: center; height: 40px; border: 1px solid var(--box-border); border-radius: 999px; background: var(--box-bg); backdrop-filter: blur(8px); box-sizing: border-box; transition: all 0.3s ease; pointer-events: auto; margin-left: 10px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.lightbox-capsule-btn { display: inline-flex; align-items: center; justify-content: center; height: 100%; background: transparent; border: none; color: var(--text); cursor: pointer; padding: 0 0.8rem; transition: all 0.2s ease; position: relative; }
 .lightbox-capsule-btn:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
 .lightbox-capsule-btn:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
-.lightbox-capsule-btn:hover:not(.disabled) { background: rgba(255, 255, 255, 0.2); }
+.lightbox-capsule-btn:hover:not(.disabled) { background: var(--tag-bg); color: var(--accent); }
 .lightbox-capsule-btn.disabled { opacity: 0.3; cursor: not-allowed; }
 .lightbox-capsule-btn svg { display: block; transition: transform 0.2s ease; }
 .lightbox-capsule-btn:hover:not(.disabled):first-child svg { transform: translateX(-3px); }
 .lightbox-capsule-btn:hover:not(.disabled):last-child svg { transform: translateX(3px); }
-.lightbox-capsule-divider { width: 1px; height: 18px; background: rgba(255, 255, 255, 0.3); margin: 0; }
-.lightbox-capsule-progress { font-family: monospace; font-size: 0.95rem; font-weight: 600; color: #fff; padding: 0 0.8rem; letter-spacing: 0.05em; pointer-events: none; }
+.lightbox-capsule-divider { width: 1px; height: 18px; background: var(--divider-line); margin: 0; }
+.lightbox-capsule-progress { font-family: monospace; font-size: 0.95rem; font-weight: 600; color: var(--text); padding: 0 0.8rem; letter-spacing: 0.05em; pointer-events: none; }
 
 /* 7-4. 圖片主體與文字 */
 .lightbox-content-wrapper { position: relative; z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; padding: 80px 20px 120px 20px; box-sizing: border-box; pointer-events: none; }
 .lightbox-img-wrapper { flex: 1; min-height: 0; min-width: 0; width: 100%; display: flex; justify-content: center; align-items: center; overflow: visible; pointer-events: auto; }
-#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); transform-origin: center center; touch-action: none; cursor: grab; }
+#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); transform-origin: center center; touch-action: none; cursor: grab; }
 #lightbox-img.is-dragging { cursor: grabbing; transition: none !important; }
-.lightbox-caption { position: absolute; bottom: max(60px, calc(env(safe-area-inset-bottom) + 30px)); left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 999px; padding: 8px 24px; color: #fff; font-size: 1rem; font-weight: 500; pointer-events: none; z-index: 50; max-width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.4); display: none; }
+
+/* 底部圖片說明膠囊 (動態主題適應) */
+.lightbox-caption { position: absolute; bottom: max(60px, calc(env(safe-area-inset-bottom) + 30px)); left: 50%; transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 999px; padding: 8px 24px; color: var(--text); font-size: 1rem; font-weight: 500; pointer-events: none; z-index: 50; max-width: 90%; box-shadow: 0 4px 20px var(--shadow-base); display: none; }
 .toolbox-group { display: flex; align-items: center; gap: 8px; }
 .toolbox-toggle-btn { display: none; }
-
 
 /* ========================================================================== */
 /* 📱 第八層：行動版與觸控優化 (Mobile & Touch)                                 */
@@ -765,11 +816,13 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     /* 隱藏觸控裝置 Tooltip */
     .toolbar-btn::after, .toolbar-btn::before, .lightbox-capsule-btn::after, .lightbox-capsule-btn::before, .zoom-btn::after, .zoom-btn::before { display: none !important; }
     
-    /* Lightbox 收合工具列 */
+    /* Lightbox 收合工具列 (手機版彈出選單) */
     .toolbox-toggle-btn { display: flex; }
     .desktop-only-divider { display: none; }
     .toolbar-right { position: relative; }
-    .toolbox-group { position: absolute; top: 100%; margin-top: 15px; right: 0; flex-direction: row; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(15px); padding: 8px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: max-content; will-change: transform, opacity; opacity: 0; visibility: hidden; transform: translateY(-15px) scale(0.95) translateZ(0); transform-origin: top right; transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease; }
+    
+    /* ✨ 將 rgba(0,0,0,0.7) 換成 var(--glass-bg) */
+    .toolbox-group { position: absolute; top: 100%; margin-top: 15px; right: 0; flex-direction: row; align-items: center; justify-content: center; background: var(--glass-bg); backdrop-filter: blur(15px); padding: 8px; border-radius: 12px; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px var(--shadow-base); width: max-content; will-change: transform, opacity; opacity: 0; visibility: hidden; transform: translateY(-15px) scale(0.95) translateZ(0); transform-origin: top right; transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease; }
     .toolbox-group.is-open { opacity: 1; visibility: visible; transform: translateY(0) scale(1) translateZ(0); pointer-events: auto; }
 }
 
