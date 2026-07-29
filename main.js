@@ -112,34 +112,31 @@ window.siteProjects = [];
 // ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
 window.lockScroll = function() {
-    // ✨ 終極防護：如果 body 已經是鎖定狀態，直接中止，絕對不重複計算！
-    if (document.body.style.overflow === 'hidden') return;
+    if (document.body.style.overflow === 'hidden') return; // ✨ 防呆：已鎖定就不重算
 
-    // 1. 計算目前的捲軸寬度 (視窗內部總寬 - 文件實際可用寬度)
     const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-    
-    // 2. 補償 Body，抵銷捲軸消失的空間
+
     document.body.style.paddingRight = `${scrollbarWidth}px`;
     document.body.style.overflow = 'hidden';
 
-    // 3. ✨ 補償 Fixed 定位的懸浮按鈕 (防止它們往右跳動)
-    // 利用 margin-right 補償，不干擾原本的 transform 動畫
+    // 補償懸浮按鈕
     const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
-    fixedElements.forEach(el => {
-        el.style.marginRight = `${scrollbarWidth}px`;
-    });
+    fixedElements.forEach(el => { el.style.marginRight = `${scrollbarWidth}px`; });
+
+    // ✨ 補償滿版彈窗的中心點，徹底消滅 8.5px 的視覺偏移！
+    const overlays = document.querySelectorAll('.modal-overlay, .fullscreen-nav, #lightbox-modal');
+    overlays.forEach(el => { el.style.paddingRight = `${scrollbarWidth}px`; });
 };
 
 window.unlockScroll = function() {
-    // 恢復 Body 原狀
     document.body.style.paddingRight = '';
     document.body.style.overflow = '';
 
-    // 恢復懸浮按鈕原狀
     const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
-    fixedElements.forEach(el => {
-        el.style.marginRight = '';
-    });
+    fixedElements.forEach(el => { el.style.marginRight = ''; });
+
+    const overlays = document.querySelectorAll('.modal-overlay, .fullscreen-nav, #lightbox-modal');
+    overlays.forEach(el => { el.style.paddingRight = ''; });
 };
 
 // ==========================================
@@ -963,12 +960,10 @@ document.addEventListener('DOMContentLoaded', () => {
     menuToggle.addEventListener('click', () => {
         menuToggle.classList.toggle('open');
         fullscreenMenu.classList.toggle('active');
-        
         if (fullscreenMenu.classList.contains('active')) {
             window.lockScroll();
         } else {
-            // ✨ 替換為防跳動版本：等待 0.6s 動畫結束後再解開卷軸！
-            setTimeout(() => window.unlockScroll(), 600);
+            setTimeout(() => window.unlockScroll(), 600); // ✨ 等待選單滑出畫面再解鎖
         }
     });
 
@@ -979,9 +974,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('.nav-item')) {
             menuToggle.classList.remove('open');
             fullscreenMenu.classList.remove('active');
-            
-            // ✨ 替換為防跳動版本：等待 0.6s 動畫結束後再解開卷軸！
-            setTimeout(() => window.unlockScroll(), 600); 
+            setTimeout(() => window.unlockScroll(), 600); // ✨ 等待選單滑出畫面再解鎖
         }
     });
 
@@ -2166,9 +2159,10 @@ window.goBackInHistory = function() {
 function closeModal() {
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
-    window.unlockScroll(); // 防跳動版本
+    
+    // ✨ 延遲 300 毫秒解鎖，配合 Modal 的 opacity 淡出動畫
+    setTimeout(() => window.unlockScroll(), 300); 
 
-    // ✨ 關閉彈窗時，一併隱藏跳轉膠囊
     const jumpToast = document.getElementById('new-jump-toast');
     if (jumpToast) jumpToast.classList.remove('is-visible');
 
