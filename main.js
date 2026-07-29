@@ -109,34 +109,34 @@ document.documentElement.style.setProperty('--marquee-speed', `${CONFIG.MARQUEE_
 window.siteProjects = [];
 
 // ==========================================
-// 🔒 終極捲軸鎖定引擎 (CSS 原生佔位版)
+// ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
-window.scrollLockTimer = null;
-
 window.lockScroll = function() {
-    clearTimeout(window.scrollLockTimer);
-    // 直接鎖定即可，CSS 的 scrollbar-gutter 會自動把空間留著！
+    // 1. 計算目前的捲軸寬度 (視窗內部總寬 - 文件實際可用寬度)
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    
+    // 2. 補償 Body，抵銷捲軸消失的空間
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
     document.body.style.overflow = 'hidden';
+
+    // 3. ✨ 補償 Fixed 定位的懸浮按鈕 (防止它們往右跳動)
+    // 利用 margin-right 補償，不干擾原本的 transform 動畫
+    const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
+    fixedElements.forEach(el => {
+        el.style.marginRight = `${scrollbarWidth}px`;
+    });
 };
 
-window.unlockScroll = function(force = false) {
-    const executeUnlock = () => {
-        const isMenuOpen = document.getElementById('fullscreen-menu')?.classList.contains('active');
-        const isModalOpen = document.getElementById('md-modal')?.classList.contains('active');
-        const isLightboxOpen = document.getElementById('lightbox-modal')?.classList.contains('is-active');
+window.unlockScroll = function() {
+    // 恢復 Body 原狀
+    document.body.style.paddingRight = '';
+    document.body.style.overflow = '';
 
-        if (!isMenuOpen && !isModalOpen && !isLightboxOpen) {
-            document.body.style.overflow = '';
-        }
-    };
-
-    if (force) {
-        executeUnlock();
-    } else {
-        clearTimeout(window.scrollLockTimer);
-        // 保留 400ms 的延遲，確保所有的 CSS 關閉動畫都滑順跑完後，捲軸才恢復運作
-        window.scrollLockTimer = setTimeout(executeUnlock, 400);
-    }
+    // 恢復懸浮按鈕原狀
+    const fixedElements = document.querySelectorAll('.menu-btn, .theme-btn, .btt-btn');
+    fixedElements.forEach(el => {
+        el.style.marginRight = '';
+    });
 };
 
 // ==========================================
@@ -960,13 +960,9 @@ document.addEventListener('DOMContentLoaded', () => {
     menuToggle.addEventListener('click', () => {
         menuToggle.classList.toggle('open');
         fullscreenMenu.classList.toggle('active');
-        
-        if (fullscreenMenu.classList.contains('active')) {
-            window.lockScroll();
-        } else {
-            // ✨ 等待 0.6s 動畫結束後再解開卷軸，完美解決推擠問題！
-            setTimeout(() => window.unlockScroll(), 600);
-        }
+        // ✨ 替換為防跳動版本
+        if (fullscreenMenu.classList.contains('active')) window.lockScroll();
+        else window.unlockScroll();
     });
 
     // ==========================================
@@ -977,7 +973,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('.nav-item')) {
             menuToggle.classList.remove('open');
             fullscreenMenu.classList.remove('active');
-            setTimeout(() => window.unlockScroll(), 600); // ✨ 同步延遲
+            window.unlockScroll(); // ✨ 替換為防跳動版本
         }
     });
 
@@ -2162,10 +2158,9 @@ window.goBackInHistory = function() {
 function closeModal() {
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
-    
-    // ✨ 配合 Modal 的 0.3s Fade-out 動畫
-    setTimeout(() => window.unlockScroll(), 300);
+    window.unlockScroll(); // 防跳動版本
 
+    // ✨ 關閉彈窗時，一併隱藏跳轉膠囊
     const jumpToast = document.getElementById('new-jump-toast');
     if (jumpToast) jumpToast.classList.remove('is-visible');
 

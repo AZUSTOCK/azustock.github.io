@@ -86,9 +86,6 @@
 /* ========================================================================== */
 html { 
     scroll-behavior: smooth; 
-    
-    /* ✨ 原生魔法：永遠為捲軸保留空間，徹底消滅跳動！ */
-    scrollbar-gutter: stable; 
 }
 body {
     margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
@@ -121,12 +118,14 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .copyright-box p { margin: 0 0 0.8rem 0; }
 .copyright-footer { border-top: 1px solid var(--divider-line); transition: border-color 0.5s ease; margin-bottom: 0 !important; font-family: 'Courier New', monospace; font-size: 0.8rem; opacity: 0.8; padding-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
 
-/* 全站自訂捲軸 */
+/* 全站自訂捲軸 (精簡合併版) */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--scrollbar-bg); border-radius: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 10px; transition: background-color 0.3s ease; }
 ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg); }
+
+/* 元件客製捲軸寬度覆寫 */
 .toc-dropdown ul::-webkit-scrollbar { width: 4px; }
 .markdown-body table::-webkit-scrollbar, .markdown-body .gallery::-webkit-scrollbar { height: 6px; }
 
