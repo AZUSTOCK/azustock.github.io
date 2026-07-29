@@ -112,6 +112,9 @@ window.siteProjects = [];
 // ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
 window.lockScroll = function() {
+    // ✨ 終極防護：如果 body 已經是鎖定狀態，直接中止，絕對不重複計算！
+    if (document.body.style.overflow === 'hidden') return;
+
     // 1. 計算目前的捲軸寬度 (視窗內部總寬 - 文件實際可用寬度)
     const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     
@@ -960,20 +963,25 @@ document.addEventListener('DOMContentLoaded', () => {
     menuToggle.addEventListener('click', () => {
         menuToggle.classList.toggle('open');
         fullscreenMenu.classList.toggle('active');
-        // ✨ 替換為防跳動版本
-        if (fullscreenMenu.classList.contains('active')) window.lockScroll();
-        else window.unlockScroll();
+        
+        if (fullscreenMenu.classList.contains('active')) {
+            window.lockScroll();
+        } else {
+            // ✨ 替換為防跳動版本：等待 0.6s 動畫結束後再解開卷軸！
+            setTimeout(() => window.unlockScroll(), 600);
+        }
     });
 
     // ==========================================
     // ✨ 漢堡選單：事件代理 (Event Delegation) 點擊自動關閉
     // ==========================================
-    // 不管未來動態載入了多少個 .nav-item，只要把事件掛在父層就永遠生效！
     fullscreenMenu.addEventListener('click', (e) => {
         if (e.target.closest('.nav-item')) {
             menuToggle.classList.remove('open');
             fullscreenMenu.classList.remove('active');
-            window.unlockScroll(); // ✨ 替換為防跳動版本
+            
+            // ✨ 替換為防跳動版本：等待 0.6s 動畫結束後再解開卷軸！
+            setTimeout(() => window.unlockScroll(), 600); 
         }
     });
 
