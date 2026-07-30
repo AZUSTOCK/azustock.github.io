@@ -384,8 +384,20 @@ main section h2::before { content: ''; position: absolute; left: 0; top: 10%; bo
 main section::before { content: ''; position: absolute; top: -10px; right: 20px; width: 250px; height: 250px; max-height: calc(100% - 20px); max-width: 40vw; opacity: 0.08; z-index: 0; pointer-events: none; background-color: var(--sec-color); --default-watermark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5'%3E%3Cpolygon points='12 2 2 7 12 12 22 7 12 2'/%3E%3Cpolyline points='2 17 12 22 22 17'/%3E%3Cpolyline points='2 12 12 17 22 12'/%3E%3C/svg%3E"); -webkit-mask-image: var(--custom-watermark, var(--default-watermark)); mask-image: var(--custom-watermark, var(--default-watermark)); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: right top; mask-position: right top; transform: rotate(-10deg) scale(1); transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s ease; }
 main section:hover::before { transform: rotate(0deg) scale(1.1); opacity: 0.25; }
 main section::after { content: ''; position: absolute; top: -24px; bottom: -24px; left: -24px; right: -24px; border-radius: 20px; pointer-events: none; z-index: 0; opacity: 0; }
-@keyframes target-section-glow-expand { 0%, 100% { opacity: 0; transform: scale(0.98); } 30% { opacity: 1; transform: scale(1); background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent); } }
+/* 原本的區塊光暈動畫 */
+@keyframes target-section-glow-expand { 
+    0%, 100% { opacity: 0; transform: scale(0.98); } 
+    30% { opacity: 1; transform: scale(1); background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent); } 
+}
 main section:target::after { animation: target-section-glow-expand 3s cubic-bezier(0.25, 0.8, 0.25, 1); }
+/* ✨ 新增：類別 SVG 浮水印跳轉時的「偽 Hover」動畫 */
+@keyframes watermark-target-bump { 
+    0%, 100% { transform: rotate(-10deg) scale(1); opacity: 0.08; } 
+    30% { transform: rotate(0deg) scale(1.1); opacity: 0.25; } 
+}
+main section:target::before { 
+    animation: watermark-target-bump 3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
 main section:nth-of-type(5n+1) { --sec-color: var(--group-c1); }
 main section:nth-of-type(5n+2) { --sec-color: var(--group-c2); }
 main section:nth-of-type(5n+3) { --sec-color: var(--group-c3); }
@@ -790,7 +802,7 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     .toc-dropdown { right: -0.2rem; width: min(260px, calc(100dvw - 4.5rem)); }
     #article-list-container { transition: opacity 0.2s ease; padding-bottom: 20px; }
     .new-jump-toast {
-        bottom: max(25px, calc(env(safe-area-inset-bottom) + 15px));
+        bottom: max(25px, calc(env(safe-area-inset-bottom) + 13px));
     }
 
     /* Markdown 排版優化 */
