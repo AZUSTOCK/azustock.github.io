@@ -1064,6 +1064,7 @@ async function loadProjects() {
             p.tags = p.tags || [];
 
             if (p.articles && p.articles.length > 0) {
+                // 如果專案本身不是全新的，只要底下有 新文章(NEW) 或 更新(UPDATED)，專案就掛上 UPDATED
                 if (!p.is_new && !isCardUpdated) {
                     if (p.articles.some(art => art.is_new || art.is_updated)) isCardUpdated = true;
                 }
@@ -1077,8 +1078,11 @@ async function loadProjects() {
                 const boolKey = `is_${status.toLowerCase()}`;
                 const isTrue = status === 'UPDATED' ? isCardUpdated : p[boolKey];
 
+                // 1. 處理專案「自己」的屬性 (如果專案本身是 NEW，這裡依然會正確加上 NEW)
                 if (isTrue || p.tags.includes(status)) activeStates.add(status);
-                if (p.articles && p.articles.some(art => art[`is_${status.toLowerCase()}`] === true || (art.tags && art.tags.includes(status)))) {
+                
+                // 2. 處理「子文章」的狀態冒泡 (✨ 關鍵：擋下子文章的 NEW，不讓它傳染給專案)
+                if (status !== 'NEW' && p.articles && p.articles.some(art => art[`is_${status.toLowerCase()}`] === true || (art.tags && art.tags.includes(status)))) {
                     activeStates.add(status);
                 }
             });

@@ -439,13 +439,15 @@
       "tags": [
         "data"
       ],
+      "is_new": true,
       "articles": [
         {
           "id": "vocaloid",
           "title": "ボかロ",
           "content_path": "./api/data/vocaloid/contents.json",
           "description": "以介紹之名行推歌之實",
-          "date": "2026-03-09"
+          "date": "2026-03-09",
+          "is_new": true
         }
       ]
     }
