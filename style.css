@@ -699,6 +699,23 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 .vertical-wrapper img { max-height: 70%; width: auto !important; margin: 0 1.5rem !important; }
 .vertical-wrapper[data-indent="false"] p { text-indent: 0; }
 .vertical-wrapper table, .vertical-wrapper ul, .vertical-wrapper ol, .vertical-wrapper figure, .vertical-wrapper .gallery { text-indent: 0 !important; }
+/* ✨ 直書模式的垂直分隔線 (不破壞換行完美版) */
+.vertical-wrapper hr {
+    display: block;                  /* ⚠️ 關鍵：維持 block，讓它成為一個標準的「直欄」，絕不干擾文字換行 */
+    width: 2px;                      /* 垂直分隔線的粗細 */
+    height: 100%;                    /* 佔滿容器的高度 */
+    border: none;                    /* 拔除醜陋的原生邊框 */
+    margin: 0 1.8rem;                /* 上下 margin 為 0，左右撐開 1.8rem 的段落安全距離 */
+    
+    /* 🎨 魔法漸層：讓線條上下自然留白 15%，完全不靠容易跑版的 padding 或 margin */
+    background: linear-gradient(
+        to bottom, 
+        transparent 15%, 
+        var(--card-border) 15%, 
+        var(--card-border) 85%, 
+        transparent 85%
+    );
+}
 
 /* 6-7. 橫向捲動提示引擎 (Scroll Hints) */
 .scroll-wrapper { position: relative; display: flow-root; }

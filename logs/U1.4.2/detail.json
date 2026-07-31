@@ -1,7 +1,7 @@
 {
-  "version": "U1.4.1.1",
+  "version": "U1.4.2.dev",
   "date": "2026-07-30",
-  "status": "REFACTOR",
-  "description": "CSS重構、捲軸相關",
+  "status": "PATCH",
+  "description": "細節修正",
   "hidden": true
 }
