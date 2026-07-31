@@ -257,6 +257,13 @@
           "id": "cram",
           "title": "#5補習",
           "content_path": "./api/storyOFdiary/cram/contents.json",
+          "is_wip": true,
+          "group": "main"
+        },
+        {
+          "id": "after-school",
+          "title": "#6放學後",
+          "content_path": "./api/storyOFdiary/after-school/contents.json",
           "is_new": true,
           "is_wip": true,
           "group": "main"
