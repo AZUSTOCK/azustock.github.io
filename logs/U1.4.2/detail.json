@@ -1,7 +1,6 @@
 {
-  "version": "U1.4.2.dev",
-  "date": "2026-07-30",
-  "status": "PATCH",
-  "description": "細節修正",
-  "hidden": true
+  "version": "U1.4.2",
+  "date": "2026-08-01",
+  "status": "FEATURE",
+  "description": "細節修正，新增語言設定、版權與授權條款 Modal"
 }

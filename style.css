@@ -37,7 +37,7 @@
 }
 
 /* 1-3. 群組標籤專屬色彩系統 (校色優化版) */
-:root {
+:root, [data-theme="light"] {
     --group-c1: #E11D48; --c1-text: #881337;
     --group-c2: #059669; --c2-text: #064E3B;
     --group-c3: #EA580C; --c3-text: #7C2D12;
@@ -176,7 +176,6 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================================================================== */
 
 /* 3-1. 基礎按鈕 */
-/* 3-1. 基礎按鈕 */
 .btn { 
     display: inline-flex; 
     align-items: center; 
@@ -288,7 +287,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     height: 100vh; height: 100dvh; background: var(--nav-bg); backdrop-filter: blur(10px); z-index: 999; display: flex; align-items: flex-start; overflow-y: auto; transform: translateY(-100%); transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease; 
 }
 .fullscreen-nav.active { transform: translateY(0); }
-.nav-links { list-style: none; padding: 6rem 0; margin: auto; text-align: center; width: 100%; }
+.nav-links { list-style: none; padding: 3rem 0; margin: auto; text-align: center; width: 100%; }
 .nav-item { display: inline-block; font-family: 'Courier New', monospace; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: bold; color: var(--text); text-decoration: none; margin: 1.5rem 0; text-transform: uppercase; transition: all 0.3s ease; }
 .nav-item:hover { color: var(--accent-hover); letter-spacing: 0.2em; text-shadow: 0 0 15px var(--nav-text-shadow); }
 
@@ -880,4 +879,50 @@ body.is-touch-device #lightbox-img { cursor: default; }
     .pdf-container iframe { display: none !important; }
     .pdf-container { position: relative; }
     .pdf-container::after { content: '行動裝置與平板不支援內嵌 PDF 預覽\A請點擊右上角「新分頁開啟」以系統原生閱讀器瀏覽。'; white-space: pre-wrap; display: flex; align-items: center; justify-content: center; text-align: center; height: 180px; background: var(--bg); color: var(--muted); font-size: 0.95rem; line-height: 1.8; padding: 1.5rem; }
+}
+
+/* ========================================================================== */
+/* 🌐 第九層：語言系統                                */
+/* ========================================================================== */
+
+/* 雙語切換標籤 UI */
+.lang-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--box-bg); padding: 0.4rem; border-radius: 0.8rem; width: max-content; border: 1px solid var(--box-border); }
+.lang-btn { background: transparent; border: none; color: var(--muted); padding: 0.4rem 1rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+.lang-btn:hover { color: var(--accent-2); }
+.lang-btn.active { background: var(--accent-2); color: var(--card); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.hide-on-site {
+    display: none !important;
+}
+
+/* ==========================================
+   🌐 多語系專屬字體與排版設定
+========================================== */
+
+/* 🇹🇼 中文版 (預設繼承全站設定，這裡可做細部微調) */
+#lang-zh {
+    /* 這裡會自動使用你原本網站的中文預設字體 */
+    text-align: justify; /* 讓中文左右對齊，排版更整齊 */
+}
+
+/* 🇺🇸 英文版 (使用無襯線英文字體，並微調字距) */
+#lang-en {
+    font-family: "Helvetica Neue", Helvetica, Arial, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;        /* 英文通常需要比中文稍微緊湊一點的行高 */
+    letter-spacing: 0.02em;  /* 增加一點點字距，讓英文字母閱讀更舒適 */
+    text-align: left;
+}
+
+/* 🇯🇵 日文版 (指定日文專用字體，避免漢字變成中文字型) */
+#lang-ja {
+    /* 優先使用 Mac(Hiragino) 與 Windows(Meiryo) 的內建日文字體，若有 Noto Sans JP 也會優先套用 */
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
+    line-height: 1.7;        /* 日文排版行高稍微拉開會更優雅 */
+    letter-spacing: 0.03em;
+    text-align: justify;
+}
+
+/* 針對英文與日文版內的標題微調字重 */
+#lang-en h1, #lang-en h2, #lang-en h3, 
+#lang-ja h1, #lang-ja h2, #lang-ja h3 {
+    font-weight: 700;
 }

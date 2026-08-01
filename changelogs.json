@@ -1,5 +1,13 @@
 [
   {
+    "id": "U1.4.2",
+    "version": "U1.4.2",
+    "date": "2026-08-01",
+    "status": "FEATURE",
+    "description": "細節修正，新增語言設定、版權與授權條款 Modal",
+    "content": "## add\n1. generate_projects.py logs logic\n2. showLicenseModal\n3. Anchor Scroll inside md\n4. COPYRIGHT.md UI\n\n## update\n1. COPYRIGHT.md\n\n## adjust\n1. new-jump-toast detail\n2. vertical-wrapper\n3. project's status tag\n4. css lang-"
+  },
+  {
     "id": "U1.4.1",
     "version": "U1.4.1",
     "date": "2026-07-29",

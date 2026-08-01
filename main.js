@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.4.1",          // 目前系統版本號
+    VERSION: "U1.4.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "light",     // 預設主題 (light / dark)
@@ -834,6 +834,11 @@ renderer.link = function(token_or_href, title, text) {
     if (href.startsWith('?p=')) {
         return `<a href="${href}" onclick="window.handleSpaLink(event, '${href}')"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
     }
+
+    // ✨ 新增：攔截內部錨點跳轉 (解決 Modal 內無法跳轉的問題)
+    if (href.startsWith('#')) {
+        return `<a href="${href}" onclick="window.scrollToAnchor(event, '${href}')"${titleAttr}>${linkText}</a>`;
+    }
     
     if (href.startsWith('http')) {
         const extIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
@@ -841,6 +846,17 @@ renderer.link = function(token_or_href, title, text) {
     }
 
     return `<a href="${href}"${titleAttr}>${linkText}</a>`;
+};
+
+// 4. ✨ 攔截 Markdown 標題，自動賦予 ID (與 GitHub 同步，徹底修復錨點跳轉)
+renderer.heading = function(token_or_text, level, raw) {
+    const text = typeof token_or_text === 'object' ? token_or_text.text : token_or_text;
+    const depth = typeof token_or_text === 'object' ? token_or_text.depth : level;
+    
+    // 將標題文字轉為小寫，並把空格替換成減號 (完全模擬 GitHub 的 ID 產生邏輯)
+    const id = text.toLowerCase().replace(/\s+/g, '-');
+    
+    return `<h${depth} id="${id}">${text}</h${depth}>`;
 };
 
 // ==========================================
@@ -2554,4 +2570,130 @@ window.showChangelogModal = async function() {
 
     // 初始進入：顯示第一層索引
     window.renderChangelogIndex();
+};
+
+// ==========================================
+// ✨ 多語系切換引擎 (支援無限擴充語言)
+// ==========================================
+window.switchBilingualTab = function(lang, btn) {
+    // 1. 隱藏所有語言區塊，只顯示選中的語言
+    ['zh', 'en', 'ja'].forEach(l => {
+        const el = document.getElementById('lang-' + l);
+        if (el) el.style.display = (l === lang) ? 'block' : 'none';
+    });
+    // 2. 更新按鈕的 active 狀態
+    const tabs = btn.closest('.lang-tabs');
+    if (tabs) {
+        tabs.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    }
+    btn.classList.add('active');
+};
+
+// ==========================================
+// ⚖️ 版權與授權條款 Modal 引擎
+// ==========================================
+window.showLicenseModal = async function() {
+    document.body.style.cursor = 'wait'; // 先讓游標顯示讀取中
+    let mdText = "載入失敗";
+    let isError = false;
+
+    // 1. 先在背景抓取資料
+    try {
+        // 加上時間戳防止瀏覽器快取舊的檔案
+        const response = await fetch(`./COPYRIGHT.md?t=${new Date().getTime()}`);
+        if (!response.ok) throw new Error("找不到版權檔案");
+        mdText = await response.text();
+    } catch (error) {
+        console.error("版權檔案載入失敗:", error);
+        isError = true;
+    } finally {
+        document.body.style.cursor = ''; // 恢復游標
+    }
+
+    // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
+    switchModalContent(
+        () => {
+            const modalOverlay = document.getElementById('md-modal'); // ✨ 修正：正確抓取 md-modal
+            const modalBody = document.getElementById('modal-body');
+            const modalTopLeft = document.getElementById('modal-top-left');
+            const tocMountPoint = document.getElementById('toc-mount-point');
+
+            // 清空右上角目錄按鈕
+            if (tocMountPoint) tocMountPoint.innerHTML = '';
+
+            // 設定左上角精緻的標題 Header
+            if (modalTopLeft) {
+                modalTopLeft.innerHTML = `
+                    <div class="index-header-container">
+                        <h1 class="index-header-title">License & Copyright</h1>
+                        <div class="index-header-actions">
+                            <span class="article-count-badge">important</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 處理內容渲染
+            if (isError) {
+                modalBody.innerHTML = `
+                    <div style="text-align:center; padding: 3rem 0; color: var(--error-color);">
+                        <p>System Error: 無法載入版權聲明檔案。</p>
+                    </div>
+                `;
+            } else {
+                modalBody.innerHTML = `
+                    <div class="markdown-body" style="margin-top: -0.5rem; padding-bottom: 2rem;">
+                        ${marked.parse(mdText)}
+                    </div>
+                `;
+            }
+
+            // ✨ 自動注入多語系切換按鈕 (更新為支援三語的簡潔寫法)
+            const switcher = modalBody.querySelector('#bilingual-switcher');
+            if (switcher) {
+                switcher.innerHTML = `
+                    <div class="lang-tabs">
+                        <button class="lang-btn active" onclick="window.switchBilingualTab('zh', this)">中文版</button>
+                        <button class="lang-btn" onclick="window.switchBilingualTab('en', this)">English</button>
+                        <button class="lang-btn" onclick="window.switchBilingualTab('ja', this)">日本語</button>
+                    </div>
+                `;
+            }
+
+            // 開啟 Modal 並鎖定背景捲軸
+            modalOverlay.classList.add('active');
+            window.lockScroll();
+        },
+        () => {
+            // 動畫結束後確保畫面定位在最頂端
+            document.querySelector('.modal-content').scrollTop = 0;
+        }
+    );
+};
+
+// ==========================================
+// ✨ 文章內部錨點平滑跳轉 (Anchor Scroll)
+// ==========================================
+window.scrollToAnchor = function(event, hash) {
+    event.preventDefault();
+    const targetId = hash.substring(1); // 移除 #
+    const lowerId = targetId.toLowerCase(); // ✨ 轉為小寫，完美對齊 GitHub 標準
+    
+    // 尋找目標：先找原版大小寫，找不到就找全小寫版
+    const targetEl = document.getElementById(targetId) || 
+                     document.getElementById(lowerId) || 
+                     document.querySelector(`[name="${targetId}"]`) || 
+                     document.getElementById(decodeURIComponent(targetId));
+
+    if (targetEl) {
+        const modalContainer = document.querySelector('.modal-content');
+        const targetTop = targetEl.getBoundingClientRect().top - modalContainer.getBoundingClientRect().top + modalContainer.scrollTop - 90;
+        
+        modalContainer.scrollTo({ top: targetTop, behavior: 'smooth' });
+
+        targetEl.classList.add('highlight-flash');
+        setTimeout(() => targetEl.classList.remove('highlight-flash'), 1000);
+    } else {
+        console.warn("找不到目標錨點:", targetId);
+    }
 };

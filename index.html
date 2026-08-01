@@ -34,8 +34,8 @@
   
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="./style.css?u=1.4.1.4" />
-  <script defer src="./main.js?u=1.4.1.4"></script>
+  <link rel="stylesheet" href="./style.css?u=1.4.2" />
+  <script defer src="./main.js?u=1.4.2"></script>
 </head>
 <body>
 <button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
@@ -175,7 +175,6 @@
       程式、金融、像素、音符、字詞
     </p>
     <div class="cta">
-      <!-- ✨ 3. 已更新為新組織的 GitHub 連結 -->
       <a class="btn" href="https://github.com/AZUSTOCK" target="_blank">GitHub</a>
       <button class="btn share-site-btn" style="width: 120px;" onclick="window.handleCopy(this, 'https://azustock.github.io/')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px;">
@@ -209,13 +208,16 @@
 
   <footer>
    <div class="copyright-box">
-      <p>© 2026 風川梓 (Azustock). All rights reserved.</p>
+      <p>
+        <!-- 著作權文字 & 互動 -->
+        <a href="#" onclick="window.showLicenseModal(); return false;" style="color: var(--text); text-decoration: none; opacity: 0.8; transition: opacity 0.3s, color 0.3s;" onmouseover="this.style.opacity='1'; this.style.color='var(--accent-2)';" onmouseout="this.style.opacity='0.8'; this.style.color='var(--text)';">© 2026 風川梓 (Azustock). All rights reserved.</a>
+      </p>
       
       <!-- 左右留白的 Footer Flex 容器 -->
       <p class="copyright-footer" style="justify-content: center; gap: 1rem; flex-wrap: wrap;">
         <span>Hosted on GitHub Pages.</span>
         
-        <!-- ✨ 1. 致謝按鈕 (已套用全新的 footer-btn 類別) -->
+        <!-- 致謝按鈕 -->
         <button id="credits-btn" class="footer-btn" onclick="window.showCreditsModal()" data-tooltip="Credits">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -225,7 +227,7 @@
       </p>
       
       <p style="text-align: right; margin-top: 0.5rem; margin-bottom: 0;">
-        <!-- ✨ 2. 版本號按鈕 (點擊呼叫版本日誌) -->
+        <!-- 版本號按鈕 -->
         <button id="sys-version-btn" class="footer-btn version-btn" onclick="window.showChangelogModal()">
             <span id="sys-version" class="sys-version"></span>
         </button>
