@@ -16,7 +16,7 @@
     --btn-hover-bg: rgba(11, 18, 32, 0.95); --btn-hover-shadow: rgba(56, 189, 248, 0.3); 
     --nav-text-shadow: rgba(56, 189, 248, 0.6); --error-color: #ef4444;                  
     --error-shadow: rgba(239, 68, 68, 0.8);  
-    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(255, 255, 255, 0.15); --scrollbar-hover: rgba(56, 189, 248, 0.4); 
+    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(255, 255, 255, 0.25); --scrollbar-hover: rgba(56, 189, 248, 0.4); 
 }
 
 /* 1-2. 淺色模式 (Light Mode) */
@@ -33,7 +33,7 @@
     --btn-hover-bg: rgba(255, 255, 255, 0.95); --btn-hover-shadow: rgba(254, 232, 67, 0.2); 
     --nav-text-shadow: rgba(219, 205, 48, 0.3); --error-color: #DB3069;                  
     --error-shadow: rgba(219, 48, 105, 0.5);  
-    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(0, 0, 0, 0.15); --scrollbar-hover: rgba(64, 120, 153, 0.4); 
+    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(100, 116, 139, 0.35); --scrollbar-hover: rgba(64, 120, 153, 0.5);
 }
 
 /* 1-3. 群組標籤專屬色彩系統 (校色優化版) */
