@@ -122,8 +122,7 @@
             "OC",
             "azu5atellite"
           ],
-          "pinned": true,
-          "is_updated": true
+          "pinned": true
         },
         {
           "id": "reporter",
@@ -135,8 +134,7 @@
             "高松彩空",
             "OC",
             "azu5atellite"
-          ],
-          "is_updated": true
+          ]
         },
         {
           "id": "teto",
@@ -166,6 +164,17 @@
           "content_path": "./api/azu5atellite/toga/contents.json",
           "description": "Toga Ari",
           "cover_image": "./api/azu5atellite/toga/cover_thumb.webp",
+          "tags": [
+            "azu5atellite",
+            "OC"
+          ]
+        },
+        {
+          "id": "yona",
+          "title": "夜中同學",
+          "content_path": "./api/azu5atellite/yona/contents.json",
+          "description": "Yona san",
+          "cover_image": "./api/azu5atellite/yona/cover_thumb.webp",
           "tags": [
             "azu5atellite",
             "OC",
@@ -200,7 +209,6 @@
         "OC"
       ],
       "pinned": true,
-      "is_new": true,
       "is_wip": true,
       "groups": {
         "introduction": {
@@ -221,7 +229,7 @@
           "title": "角色介紹",
           "content_path": "./api/storyOFdiary/introduction/contents.json",
           "cover_image": "./api/storyOFdiary/introduction/cover_thumb.webp",
-          "is_new": true,
+          "is_updated": true,
           "is_wip": true,
           "group": "introduction"
         },
@@ -364,8 +372,7 @@
           "id": "bigger",
           "title": "比大小",
           "content_path": "./api/note/bigger/contents.json",
-          "cover_image": "./api/note/bigger/cover_thumb.webp",
-          "is_new": true
+          "cover_image": "./api/note/bigger/cover_thumb.webp"
         }
       ]
     },

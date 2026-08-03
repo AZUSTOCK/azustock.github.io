@@ -989,7 +989,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (siteTitle && profileSection) {
         siteTitle.style.cursor = 'pointer';
-        siteTitle.title = "System Override..."; 
+        // siteTitle.title = "System Override..."; 
         window.isWhispering = false;
 
         siteTitle.addEventListener('click', async () => {
@@ -1082,7 +1082,14 @@ async function loadProjects() {
             if (p.articles && p.articles.length > 0) {
                 // 如果專案本身不是全新的，只要底下有 新文章(NEW) 或 更新(UPDATED)，專案就掛上 UPDATED
                 if (!p.is_new && !isCardUpdated) {
-                    if (p.articles.some(art => art.is_new || art.is_updated)) isCardUpdated = true;
+                    if (p.articles.some(art => 
+                        art.is_new || 
+                        art.is_updated || 
+                        // ✨ 關鍵修正：同時去檢查 tags 陣列裡面有沒有這些關鍵字！
+                        (art.tags && (art.tags.includes('NEW') || art.tags.includes('UPDATED') || art.tags.includes('LATEST')))
+                    )) {
+                        isCardUpdated = true;
+                    }
                 }
             }
             p.computed_is_updated = isCardUpdated;
