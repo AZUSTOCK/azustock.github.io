@@ -151,34 +151,28 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 ::-webkit-scrollbar { 
-    /* ✨ 軌道總寬度設定為 10px，這是為了確保「滑鼠有足夠的感應區可以抓住捲軸」 */
     width: 6px;  
     height: 6px; 
 }
-
+/* 讓軌道完全隱形，這樣不管是淺色或深色模式，軌道都會直接透出網頁底色 */
 ::-webkit-scrollbar-track { 
     background: transparent !important; 
 }
-
 ::-webkit-scrollbar-thumb { 
-    background-color: var(--scrollbar-thumb); 
+    background-color: var(--scrollbar-thumb); /* ✨ 動態吃你設定的主題變數 */
     border-radius: 10px; 
-    /* ✨ 完美數學：10px 總寬 - (左 3px + 右 3px 透明邊框) = 實際視覺極細 4px */
     border: 3px solid transparent; 
     background-clip: padding-box; 
-    min-height: 40px; 
-    transition: background-color 0.3s ease, border-width 0.3s ease; 
+    transition: background-color 0.3s ease; 
 }
-
 ::-webkit-scrollbar-thumb:hover { 
-    background-color: var(--scrollbar-hover); 
-    /* ✨ Hover 數學：10px 總寬 - (左 2px + 右 2px 透明邊框) = 實際視覺變粗為 6px */
-    border-width: 2px; 
+    background-color: var(--scrollbar-hover); /* ✨ 動態吃你設定的主題 Hover 變數 */
+    border-width: 3px; 
 }
 
-/* 元件客製捲軸寬度覆寫 (局部小區塊微調) */
+/* 元件客製捲軸寬度覆寫 (讓小區塊的捲軸細一點) */
 .toc-dropdown ul::-webkit-scrollbar { width: 6px; }
-.toc-dropdown ul::-webkit-scrollbar-thumb { border: 2px solid transparent; } /* 8 - 4 = 4px 視覺 */
+.toc-dropdown ul::-webkit-scrollbar-thumb { border: 3px solid transparent; }
 .markdown-body table::-webkit-scrollbar, .markdown-body .gallery::-webkit-scrollbar { height: 6px; }
 .markdown-body table::-webkit-scrollbar-thumb, .markdown-body .gallery::-webkit-scrollbar-thumb { border: 2px solid transparent; }
 
