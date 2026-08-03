@@ -1566,13 +1566,19 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                             newArticles.forEach(article => {
                                 const rect = article.getBoundingClientRect();
-                                if (rect.bottom < modalRect.top + 120) {
+                                
+                                // ✨ 判斷上方：只要卡片的「頂部邊緣」被頂端導覽列(大約110px)稍微遮住，立刻提示上方有內容
+                                if (rect.top < modalRect.top + 110) {
                                     countAbove++;
                                     closestAbove = article; 
-                                } else if (rect.top > modalRect.bottom - 20) {
+                                } 
+                                // ✨ 判斷下方：只要卡片的「底部邊緣」沒有完全顯示在畫面內(留10px安全邊界)，立刻提示下方有內容
+                                else if (rect.bottom > modalRect.bottom - 10) {
                                     countBelow++;
                                     if (!closestBelow) closestBelow = article; 
-                                } else {
+                                } 
+                                // ✨ 只有卡片 100% 完整、清晰地在畫面中間，才不顯示提示
+                                else {
                                     countVisible++;
                                 }
                             });

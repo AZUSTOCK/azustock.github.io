@@ -7,9 +7,7 @@
 開始了屬於她們兩個的日常。  
 > [角色設定 & 圖像](?p=azu5atellite&a=toga)
 
-<br/>
-<br/>
-<br/>
+<div class="md-divider"></div>
 
 ![float-right](./yona.webp)
 ## 夜中
