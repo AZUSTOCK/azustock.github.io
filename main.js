@@ -1568,12 +1568,14 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                                 const rect = article.getBoundingClientRect();
                                 
                                 // ✨ 判斷上方：只要卡片的「頂部邊緣」被頂端導覽列(大約110px)稍微遮住，立刻提示上方有內容
-                                if (rect.top < modalRect.top + 110) {
+                                const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
+                                // 只要卡片頂部碰到「動態頂部導覽列底部 + 20px 緩衝區」，就判定它要被捲上去了
+                                if (rect.top < modalRect.top + topBarHeight) {
                                     countAbove++;
                                     closestAbove = article; 
                                 } 
                                 // ✨ 判斷下方：只要卡片的「底部邊緣」沒有完全顯示在畫面內(留10px安全邊界)，立刻提示下方有內容
-                                else if (rect.bottom > modalRect.bottom - 10) {
+                                else if (rect.bottom > modalRect.bottom + 20) {
                                     countBelow++;
                                     if (!closestBelow) closestBelow = article; 
                                 } 
@@ -1604,8 +1606,9 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                         jumpToast.onclick = () => {
                             if (!targetArticle) return;
+                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 120;
                             modalContainer.scrollTo({
-                                top: targetArticle.offsetTop - 120,
+                                top: targetArticle.offsetTop - topBarHeight - 20,
                                 behavior: 'smooth'
                             });
                             jumpToast.classList.remove('is-visible'); 
@@ -1668,7 +1671,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             if (restoreScroll && window.lastReadArticleIndex !== undefined) {
                 const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
                 if (targetItem) {
-                    modalContainer.scrollTop = Math.max(0, targetItem.offsetTop - 120);
+                    const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 120;
+                    modalContainer.scrollTop = Math.max(0, targetItem.offsetTop - topBarHeight - 20);
                     targetItem.classList.add('simulate-hover');
                     setTimeout(() => {
                         targetItem.classList.remove('simulate-hover');
@@ -1858,7 +1862,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     a.innerText = h.innerText;
                     a.href = "javascript:void(0)"; 
                     a.onclick = () => {
-                        const targetTop = h.getBoundingClientRect().top - document.querySelector('.modal-content').getBoundingClientRect().top + document.querySelector('.modal-content').scrollTop - 90;
+                        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 90;
+                        const targetTop = h.getBoundingClientRect().top - document.querySelector('.modal-content').getBoundingClientRect().top + document.querySelector('.modal-content').scrollTop - topBarHeight - 20; // 減去動態高度，再多退 20px 留白
                         document.querySelector('.modal-content').scrollTo({ top: targetTop, behavior: 'smooth' });
                         h.classList.add('highlight-flash');
                         setTimeout(() => h.classList.remove('highlight-flash'), 1000);
@@ -2700,8 +2705,8 @@ window.scrollToAnchor = function(event, hash) {
 
     if (targetEl) {
         const modalContainer = document.querySelector('.modal-content');
-        const targetTop = targetEl.getBoundingClientRect().top - modalContainer.getBoundingClientRect().top + modalContainer.scrollTop - 90;
-        
+        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 90;
+        const targetTop = targetEl.getBoundingClientRect().top - modalContainer.getBoundingClientRect().top + modalContainer.scrollTop - topBarHeight - 20;
         modalContainer.scrollTo({ top: targetTop, behavior: 'smooth' });
 
         targetEl.classList.add('highlight-flash');

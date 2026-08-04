@@ -397,7 +397,7 @@
           "id": "awake",
           "title": "致 梓",
           "content_path": "./api/azusa/awake/contents.json",
-          "description": "一覺醒來...",
+          "description": "變奏",
           "cover_image": "./api/azusa/awake/cover_thumb.webp"
         },
         {
@@ -433,6 +433,14 @@
           "content_path": "./api/azusa/Letter/contents.json",
           "description": "浪費",
           "cover_image": "./api/azusa/Letter/cover_thumb.webp"
+        },
+        {
+          "id": "encounter",
+          "title": "相遇",
+          "content_path": "./api/azusa/encounter/contents.json",
+          "description": "被找到了",
+          "cover_image": "./api/azusa/encounter/cover_thumb.webp",
+          "is_new": true
         }
       ]
     },

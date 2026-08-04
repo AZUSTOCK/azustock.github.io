@@ -645,7 +645,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body blockquote { border-left: 4px solid var(--accent); margin: 1.5rem 0; padding-left: 1rem; color: var(--muted); background: rgba(255,255,255,0.02); }
 
 /* 文章標題區塊整合 */
-.article-header-wrapper { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 2px solid var(--card-border); padding-bottom: 0.5rem; margin-bottom: 0.8rem; }
+.article-header-wrapper { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; border-bottom: 2px solid var(--card-border); padding-bottom: 0.5rem; margin-bottom: 0.8rem; }
 .header-left { 
     display: flex; 
     flex-direction: column; 
