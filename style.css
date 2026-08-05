@@ -635,7 +635,25 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     padding: 0;
 }
 
-.highlight-flash { color: var(--accent-2) !important; text-shadow: 0 0 12px var(--accent-2); }
+/* 動態背景光暈動畫 (模仿首頁漢堡選單區塊跳轉效果) */
+@keyframes highlight-flash-glow {
+    0%, 100% { 
+        background-color: transparent; 
+        box-shadow: 0 0 0 0 transparent; 
+    }
+    30% { 
+        background-color: color-mix(in srgb, var(--accent) 10%, transparent); 
+        box-shadow: 0 0 30px 15px color-mix(in srgb, var(--accent) 15%, transparent); 
+        border-radius: 8px;
+    }
+}
+
+.highlight-flash,
+.highlight-flash *:not(.no-glow, .no-glow *) { 
+    color: var(--accent-2) !important; 
+    text-shadow: 0 0 8px var(--accent-2) !important; 
+    transition: color 0.3s ease, text-shadow 0.3s ease; 
+}
 .markdown-body p { margin-bottom: 1rem; }
 .markdown-body a { color: var(--accent-2); text-decoration: none; }
 .markdown-body a:hover { text-decoration: underline; color: var(--accent-hover); }
