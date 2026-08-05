@@ -1,0 +1,9 @@
+{
+  "order": 3,
+  "title": "Discord Bot Infrastructure",
+  "category": "code",
+  "meta": "High-frequency Message Update System",
+  "description": "多頻道、多 Thread 即時更新系統，透過 Queue 與 Scheduler 解決 Discord API Rate Limit 問題。",
+  "tags": ["Python", "Discord API", "Queue", "Concurrency"],
+  "link": ""
+}

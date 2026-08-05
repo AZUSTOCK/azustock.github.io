@@ -1,0 +1,56 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # 當推送代碼到 main 分支時觸發
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install pillow  # 確保安裝了圖片處理套件
+
+      - name: Generate API and Data
+        run: |
+          python generate_projects.py # 自動執行打包邏輯
+
+      # ✨ 手動設定 Git 身份，準備推送
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ✨ 直接用 Git 指令將檔案推送到 gh-pages 分支，確保覆寫
+      - name: Deploy
+        run: |
+          # 1. 建立一個暫存目錄存放要發布的檔案
+          mkdir -p .gh-pages-temp
+          
+          # 2. 複製檔案
+          # 確保排除掉我們不需要 Git 追蹤的資料夾，例如 .git 本身
+          rsync -av --exclude='.git' --exclude='.gh-pages-temp' . .gh-pages-temp/
+          
+          # 3. 進入該目錄並提交
+          cd .gh-pages-temp
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Deploy to GitHub Pages"
+          
+          # 4. ✨ 關鍵修正：將 push 指令改為這行
+          git push --force https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git master:gh-pages
