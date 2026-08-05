@@ -1,7 +1,7 @@
 {
   "version": "U1.4.3",
   "date": "2026-08-05",
-  "status": "FEATURE",
+  "status": "PATCH",
   "description": "滾動跳轉與錨點處理修正",
   "hiden": true
 }
