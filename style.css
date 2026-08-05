@@ -635,7 +635,12 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     padding: 0;
 }
 
-.highlight-flash { color: var(--accent-2) !important; text-shadow: 0 0 12px var(--accent-2); }
+.highlight-flash { 
+    color: var(--accent-2) !important; 
+    text-shadow: 0 0 12px var(--accent-2); 
+    font-weight: bold !important; /* 👈 加上這行防禦 */
+    transition: color 0.3s ease, text-shadow 0.3s ease; 
+}
 .markdown-body p { margin-bottom: 1rem; }
 .markdown-body a { color: var(--accent-2); text-decoration: none; }
 .markdown-body a:hover { text-decoration: underline; color: var(--accent-hover); }

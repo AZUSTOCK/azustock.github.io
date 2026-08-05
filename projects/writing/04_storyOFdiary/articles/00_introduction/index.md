@@ -9,8 +9,6 @@
 
 <div class="md-divider"></div>
 
-<span id="yona-design"></span>
-
 ![float-right](./yona.webp)
 ## 夜中
 —— 「有一個聲音一直告訴著我」  
@@ -18,7 +16,8 @@
 一個女子高中生。  
 與戶賀有里同班，會時不時的去找她玩，  
 開朗、行動派、意想不到是她的形容詞。
-> [角色設定 & 圖像](?p=azu5atellite&a=yona)
+> [角色設定 & 圖像](?p=azu5atellite&a=yona)  
+> [角色設定 & 圖像](#夜中4)
 
 ![float-right](./yona.webp)
 ## 夜中2
@@ -28,6 +27,8 @@
 與戶賀有里同班，會時不時的去找她玩，  
 開朗、行動派、意想不到是她的形容詞。
 > [角色設定 & 圖像](?p=azu5atellite&a=yona)
+
+<span id="yona-design"></span>
 
 ![float-right](./yona.webp)
 ## 夜中3
