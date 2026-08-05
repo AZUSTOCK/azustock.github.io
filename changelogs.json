@@ -1,5 +1,13 @@
 [
   {
+    "id": "U1.4.3",
+    "version": "U1.4.3",
+    "date": "2026-08-05",
+    "status": "FEATURE",
+    "description": "滾動跳轉與錨點處理修正",
+    "content": "## add\n1. .md-divider & .md-clear & .no-glow\n2. article jump\n\n## update\n1. goBackInHistory\n\n## adjust\n1. scroll bar\n2. kotoba associated\n3. jumpToast\n4. markdown link style\n\n## pending\n1. scroll bar style"
+  },
+  {
     "id": "U1.4.2",
     "version": "U1.4.2",
     "date": "2026-08-01",
