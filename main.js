@@ -1617,15 +1617,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             });
                             jumpToast.classList.remove('is-visible'); 
                             
+                            // 延遲滾動結束後，精準點亮目標文章的 hover 效果
                             setTimeout(() => {
-                                const modalRect = modalContainer.getBoundingClientRect();
-                                newArticles.forEach(article => {
-                                    const rect = article.getBoundingClientRect();
-                                    if (rect.top < modalRect.bottom && rect.bottom > modalRect.top) {
-                                        article.classList.add('simulate-hover');
-                                        setTimeout(() => article.classList.remove('simulate-hover'), 700);
-                                    }
-                                });
+                                targetArticle.classList.add('simulate-hover');
+                                setTimeout(() => targetArticle.classList.remove('simulate-hover'), 700);
                             }, 500);
                         };
                     } else {
@@ -1670,44 +1665,22 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             window.lockScroll(); 
         },
         () => {
-            // ✨ 終極無延遲定位邏輯 (解決轉場動畫干擾與 DOM 渲染延遲)
+            // ✨ 完美找回舊版：返回目錄時自動定位到最後閱讀的文章並觸發高光動畫
             const modalContainer = document.querySelector('.modal-content');
             if (modalContainer) {
                 requestAnimationFrame(() => {
-                    if (targetHash) {
-                        const targetEl = window.findAnchorElement(targetHash);
-                        
-                        if (targetEl) {
-                            const doScroll = (isSmooth = false) => {
-                                // 每次執行都重新找一次元素，防止圖片載入把 DOM 撐開導致位置改變
-                                const el = window.findAnchorElement(targetHash);
-                                if (!el) return;
-                                
-                                const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 90;
-                                const targetTop = el.getBoundingClientRect().top - modalContainer.getBoundingClientRect().top + modalContainer.scrollTop - topBarHeight - 20;
-                                
-                                // ⚠️ 第一次跳轉必須是 'auto' (瞬間移動)，打破 CSS 動畫干擾
-                                modalContainer.scrollTo({ top: Math.max(0, targetTop), behavior: isSmooth ? 'smooth' : 'auto' });
-                                return el;
-                            };
-                            
-                            // 1. 瞬間跳轉到位
-                            const foundEl = doScroll(false);
-                            
-                            if (foundEl) {
-                                // 2. 圖片延遲載入的多重排版補償
-                                setTimeout(() => doScroll(false), 150);
-                                setTimeout(() => doScroll(true), 500);
-                                setTimeout(() => doScroll(true), 800);
-                                
-                                foundEl.classList.add('highlight-flash');
-                                setTimeout(() => foundEl.classList.remove('highlight-flash'), 1000);
-                            }
-                        } else {
-                            modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
+                    if (restoreScroll && window.lastReadArticleIndex !== undefined) {
+                        const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
+                        if (targetItem) {
+                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 120;
+                            modalContainer.scrollTop = Math.max(0, targetItem.offsetTop - topBarHeight - 20);
+                            targetItem.classList.add('simulate-hover');
+                            setTimeout(() => {
+                                targetItem.classList.remove('simulate-hover');
+                            }, 700);
                         }
                     } else {
-                        modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
+                        modalContainer.scrollTop = 0;
                     }
                 });
             }
@@ -1718,8 +1691,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 // ==========================================
 // 打開具體的「文章內文」
 // ==========================================
-// ✨ 加上 targetHash = null 參數
-window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0, targetHash = null) {
+window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0) {
     const jumpToast = document.getElementById('new-jump-toast');
     if (jumpToast) jumpToast.classList.remove('is-visible');
 
@@ -1846,10 +1818,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     rightGroup.appendChild(tagContainer);
                 }
 
-                // ✨ 替換這三行，把 targetHash 加回去
                 const cleanPath = window.getCleanBasePath();
                 const articleSlug = article.id || articleIndex;
-                const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleSlug}${targetHash || ''}`;
+                const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleSlug}`;
                 window.history.replaceState({ path: spaUrl }, '', spaUrl);
                 const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/${articleSlug}/index.html`;
 
@@ -1885,13 +1856,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const tocList = tocDropdown.querySelector('.toc-list');
 
                 headings.forEach((h, index) => {
-                    // ✨ 核心修復：如果標題已經有 Markdown 產生好的文字 ID，就保留它！
-                    // 萬一沒有，才試著用標題文字轉換，最後手段才是加上 article-heading-X
-                    if (!h.id) {
-                        const textId = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-');
-                        h.id = textId || `article-heading-${index}`;
-                    }
-                    
+                    h.id = `article-heading-${index}`;
                     const li = document.createElement('li');
                     li.className = `toc-${h.tagName.toLowerCase()}`; 
                     const a = document.createElement('a');
@@ -2039,17 +2004,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             // ✨ 完全無延遲的定位邏輯
             const modalContainer = document.querySelector('.modal-content');
             if (modalContainer) {
-                requestAnimationFrame(() => {
-                    if (targetHash) {
-                        // 呼叫共用引擎 (跨文章剛打開，強制第一次瞬間移動 auto 以打破動畫干擾)
-                        const success = window.executeAnchorScroll(targetHash, true);
-                        if (!success) {
-                            modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
-                        }
-                    } else {
-                        modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
-                    }
-                });
+                modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
             }
         }
     ); 
@@ -2736,135 +2691,28 @@ window.showLicenseModal = async function() {
 };
 
 // ==========================================
-// ✨ 文章內部錨點平滑跳轉引擎 (強化模糊比對與防呆)
-// ==========================================
-window.findAnchorElement = function(hash) {
-    if (!hash) return null;
-    const targetId = hash.substring(1);
-    let decodedId = targetId;
-    try { decodedId = decodeURIComponent(targetId); } catch(e) {}
-    
-    const lowerId = targetId.toLowerCase();
-    const lowerDecoded = decodedId.toLowerCase();
-    // 將空格與特殊符號轉為減號，模擬 GitHub 轉換規則
-    const dashedId = lowerDecoded.replace(/[\s&]+/g, '-').replace(/-+/g, '-'); 
-
-    // 1. 標準精確比對
-    let el = document.getElementById(targetId) || 
-             document.getElementById(decodedId) || 
-             document.getElementById(lowerId) || 
-             document.getElementById(lowerDecoded) ||
-             document.getElementById(dashedId) ||
-             document.querySelector(`[name="${targetId}"]`) ||
-             document.querySelector(`[name="${decodedId}"]`);
-    
-    // 2. 🚀 終極殺手鐧：模糊比對與文字掃描！
-    if (!el) {
-        const allHeadings = document.querySelectorAll('.modal-content h1, .modal-content h2, .modal-content h3');
-        el = Array.from(allHeadings).find(h => 
-            h.id.includes(lowerDecoded) || 
-            h.id.includes(dashedId) || 
-            lowerDecoded.includes(h.id) ||
-            h.innerText.toLowerCase().includes(lowerDecoded)
-        );
-    }
-    return el;
-};
-
-// ==========================================
 // ✨ 文章內部錨點平滑跳轉 (Anchor Scroll)
 // ==========================================
 window.scrollToAnchor = function(event, hash) {
-    if (event) event.preventDefault();
+    event.preventDefault();
+    const targetId = hash.substring(1); // 移除 #
+    const lowerId = targetId.toLowerCase(); // ✨ 轉為小寫，完美對齊 GitHub 標準
     
-    // 呼叫共用引擎 (同頁面點擊，預設使用平滑捲動)
-    const success = window.executeAnchorScroll(hash, false);
-    if (!success) {
-        console.warn("找不到目標錨點:", hash);
-    }
-};
+    // 尋找目標：先找原版大小寫，找不到就找全小寫版
+    const targetEl = document.getElementById(targetId) || 
+                     document.getElementById(lowerId) || 
+                     document.querySelector(`[name="${targetId}"]`) || 
+                     document.getElementById(decodeURIComponent(targetId));
 
-// ==========================================
-// ✨ 獨立打包：終極精準捲動引擎 (支援延遲補償)
-// ==========================================
-window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
-    const modalContainer = document.querySelector('.modal-content');
-    if (!modalContainer) return false;
-
-    const doScroll = (isSmooth = true) => {
-        const el = window.findAnchorElement(hash);
-        if (!el) return null;
-        
+    if (targetEl) {
+        const modalContainer = document.querySelector('.modal-content');
         const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 90;
-        
-        // 算出絕對高度
-        let absoluteTop = el.offsetTop;
-        let currentEl = el.offsetParent;
-        while(currentEl && currentEl !== modalContainer) {
-            absoluteTop += currentEl.offsetTop;
-            currentEl = currentEl.offsetParent;
-        }
-        
-        const targetTop = absoluteTop - topBarHeight - 20; 
-        modalContainer.scrollTo({ top: Math.max(0, targetTop), behavior: isSmooth ? 'smooth' : 'auto' });
-        return el;
-    };
+        const targetTop = targetEl.getBoundingClientRect().top - modalContainer.getBoundingClientRect().top + modalContainer.scrollTop - topBarHeight - 20;
+        modalContainer.scrollTo({ top: targetTop, behavior: 'smooth' });
 
-    // 執行第一次跳轉 (決定要瞬間移動還是平滑捲動)
-    const foundEl = doScroll(!forceInstantFirst);
-
-    if (foundEl) {
-        // 多重補償，對抗圖片載入撐開版面
-        setTimeout(() => doScroll(!forceInstantFirst), 150);
-        setTimeout(() => doScroll(true), 500);
-        setTimeout(() => doScroll(true), 800);
-
-        // ✨ 智慧尋找發光目標：
-        // 如果錨點本身有包住內容，就會精準點亮被 ID 包住的區域。
-        // 如果錨點是空的 (例如 <span id="..."></span>)，則優先點亮「緊接著的下一個元素」(例如正下方的 ## 標題)。
-        // 取消往上抓取父層的邏輯，避免整個大區塊被錯誤點亮。
-        let highlightEl = foundEl;
-        if (highlightEl.textContent.trim() === '') {
-            highlightEl = highlightEl.nextElementSibling || foundEl;
-        }
-
-        // 閃爍動畫
-        highlightEl.classList.add('highlight-flash');
-        setTimeout(() => highlightEl.classList.remove('highlight-flash'), 1000);
-        return true;
+        targetEl.classList.add('highlight-flash');
+        setTimeout(() => targetEl.classList.remove('highlight-flash'), 1000);
+    } else {
+        console.warn("找不到目標錨點:", targetId);
     }
-    return false;
 };
-
-// ==========================================
-// ✨ 網址列動態監聽引擎 (支援直接改網址、按上下頁、改 Hash)
-// ==========================================
-window.addEventListener('popstate', () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const pParam = urlParams.get('p');
-    const aParam = urlParams.get('a');
-    const hashParam = window.location.hash || null;
-
-    const modalOverlay = document.getElementById('md-modal');
-    const isArticleOpen = modalOverlay && modalOverlay.classList.contains('active');
-
-    if (pParam) {
-        // 如果網址帶有專案參數，直接驅動路由與文章開啟器
-        window.handleAppRouting(pParam, aParam, hashParam);
-    } else if (isArticleOpen) {
-        // 如果網址的專案參數被清空，但 Modal 還開著，就自動關閉 Modal
-        closeModal();
-    }
-});
-
-window.addEventListener('hashchange', () => {
-    const hash = window.location.hash;
-    if (hash) {
-        // 如果使用者直接在網址列修改或補上 #hash，且 Modal 是開著的
-        // 直接呼叫精準滾動與發光引擎
-        const modalOverlay = document.getElementById('md-modal');
-        if (modalOverlay && modalOverlay.classList.contains('active')) {
-            window.executeAnchorScroll(hash, false);
-        }
-    }
-});
