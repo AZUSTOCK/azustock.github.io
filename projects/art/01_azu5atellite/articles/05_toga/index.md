@@ -4,7 +4,7 @@
   <figcaption>基礎方塊</figcaption>
 </figure>
 
->（[日記的故事](?p=storyOFdiary&a=introduction) | OC）
+>（[日記的故事](?p=storyOFdiary&a=introduction#toga) | OC）
 
 Tag：
 女高、安靜、馬尾

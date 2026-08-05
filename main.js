@@ -2819,10 +2819,52 @@ window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
         setTimeout(() => doScroll(true), 500);
         setTimeout(() => doScroll(true), 800);
 
+        // ✨ 智慧尋找發光目標：
+        // 如果錨點本身有包住內容，就會精準點亮被 ID 包住的區域。
+        // 如果錨點是空的 (例如 <span id="..."></span>)，則優先點亮「緊接著的下一個元素」(例如正下方的 ## 標題)。
+        // 取消往上抓取父層的邏輯，避免整個大區塊被錯誤點亮。
+        let highlightEl = foundEl;
+        if (highlightEl.textContent.trim() === '') {
+            highlightEl = highlightEl.nextElementSibling || foundEl;
+        }
+
         // 閃爍動畫
-        foundEl.classList.add('highlight-flash');
-        setTimeout(() => foundEl.classList.remove('highlight-flash'), 1000);
+        highlightEl.classList.add('highlight-flash');
+        setTimeout(() => highlightEl.classList.remove('highlight-flash'), 1000);
         return true;
     }
     return false;
 };
+
+// ==========================================
+// ✨ 網址列動態監聽引擎 (支援直接改網址、按上下頁、改 Hash)
+// ==========================================
+window.addEventListener('popstate', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pParam = urlParams.get('p');
+    const aParam = urlParams.get('a');
+    const hashParam = window.location.hash || null;
+
+    const modalOverlay = document.getElementById('md-modal');
+    const isArticleOpen = modalOverlay && modalOverlay.classList.contains('active');
+
+    if (pParam) {
+        // 如果網址帶有專案參數，直接驅動路由與文章開啟器
+        window.handleAppRouting(pParam, aParam, hashParam);
+    } else if (isArticleOpen) {
+        // 如果網址的專案參數被清空，但 Modal 還開著，就自動關閉 Modal
+        closeModal();
+    }
+});
+
+window.addEventListener('hashchange', () => {
+    const hash = window.location.hash;
+    if (hash) {
+        // 如果使用者直接在網址列修改或補上 #hash，且 Modal 是開著的
+        // 直接呼叫精準滾動與發光引擎
+        const modalOverlay = document.getElementById('md-modal');
+        if (modalOverlay && modalOverlay.classList.contains('active')) {
+            window.executeAnchorScroll(hash, false);
+        }
+    }
+});
