@@ -49,6 +49,9 @@ jobs:
           git init
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          rm -f .gitignore
+          
           git add .
           git commit -m "Deploy to GitHub Pages"
           
