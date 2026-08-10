@@ -372,12 +372,15 @@
           "id": "bigger",
           "title": "比大小",
           "content_path": "./api/note/bigger/contents.json",
+          "description": "成長",
           "cover_image": "./api/note/bigger/cover_thumb.webp"
         },
         {
           "id": "next",
           "title": "下一個",
-          "content_path": "./api/note/next/contents.json"
+          "content_path": "./api/note/next/contents.json",
+          "description": "連線畫",
+          "is_new": true
         }
       ]
     },
