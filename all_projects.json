@@ -373,6 +373,11 @@
           "title": "比大小",
           "content_path": "./api/note/bigger/contents.json",
           "cover_image": "./api/note/bigger/cover_thumb.webp"
+        },
+        {
+          "id": "next",
+          "title": "下一個",
+          "content_path": "./api/note/next/contents.json"
         }
       ]
     },

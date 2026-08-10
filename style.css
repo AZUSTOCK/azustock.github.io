@@ -254,8 +254,13 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 /* 3-2. Footer 底部按鈕 */
-.footer-btn { background: var(--tag-bg); color: var(--muted); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.2rem 0.6rem; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); outline: none; box-shadow: none; appearance: none; -webkit-appearance: none; }
-.footer-btn svg { display: block; transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), fill 0.3s ease; }
+.footer-btn { background: var(--tag-bg); color: var(--text); border: 1px solid var(--card-border); border-radius: 6px; padding: 0.2rem 0.6rem; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); outline: none; box-shadow: none; appearance: none; -webkit-appearance: none; }
+.footer-btn svg { 
+    display: block; 
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), fill 0.3s ease; 
+    overflow: visible; /* ✨ 釋放畫布邊界，讓粗線條不會被切斷 */
+    flex-shrink: 0;    /* ✨ 防止 Flex 容器為了擠下文字而壓縮圖示比例 */
+}
 .footer-btn:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); box-shadow: 0 0 10px var(--accent-2); }
 .footer-btn:hover svg { fill: var(--card); transform: scale(1.15); }
 .footer-btn.version-btn { letter-spacing: 0.05em; padding: 0.2rem 0.5rem; }
