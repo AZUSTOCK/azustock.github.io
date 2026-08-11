@@ -706,77 +706,226 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .status-badge-container { display: flex; align-items: center; gap: 0.4rem; }
 
 /* ========================================================================== */
-/* ✨ 防雷/隱藏文字 (Spoiler) 樣式與專屬 Tooltip */
+/* ✨ 防雷/隱藏文字 (Spoiler) - 左上到右下撕裂物理特效 */
 /* ========================================================================== */
+
 .spoiler-text { 
-    position: relative; /* ✨ 作為 Tooltip 的定位基準 */
-    background-color: var(--text); 
-    color: transparent; 
-    border-radius: 6px; 
-    padding: 0 0.4rem; 
-    margin: 0 0.1rem; 
+    position: relative;
+    display: inline-block;
+    vertical-align: baseline;
     cursor: pointer; 
-    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; 
     user-select: none; 
     -webkit-user-select: none; 
+    
+    z-index: 20; /* 確保層級高於跑馬燈 */
+    padding: 0 0.4rem; 
+    margin: 0 0.1rem; 
+    border-radius: 4px;
 }
 
-.spoiler-text:not(.revealed):hover { 
-    background-color: var(--muted); 
-    color: transparent; 
-}
-
-.spoiler-text.revealed { 
-    background-color: var(--tag-bg); 
+/* 1. 底層：解密後的文字 */
+.spoiler-content {
+    position: relative;
+    z-index: 1;
     color: var(--accent-2); 
-    user-select: text; 
-    -webkit-user-select: text; 
-    box-shadow: inset 0 0 8px rgba(0,0,0,0.05); 
-}
-
-/* ✨ 防雷文字專屬的 Hover 氣泡 (黑色底色、白色文字) */
-.spoiler-text::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(4px);
-    background: var(--text);
-    color: var(--card);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    white-space: nowrap;
+    font-weight: bold;
     opacity: 0;
-    pointer-events: none;
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 10000;
-    margin-bottom: 8px;
+    /* ✨ 補上 color 0.3s ease，讓進入 X 光狀態時平滑過渡 */
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
 }
 
-/* ✨ 氣泡下方的小三角形 */
-.spoiler-text::before {
-    content: '';
+.spoiler-text.revealed .spoiler-content {
+    opacity: 1; 
+}
+
+/* 2. 頂層：貼紙本體 (黑色遮罩) */
+.spoiler-cover {
     position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(4px);
-    border-width: 5px;
-    border-style: solid;
-    border-color: var(--text) transparent transparent transparent;
-    opacity: 0;
-    pointer-events: none;
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    z-index: 10000;
+    inset: 0;
+    background-color: var(--text);
+    border-radius: 4px;
+    z-index: 2;
+    
+    /* Base: 完整的矩形 */
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0);
+    transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
 }
 
-/* ✨ 只有在「尚未解密」時，Hover 才顯示 Tooltip，解密後氣泡就不會再出來煩人了 */
-.spoiler-text:not(.revealed):hover::after,
-.spoiler-text:not(.revealed):hover::before {
+/* 3. 隱形追蹤容器：帶領折紙從左上飛向右下 */
+.spoiler-fold-wrapper {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 4. 左上角：捲起的貼紙背面 (Fold) */
+.spoiler-fold {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 16px;
+    height: 16px;
+    
+    /* 魔法漸層：畫出往右下翻摺的紙張背面 */
+    background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.15) 50%, var(--card) 56%);
+    filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.4)); 
+    
+    transform-origin: top left;
+    transform: scale(0);
+    opacity: 0;
+    
+    /* ✨ 逆向還原動畫：馬上出現(opacity 0s延遲)，平滑飛回來 */
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.1s ease 0s;
+}
+
+/* ==========================================
+   ✨ 貼紙 Hover 狀態：微微撕開左上角
+   ========================================== */
+.spoiler-text:not(.revealed):hover .spoiler-cover {
+    /* 裁出左上角 16px 缺口 */
+    clip-path: polygon(16px 0, 100% 0, 100% 100%, 0 100%, 0 16px);
+    background-color: var(--muted); 
+}
+
+.spoiler-text:not(.revealed):hover .spoiler-fold {
+    transform: scale(1);
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================
+   ✨ 貼紙 Click 狀態 (Revealed)：往右下角撕開飛走
+   ========================================== */
+.spoiler-text.revealed .spoiler-cover {
+    /* 所有點收縮到右下角 (100% 100%)，呈現 / 斜線撕開 */
+    clip-path: polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%);
+    pointer-events: none;
+}
+
+.spoiler-text.revealed .spoiler-fold-wrapper {
+    /* 容器往右下移動，帶著折角撞向右下角 */
+    transform: translate(100%, 100%);
+}
+
+.spoiler-text.revealed .spoiler-fold {
+    transform: scale(3) rotate(-15deg);
+    opacity: 0; 
+    /* ✨ 正向撕開動畫：延遲 0.3s 才淡出，讓眼睛看著紙片飛走！ */
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease 0.2s; 
+}
+
+.spoiler-text.revealed {
+    background-color: var(--tag-bg);
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.05);
+    transition: background-color 0.5s ease 0.2s; 
+}
+
+
+/* ========================================================================== */
+/* ✨ 自訂 Markdown 擴充：X光透視跑馬燈 (雙層接力不斷字版) */
+/* ========================================================================== */
+
+.markdown-body .md-highlight-text {
+    position: relative;
+    display: inline-block;
+    vertical-align: baseline; 
+    border-radius: 6px;
+    color: var(--text);
+    background: color-mix(in srgb, var(--dynamic-glow) 15%, transparent);
+    box-shadow: 0 0 2px color-mix(in srgb, var(--dynamic-glow) 30%, transparent);
+    clip-path: inset(0 round 6px); 
+    cursor: pointer; 
+    user-select: none; 
+}
+
+/* 1. 主文字 */
+.markdown-body .text-content {
+    position: relative;
+    z-index: 2;
+    transition: color 0.3s ease; 
+}
+
+/* 2. 跑馬燈軌道 */
+.markdown-body .marquee-text-track {
+    position: absolute;
+    top: 0; left: 0;
+    width: max-content; /* 解開寬度鎖定 */
+    height: 100%;
+    display: flex;
+    align-items: center;
+    
+    color: color-mix(in srgb, var(--dynamic-glow) 15%, transparent);
+    
+    animation: bg-text-marquee var(--marquee-duration, 18s) linear infinite;
+    animation-play-state: paused; /* 預設靜止 */
+    
+    z-index: 1;
+    pointer-events: none;
+    transition: color 0.3s ease, text-shadow 0.3s ease; 
+}
+
+/* 雙胞胎零件，給予正確字型與間距 */
+.markdown-body .marquee-part {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem; 
+    font-weight: 900;  
+    letter-spacing: 0.1em;
+    padding-right: 0.5em; /* 確保兩段接力時無縫 */
+}
+
+/* ==========================================
+   ✨ X光透視互動 (搭配 JS 的 .suspend-xray 結界)
+   ========================================== */
+
+/* ✨ 1. X光穿透更明顯：把主文字的透明度壓低到 10% */
+.markdown-body .md-highlight-text.is-xray-active:not(.suspend-xray) .text-content,
+.markdown-body .md-highlight-text:not(.suspend-xray):hover .text-content {
+    color: color-mix(in srgb, var(--text) 10%, transparent); 
+}
+
+/* ✨ 2. 跑馬燈不要陰影：移除 text-shadow，只留純粹的顏色 */
+.markdown-body .md-highlight-text.is-xray-active:not(.suspend-xray) .marquee-text-track,
+.markdown-body .md-highlight-text:not(.suspend-xray):hover .marquee-text-track {
+    animation-play-state: running; 
+    color: var(--dynamic-glow);
+    text-shadow: none !important; 
+}
+
+/* ✨ 3. 終極修復：讓防雷貼紙在 X光下也變成幽靈狀態，絕對不擋背景！ */
+.markdown-body .md-highlight-text.is-xray-active:not(.suspend-xray) .spoiler-text.revealed,
+.markdown-body .md-highlight-text:not(.suspend-xray):hover .spoiler-text.revealed {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+.markdown-body .md-highlight-text.is-xray-active:not(.suspend-xray) .spoiler-content,
+.markdown-body .md-highlight-text:not(.suspend-xray):hover .spoiler-content {
+    color: color-mix(in srgb, var(--accent-2) 10%, transparent) !important;
+}
+.markdown-body .md-highlight-text.is-xray-active:not(.suspend-xray) .spoiler-cover,
+.markdown-body .md-highlight-text:not(.suspend-xray):hover .spoiler-cover {
+    background-color: color-mix(in srgb, var(--text) 10%, transparent) !important;
+}
+.markdown-body .md-highlight-text.is-xray-active:not(.suspend-xray) .spoiler-fold,
+.markdown-body .md-highlight-text:not(.suspend-xray):hover .spoiler-fold {
+    opacity: 0.1 !important;
+}
+
+/* ==========================================
+   ✨ 絕對防干擾結界 (強制蓋寫 X光狀態)
+   ========================================== */
+.markdown-body .md-highlight-text.suspend-xray .text-content {
+    color: var(--text) !important;
+}
+.markdown-body .md-highlight-text.suspend-xray .marquee-text-track {
+    animation-play-state: paused !important;
+    color: color-mix(in srgb, var(--dynamic-glow) 15%, transparent) !important;
+    text-shadow: none !important;
+}
+
+@keyframes bg-text-marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); } 
 }
 
 /* 6-2. 表格 */

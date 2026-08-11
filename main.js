@@ -857,7 +857,7 @@ renderer.heading = function(token_or_text, level, raw) {
 };
 
 // ==========================================
-// ✨ 修正：Discord 風格防雷/機密文字擴充 (加上事件阻斷與高質感 Tooltip)
+// ✨ 修正：Discord 風格防雷/機密文字擴充 (完美同步與逆向撕紙版)
 // ==========================================
 const spoilerExtension = {
     name: 'spoiler',
@@ -876,13 +876,13 @@ const spoilerExtension = {
         }
     },
     renderer(token) {
-        // ✨ 關鍵修改：將 title 換成 data-tooltip
-        return `<span class="spoiler-text" onclick="event.stopPropagation(); this.classList.toggle('revealed')" data-tooltip="點擊解密">${this.parser.parseInline(token.tokens)}</span>`;
+        // ✨ 加入追蹤容器 (spoiler-fold-wrapper)，確保折角能完美同步飛行
+        return `<span class="spoiler-text" onclick="event.stopPropagation(); this.classList.toggle('revealed')"><span class="spoiler-content">${this.parser.parseInline(token.tokens)}</span><span class="spoiler-cover"></span><span class="spoiler-fold-wrapper"><span class="spoiler-fold"></span></span></span>`;
     }
 };
 
 // ==========================================
-// ✨ 新增：動態高光螢光筆 (X光透視跑馬燈版)
+// ✨ 新增：動態高光螢光筆 (雙層接力無縫跑馬燈)
 // ==========================================
 const highlightExtension = {
     name: 'updateHighlight',
@@ -904,11 +904,14 @@ const highlightExtension = {
     renderer(token) {
         const badge = token.badgeText.trim();
         const targetColor = badge ? window.getStatusColorFromCSS(badge.toUpperCase()) : 'var(--accent)';
-        // ✨ 如果沒有徽章，預設顯示 HIGHLIGHT
         const displayText = badge ? badge : 'HIGHLIGHT'; 
         
-        const repeatedText = `${displayText} • `.repeat(20);
-        const bgHtml = `<span class="marquee-text-track" aria-hidden="true">${repeatedText}</span>`;
+        const repeatedText = `${displayText} • `.repeat(50);
+        
+        // ✨ 修改這裡：將 0.15 改為 0.4 (速度變慢近3倍)，並把最低秒數調高到 20
+        const duration = Math.max(50, repeatedText.length * 5); 
+        
+        const bgHtml = `<span class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></span>`;
         
         return `<span class="md-highlight-text" style="--dynamic-glow: ${targetColor};">${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
     }
@@ -1813,7 +1816,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     const targetColor = badgeText ? window.getStatusColorFromCSS(badgeText.toUpperCase()) : 'var(--accent)';
                     const displayText = badgeText ? badgeText : 'HIGHLIGHT';
                     
-                    const repeatedText = `${displayText} • `.repeat(20);
+                    const repeatedText = `${displayText} • `.repeat(50);
                     const bgHtml = `<span class="marquee-text-track" aria-hidden="true">${repeatedText}</span>`;
                     
                     block.className = `md-highlight-text`;
@@ -2959,3 +2962,14 @@ document.addEventListener('click', (e) => {
         xrayTarget.classList.toggle('is-xray-active');
     }
 });
+
+// ==========================================
+// ✨ 全域事件監聽：防雷貼紙 Hover 絕對防護結界
+// ==========================================
+document.addEventListener('pointerenter', (e) => {
+    const spoiler = e.target.closest('.spoiler-text');
+    if (!spoiler) return;
+
+    const highlight = spoiler.closest('.md-highlight-text');
+    if (highlight) highlight.classList.add('suspend-xray');
+}, true);
