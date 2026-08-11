@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.4.3",          // 目前系統版本號
+    VERSION: "U1.4.4",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "light",     // 預設主題 (light / dark)
@@ -70,10 +70,15 @@ window.mermaid = null;
 import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs').then(m => {
     window.mermaid = m.default;
     const currentTheme = document.documentElement.getAttribute('data-theme') || CONFIG.DEFAULT_THEME;
+    // 第一個地方 (約在上方動態引入 import 的區塊) 和 第二個地方 (約在 applyTheme 函數內)
+    // 請將這兩處的 initialize 都改成這樣：
     window.mermaid.initialize({
         startOnLoad: false,
-        theme: currentTheme === 'dark' ? 'dark' : 'default',
-        fontFamily: 'inherit',
+        theme: currentTheme === 'dark' ? 'dark' : 'default', // (第二個地方這裡會是 theme: theme === 'dark' ? ...)
+        
+        // ✨ 核心修復：拔除容易算錯寬度的 'inherit'，直接給予精準的系統中文字體，讓 Mermaid 完美計算方塊寬度！
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
+        
         securityLevel: 'loose'
     });
 }).catch(err => console.error("Mermaid 引擎載入失敗:", err));
@@ -834,6 +839,37 @@ renderer.code = function(token_or_code, language, isEscaped) {
     return originalCodeRenderer.apply(this, arguments);
 };
 
+// 3. ✨ 攔截 Markdown 連結
+renderer.link = function(token_or_href, title, text) {
+    const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
+    const linkText = typeof token_or_href === 'object' ? token_or_href.text : text;
+    const linkTitle = typeof token_or_href === 'object' ? token_or_href.title : title;
+    
+    const titleAttr = linkTitle ? ` title="${linkTitle}"` : '';
+    if (!href) return `<a${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+
+    // ✨ 核心修復 1：放寬 SPA 攔截條件！只要包含 ?p= 且非外部連結，一律攔截做無縫跳轉
+    if (href.includes('?p=') && !href.startsWith('http')) {
+        // 安全轉義單引號，防止破壞 HTML
+        const safeHref = href.replace(/'/g, "\\'");
+        return `<a href="${href}" onclick="window.handleSpaLink(event, '${safeHref}')"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+    }
+
+    // ✨ 攔截內部錨點跳轉 (解決 Modal 內無法跳轉的問題，並修復字體變細)
+    if (href.startsWith('#')) {
+        const safeHref = href.replace(/'/g, "\\'");
+        return `<a href="${href}" onclick="window.scrollToAnchor(event, '${safeHref}')"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+    }
+    
+    if (href.startsWith('http')) {
+        const extIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr} style="font-weight: 600;">${linkText}${extIcon}</a>`;
+    }
+
+    // ✨ 確保所有漏網之魚的普通連結也享有粗體樣式
+    return `<a href="${href}"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+};
+
 // 4. ✨ 攔截 Markdown 標題，同時用全域陣列記住最新出現的標題文字
 window._lastMarkdownHeadings = [];
 renderer.heading = function(token_or_text, level, raw) {
@@ -942,9 +978,36 @@ const highlightBlockExtension = {
     }
 };
 
-// ⚠️ 記得把新的解析器加進系統裡！找到 marked.use 的地方修改如下：
+// ==========================================
+// ✨ 新增：日文漢字注音擴充 (Ruby Furigana)
+// 語法：^^漢字(かんじ)^^
+// ==========================================
+const rubyExtension = {
+    name: 'ruby',
+    level: 'inline',
+    start(src) { return src.match(/\^\^/)?.index; },
+    tokenizer(src, tokens) {
+        // 匹配 ^^漢字(注音)^^ 的格式
+        const rule = /^\^\^([^()]+)\(([^()]+)\)\^\^/;
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'ruby',
+                raw: match[0],
+                kanji: match[1],
+                furigana: match[2]
+            };
+        }
+    },
+    renderer(token) {
+        // 轉換為標準的 HTML ruby 標籤
+        return `<ruby>${token.kanji}<rt>${token.furigana}</rt></ruby>`;
+    }
+};
+
+// ⚠️ 記得把 rubyExtension 加進 marked.use 的陣列裡！
 marked.use({ 
-    extensions: [spoilerExtension, highlightExtension, highlightBlockExtension], // ✨ 把 highlightBlockExtension 加進陣列
+    extensions: [spoilerExtension, highlightExtension, highlightBlockExtension, rubyExtension], 
     renderer: renderer,
     breaks: false, 
     gfm: true      
@@ -958,9 +1021,11 @@ window.handleSpaLink = function(event, url) {
     // 防呆：防止 Marked.js 偷偷把網址裡的 & 轉譯成 &amp;
     const cleanUrl = url.replace(/&amp;/g, '&');
     
-    // 拆分出 query(網址參數) 和 hash(錨點)
-    const [queryPart, hashPart] = cleanUrl.split('#');
-    const urlParams = new URLSearchParams(queryPart);
+    // ✨ 核心修復 2：精準分離 Query String 與 Hash，無視前方的路徑 (如 /index.html 或 ./)
+    const queryString = cleanUrl.includes('?') ? cleanUrl.split('?')[1].split('#')[0] : '';
+    const hashPart = cleanUrl.includes('#') ? cleanUrl.split('#')[1] : null;
+    
+    const urlParams = new URLSearchParams(queryString);
     
     // 將 hash 傳遞給路由處理器
     window.handleAppRouting(urlParams.get('p'), urlParams.get('a'), hashPart ? '#' + hashPart : null);
@@ -984,18 +1049,22 @@ document.addEventListener('DOMContentLoaded', () => {
             window.mermaid.initialize({
                 startOnLoad: false,
                 theme: theme === 'dark' ? 'dark' : 'default',
-                fontFamily: 'inherit',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
                 securityLevel: 'loose' 
             });
             
-            document.querySelectorAll('.mermaid').forEach(el => {
-                const originalText = decodeURIComponent(el.getAttribute('data-original-text') || '');
-                if (originalText) {
-                    el.textContent = originalText; 
-                    el.removeAttribute('data-processed'); 
-                }
-            });
-            window.mermaid.run({ querySelector: '.mermaid' }).catch(() => {});
+            // ✨ 核心修復 2：只在「文章已經打開，且畫面上真的有圖表」時，才觸發重繪
+            const mermaidEls = document.querySelectorAll('.mermaid');
+            if (mermaidEls.length > 0) {
+                mermaidEls.forEach(el => {
+                    const originalText = decodeURIComponent(el.getAttribute('data-original-text') || '');
+                    if (originalText) {
+                        el.textContent = originalText; 
+                        el.removeAttribute('data-processed'); 
+                    }
+                });
+                window.mermaid.run({ querySelector: '.mermaid' }).catch(() => {});
+            }
         }
     
         const targetFaviconUrl = theme === 'light' ? CONFIG.FAVICON_LIGHT : CONFIG.FAVICON_DARK;
@@ -1905,6 +1974,15 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
             const renderMermaid = () => {
                 if (window.mermaid) {
+                    // ✨ 核心修復 1：每次渲染圖表前，強制擷取當下的深淺色主題並重新設定
+                    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                    window.mermaid.initialize({
+                        startOnLoad: false,
+                        theme: currentTheme === 'dark' ? 'dark' : 'default', // 完美同步主題
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
+                        securityLevel: 'loose'
+                    });
+
                     document.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
                     window.mermaid.run({ querySelector: '.mermaid' }).then(() => window.initMermaidDrag()).catch(e => console.warn('Mermaid 語法錯誤:', e));
                 } else {

@@ -112,19 +112,6 @@
       "cover_image": "./api/azu5atellite/cover_thumb.webp",
       "articles": [
         {
-          "id": "KK",
-          "title": "測試",
-          "content_path": "./api/azu5atellite/KK/contents.json",
-          "description": "Azusagawa Kaze",
-          "cover_image": "./api/azu5atellite/KK/cover_thumb.webp",
-          "tags": [
-            "梓川風",
-            "OC",
-            "azu5atellite"
-          ],
-          "pinned": true
-        },
-        {
           "id": "palindrome",
           "title": "梓川風",
           "content_path": "./api/azu5atellite/palindrome/contents.json",

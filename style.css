@@ -6,12 +6,12 @@
 [data-theme="dark"] {
     --bg: #020617; --card: #0b1220; --text: #e5e7eb; --muted: #9ca3af;
     --accent: #38bdf8; --accent-2: #f5d547; --accent-hover: #F5D547;
-    --glow-1: rgba(16, 43, 86, 0.8); --glow-2: rgba(4, 47, 46, 0.8);
+    --glow-1: rgba(16, 85, 137, 0.8); --glow-2: rgba(4, 47, 46, 0.8);
     --glass-bg: rgba(11, 18, 32, 0.7); --glass-border: rgba(56, 189, 248, 0.2);
     --box-bg: rgba(23, 35, 59, 0.6); --box-border: rgba(71, 198, 253, 0.15);
     --nav-bg: rgba(2, 6, 23, 0.95); --divider-line: rgba(255, 255, 255, 0.2);
     --tag-bg: rgba(34, 211, 238, 0.15); --marquee-bg: rgba(34, 211, 238, 0.1);    
-    --marquee-border: rgba(34, 211, 238, 0.3); --card-border: rgba(255, 255, 255, 0.1); 
+    --marquee-border: rgba(34, 211, 238, 0.3); --card-border: rgba(255, 255, 255, 0.15); 
     --shadow-base: rgba(0, 0, 0, 0.35); --shadow-hover: rgba(56, 189, 248, 0.15); 
     --btn-hover-bg: rgba(11, 18, 32, 0.95); --btn-hover-shadow: rgba(56, 189, 248, 0.3); 
     --nav-text-shadow: rgba(56, 189, 248, 0.6); --error-color: #ef4444;                  
@@ -28,7 +28,7 @@
     --box-bg: rgba(255, 255, 255, 0.6); --box-border: rgba(64, 120, 153, 0.3);
     --nav-bg: rgba(248, 250, 252, 0.95); --divider-line: rgba(0, 0, 0, 0.2);
     --tag-bg: rgba(68, 212, 190, 0.15); --marquee-bg: rgba(68, 212, 190, 0.1);    
-    --marquee-border: rgba(68, 212, 190, 0.3); --card-border: rgba(64, 120, 153, 0.25);  
+    --marquee-border: rgba(68, 212, 190, 0.3); --card-border: rgba(64, 120, 153, 0.3);  
     --shadow-base: rgba(0, 0, 0, 0.05); --shadow-hover: rgba(68, 212, 190, 0.2);  
     --btn-hover-bg: rgba(255, 255, 255, 0.95); --btn-hover-shadow: rgba(254, 232, 67, 0.2); 
     --nav-text-shadow: rgba(219, 205, 48, 0.3); --error-color: #DB3069;                  
@@ -651,6 +651,16 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body h2 { color: var(--accent); border-bottom: 1px solid var(--card-border); padding-bottom: 0.3rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
 .markdown-body h3 { color: var(--accent); border-bottom: 1px solid var(--card-border); padding-bottom: 0.3rem; margin-top: 0rem; margin-bottom: 0rem; }
 .markdown-body h1, .markdown-body h2, .markdown-body h3 { transition: color 0.5s ease, text-shadow 0.5s ease; }
+/* ✨ 日文注音小字 (Ruby) 優化 */
+.markdown-body ruby {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+.markdown-body rt {
+    color: var(--muted); /* 讓注音顏色稍微淡一點，不搶走漢字視覺 */
+    font-size: 0.65em;   /* 調整小字比例 */
+    user-select: none;   /* 防止讀者複製文字時不小心把注音也複製進去 */
+    transform: translateY(-2px); /* 稍微往上抬一點，避免擠壓到漢字 */
+}
 /* ========================================================================== */
 /* ✨ 自訂排版工具：修復浮動圖片溢出與版面控制 */
 /* ========================================================================== */
@@ -752,11 +762,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     z-index: 1;
     color: var(--accent-2) !important; 
     font-weight: bold;
-    opacity: 0;
-    transition: opacity var(--tear-dur) var(--tear-ease), color 0.3s ease;
-}
-.spoiler-text.revealed .spoiler-content {
-    opacity: 1; 
+    transition: color 0.3s ease;
 }
 
 /* 2. 頂層：貼紙本體 (黑色遮罩) */
@@ -1028,6 +1034,10 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     background: var(--glass-bg); 
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--card-border); 
+    
+    /* ✨ 核心修復 1：建立定位並拉高圖層，確保氣泡提示絕對不會被下方的圖表蓋住！ */
+    position: relative;
+    z-index: 10;
 }
 
 .mermaid-title {
@@ -1065,7 +1075,7 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     flex: 1; 
 }
 
-/* ✨ 核心修復：讓 mermaid 容器置中，SVG 限制最大寬高 */
+/* ✨ 核心修復 2：讓 mermaid 容器置中，並強制阻斷全站行高污染 */
 .mermaid { 
     display: flex; 
     align-items: center;
@@ -1074,6 +1084,19 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     height: 100%;
     transform-origin: center center;
     transition: transform 0.15s cubic-bezier(0.25, 0.8, 0.25, 1); 
+    
+    /* 強制壓回標準行高，防止文字被推出版面 */
+    line-height: 1.2 !important; 
+}
+
+/* 確保圖表內部的所有 HTML 節點都乖乖遵守緊湊行高 */
+.mermaid * {
+    line-height: inherit !important;
+}
+
+/* ✨ 核心修復 3：解放 foreignObject，徹底防堵中文字尾端被物理裁切！ */
+.mermaid foreignObject {
+    overflow: visible !important;
 }
 
 /* 限制 SVG 不能超過父容器，這樣 scale(1) 就永遠等同於「適應螢幕」！ */
@@ -1083,6 +1106,8 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     width: auto !important; 
     height: auto !important; 
     overflow: visible !important; 
+    /* 補上一點安全內距，防止圖表最邊緣的線條被切到 */
+    padding: 4px;
 }
 
 /* 6-6. 直書模式 (.vertical-wrapper) */
@@ -1238,8 +1263,8 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
 
     /* 隱藏觸控裝置 Tooltip */
-    .toolbar-btn::after, .toolbar-btn::before, .lightbox-capsule-btn::after, .lightbox-capsule-btn::before, .zoom-btn::after, .zoom-btn::before { display: none !important; }
-    
+    .toolbar-btn::after, .toolbar-btn::before, .lightbox-capsule-btn::after, .lightbox-capsule-btn::before, .zoom-btn::after, .zoom-btn::before, .mermaid-btn::after, .mermaid-btn::before { display: none !important; }
+
     /* Lightbox 收合工具列 (手機版彈出選單) */
     .toolbox-toggle-btn { display: flex; }
     .desktop-only-divider { display: none; }

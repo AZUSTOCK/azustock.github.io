@@ -1,5 +1,13 @@
 [
   {
+    "id": "U1.4.4",
+    "version": "U1.4.4",
+    "date": "2026-08-11",
+    "status": "FEATURE",
+    "description": "添加highlight與修正mermaid & spoiler",
+    "content": "## add\n1. highlight\n2. mermaid\n\n## update\n1. spoiler\n2. mermaid\n\n## adjust\n1. theme color\n2. spoiler\n3. deploy.yml\n\n## remove\n1. branch main api/"
+  },
+  {
     "id": "U1.4.3",
     "version": "U1.4.3",
     "date": "2026-08-05",
