@@ -6,12 +6,12 @@
 [data-theme="dark"] {
     --bg: #020617; --card: #0b1220; --text: #e5e7eb; --muted: #9ca3af;
     --accent: #38bdf8; --accent-2: #f5d547; --accent-hover: #F5D547;
-    --glow-1: rgba(11, 26, 51, 0.8); --glow-2: rgba(4, 47, 46, 0.8);
+    --glow-1: rgba(16, 85, 137, 0.8); --glow-2: rgba(4, 47, 46, 0.8);
     --glass-bg: rgba(11, 18, 32, 0.7); --glass-border: rgba(56, 189, 248, 0.2);
     --box-bg: rgba(23, 35, 59, 0.6); --box-border: rgba(71, 198, 253, 0.15);
     --nav-bg: rgba(2, 6, 23, 0.95); --divider-line: rgba(255, 255, 255, 0.2);
     --tag-bg: rgba(34, 211, 238, 0.15); --marquee-bg: rgba(34, 211, 238, 0.1);    
-    --marquee-border: rgba(34, 211, 238, 0.3); --card-border: rgba(255, 255, 255, 0.1); 
+    --marquee-border: rgba(34, 211, 238, 0.3); --card-border: rgba(255, 255, 255, 0.15); 
     --shadow-base: rgba(0, 0, 0, 0.35); --shadow-hover: rgba(56, 189, 248, 0.15); 
     --btn-hover-bg: rgba(11, 18, 32, 0.95); --btn-hover-shadow: rgba(56, 189, 248, 0.3); 
     --nav-text-shadow: rgba(56, 189, 248, 0.6); --error-color: #ef4444;                  
@@ -19,21 +19,21 @@
     --scrollbar-bg: transparent; --scrollbar-thumb: rgba(255, 255, 255, 0.25); --scrollbar-hover: rgba(56, 189, 248, 0.4); 
 }
 
-/* 1-2. 淺色模式 (Light Mode) */
+/* 2. 淺色模式 (Light Mode) */
 [data-theme="light"] {
-    --bg: #F8FAFC; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
+    --bg: #F1F5F9; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
     --accent: #407899; --accent-2: #44D4BE; --accent-hover: #44D4BE;
-    --glow-1: rgba(68, 212, 190, 0.15); --glow-2: rgba(245, 213, 71, 0.15);
+    --glow-1: rgba(68, 212, 190, 0.3); --glow-2: rgba(245, 213, 71, 0.3);
     --glass-bg: rgba(255, 255, 255, 0.7); --glass-border: rgba(68, 212, 190, 0.4);
-    --box-bg: rgba(255, 255, 255, 0.6); --box-border: rgba(64, 120, 153, 0.2);
-    --nav-bg: rgba(248, 250, 252, 0.95); --divider-line: rgba(0, 0, 0, 0.1);
+    --box-bg: rgba(255, 255, 255, 0.6); --box-border: rgba(64, 120, 153, 0.3);
+    --nav-bg: rgba(248, 250, 252, 0.95); --divider-line: rgba(0, 0, 0, 0.2);
     --tag-bg: rgba(68, 212, 190, 0.15); --marquee-bg: rgba(68, 212, 190, 0.1);    
-    --marquee-border: rgba(68, 212, 190, 0.3); --card-border: rgba(64, 120, 153, 0.1);  
+    --marquee-border: rgba(68, 212, 190, 0.3); --card-border: rgba(64, 120, 153, 0.3);  
     --shadow-base: rgba(0, 0, 0, 0.05); --shadow-hover: rgba(68, 212, 190, 0.2);  
     --btn-hover-bg: rgba(255, 255, 255, 0.95); --btn-hover-shadow: rgba(254, 232, 67, 0.2); 
     --nav-text-shadow: rgba(219, 205, 48, 0.3); --error-color: #DB3069;                  
     --error-shadow: rgba(219, 48, 105, 0.5);  
-    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(100, 116, 139, 0.35); --scrollbar-hover: rgba(64, 120, 153, 0.5);
+    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(0, 0, 0, 0.15); --scrollbar-hover: rgba(64, 120, 153, 0.4); 
 }
 
 /* 1-3. 群組標籤專屬色彩系統 (校色優化版) */
@@ -106,7 +106,10 @@ html {
 }
 body {
     margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
-    background: radial-gradient(1200px 600px at 20% -10%, var(--glow-1), transparent), radial-gradient(800px 400px at 80% 10%, var(--glow-2), transparent), var(--bg);
+    /* ✨ 改用 max(1200px, 80vw) 確保在大螢幕上光暈一樣能覆蓋背景 */
+    background: radial-gradient(max(1200px, 80vw) max(600px, 50vh) at 20% -10%, var(--glow-1), transparent), 
+                radial-gradient(max(800px, 50vw) max(400px, 40vh) at 80% 10%, var(--glow-2), transparent), 
+                var(--bg);
     color: var(--text); line-height: 1.7; transition: background-color 0.5s ease, color 0.5s ease; 
 }
 header { padding: 5rem 1.5rem 4rem; text-align: center; }
@@ -374,11 +377,11 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     opacity: 1; transform: translateX(-50%) translateY(0); 
 }
 
-/* ⬇️ 關鍵覆寫：讓貼在頂部的按鈕，Tooltip 改為「往下彈出」，以免被螢幕邊緣切掉 */
-.capsule-btn::after, .zoom-btn.floating::after, .toolbar-btn::after, .lightbox-capsule-btn::after { 
+/* ⬇️ 將 .mermaid-btn 加入往下彈出的清單中，避免被容器頂部切掉 */
+.capsule-btn::after, .zoom-btn.floating::after, .toolbar-btn::after, .lightbox-capsule-btn::after, .mermaid-btn::after { 
     top: 100%; margin-top: 10px; bottom: auto; transform: translateX(-50%) translateY(-8px); 
 }
-.capsule-btn::before, .zoom-btn.floating::before, .toolbar-btn::before, .lightbox-capsule-btn::before { 
+.capsule-btn::before, .zoom-btn.floating::before, .toolbar-btn::before, .lightbox-capsule-btn::before, .mermaid-btn::before { 
     top: 100%; margin-top: 0px; border-color: transparent transparent var(--text) transparent; transform: translateX(-50%) translateY(-8px); 
 }
 
@@ -417,7 +420,26 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 /* 4-2. 網格與卡片 */
 .grid { display: grid; gap: 1.5rem; grid-template-rows: auto; grid-auto-flow: column; grid-auto-columns: minmax(320px, 320px); overflow-x: auto; overflow-y: hidden; padding: 2.5rem 0.5rem; margin-top: -1.5rem; margin-left: -0.5rem; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 .grid:has(> :nth-child(4)) { grid-template-rows: auto; }
-.card { background: var(--card); border-radius: 1.1rem; padding: 1.4rem 1.6rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06); border: 1px solid rgba(64, 120, 153, 0.1); position: relative; opacity: 0; transform: translateY(40px) translateZ(0); transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; transform-style: preserve-3d; --card-glow: var(--sec-color, var(--accent-2)); }
+.card { 
+    background: var(--card); 
+    border-radius: 1.1rem; 
+    padding: 1.4rem 1.6rem; 
+    
+    /* ✨ 雙層立體陰影：第一層製造深遠感，第二層製造貼地感，讓卡片絕不與背景融為一體 */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05); 
+    
+    /* ✨ 明確的實線邊框，直接套用剛剛調高對比度的變數 */
+    border: 1px solid var(--card-border); 
+    
+    position: relative; 
+    opacity: 0; 
+    transform: translateY(40px) translateZ(0); 
+    transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); 
+    -webkit-font-smoothing: antialiased; 
+    -moz-osx-font-smoothing: grayscale; 
+    transform-style: preserve-3d; 
+    --card-glow: var(--sec-color, var(--accent-2)); 
+}
 .card.show { opacity: 1; transform: translateY(0) translateZ(0); }
 .card.show:hover { transform: translateY(-5px) translateZ(0); box-shadow: 0 15px 35px color-mix(in srgb, var(--card-glow) 22%, transparent); border-color: color-mix(in srgb, var(--card-glow) 40%, transparent); }
 .card-content-wrapper { display: flex; align-items: flex-start; gap: 1rem; }
@@ -470,7 +492,10 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     max-width: 800px; max-height: 90vh; max-height: 90dvh; 
     overflow-y: auto; 
     
-    /* ✨ 關鍵防禦 1：強制保留 Modal 內部的捲軸空間，防止內容長度變化時造成寬度抖動 */
+    /* ✨ 加上這行：強制隱藏水平溢出，徹底解決左右被撐開的問題！ */
+    overflow-x: hidden; 
+    
+    /* 關鍵防禦：強制保留 Modal 內部的捲軸空間，防止內容長度變化時造成寬度抖動 */
     scrollbar-gutter: stable; 
     
     overscroll-behavior: contain; -webkit-overflow-scrolling: touch; 
@@ -479,7 +504,6 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     transform: translateY(30px) scale(0.95) translateZ(0); 
     transition: transform 0.2s cubic-bezier(0.25,0.8,0.25,1), height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.5s ease, border-color 0.5s ease; 
     
-    /* ✨ 關鍵防禦 2：使用 transform 3D 強制獨立渲染層，隔離內部內容與外層背景的影響 */
     will-change: transform, height; 
     -webkit-backface-visibility: hidden; 
     backface-visibility: hidden; 
@@ -556,16 +580,31 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .article-li { margin-bottom: 0.5rem; padding-bottom: 0.5rem; }
 .article-li.is-normal { border-bottom: 1px dashed var(--divider-line); }
 .article-li.is-normal:last-child { border-bottom: none; }
-#modal-body li a { display: block; border-left: 4px solid transparent !important; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; }
 
-.article-li a:hover, #modal-body li a:hover, .article-li.simulate-hover a, #modal-body li.simulate-hover a {
-    background: var(--tag-bg) !important; border-left: 4px solid var(--accent) !important; transform: translateX(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+/* ✨ 修正：將 #modal-body li a 改為 .article-li a，避免波及文章內的普通清單超連結！ */
+.article-li a { 
+    display: block; 
+    border-left: 4px solid transparent !important; 
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; 
 }
-#modal-body li a:hover span[style*="font-size: 1.15rem"], .article-li a:hover span[style*="font-size: 1.15rem"], #modal-body li.simulate-hover a span[style*="font-size: 1.15rem"], .article-li.simulate-hover a span[style*="font-size: 1.15rem"] {
-    color: var(--accent-hover) !important; text-shadow: 0 0 8px var(--glow-1);
+
+.article-li a:hover, .article-li.simulate-hover a {
+    background: var(--tag-bg) !important; 
+    border-left: 4px solid var(--accent) !important; 
+    transform: translateX(10px); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
+
+.article-li a:hover span[style*="font-size: 1.15rem"], .article-li.simulate-hover a span[style*="font-size: 1.15rem"] {
+    color: var(--accent-hover) !important; 
+    text-shadow: 0 0 8px var(--glow-1);
+}
+
 .article-li.is-normal a:hover, .article-li.is-normal.simulate-hover a {
-    background: var(--tag-bg) !important; border-left: 4px solid var(--accent) !important; transform: translateX(8px); box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    background: var(--tag-bg) !important; 
+    border-left: 4px solid var(--accent) !important; 
+    transform: translateX(8px); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
 .article-li.is-highlight { padding: 0; margin-bottom: 0.8rem; border-bottom: none; background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 12%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 2%, transparent) 100%); border-left: 6px solid var(--tab-color, var(--accent)); border-radius: 4px 12px 12px 4px; transition: background 0.2s ease, transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
@@ -612,6 +651,16 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body h2 { color: var(--accent); border-bottom: 1px solid var(--card-border); padding-bottom: 0.3rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
 .markdown-body h3 { color: var(--accent); border-bottom: 1px solid var(--card-border); padding-bottom: 0.3rem; margin-top: 0rem; margin-bottom: 0rem; }
 .markdown-body h1, .markdown-body h2, .markdown-body h3 { transition: color 0.5s ease, text-shadow 0.5s ease; }
+/* ✨ 日文注音小字 (Ruby) 優化 */
+.markdown-body ruby {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+.markdown-body rt {
+    color: var(--muted); /* 讓注音顏色稍微淡一點，不搶走漢字視覺 */
+    font-size: 0.65em;   /* 調整小字比例 */
+    user-select: none;   /* 防止讀者複製文字時不小心把注音也複製進去 */
+    transform: translateY(-2px); /* 稍微往上抬一點，避免擠壓到漢字 */
+}
 /* ========================================================================== */
 /* ✨ 自訂排版工具：修復浮動圖片溢出與版面控制 */
 /* ========================================================================== */
@@ -686,10 +735,244 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .header-right { display: flex; align-items: center; gap: 0.8rem; margin-left: auto; flex-wrap: nowrap; flex-shrink: 0; }
 .status-badge-container { display: flex; align-items: center; gap: 0.4rem; }
 
-/* 隱藏/防雷文字 */
-.spoiler-text { background-color: var(--text); color: transparent; border-radius: 6px; padding: 0 0.4rem; margin: 0 0.1rem; cursor: pointer; transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; user-select: none; -webkit-user-select: none; }
-.spoiler-text:not(.revealed):hover { background-color: var(--muted); color: transparent; }
-.spoiler-text.revealed { background-color: var(--tag-bg); color: var(--accent-2); user-select: text; -webkit-user-select: text; box-shadow: inset 0 0 8px rgba(0,0,0,0.05); }
+/* ========================================================================== */
+/* ✨ 防雷/隱藏文字 (Spoiler) - 完美同步滑行與逆向撕裂特效 */
+/* ========================================================================== */
+
+.spoiler-text { 
+    /* ✨ 統一全域撕紙秒數，保證遮罩與折紙 100% 同步！ */
+    --tear-dur: 0.4s;
+    --tear-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+    position: relative;
+    display: inline-block;
+    vertical-align: baseline;
+    cursor: pointer; 
+    user-select: none; 
+    -webkit-user-select: none; 
+    z-index: 20; 
+    padding: 0 0.4rem; 
+    margin: 0 0.1rem; 
+    border-radius: 4px;
+}
+
+/* 1. 底層：解密後的文字 */
+.spoiler-content {
+    position: relative;
+    z-index: 1;
+    color: var(--accent-2) !important; 
+    font-weight: bold;
+    transition: color 0.3s ease;
+}
+
+/* 2. 頂層：貼紙本體 (黑色遮罩) */
+.spoiler-cover {
+    position: absolute;
+    inset: 0;
+    background-color: var(--text);
+    border-radius: 4px;
+    z-index: 2;
+    
+    /* Base: 完整的矩形 */
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0);
+    
+    /* ✨ 將過渡寫在 Base，讓貼紙還原時能自動逆向播放！ */
+    transition: clip-path var(--tear-dur) var(--tear-ease), background-color var(--tear-dur) ease;
+}
+
+/* 3. 隱形追蹤容器：帶領折紙從左上精準飛向右下 */
+.spoiler-fold-wrapper {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    transition: transform var(--tear-dur) var(--tear-ease);
+}
+
+/* 4. 左上角：捲起的貼紙背面 (Fold) */
+.spoiler-fold {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 16px;
+    height: 16px;
+    
+    /* 漸層畫出往右下翻摺的紙張背面 */
+    background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.15) 50%, var(--card) 56%);
+    filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.4)); 
+    transform-origin: top left;
+    
+    /* ✨ 完美滑行動畫：起點設定在左上角「外面」，縮小並隱藏 */
+    transform: translate(-8px, -8px) scale(0);
+    opacity: 0;
+    
+    /* 逆向還原動畫：馬上出現 (opacity 0s 延遲)，並跟著容器平滑飛回、縮小隱藏！ */
+    transition: transform var(--tear-dur) var(--tear-ease), opacity 0.1s ease 0s;
+}
+
+/* ==========================================
+   ✨ 貼紙 Hover 狀態：微微撕開左上角
+   ========================================== */
+.spoiler-text:not(.revealed):hover .spoiler-cover {
+    /* 裁出左上角 16px 缺口 */
+    clip-path: polygon(16px 0, 100% 0, 100% 100%, 0 100%, 0 16px);
+    background-color: var(--muted); 
+}
+.spoiler-text:not(.revealed):hover .spoiler-fold {
+    /* ✨ 從外側滑行到定點 (0,0) 並放大！ */
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+}
+
+/* ==========================================
+   ✨ 貼紙 Click 狀態 (Revealed)：往右下角撕開飛走
+   ========================================== */
+.spoiler-text.revealed .spoiler-cover {
+    /* ✨ 所有點收縮到右下角 (100% 100%)，呈現 \ 斜線撕開！ */
+    clip-path: polygon(100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%);
+    pointer-events: none;
+}
+.spoiler-text.revealed .spoiler-fold-wrapper {
+    /* ✨ 容器帶著折角往右下角 (100%) 移動，完美貼合裁切線 */
+    transform: translate(100%, 100%);
+}
+.spoiler-text.revealed .spoiler-fold {
+    transform: translate(0, 0) scale(1.5); /* 在飛行中微放大 */
+    opacity: 0; 
+    /* 正向撕開動畫：延遲淡出，讓眼睛看著紙片飛向右下角！ */
+    transition: transform var(--tear-dur) var(--tear-ease), opacity 0.2s ease calc(var(--tear-dur) - 0.2s); 
+}
+
+.spoiler-text.revealed {
+    background-color: var(--tag-bg);
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.05);
+    transition: background-color 0.5s ease 0.2s; 
+}
+
+
+/* ========================================================================== */
+/* ✨ 自訂 Markdown 擴充：X光透視跑馬燈 (雙層接力不斷字版) */
+/* ========================================================================== */
+
+.markdown-body .md-highlight-text {
+    position: relative;
+    display: inline-block;
+    vertical-align: baseline; 
+    border-radius: 6px;
+    color: var(--text);
+    background: color-mix(in srgb, var(--dynamic-glow) 15%, transparent);
+    box-shadow: 0 0 2px color-mix(in srgb, var(--dynamic-glow) 30%, transparent);
+    clip-path: inset(0 round 6px); 
+    cursor: pointer; 
+    user-select: none; 
+}
+
+/* 1. 主文字 */
+.markdown-body .text-content {
+    position: relative;
+    z-index: 2;
+    transition: color 0.3s ease; 
+}
+
+/* 2. 跑馬燈軌道 */
+.markdown-body .marquee-text-track {
+    position: absolute;
+    top: 0; left: 0;
+    width: max-content; /* ✨ 保證跑馬燈寬度充足，絕對不斷字 */
+    height: 100%;
+    display: flex;
+    align-items: center;
+    
+    color: color-mix(in srgb, var(--dynamic-glow) 15%, transparent);
+    animation: bg-text-marquee var(--marquee-duration, 18s) linear infinite;
+    animation-play-state: paused; /* 預設靜止 */
+    
+    z-index: 1;
+    pointer-events: none;
+    transition: color 0.3s ease; 
+}
+
+/* 雙胞胎零件，無縫接力 */
+.markdown-body .marquee-part {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem; 
+    font-weight: 900;  
+    letter-spacing: 0.1em;
+    padding-right: 0.5em; 
+}
+
+/* ==========================================
+   ✨ X光透視互動 (純點擊切換，防干擾 + 全幽靈化)
+   ========================================== */
+
+/* ✨ 移除了所有的 :hover 觸發，現在只有被點擊加上 .is-xray-active 時才會啟動 X光！ */
+
+/* 1. 主文字變透明 */
+.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .text-content {
+    color: color-mix(in srgb, var(--text) 15%, transparent); 
+}
+
+/* 2. 跑馬燈甦醒並開始跑動！ */
+.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .marquee-text-track {
+    animation-play-state: running; 
+    color: var(--dynamic-glow);
+}
+
+/* 3. Spoiler 幽靈化：防雷貼紙也跟著變透明，讓跑馬燈穿過去 */
+.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-text.revealed {
+    background-color: transparent !important;
+    box-shadow: none !important;
+}
+.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-content {
+    color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
+}
+.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-cover {
+    background-color: color-mix(in srgb, var(--text) 15%, transparent) !important;
+}
+.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-fold {
+    opacity: 0.15 !important;
+}
+
+/* 4. Code 與 Link 在平時的平滑顏色過渡 */
+.markdown-body .md-highlight-text .text-content code,
+.markdown-body .md-highlight-text .text-content a {
+    transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+/* 5. 確保 Code 強制移除背景色，與超連結一起幽靈化 */
+.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .text-content code {
+    background-color: transparent !important;
+    color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
+}
+.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .text-content a {
+    color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
+}
+
+/* ==========================================
+   ✨ 跑馬燈動畫軌跡
+   ========================================== */
+@keyframes bg-text-marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); } 
+}
+
+/* ==========================================
+   ✨ 區塊型高光透視框 (Block Highlight) 專屬排版
+   ========================================== */
+.markdown-body .md-highlight-text.is-block {
+    display: block;       
+    margin: 1.5rem 0;     
+    padding: 1.5rem;      
+}
+
+.markdown-body .md-highlight-text.is-block .text-content {
+    display: block;
+}
+
+.markdown-body .md-highlight-text.is-block .text-content > :last-child {
+    margin-bottom: 0;
+}
+
 
 /* 6-2. 表格 */
 .markdown-body table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.95rem; display: block; overflow-x: auto; }
@@ -739,14 +1022,93 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 
 /* 6-5. Mermaid 圖表引擎 */
 .mermaid-container { position: relative; margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; background: var(--bg); overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); transition: all 0.3s ease; }
-.mermaid-container:fullscreen, .mermaid-container:-webkit-full-screen { border: none; border-radius: 0; margin: 0; display: flex; flex-direction: column; }
-.mermaid-container:fullscreen .mermaid-wrapper, .mermaid-container:-webkit-full-screen .mermaid-wrapper { max-height: none; height: auto !important; flex: 1; }
-.mermaid-toolbar { display: flex; gap: 0.5rem; padding: 0.6rem 1rem; background: var(--glass-bg); border-bottom: 1px solid var(--card-border); justify-content: flex-end; }
-.mermaid-btn:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); }
-.mermaid-wrapper { width: 100%; max-height: 65vh; overflow: auto; padding: 1.5rem; box-sizing: border-box; text-align: center; cursor: grab; }
+
+/* 全螢幕背景與佈局 */
+.mermaid-container:fullscreen, .mermaid-container:-webkit-full-screen { border: none; border-radius: 0; margin: 0; display: flex; flex-direction: column; background: var(--bg); }
+
+.mermaid-toolbar { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 0.6rem 1rem; 
+    background: var(--glass-bg); 
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--card-border); 
+    
+    /* ✨ 核心修復 1：建立定位並拉高圖層，確保氣泡提示絕對不會被下方的圖表蓋住！ */
+    position: relative;
+    z-index: 10;
+}
+
+.mermaid-title {
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    padding-left: 0.2rem;
+}
+
+.mermaid-btns { display: flex; gap: 0.5rem; }
+.mermaid-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(4px); position: relative; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
+.mermaid-btn:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); transform: scale(1.1) translateZ(0); box-shadow: 0 4px 12px var(--glow-1); }
+.mermaid-btn svg { display: block; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
+
+/* ✨ 拔除原生捲軸，改為固定高度與隱藏溢出，讓矩陣拖曳取代醜陋的捲軸 */
+.mermaid-wrapper { 
+    width: 100%; 
+    height: 60vh; 
+    max-height: 500px;
+    overflow: hidden; 
+    padding: 1.5rem; 
+    box-sizing: border-box; 
+    cursor: grab; 
+    position: relative;
+}
 .mermaid-wrapper:active { cursor: grabbing; }
-.mermaid { display: inline-block; vertical-align: middle; width: var(--zoom, 100%); transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-.mermaid svg { width: 100% !important; max-width: none !important; height: auto !important; }
+
+/* 全螢幕時解除高度限制，撐滿整個畫面 */
+.mermaid-container:fullscreen .mermaid-wrapper, 
+.mermaid-container:-webkit-full-screen .mermaid-wrapper { 
+    max-height: none; 
+    height: 100% !important; 
+    flex: 1; 
+}
+
+/* ✨ 核心修復 2：讓 mermaid 容器置中，並強制阻斷全站行高污染 */
+.mermaid { 
+    display: flex; 
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    transform-origin: center center;
+    transition: transform 0.15s cubic-bezier(0.25, 0.8, 0.25, 1); 
+    
+    /* 強制壓回標準行高，防止文字被推出版面 */
+    line-height: 1.2 !important; 
+}
+
+/* 確保圖表內部的所有 HTML 節點都乖乖遵守緊湊行高 */
+.mermaid * {
+    line-height: inherit !important;
+}
+
+/* ✨ 核心修復 3：解放 foreignObject，徹底防堵中文字尾端被物理裁切！ */
+.mermaid foreignObject {
+    overflow: visible !important;
+}
+
+/* 限制 SVG 不能超過父容器，這樣 scale(1) 就永遠等同於「適應螢幕」！ */
+.mermaid svg { 
+    max-width: 100% !important; 
+    max-height: 100% !important; 
+    width: auto !important; 
+    height: auto !important; 
+    overflow: visible !important; 
+    /* 補上一點安全內距，防止圖表最邊緣的線條被切到 */
+    padding: 4px;
+}
 
 /* 6-6. 直書模式 (.vertical-wrapper) */
 .vertical-wrapper { writing-mode: vertical-rl; height: 65vh; min-height: 400px; width: 100%; box-sizing: border-box; overflow-x: auto; overflow-y: hidden; padding: 2rem 1.5rem 0.5rem 1.5rem; margin: 1rem 0; border-radius: 12px; background: var(--box-bg); border: 1px solid var(--card-border); box-shadow: inset 0 0 20px rgba(0,0,0,0.02); }
@@ -901,8 +1263,8 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
 
     /* 隱藏觸控裝置 Tooltip */
-    .toolbar-btn::after, .toolbar-btn::before, .lightbox-capsule-btn::after, .lightbox-capsule-btn::before, .zoom-btn::after, .zoom-btn::before { display: none !important; }
-    
+    .toolbar-btn::after, .toolbar-btn::before, .lightbox-capsule-btn::after, .lightbox-capsule-btn::before, .zoom-btn::after, .zoom-btn::before, .mermaid-btn::after, .mermaid-btn::before { display: none !important; }
+
     /* Lightbox 收合工具列 (手機版彈出選單) */
     .toolbox-toggle-btn { display: flex; }
     .desktop-only-divider { display: none; }

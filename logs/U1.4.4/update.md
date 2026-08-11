@@ -1,15 +1,16 @@
 ## add
-1. .md-divider & .md-clear & .no-glow
-2. article jump
+1. highlight
+2. mermaid view
 
 ## update
-1. goBackInHistory
+1. spoiler
+2. mermaid
 
 ## adjust
-1. scroll bar
-2. kotoba associated
-3. jumpToast
-4. markdown link style
+1. theme color
+2. spoiler
+3. deploy.yml
+4. css
 
-## pending
-1. scroll bar style
+## remove
+1. branch main api/
