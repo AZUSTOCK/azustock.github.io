@@ -876,7 +876,7 @@ const spoilerExtension = {
         }
     },
     renderer(token) {
-        // ✨ 加入追蹤容器 (spoiler-fold-wrapper)，確保折角能完美同步飛行
+        // ✨ 加入 event.stopPropagation() 以及追蹤容器 (spoiler-fold-wrapper)
         return `<span class="spoiler-text" onclick="event.stopPropagation(); this.classList.toggle('revealed')"><span class="spoiler-content">${this.parser.parseInline(token.tokens)}</span><span class="spoiler-cover"></span><span class="spoiler-fold-wrapper"><span class="spoiler-fold"></span></span></span>`;
     }
 };
@@ -906,10 +906,9 @@ const highlightExtension = {
         const targetColor = badge ? window.getStatusColorFromCSS(badge.toUpperCase()) : 'var(--accent)';
         const displayText = badge ? badge : 'HIGHLIGHT'; 
         
-        const repeatedText = `${displayText} • `.repeat(50);
-        
-        // ✨ 修改這裡：將 0.15 改為 0.4 (速度變慢近3倍)，並把最低秒數調高到 20
-        const duration = Math.max(50, repeatedText.length * 5); 
+        // ✨ 改成 20 次，並使用雙層 span 接力，徹底解決跑馬燈斷字問題
+        const repeatedText = `${displayText} • `.repeat(20);
+        const duration = Math.max(20, repeatedText.length * 0.4); 
         
         const bgHtml = `<span class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></span>`;
         
@@ -917,9 +916,46 @@ const highlightExtension = {
     }
 };
 
-// ✨ 把 highlightExtension 加進去系統！
+// ==========================================
+// ✨ 新增：區塊型高光透視框 (支援多行與內部 Markdown)
+// ==========================================
+const highlightBlockExtension = {
+    name: 'highlightBlock',
+    level: 'block',
+    start(src) { return src.match(/^:::\s*highlight/)?.index; },
+    tokenizer(src, tokens) {
+        // 匹配 ::: highlight[標籤] ... ::: 的多行語法
+        const rule = /^:::\s*highlight(?:\[(.*?)\])?\n([\s\S]*?)\n:::/;
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'highlightBlock',
+                raw: match[0],
+                badgeText: match[1] || '',
+                text: match[2],
+                // 這裡改用 blockTokens，讓框框裡面也能寫標題、清單、粗體！
+                tokens: this.lexer.blockTokens(match[2])
+            };
+        }
+    },
+    renderer(token) {
+        const badge = token.badgeText.trim();
+        const targetColor = badge ? window.getStatusColorFromCSS(badge.toUpperCase()) : 'var(--accent)';
+        const displayText = badge ? badge : 'HIGHLIGHT'; 
+        
+        const repeatedText = `${displayText} • `.repeat(50);
+        const duration = Math.max(20, repeatedText.length * 0.4); 
+        
+        const bgHtml = `<div class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></div>`;
+        
+        // ✨ 改用 div 並加上 is-block 類別
+        return `<div class="md-highlight-text is-block" style="--dynamic-glow: ${targetColor};">${bgHtml}<div class="text-content">${this.parser.parse(token.tokens)}</div></div>`;
+    }
+};
+
+// ⚠️ 記得把新的解析器加進系統裡！找到 marked.use 的地方修改如下：
 marked.use({ 
-    extensions: [spoilerExtension, highlightExtension], 
+    extensions: [spoilerExtension, highlightExtension, highlightBlockExtension], // ✨ 把 highlightBlockExtension 加進陣列
     renderer: renderer,
     breaks: false, 
     gfm: true      
@@ -1816,7 +1852,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     const targetColor = badgeText ? window.getStatusColorFromCSS(badgeText.toUpperCase()) : 'var(--accent)';
                     const displayText = badgeText ? badgeText : 'HIGHLIGHT';
                     
-                    const repeatedText = `${displayText} • `.repeat(50);
+                    const repeatedText = `${displayText} • `.repeat(20);
                     const bgHtml = `<span class="marquee-text-track" aria-hidden="true">${repeatedText}</span>`;
                     
                     block.className = `md-highlight-text`;
@@ -2947,29 +2983,21 @@ window.addEventListener('hashchange', () => {
 // ✨ 全域事件監聽：X光透視互動 (點擊切換)
 // ==========================================
 document.addEventListener('click', (e) => {
+    // ✨ 絕對防護 1：如果點擊的是防雷貼紙，直接退出，絕對不准切換高光！
+    if (e.target.closest('.spoiler-text')) return;
+
     // 找出點擊的對象是不是我們的高光文字
     const xrayTarget = e.target.closest('.md-highlight-text');
     
-    // 1. 先把「其他」已經開啟透視的高光文字關閉
+    // 先把「其他」已經開啟透視的高光文字關閉
     document.querySelectorAll('.md-highlight-text.is-xray-active').forEach(el => {
         if (el !== xrayTarget) {
             el.classList.remove('is-xray-active');
         }
     });
 
-    // 2. 如果點擊的是高光文字，就切換它的透視狀態 (開啟/關閉)
+    // 如果點擊的是高光文字，就切換它的透視狀態
     if (xrayTarget) {
         xrayTarget.classList.toggle('is-xray-active');
     }
 });
-
-// ==========================================
-// ✨ 全域事件監聽：防雷貼紙 Hover 絕對防護結界
-// ==========================================
-document.addEventListener('pointerenter', (e) => {
-    const spoiler = e.target.closest('.spoiler-text');
-    if (!spoiler) return;
-
-    const highlight = spoiler.closest('.md-highlight-text');
-    if (highlight) highlight.classList.add('suspend-xray');
-}, true);
