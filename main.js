@@ -857,7 +857,7 @@ renderer.heading = function(token_or_text, level, raw) {
 };
 
 // ==========================================
-// ✨ 新增：自訂 Discord 風格防雷/機密文字擴充 (||隱藏||)
+// ✨ 修正：Discord 風格防雷/機密文字擴充 (加上事件阻斷與高質感 Tooltip)
 // ==========================================
 const spoilerExtension = {
     name: 'spoiler',
@@ -876,39 +876,41 @@ const spoilerExtension = {
         }
     },
     renderer(token) {
-        return `<span class="spoiler-text" onclick="this.classList.toggle('revealed')" title="點擊解密">${this.parser.parseInline(token.tokens)}</span>`;
+        // ✨ 關鍵修改：將 title 換成 data-tooltip
+        return `<span class="spoiler-text" onclick="event.stopPropagation(); this.classList.toggle('revealed')" data-tooltip="點擊解密">${this.parser.parseInline(token.tokens)}</span>`;
     }
 };
 
 // ==========================================
-// ✨ 新增：動態高光螢光筆與呼吸燈擴充 (支援 ++文字++ 與 ++[徽章]文字++)
+// ✨ 新增：動態高光螢光筆 (X光透視跑馬燈版)
 // ==========================================
 const highlightExtension = {
     name: 'updateHighlight',
     level: 'inline',
     start(src) { return src.match(/\+\+/)?.index; },
     tokenizer(src, tokens) {
-        // ✨ 魔法正則：讓 [徽章] 變成可選項 (可有可無)
-        const rule = /^\+\+(?:\[(.*?)\])?(.*?)\+\+/; 
+        const rule = /^\+\+(?:\[(.*?)\])?([\s\S]*?)\+\+/; 
         const match = rule.exec(src);
         if (match) {
             return {
                 type: 'updateHighlight',
                 raw: match[0],
-                badgeText: match[1] || '',  // 抓取方括號內的字，如果沒寫就是空字串
-                content: match[2],          // 抓取內容
+                badgeText: match[1] || '',  
+                content: match[2],          
                 tokens: this.lexer.inlineTokens(match[2])
             };
         }
     },
     renderer(token) {
         const badge = token.badgeText.trim();
-        // 如果有徽章，去抓對應顏色；如果沒寫徽章，預設給系統主題色 var(--accent)
         const targetColor = badge ? window.getStatusColorFromCSS(badge.toUpperCase()) : 'var(--accent)';
+        // ✨ 如果沒有徽章，預設顯示 HIGHLIGHT
+        const displayText = badge ? badge : 'HIGHLIGHT'; 
         
-        // ✨ 改用原生的 title 屬性，保證滑鼠移上去 100% 會出現提示框
-        const badgeAttr = badge ? ` data-badge="${badge}"` : '';
-        return `<span class="md-highlight-text" style="--dynamic-glow: ${targetColor};"${badgeAttr}>${this.parser.parseInline(token.tokens)}</span>`;
+        const repeatedText = `${displayText} • `.repeat(20);
+        const bgHtml = `<span class="marquee-text-track" aria-hidden="true">${repeatedText}</span>`;
+        
+        return `<span class="md-highlight-text" style="--dynamic-glow: ${targetColor};">${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
     }
 };
 
@@ -1801,21 +1803,22 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             
             modalBody.innerHTML = marked.parse(markdownContent);
 
+            // ✨ 攔截並相容原生 HTML 寫法的高光區塊
             modalBody.querySelectorAll('.md-highlight-block').forEach(block => {
                 const badge = block.querySelector('.highlight-badge');
                 const textEl = block.querySelector('.highlight-text');
                 
                 if (textEl) {
                     const badgeText = badge ? badge.innerText.trim() : '';
-                    const targetColor = badgeText ? window.getStatusColorFromCSS(badgeText.toUpperCase()) : 'var(--accent-2)';
+                    const targetColor = badgeText ? window.getStatusColorFromCSS(badgeText.toUpperCase()) : 'var(--accent)';
+                    const displayText = badgeText ? badgeText : 'HIGHLIGHT';
                     
-                    // 瞬間換皮：轉化為新版結構
-                    block.className = 'md-highlight-text';
+                    const repeatedText = `${displayText} • `.repeat(20);
+                    const bgHtml = `<span class="marquee-text-track" aria-hidden="true">${repeatedText}</span>`;
+                    
+                    block.className = `md-highlight-text`;
                     block.style.setProperty('--dynamic-glow', targetColor);
-                    if (badgeText) block.setAttribute('data-badge', badgeText);
-                    
-                    // 徹底抹除原有的 badge DOM，只保留純文字內文
-                    block.innerHTML = textEl.innerHTML; 
+                    block.innerHTML = `${bgHtml}<span class="text-content">${textEl.innerHTML}</span>`;
                 }
             });
 
@@ -2934,5 +2937,25 @@ window.addEventListener('hashchange', () => {
         if (modalOverlay && modalOverlay.classList.contains('active')) {
             window.executeAnchorScroll(hash, false);
         }
+    }
+});
+
+// ==========================================
+// ✨ 全域事件監聽：X光透視互動 (點擊切換)
+// ==========================================
+document.addEventListener('click', (e) => {
+    // 找出點擊的對象是不是我們的高光文字
+    const xrayTarget = e.target.closest('.md-highlight-text');
+    
+    // 1. 先把「其他」已經開啟透視的高光文字關閉
+    document.querySelectorAll('.md-highlight-text.is-xray-active').forEach(el => {
+        if (el !== xrayTarget) {
+            el.classList.remove('is-xray-active');
+        }
+    });
+
+    // 2. 如果點擊的是高光文字，就切換它的透視狀態 (開啟/關閉)
+    if (xrayTarget) {
+        xrayTarget.classList.toggle('is-xray-active');
     }
 });

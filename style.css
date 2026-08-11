@@ -11,7 +11,7 @@
     --box-bg: rgba(23, 35, 59, 0.6); --box-border: rgba(71, 198, 253, 0.15);
     --nav-bg: rgba(2, 6, 23, 0.95); --divider-line: rgba(255, 255, 255, 0.2);
     --tag-bg: rgba(34, 211, 238, 0.15); --marquee-bg: rgba(34, 211, 238, 0.1);    
-    --marquee-border: rgba(34, 211, 238, 0.3); --card-border: rgba(255, 255, 255, 0.1); 
+    --marquee-border: rgba(34, 211, 238, 0.3); --card-border: rgba(255, 255, 255, 0.2); 
     --shadow-base: rgba(0, 0, 0, 0.35); --shadow-hover: rgba(56, 189, 248, 0.15); 
     --btn-hover-bg: rgba(11, 18, 32, 0.95); --btn-hover-shadow: rgba(56, 189, 248, 0.3); 
     --nav-text-shadow: rgba(56, 189, 248, 0.6); --error-color: #ef4444;                  
@@ -19,21 +19,21 @@
     --scrollbar-bg: transparent; --scrollbar-thumb: rgba(255, 255, 255, 0.25); --scrollbar-hover: rgba(56, 189, 248, 0.4); 
 }
 
-/* 1-2. 淺色模式 (Light Mode) */
+/* 2. 淺色模式 (Light Mode) */
 [data-theme="light"] {
     --bg: #F8FAFC; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
     --accent: #407899; --accent-2: #44D4BE; --accent-hover: #44D4BE;
     --glow-1: rgba(68, 212, 190, 0.15); --glow-2: rgba(245, 213, 71, 0.15);
     --glass-bg: rgba(255, 255, 255, 0.7); --glass-border: rgba(68, 212, 190, 0.4);
     --box-bg: rgba(255, 255, 255, 0.6); --box-border: rgba(64, 120, 153, 0.2);
-    --nav-bg: rgba(248, 250, 252, 0.95); --divider-line: rgba(0, 0, 0, 0.1);
+    --nav-bg: rgba(248, 250, 252, 0.95); --divider-line: rgba(0, 0, 0, 0.2);
     --tag-bg: rgba(68, 212, 190, 0.15); --marquee-bg: rgba(68, 212, 190, 0.1);    
-    --marquee-border: rgba(68, 212, 190, 0.3); --card-border: rgba(64, 120, 153, 0.1);  
+    --marquee-border: rgba(68, 212, 190, 0.3); --card-border: rgba(64, 120, 153, 0.2);  
     --shadow-base: rgba(0, 0, 0, 0.05); --shadow-hover: rgba(68, 212, 190, 0.2);  
     --btn-hover-bg: rgba(255, 255, 255, 0.95); --btn-hover-shadow: rgba(254, 232, 67, 0.2); 
     --nav-text-shadow: rgba(219, 205, 48, 0.3); --error-color: #DB3069;                  
     --error-shadow: rgba(219, 48, 105, 0.5);  
-    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(100, 116, 139, 0.35); --scrollbar-hover: rgba(64, 120, 153, 0.5);
+    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(0, 0, 0, 0.15); --scrollbar-hover: rgba(64, 120, 153, 0.4); 
 }
 
 /* 1-3. 群組標籤專屬色彩系統 (校色優化版) */
@@ -417,7 +417,26 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 /* 4-2. 網格與卡片 */
 .grid { display: grid; gap: 1.5rem; grid-template-rows: auto; grid-auto-flow: column; grid-auto-columns: minmax(320px, 320px); overflow-x: auto; overflow-y: hidden; padding: 2.5rem 0.5rem; margin-top: -1.5rem; margin-left: -0.5rem; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 .grid:has(> :nth-child(4)) { grid-template-rows: auto; }
-.card { background: var(--card); border-radius: 1.1rem; padding: 1.4rem 1.6rem; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06); border: 1px solid rgba(64, 120, 153, 0.1); position: relative; opacity: 0; transform: translateY(40px) translateZ(0); transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; transform-style: preserve-3d; --card-glow: var(--sec-color, var(--accent-2)); }
+.card { 
+    background: var(--card); 
+    border-radius: 1.1rem; 
+    padding: 1.4rem 1.6rem; 
+    
+    /* ✨ 雙層立體陰影：第一層製造深遠感，第二層製造貼地感，讓卡片絕不與背景融為一體 */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05); 
+    
+    /* ✨ 明確的實線邊框，直接套用剛剛調高對比度的變數 */
+    border: 1px solid var(--card-border); 
+    
+    position: relative; 
+    opacity: 0; 
+    transform: translateY(40px) translateZ(0); 
+    transition: opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); 
+    -webkit-font-smoothing: antialiased; 
+    -moz-osx-font-smoothing: grayscale; 
+    transform-style: preserve-3d; 
+    --card-glow: var(--sec-color, var(--accent-2)); 
+}
 .card.show { opacity: 1; transform: translateY(0) translateZ(0); }
 .card.show:hover { transform: translateY(-5px) translateZ(0); box-shadow: 0 15px 35px color-mix(in srgb, var(--card-glow) 22%, transparent); border-color: color-mix(in srgb, var(--card-glow) 40%, transparent); }
 .card-content-wrapper { display: flex; align-items: flex-start; gap: 1rem; }
@@ -686,10 +705,79 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .header-right { display: flex; align-items: center; gap: 0.8rem; margin-left: auto; flex-wrap: nowrap; flex-shrink: 0; }
 .status-badge-container { display: flex; align-items: center; gap: 0.4rem; }
 
-/* 隱藏/防雷文字 */
-.spoiler-text { background-color: var(--text); color: transparent; border-radius: 6px; padding: 0 0.4rem; margin: 0 0.1rem; cursor: pointer; transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; user-select: none; -webkit-user-select: none; }
-.spoiler-text:not(.revealed):hover { background-color: var(--muted); color: transparent; }
-.spoiler-text.revealed { background-color: var(--tag-bg); color: var(--accent-2); user-select: text; -webkit-user-select: text; box-shadow: inset 0 0 8px rgba(0,0,0,0.05); }
+/* ========================================================================== */
+/* ✨ 防雷/隱藏文字 (Spoiler) 樣式與專屬 Tooltip */
+/* ========================================================================== */
+.spoiler-text { 
+    position: relative; /* ✨ 作為 Tooltip 的定位基準 */
+    background-color: var(--text); 
+    color: transparent; 
+    border-radius: 6px; 
+    padding: 0 0.4rem; 
+    margin: 0 0.1rem; 
+    cursor: pointer; 
+    transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; 
+    user-select: none; 
+    -webkit-user-select: none; 
+}
+
+.spoiler-text:not(.revealed):hover { 
+    background-color: var(--muted); 
+    color: transparent; 
+}
+
+.spoiler-text.revealed { 
+    background-color: var(--tag-bg); 
+    color: var(--accent-2); 
+    user-select: text; 
+    -webkit-user-select: text; 
+    box-shadow: inset 0 0 8px rgba(0,0,0,0.05); 
+}
+
+/* ✨ 防雷文字專屬的 Hover 氣泡 (黑色底色、白色文字) */
+.spoiler-text::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: var(--text);
+    color: var(--card);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    margin-bottom: 8px;
+}
+
+/* ✨ 氣泡下方的小三角形 */
+.spoiler-text::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    border-width: 5px;
+    border-style: solid;
+    border-color: var(--text) transparent transparent transparent;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 10000;
+}
+
+/* ✨ 只有在「尚未解密」時，Hover 才顯示 Tooltip，解密後氣泡就不會再出來煩人了 */
+.spoiler-text:not(.revealed):hover::after,
+.spoiler-text:not(.revealed):hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
 
 /* 6-2. 表格 */
 .markdown-body table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.95rem; display: block; overflow-x: auto; }
@@ -791,106 +879,84 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 @keyframes hint-pulse-left { 0%, 100% { transform: translateX(8px); opacity: 0.4; } 50% { transform: translateX(-5px); opacity: 1; } }
 
 /* ========================================================================== */
-/* ✨ 自訂 Markdown 擴充：動態高光螢光筆與呼吸燈 */
+/* ✨ 自訂 Markdown 擴充：X光透視跑馬燈 (LED Ticker Tape) */
 /* ========================================================================== */
 
+/* 1. 外層容器：鎖定範圍與基礎底色 */
 .markdown-body .md-highlight-text {
-    /* padding: 0px 1px; */
-    /* margin: 0 2px;  */
-    border-radius: 6px;
-    /* font-weight: 600;  */
-    color: var(--text);
-    animation: highlight-dynamic-breathe 4s infinite ease-in-out;
-    position: relative; /* 氣泡定位基準 */
+    position: relative;
     display: inline-block;
+    vertical-align: baseline; /* ✨ 強制基準線對齊，預防飄移 */
+    border-radius: 6px;
+    color: var(--text);
+    
+    background: color-mix(in srgb, var(--dynamic-glow) 30%, transparent);
+    box-shadow: 0 0 2px color-mix(in srgb, var(--dynamic-glow) 40%, transparent);
+    
+    /* 完美裁切邊界，防止跑馬燈溢出 */
+    clip-path: inset(0 round 6px); 
+    
+    cursor: pointer; /* 改為點擊的手指游標 */
+    user-select: none; /* 防止讀者點擊時不小心反白文字 */
 }
 
-/* ✨ 只有當它有徽章時，游標變問號 */
-.markdown-body .md-highlight-text[data-badge] {
-    cursor: help; 
+/* 2. 確保真正的文章內容浮在跑馬燈上方 */
+.markdown-body .text-content {
+    position: relative;
+    z-index: 2;
+    /* ✨ 讓主文字擁有平滑透明的能力 */
+    transition: opacity 0.3s ease; 
 }
 
-/* ========================================================================== */
-/* ✨ 高質感的自訂 Tooltip 氣泡 (毛玻璃霓虹版) */
-/* ========================================================================== */
-
-/* 1. 氣泡本體 */
-.markdown-body .md-highlight-text[data-badge]::after {
-    content: attr(data-badge);
+/* 3. 背景跑馬燈文字 (預設暗淡、字體放大加粗) */
+.markdown-body .marquee-text-track {
     position: absolute;
-    bottom: 100%; /* 顯示在文字正上方 */
-    left: 50%;
-    
-    /* 初始狀態：往下沉一點、稍微縮小、完全透明 */
-    transform: translateX(-50%) translateY(4px) scale(0.9);
-    
-    /* ✨ 樣式大翻新：壓克力透視與霓虹發光 */
-    background: var(--card); /* 底色使用卡片顏色，確保在深/淺色主題都能融入 */
-    color: var(--dynamic-glow); /* ✨ 字體直接使用該徽章的專屬顏色！ */
-    border: 1px solid color-mix(in srgb, var(--dynamic-glow) 40%, transparent); /* 邊框帶有 40% 的徽章顏色 */
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--dynamic-glow) 25%, transparent); /* 陰影散發專屬的光芒 */
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    top: 0;
+    left: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
     
     font-family: 'Courier New', monospace;
-    font-size: 0.75rem;
-    font-weight: 800;
-    padding: 2px 4px;
-    border-radius: 6px;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    z-index: 10;
-    letter-spacing: 0.05em;
-}
-
-/* 2. ✨ 新增：指向文字的小三角形 */
-.markdown-body .md-highlight-text[data-badge]::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%) translateY(4px) scale(0.9);
+    font-size: 0.9rem; /* ✨ 字體變大 */
+    font-weight: 900;  /* ✨ 字體加到最粗 */
+    letter-spacing: 0.1em;
     
-    /* 畫出向下的三角形 */
-    border: 5px solid transparent;
-    border-top-color: color-mix(in srgb, var(--dynamic-glow) 60%, transparent); /* 顏色跟隨徽章 */
+    /* 預設隱藏在背後的暗淡狀態 */
+    color: color-mix(in srgb, var(--dynamic-glow) 20%, transparent);
     
-    opacity: 0;
-    visibility: hidden;
+    animation: bg-text-marquee 18s linear infinite;
+    z-index: 1;
     pointer-events: none;
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-    z-index: 10;
+    
+    /* 顏色與發光的過渡動畫 */
+    transition: color 0.3s ease, text-shadow 0.3s ease; 
 }
 
-/* 3. 電腦版 (Hover) 與 手機版觸控 (Active) 的觸發動畫 */
-.markdown-body .md-highlight-text[data-badge]:hover::after,
-.markdown-body .md-highlight-text[data-badge]:active::after {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(-8px) scale(1); /* 氣泡往上浮 */
+/* ==========================================
+   ✨ X光透視互動 (支援 Click 鎖定 與 Hover 預覽)
+   ========================================== */
+
+/* 1. 主文字變透明隱藏 (加上 :hover) */
+.markdown-body .md-highlight-text.is-xray-active .text-content,
+.markdown-body .md-highlight-text:hover .text-content {
+    opacity: 0.1; 
 }
 
-.markdown-body .md-highlight-text[data-badge]:hover::before,
-.markdown-body .md-highlight-text[data-badge]:active::before {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(-1px) scale(1); /* 三角形緊貼在氣泡下方 */
+/* 2. 背景跑馬燈 100% 亮起！ (加上 :hover) */
+.markdown-body .md-highlight-text.is-xray-active .marquee-text-track,
+.markdown-body .md-highlight-text:hover .marquee-text-track {
+    color: var(--dynamic-glow);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--dynamic-glow) 80%, transparent);
 }
 
-/* 動態顏色呼吸燈動畫 */
-@keyframes highlight-dynamic-breathe {
-    0%, 100% {
-        background: color-mix(in srgb, var(--dynamic-glow) 10%, transparent);
-        box-shadow: 0 0 0 0 color-mix(in srgb, var(--dynamic-glow) 0%, transparent);
-    }
-    50% {
-        background: color-mix(in srgb, var(--dynamic-glow) 25%, transparent);
-        box-shadow: 0 0 8px 1px color-mix(in srgb, var(--dynamic-glow) 35%, transparent);
-    }
+/* 無縫滾動動畫 */
+@keyframes bg-text-marquee {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); } 
 }
+
 
 /* ========================================================================== */
 /* 🖼️ 第七層：大圖預覽引擎 (Lightbox Engine)                                    */
