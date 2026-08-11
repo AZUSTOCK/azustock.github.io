@@ -377,11 +377,11 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     opacity: 1; transform: translateX(-50%) translateY(0); 
 }
 
-/* ⬇️ 關鍵覆寫：讓貼在頂部的按鈕，Tooltip 改為「往下彈出」，以免被螢幕邊緣切掉 */
-.capsule-btn::after, .zoom-btn.floating::after, .toolbar-btn::after, .lightbox-capsule-btn::after { 
+/* ⬇️ 將 .mermaid-btn 加入往下彈出的清單中，避免被容器頂部切掉 */
+.capsule-btn::after, .zoom-btn.floating::after, .toolbar-btn::after, .lightbox-capsule-btn::after, .mermaid-btn::after { 
     top: 100%; margin-top: 10px; bottom: auto; transform: translateX(-50%) translateY(-8px); 
 }
-.capsule-btn::before, .zoom-btn.floating::before, .toolbar-btn::before, .lightbox-capsule-btn::before { 
+.capsule-btn::before, .zoom-btn.floating::before, .toolbar-btn::before, .lightbox-capsule-btn::before, .mermaid-btn::before { 
     top: 100%; margin-top: 0px; border-color: transparent transparent var(--text) transparent; transform: translateX(-50%) translateY(-8px); 
 }
 
@@ -492,7 +492,10 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     max-width: 800px; max-height: 90vh; max-height: 90dvh; 
     overflow-y: auto; 
     
-    /* ✨ 關鍵防禦 1：強制保留 Modal 內部的捲軸空間，防止內容長度變化時造成寬度抖動 */
+    /* ✨ 加上這行：強制隱藏水平溢出，徹底解決左右被撐開的問題！ */
+    overflow-x: hidden; 
+    
+    /* 關鍵防禦：強制保留 Modal 內部的捲軸空間，防止內容長度變化時造成寬度抖動 */
     scrollbar-gutter: stable; 
     
     overscroll-behavior: contain; -webkit-overflow-scrolling: touch; 
@@ -501,7 +504,6 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     transform: translateY(30px) scale(0.95) translateZ(0); 
     transition: transform 0.2s cubic-bezier(0.25,0.8,0.25,1), height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.5s ease, border-color 0.5s ease; 
     
-    /* ✨ 關鍵防禦 2：使用 transform 3D 強制獨立渲染層，隔離內部內容與外層背景的影響 */
     will-change: transform, height; 
     -webkit-backface-visibility: hidden; 
     backface-visibility: hidden; 
@@ -578,16 +580,31 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .article-li { margin-bottom: 0.5rem; padding-bottom: 0.5rem; }
 .article-li.is-normal { border-bottom: 1px dashed var(--divider-line); }
 .article-li.is-normal:last-child { border-bottom: none; }
-#modal-body li a { display: block; border-left: 4px solid transparent !important; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; }
 
-.article-li a:hover, #modal-body li a:hover, .article-li.simulate-hover a, #modal-body li.simulate-hover a {
-    background: var(--tag-bg) !important; border-left: 4px solid var(--accent) !important; transform: translateX(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+/* ✨ 修正：將 #modal-body li a 改為 .article-li a，避免波及文章內的普通清單超連結！ */
+.article-li a { 
+    display: block; 
+    border-left: 4px solid transparent !important; 
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; 
 }
-#modal-body li a:hover span[style*="font-size: 1.15rem"], .article-li a:hover span[style*="font-size: 1.15rem"], #modal-body li.simulate-hover a span[style*="font-size: 1.15rem"], .article-li.simulate-hover a span[style*="font-size: 1.15rem"] {
-    color: var(--accent-hover) !important; text-shadow: 0 0 8px var(--glow-1);
+
+.article-li a:hover, .article-li.simulate-hover a {
+    background: var(--tag-bg) !important; 
+    border-left: 4px solid var(--accent) !important; 
+    transform: translateX(10px); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
+
+.article-li a:hover span[style*="font-size: 1.15rem"], .article-li.simulate-hover a span[style*="font-size: 1.15rem"] {
+    color: var(--accent-hover) !important; 
+    text-shadow: 0 0 8px var(--glow-1);
+}
+
 .article-li.is-normal a:hover, .article-li.is-normal.simulate-hover a {
-    background: var(--tag-bg) !important; border-left: 4px solid var(--accent) !important; transform: translateX(8px); box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    background: var(--tag-bg) !important; 
+    border-left: 4px solid var(--accent) !important; 
+    transform: translateX(8px); 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
 .article-li.is-highlight { padding: 0; margin-bottom: 0.8rem; border-bottom: none; background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 12%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 2%, transparent) 100%); border-left: 6px solid var(--tab-color, var(--accent)); border-radius: 4px 12px 12px 4px; transition: background 0.2s ease, transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
@@ -999,14 +1016,74 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 
 /* 6-5. Mermaid 圖表引擎 */
 .mermaid-container { position: relative; margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; background: var(--bg); overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); transition: all 0.3s ease; }
-.mermaid-container:fullscreen, .mermaid-container:-webkit-full-screen { border: none; border-radius: 0; margin: 0; display: flex; flex-direction: column; }
-.mermaid-container:fullscreen .mermaid-wrapper, .mermaid-container:-webkit-full-screen .mermaid-wrapper { max-height: none; height: auto !important; flex: 1; }
-.mermaid-toolbar { display: flex; gap: 0.5rem; padding: 0.6rem 1rem; background: var(--glass-bg); border-bottom: 1px solid var(--card-border); justify-content: flex-end; }
-.mermaid-btn:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); }
-.mermaid-wrapper { width: 100%; max-height: 65vh; overflow: auto; padding: 1.5rem; box-sizing: border-box; text-align: center; cursor: grab; }
+
+/* 全螢幕背景與佈局 */
+.mermaid-container:fullscreen, .mermaid-container:-webkit-full-screen { border: none; border-radius: 0; margin: 0; display: flex; flex-direction: column; background: var(--bg); }
+
+.mermaid-toolbar { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 0.6rem 1rem; 
+    background: var(--glass-bg); 
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--card-border); 
+}
+
+.mermaid-title {
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    padding-left: 0.2rem;
+}
+
+.mermaid-btns { display: flex; gap: 0.5rem; }
+.mermaid-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(4px); position: relative; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
+.mermaid-btn:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); transform: scale(1.1) translateZ(0); box-shadow: 0 4px 12px var(--glow-1); }
+.mermaid-btn svg { display: block; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
+
+/* ✨ 拔除原生捲軸，改為固定高度與隱藏溢出，讓矩陣拖曳取代醜陋的捲軸 */
+.mermaid-wrapper { 
+    width: 100%; 
+    height: 60vh; 
+    max-height: 500px;
+    overflow: hidden; 
+    padding: 1.5rem; 
+    box-sizing: border-box; 
+    cursor: grab; 
+    position: relative;
+}
 .mermaid-wrapper:active { cursor: grabbing; }
-.mermaid { display: inline-block; vertical-align: middle; width: var(--zoom, 100%); transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-.mermaid svg { width: 100% !important; max-width: none !important; height: auto !important; }
+
+/* 全螢幕時解除高度限制，撐滿整個畫面 */
+.mermaid-container:fullscreen .mermaid-wrapper, 
+.mermaid-container:-webkit-full-screen .mermaid-wrapper { 
+    max-height: none; 
+    height: 100% !important; 
+    flex: 1; 
+}
+
+/* ✨ 核心修復：讓 mermaid 容器置中，SVG 限制最大寬高 */
+.mermaid { 
+    display: flex; 
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    transform-origin: center center;
+    transition: transform 0.15s cubic-bezier(0.25, 0.8, 0.25, 1); 
+}
+
+/* 限制 SVG 不能超過父容器，這樣 scale(1) 就永遠等同於「適應螢幕」！ */
+.mermaid svg { 
+    max-width: 100% !important; 
+    max-height: 100% !important; 
+    width: auto !important; 
+    height: auto !important; 
+    overflow: visible !important; 
+}
 
 /* 6-6. 直書模式 (.vertical-wrapper) */
 .vertical-wrapper { writing-mode: vertical-rl; height: 65vh; min-height: 400px; width: 100%; box-sizing: border-box; overflow-x: auto; overflow-y: hidden; padding: 2rem 1.5rem 0.5rem 1.5rem; margin: 1rem 0; border-radius: 12px; background: var(--box-bg); border: 1px solid var(--card-border); box-shadow: inset 0 0 20px rgba(0,0,0,0.02); }

@@ -786,73 +786,62 @@ renderer.image = function(token_or_href, title, text) {
     }
 };
 
-// 2. ✨ 攔截 Mermaid 程式碼區塊
+// 2. ✨ 攔截 Mermaid 程式碼區塊 (支援自訂標題與自動尋找)
 const originalCodeRenderer = renderer.code.bind(renderer);
 renderer.code = function(token_or_code, language, isEscaped) {
     const lang = typeof token_or_code === 'object' ? token_or_code.lang : language;
     const text = typeof token_or_code === 'object' ? token_or_code.text : token_or_code;
 
-    if (lang === 'mermaid') {
+    if (lang && lang.startsWith('mermaid')) {
+        // ✨ 優先檢查是否有自訂標題 (支援 ```mermaid[我的標題] 寫法)
+        let chartTitle = "流程圖 (Flowchart)";
+        const fullLang = typeof token_or_code === 'object' ? (token_or_code.lang || language) : (language || '');
+        const titleMatch = fullLang.match(/\[(.*?)\]/);
+        
+        if (titleMatch && titleMatch[1]) {
+            chartTitle = titleMatch[1];
+        } else if (window._lastMarkdownHeadings && window._lastMarkdownHeadings.length > 0) {
+            // 如果沒寫中括號，自動抓取文章中圖表上方最近的一個 Markdown 標題
+            chartTitle = window._lastMarkdownHeadings[window._lastMarkdownHeadings.length - 1];
+        }
+
         const encodedText = encodeURIComponent(text);
         return `
-        <div class="mermaid-container">
+        <div class="mermaid-container" data-zoom="1" data-x="0" data-y="0">
             <div class="mermaid-toolbar">
-                <button class="mermaid-btn" onclick="window.zoomMermaid(this, 1)" data-tooltip="放大">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                </button>
-                <button class="mermaid-btn" onclick="window.zoomMermaid(this, -1)" data-tooltip="縮小">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                </button>
-                <button class="mermaid-btn" onclick="window.zoomMermaid(this, 0)" data-tooltip="重設比例">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
-                </button>
-                <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 4px; align-self: center;"></div>
-                <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="全螢幕">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                </button>
+                <span class="mermaid-title">${chartTitle}</span>
+                <div class="mermaid-btns">
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                    </button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="縮小">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                    </button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="重設比例">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+                    </button>
+                    <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
+                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="全螢幕">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                    </button>
+                </div>
             </div>
             <div class="mermaid-wrapper">
-                <div class="mermaid" data-zoom="100" style="--zoom: 100%;" data-original-text="${encodedText}">${text}</div>
+                <div class="mermaid" data-original-text="${encodedText}">${text}</div>
             </div>
         </div>`;
     }
     return originalCodeRenderer.apply(this, arguments);
 };
 
-// 3. ✨ 攔截 Markdown 連結
-renderer.link = function(token_or_href, title, text) {
-    const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
-    const linkText = typeof token_or_href === 'object' ? token_or_href.text : text;
-    const linkTitle = typeof token_or_href === 'object' ? token_or_href.title : title;
-    
-    const titleAttr = linkTitle ? ` title="${linkTitle}"` : '';
-    if (!href) return `<a${titleAttr}>${linkText}</a>`;
-
-    if (href.startsWith('?p=')) {
-        return `<a href="${href}" onclick="window.handleSpaLink(event, '${href}')"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
-    }
-
-    // ✨ 新增：攔截內部錨點跳轉 (解決 Modal 內無法跳轉的問題，並修復字體變細)
-    if (href.startsWith('#')) {
-        return `<a href="${href}" onclick="window.scrollToAnchor(event, '${href}')"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
-    }
-    
-    if (href.startsWith('http')) {
-        const extIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr}>${linkText}${extIcon}</a>`;
-    }
-
-    return `<a href="${href}"${titleAttr}>${linkText}</a>`;
-};
-
-// 4. ✨ 攔截 Markdown 標題，自動賦予 ID (與 GitHub 同步，徹底修復錨點跳轉)
+// 4. ✨ 攔截 Markdown 標題，同時用全域陣列記住最新出現的標題文字
+window._lastMarkdownHeadings = [];
 renderer.heading = function(token_or_text, level, raw) {
     const text = typeof token_or_text === 'object' ? token_or_text.text : token_or_text;
     const depth = typeof token_or_text === 'object' ? token_or_text.depth : level;
     
-    // 將標題文字轉為小寫，並把空格替換成減號 (完全模擬 GitHub 的 ID 產生邏輯)
+    window._lastMarkdownHeadings.push(text);
     const id = text.toLowerCase().replace(/\s+/g, '-');
-    
     return `<h${depth} id="${id}">${text}</h${depth}>`;
 };
 
@@ -1839,6 +1828,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
             modalOverlay.classList.add('active');
             window.lockScroll();
+            window._lastMarkdownHeadings = [];
             
             modalBody.innerHTML = marked.parse(markdownContent);
 
@@ -2414,36 +2404,51 @@ document.addEventListener('keydown', (e) => {
 // ==========================================
 // ✨ Mermaid 專業控制台引擎
 // ==========================================
-window.zoomMermaid = function(btn, direction) {
+window.zoomMermaid = function(btn, action) {
     const container = btn.closest('.mermaid-container');
     const mermaidDiv = container.querySelector('.mermaid');
-    const wrapper = container.querySelector('.mermaid-wrapper'); 
-    if (!mermaidDiv || !wrapper) return;
+    if (!mermaidDiv) return;
 
-    let currentZoom = parseInt(mermaidDiv.getAttribute('data-zoom')) || 100;
-    if (!wrapper.dataset.lockedHeight) wrapper.dataset.lockedHeight = wrapper.offsetHeight + 'px';
+    let zoom = parseFloat(container.dataset.zoom) || 1;
+    let x = parseFloat(container.dataset.x) || 0;
+    let y = parseFloat(container.dataset.y) || 0;
 
-    if (direction === 0) {
-        currentZoom = 100; 
-        wrapper.style.height = '';
-        delete wrapper.dataset.lockedHeight;
-    } else {
-        wrapper.style.height = wrapper.dataset.lockedHeight;
-        currentZoom = Math.max(50, Math.min(currentZoom + (direction * 25), 400)); 
+    if (action === 'reset') {
+        zoom = 1; x = 0; y = 0;
+    } else if (action === 'zoom-in') {
+        zoom = Math.min(zoom + 0.5, 3);
+    } else if (action === 'zoom-out') {
+        zoom = Math.max(0.5, zoom - 0.5);
     }
 
-    mermaidDiv.setAttribute('data-zoom', currentZoom);
-    mermaidDiv.style.setProperty('--zoom', `${currentZoom}%`);
+    container.dataset.zoom = zoom;
+    container.dataset.x = x;
+    container.dataset.y = y;
+    mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
 };
 
 function restoreScrollAfterFullscreen() {
+    const modalContainer = document.querySelector('.modal-content');
+    
+    // 如果是退出全螢幕，恢復文章 Modal 的捲軸位置
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        const modalContainer = document.querySelector('.modal-content');
         if (modalContainer && window.preFullscreenScrollTop !== undefined) {
             setTimeout(() => { modalContainer.scrollTop = window.preFullscreenScrollTop; }, 50); 
         }
     }
+
+    // ✨ 核心修復 2：無論是進入或退出全螢幕，強制重設所有圖表比例與置中點，讓 CSS 接手自適應！
+    document.querySelectorAll('.mermaid-container').forEach(container => {
+        container.dataset.zoom = 1;
+        container.dataset.x = 0;
+        container.dataset.y = 0;
+        const mermaidDiv = container.querySelector('.mermaid');
+        if (mermaidDiv) {
+            mermaidDiv.style.transform = `translate(0px, 0px) scale(1)`;
+        }
+    });
 }
+
 document.addEventListener('fullscreenchange', restoreScrollAfterFullscreen);
 document.addEventListener('webkitfullscreenchange', restoreScrollAfterFullscreen); 
 
@@ -2462,25 +2467,66 @@ window.fullscreenMermaid = function(btn) {
 };
 
 window.initMermaidDrag = function() {
-    document.querySelectorAll('.mermaid-wrapper').forEach(wrapper => {
-        if (wrapper.dataset.dragInit) return;
-        wrapper.dataset.dragInit = 'true';
+    document.querySelectorAll('.mermaid-container').forEach(container => {
+        if (container.dataset.engineInit) return;
+        container.dataset.engineInit = 'true';
 
-        let isDown = false, startX, startY, scrollLeft, scrollTop;
+        const wrapper = container.querySelector('.mermaid-wrapper');
+        const mermaidDiv = container.querySelector('.mermaid');
+        if (!wrapper || !mermaidDiv) return;
 
+        let isDragging = false;
+        let startX = 0, startY = 0;
+
+        // 1. 滑鼠拖曳平移 (Pan)
         wrapper.addEventListener('mousedown', (e) => {
-            isDown = true;
-            startX = e.pageX - wrapper.offsetLeft; startY = e.pageY - wrapper.offsetTop;
-            scrollLeft = wrapper.scrollLeft; scrollTop = wrapper.scrollTop;
+            if (e.button !== 0) return;
+            isDragging = true;
+            startX = e.clientX - (parseFloat(container.dataset.x) || 0);
+            startY = e.clientY - (parseFloat(container.dataset.y) || 0);
+            wrapper.style.cursor = 'grabbing';
         });
-        wrapper.addEventListener('mouseleave', () => { isDown = false; });
-        wrapper.addEventListener('mouseup', () => { isDown = false; });
-        wrapper.addEventListener('mousemove', (e) => {
-            if (!isDown) return;
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            let x = e.clientX - startX;
+            let y = e.clientY - startY;
+            container.dataset.x = x;
+            container.dataset.y = y;
+            const zoom = parseFloat(container.dataset.zoom) || 1;
+            mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                wrapper.style.cursor = 'grab';
+            }
+        });
+
+        // 2. 滾輪對準游標中心縮放 (Wheel Zoom - 完美對齊 Lightbox 手感)
+        wrapper.addEventListener('wheel', (e) => {
             e.preventDefault();
-            wrapper.scrollLeft = scrollLeft - ((e.pageX - wrapper.offsetLeft) - startX);
-            wrapper.scrollTop = scrollTop - ((e.pageY - wrapper.offsetTop) - startY);
-        });
+            let zoom = parseFloat(container.dataset.zoom) || 1;
+            let x = parseFloat(container.dataset.x) || 0;
+            let y = parseFloat(container.dataset.y) || 0;
+
+            const delta = e.deltaY < 0 ? 1 : -1;
+            let newZoom = Math.max(0.5, Math.min(zoom * (1 + delta * 0.15), 3));
+
+            const rect = wrapper.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left - rect.width / 2;
+            const mouseY = e.clientY - rect.top - rect.height / 2;
+
+            const ratio = newZoom / zoom - 1;
+            x -= (mouseX - x) * ratio;
+            y -= (mouseY - y) * ratio;
+
+            container.dataset.zoom = newZoom;
+            container.dataset.x = x;
+            container.dataset.y = y;
+            mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${newZoom})`;
+        }, { passive: false });
     });
 };
 
