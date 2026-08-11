@@ -790,6 +790,107 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 @keyframes hint-pulse-right { 0%, 100% { transform: translateX(-8px); opacity: 0.4; } 50% { transform: translateX(5px); opacity: 1; } }
 @keyframes hint-pulse-left { 0%, 100% { transform: translateX(8px); opacity: 0.4; } 50% { transform: translateX(-5px); opacity: 1; } }
 
+/* ========================================================================== */
+/* ✨ 自訂 Markdown 擴充：動態高光螢光筆與呼吸燈 */
+/* ========================================================================== */
+
+.markdown-body .md-highlight-text {
+    /* padding: 0px 1px; */
+    /* margin: 0 2px;  */
+    border-radius: 6px;
+    /* font-weight: 600;  */
+    color: var(--text);
+    animation: highlight-dynamic-breathe 4s infinite ease-in-out;
+    position: relative; /* 氣泡定位基準 */
+    display: inline-block;
+}
+
+/* ✨ 只有當它有徽章時，游標變問號 */
+.markdown-body .md-highlight-text[data-badge] {
+    cursor: help; 
+}
+
+/* ========================================================================== */
+/* ✨ 高質感的自訂 Tooltip 氣泡 (毛玻璃霓虹版) */
+/* ========================================================================== */
+
+/* 1. 氣泡本體 */
+.markdown-body .md-highlight-text[data-badge]::after {
+    content: attr(data-badge);
+    position: absolute;
+    bottom: 100%; /* 顯示在文字正上方 */
+    left: 50%;
+    
+    /* 初始狀態：往下沉一點、稍微縮小、完全透明 */
+    transform: translateX(-50%) translateY(4px) scale(0.9);
+    
+    /* ✨ 樣式大翻新：壓克力透視與霓虹發光 */
+    background: var(--card); /* 底色使用卡片顏色，確保在深/淺色主題都能融入 */
+    color: var(--dynamic-glow); /* ✨ 字體直接使用該徽章的專屬顏色！ */
+    border: 1px solid color-mix(in srgb, var(--dynamic-glow) 40%, transparent); /* 邊框帶有 40% 的徽章顏色 */
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--dynamic-glow) 25%, transparent); /* 陰影散發專屬的光芒 */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 2px 4px;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 10;
+    letter-spacing: 0.05em;
+}
+
+/* 2. ✨ 新增：指向文字的小三角形 */
+.markdown-body .md-highlight-text[data-badge]::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px) scale(0.9);
+    
+    /* 畫出向下的三角形 */
+    border: 5px solid transparent;
+    border-top-color: color-mix(in srgb, var(--dynamic-glow) 60%, transparent); /* 顏色跟隨徽章 */
+    
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 10;
+}
+
+/* 3. 電腦版 (Hover) 與 手機版觸控 (Active) 的觸發動畫 */
+.markdown-body .md-highlight-text[data-badge]:hover::after,
+.markdown-body .md-highlight-text[data-badge]:active::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-8px) scale(1); /* 氣泡往上浮 */
+}
+
+.markdown-body .md-highlight-text[data-badge]:hover::before,
+.markdown-body .md-highlight-text[data-badge]:active::before {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-1px) scale(1); /* 三角形緊貼在氣泡下方 */
+}
+
+/* 動態顏色呼吸燈動畫 */
+@keyframes highlight-dynamic-breathe {
+    0%, 100% {
+        background: color-mix(in srgb, var(--dynamic-glow) 10%, transparent);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--dynamic-glow) 0%, transparent);
+    }
+    50% {
+        background: color-mix(in srgb, var(--dynamic-glow) 25%, transparent);
+        box-shadow: 0 0 8px 1px color-mix(in srgb, var(--dynamic-glow) 35%, transparent);
+    }
+}
 
 /* ========================================================================== */
 /* 🖼️ 第七層：大圖預覽引擎 (Lightbox Engine)                                    */

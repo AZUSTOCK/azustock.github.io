@@ -880,8 +880,41 @@ const spoilerExtension = {
     }
 };
 
+// ==========================================
+// ✨ 新增：動態高光螢光筆與呼吸燈擴充 (支援 ++文字++ 與 ++[徽章]文字++)
+// ==========================================
+const highlightExtension = {
+    name: 'updateHighlight',
+    level: 'inline',
+    start(src) { return src.match(/\+\+/)?.index; },
+    tokenizer(src, tokens) {
+        // ✨ 魔法正則：讓 [徽章] 變成可選項 (可有可無)
+        const rule = /^\+\+(?:\[(.*?)\])?(.*?)\+\+/; 
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'updateHighlight',
+                raw: match[0],
+                badgeText: match[1] || '',  // 抓取方括號內的字，如果沒寫就是空字串
+                content: match[2],          // 抓取內容
+                tokens: this.lexer.inlineTokens(match[2])
+            };
+        }
+    },
+    renderer(token) {
+        const badge = token.badgeText.trim();
+        // 如果有徽章，去抓對應顏色；如果沒寫徽章，預設給系統主題色 var(--accent)
+        const targetColor = badge ? window.getStatusColorFromCSS(badge.toUpperCase()) : 'var(--accent)';
+        
+        // ✨ 改用原生的 title 屬性，保證滑鼠移上去 100% 會出現提示框
+        const badgeAttr = badge ? ` data-badge="${badge}"` : '';
+        return `<span class="md-highlight-text" style="--dynamic-glow: ${targetColor};"${badgeAttr}>${this.parser.parseInline(token.tokens)}</span>`;
+    }
+};
+
+// ✨ 把 highlightExtension 加進去系統！
 marked.use({ 
-    extensions: [spoilerExtension], 
+    extensions: [spoilerExtension, highlightExtension], 
     renderer: renderer,
     breaks: false, 
     gfm: true      
@@ -1767,6 +1800,24 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             window.lockScroll();
             
             modalBody.innerHTML = marked.parse(markdownContent);
+
+            modalBody.querySelectorAll('.md-highlight-block').forEach(block => {
+                const badge = block.querySelector('.highlight-badge');
+                const textEl = block.querySelector('.highlight-text');
+                
+                if (textEl) {
+                    const badgeText = badge ? badge.innerText.trim() : '';
+                    const targetColor = badgeText ? window.getStatusColorFromCSS(badgeText.toUpperCase()) : 'var(--accent-2)';
+                    
+                    // 瞬間換皮：轉化為新版結構
+                    block.className = 'md-highlight-text';
+                    block.style.setProperty('--dynamic-glow', targetColor);
+                    if (badgeText) block.setAttribute('data-badge', badgeText);
+                    
+                    // 徹底抹除原有的 badge DOM，只保留純文字內文
+                    block.innerHTML = textEl.innerHTML; 
+                }
+            });
 
             const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
             // ✨ 加上 idx 參數來對應陣列
