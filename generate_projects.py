@@ -69,7 +69,18 @@ def create_og_image(original_path, output_path, bg_path=None):
         y = (OG_SIZE[1] - new_size[1]) // 2
         
         bg.paste(img, (x, y), img)
-        bg.convert("RGB").save(output_path, "WEBP", quality=90)
+        
+        # ✨ 核心修復：為 OG 圖片注入 EXIF 數位版權簽章
+        final_img = bg.convert("RGB")
+        clean_exif = final_img.getexif()
+        clean_exif.clear()
+        clean_exif[40093] = ("風川梓 (Azustock)" + '\x00').encode('utf-16le')
+        clean_exif[40092] = ("Copyright (c) 2026 風川梓 (Azustock). All rights reserved." + '\x00').encode('utf-16le')
+        clean_exif[315] = "Azustock"
+        exif_bytes = clean_exif.tobytes()
+        
+        # 儲存時寫入 exif
+        final_img.save(output_path, "WEBP", quality=90, exif=exif_bytes)
         return True
     except Exception as e:
         print(f"⚠️ 生成 OG 圖片失敗 {original_path}: {e}")
