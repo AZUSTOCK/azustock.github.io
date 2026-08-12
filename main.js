@@ -3019,7 +3019,7 @@ window.scrollToAnchor = function(event, hash) {
 };
 
 // ==========================================
-// ✨ 獨立打包：終極精準捲動引擎 (支援延遲補償)
+// ✨ 獨立打包：終極精準捲動引擎 (拔除擾人的強制鎖定)
 // ==========================================
 window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
     const modalContainer = document.querySelector('.modal-content');
@@ -3048,15 +3048,10 @@ window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
     const foundEl = doScroll(!forceInstantFirst);
 
     if (foundEl) {
-        // 多重補償，對抗圖片載入撐開版面
+        // ✨ 核心修復：拔除多重延遲強制拉回，只保留一次輕微延遲確保圖片撐出版面
         setTimeout(() => doScroll(!forceInstantFirst), 150);
-        setTimeout(() => doScroll(true), 500);
-        setTimeout(() => doScroll(true), 800);
 
-        // ✨ 智慧尋找發光目標：
-        // 如果錨點本身有包住內容，就會精準點亮被 ID 包住的區域。
-        // 如果錨點是空的 (例如 <span id="..."></span>)，則優先點亮「緊接著的下一個元素」(例如正下方的 ## 標題)。
-        // 取消往上抓取父層的邏輯，避免整個大區塊被錯誤點亮。
+        // 智慧尋找發光目標
         let highlightEl = foundEl;
         if (highlightEl.textContent.trim() === '') {
             highlightEl = highlightEl.nextElementSibling || foundEl;
