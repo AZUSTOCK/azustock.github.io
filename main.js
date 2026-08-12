@@ -1300,7 +1300,8 @@ async function loadProjects() {
     const marquee = document.getElementById('marquee-text');
 
     try {
-        const response = await fetch(CONFIG.DATA_SOURCE);
+        // ✨ 加入時間戳防護，徹底破壞 JSON 快取，保證資料 100% 最新！
+        const response = await fetch(`${CONFIG.DATA_SOURCE}?t=${new Date().getTime()}`);
         const db = await response.json();
         
         const categories = db.categories;
@@ -1570,7 +1571,349 @@ async function loadProjects() {
     }
 }
 
-window.addEventListener('DOMContentLoaded', loadProjects);
+// ==========================================
+// ✨ 共用引擎：平滑淡入 / 無縫接軌的終端機重開機畫面
+// ==========================================
+function showSystemRebootScreen(title, localV, remoteV, msg, immediate = false) {
+    document.body.style.overflow = 'hidden'; 
+    let screen = document.getElementById('sys-reboot-screen');
+    
+    if (!screen) {
+        screen = document.createElement('div');
+        screen.id = 'sys-reboot-screen';
+        screen.style.cssText = `position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); opacity:${immediate ? '1' : '0'}; transition:opacity 0.3s ease;`;
+        document.body.appendChild(screen);
+        
+        if (!immediate) {
+            setTimeout(() => { screen.style.opacity = '1'; }, 10);
+        }
+    }
+    
+    // ✨ 加上了 reboot-title class，方便消失前更改文字
+    screen.innerHTML = `
+        <div class="reboot-title" style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1); transition: color 0.3s ease, text-shadow 0.3s ease;">>_ ${title}</div>
+        <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${localV} | Remote: ${remoteV}</div>
+        <div class="loading-text" style="font-size: 1.1rem; transition: color 0.3s ease;">${msg}</div>
+    `;
+}
+
+// ==========================================
+// ✨ 移除遮罩的函數 (加入成功/失敗的主動狀態切換！)
+// ==========================================
+function hideSystemRebootScreen(isSuccess = true) {
+    const screen = document.getElementById('sys-reboot-screen');
+    
+    // 如果沒有遮罩 (一般訪客)，直接解除防護並返回
+    if (!screen) {
+        document.documentElement.classList.remove('sys-rebooting');
+        document.body.style.overflow = '';
+        return;
+    }
+
+    // ✨ 魔法發生地：在消失前，主動把文字切換成成功或退回狀態！
+    const titleEl = screen.querySelector('.reboot-title');
+    const msgEl = screen.querySelector('.loading-text');
+    
+    if (isSuccess) {
+        if (titleEl) { titleEl.innerText = '>_ SYSTEM_ONLINE'; titleEl.style.color = 'var(--accent-2)'; titleEl.style.textShadow = '0 0 10px var(--accent-2)'; }
+        if (msgEl) { msgEl.innerText = 'UPDATE_SUCCESSFUL'; msgEl.style.color = 'var(--accent-2)'; msgEl.style.animation = 'none'; }
+    } else {
+        if (titleEl) { titleEl.innerText = '>_ SYSTEM_REVERTED'; titleEl.style.color = 'var(--muted)'; titleEl.style.textShadow = 'none'; }
+        if (msgEl) { msgEl.innerText = 'CDN_CACHE_DELAY'; msgEl.style.color = 'var(--muted)'; msgEl.style.animation = 'none'; }
+    }
+
+    // ✨ 停頓 0.6 秒讓使用者欣賞成功訊息，再平滑淡出
+    setTimeout(() => {
+        // 瞬間拔除 HTML 的隱形斗篷，讓底層早就畫好的新版網站準備就緒
+        document.documentElement.classList.remove('sys-rebooting');
+        document.body.style.overflow = '';
+
+        screen.style.transition = 'opacity 0.5s ease';
+        screen.style.opacity = '0';
+        setTimeout(() => { screen.remove(); }, 500);
+    }, 600);
+}
+
+// ==========================================
+// ✨ 全域引擎：版本快取防禦與自動重載系統 (Auto-Updater Engine)
+// ==========================================
+async function checkSystemVersionAndBoot() {
+    const isRebooting = sessionStorage.getItem('sys_is_rebooting') === 'true';
+    const expectedVersion = sessionStorage.getItem('sys_expected_version') || 'UNKNOWN';
+
+    if (isRebooting) {
+        // 如果剛重整完，畫面會因為 index.html 的設定保持全黑。我們立刻放上無縫遮罩！
+        showSystemRebootScreen('SYSTEM_REBOOTING', CONFIG.VERSION, expectedVersion, 'VERIFYING_MODULES', true);
+    }
+
+    try {
+        const res = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
+        const logs = await res.json();
+        
+        if (logs && logs.length > 0) {
+            const remoteVersion = logs[0].version; 
+            
+            if (remoteVersion !== CONFIG.VERSION) {
+                console.warn(`[SYS_UPDATE] 偵測到版本差異 (本機: ${CONFIG.VERSION}, 遠端: ${remoteVersion})`);
+                
+                const rebootCount = parseInt(sessionStorage.getItem('sys_reboot_count') || '0');
+                if (rebootCount >= 2) {
+                    console.error("[SYS_UPDATE] 自動更新失敗，可能因為 CDN 伺服器快取延遲。已強制啟動舊版系統。");
+                    
+                    sessionStorage.removeItem('sys_reboot_count'); 
+                    sessionStorage.removeItem('sys_is_rebooting');
+                    sessionStorage.removeItem('sys_expected_version');
+                    
+                    hideSystemRebootScreen(false); // ✨ 傳入 false 顯示失敗狀態
+                    loadProjects(); 
+                    
+                    // ✨ 完美修復版 Toast：從右上角降落，且點擊消失
+                    setTimeout(() => {
+                        const errorToast = document.createElement('div');
+                        errorToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer;";
+                        errorToast.innerHTML = `
+                            <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; transition: box-shadow 0.3s ease;">
+                                
+                                <!-- ✨ 修正 X 旋轉軸心偏移：鎖死尺寸、使用 flex 絕對置中，並設定 transform-origin -->
+                                <div class="toast-x-icon" style="position: absolute; top: 12px; right: 14px; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center;">
+                                    <!-- ✨ 加上 display: block 徹底消除 SVG 預設的文字底部隱形留白 -->
+                                    <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </div>
+                                
+                                <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">>_ UPDATE_FAILED</strong>
+                                <span style="opacity: 0.95; font-weight: 600; padding-right: 1.5rem;">CDN_CACHE_DELAY_DETECTED</span>
+                                <span style="opacity: 0.85; font-size: 0.8rem;">已暫時還原為安全版本 (v${CONFIG.VERSION})</span>
+                            </div>
+                        `;
+
+                        document.body.appendChild(errorToast);
+
+                        setTimeout(() => {
+                            errorToast.style.opacity = '1';
+                            errorToast.style.transform = 'translateY(0)';
+                        }, 50);
+
+                        const toastBox = errorToast.firstElementChild;
+                        const xIcon = errorToast.querySelector('.toast-x-icon');
+
+                        // 懸停時增強陰影微光，X 完美繞著中心點順時針轉 90 度
+                        toastBox.onmouseenter = () => { 
+                            toastBox.style.boxShadow = '0 0 25px var(--error-shadow), 0 0 10px rgba(255,255,255,0.2)'; 
+                            if (xIcon) xIcon.style.transform = 'rotate(90deg) scale(1.1)';
+                        };
+                        toastBox.onmouseleave = () => { 
+                            toastBox.style.boxShadow = '0 4px 20px var(--error-shadow)'; 
+                            if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
+                        };
+
+                        // 點擊事件：立刻淡出並移除，且清除自動移除的計時器
+                        errorToast.onclick = () => {
+                            clearTimeout(autoRemoveTimer);
+                            errorToast.style.opacity = '0';
+                            errorToast.style.transform = 'translateY(-10px)';
+                            setTimeout(() => errorToast.remove(), 400);
+                        };
+                        
+                        const autoRemoveTimer = setTimeout(() => {
+                            errorToast.style.opacity = '0';
+                            errorToast.style.transform = 'translateY(-10px)';
+                            setTimeout(() => errorToast.remove(), 400);
+                        }, 8000);
+                    }, 1000);
+                    
+                    return;
+                }
+                
+                sessionStorage.setItem('sys_reboot_count', (rebootCount + 1).toString());
+                sessionStorage.setItem('sys_is_rebooting', 'true');
+                sessionStorage.setItem('sys_expected_version', remoteVersion);
+
+                showSystemRebootScreen('SYSTEM_VERSION_MISMATCH', CONFIG.VERSION, remoteVersion, 'SYS_UPDATING...', isRebooting);
+                
+                setTimeout(() => {
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('v', new Date().getTime());
+                    window.location.replace(newUrl.toString());
+                }, 1800);
+                
+                return; 
+            } else {
+                sessionStorage.removeItem('sys_reboot_count');
+                sessionStorage.removeItem('sys_is_rebooting');
+                sessionStorage.removeItem('sys_expected_version');
+            }
+        }
+    } catch (err) {
+        console.warn("版本檢查程序跳過:", err);
+        sessionStorage.removeItem('sys_is_rebooting');
+    }
+    
+    // ✨ 傳入 true 顯示成功狀態，並渲染新網站
+    hideSystemRebootScreen(true);
+    loadProjects();
+}
+
+window.addEventListener('DOMContentLoaded', checkSystemVersionAndBoot);
+// ==========================================
+// ✨ 升級版系統日誌：支援「手動強制更新檢查」
+// ==========================================
+window.cachedChangelogs = null; 
+
+window.showChangelogModal = async function() {
+    document.body.style.cursor = 'wait';
+    let fetchError = false;
+
+    try {
+        const response = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
+        if (!response.ok) throw new Error('找不到 changelogs.json');
+        const latestLogs = await response.json();
+        
+        if (latestLogs && latestLogs.length > 0 && latestLogs[0].version !== CONFIG.VERSION) {
+            console.warn(`[MANUAL_UPDATE] 發現新版本 ${latestLogs[0].version}，準備強制更新...`);
+            
+            // 手動更新，核發「無縫重整通行證」
+            sessionStorage.removeItem('sys_reboot_count');
+            sessionStorage.setItem('sys_is_rebooting', 'true');
+            sessionStorage.setItem('sys_expected_version', latestLogs[0].version);
+
+            showSystemRebootScreen('MANUAL_OVERRIDE : UPDATE', CONFIG.VERSION, latestLogs[0].version, 'SYS_REBOOTING...');
+            
+            setTimeout(() => {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('v', new Date().getTime());
+                window.location.replace(newUrl.toString());
+            }, 1800);
+            
+            return; 
+        }
+
+        window.cachedChangelogs = latestLogs;
+
+    } catch (error) {
+        console.error("日誌讀取或更新檢查失敗:", error);
+        fetchError = true;
+    }
+    
+    document.body.style.cursor = '';
+
+    // 共用標題渲染
+    function renderChangelogHeader(isDetail = false, logData = null) {
+        const modalTopLeft = document.getElementById('modal-top-left');
+        if (!modalTopLeft) return;
+        
+        if (!isDetail) {
+            modalTopLeft.innerHTML = `
+                <div class="index-header-container">
+                    <h1 class="index-header-title">System Changelog</h1>
+                    <div class="index-header-actions">
+                        <span class="article-count-badge">Update History</span>
+                    </div>
+                </div>
+            `;
+        } else {
+            let badgeHTML = '';
+            if (logData) {
+                let activeStatus = logData.status === 'LATEST' ? 'NEW' : logData.status;
+                badgeHTML = `<span class="status-badge" data-status="${activeStatus}">${logData.status}</span>`;
+            }
+
+            modalTopLeft.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;">
+                    <button class="modal-back-btn" onclick="window.renderChangelogIndex()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        返回清單
+                    </button>
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <span style="font-family: monospace; font-weight: 900; color: var(--accent); font-size: 1.5rem; letter-spacing: 0.05em; line-height: 1; transform: translateY(1px);">${logData ? logData.version : ''}</span>
+                        ${badgeHTML}
+                        <span style="font-family: monospace; color: var(--muted); font-size: 0.9rem; margin-left: 0.2rem; transform: translateY(2px);">${logData ? logData.date : ''}</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // 第一層：索引清單
+    window.renderChangelogIndex = function() {
+        switchModalContent(
+            () => {
+                const modalOverlay = document.getElementById('md-modal');
+                const modalBody = document.getElementById('modal-body');
+                const tocMountPoint = document.getElementById('toc-mount-point');
+                
+                if (tocMountPoint) tocMountPoint.innerHTML = '';
+                renderChangelogHeader(false);
+
+                if (fetchError || !window.cachedChangelogs) {
+                    modalBody.innerHTML = `
+                        <div style="text-align:center; padding: 3rem 0; color: var(--error-color);">
+                            <p>System Error: 無法載入版本日誌。</p>
+                        </div>
+                    `;
+                } else {
+                    let listHTML = '<ul class="article-list-ul">';
+                    window.cachedChangelogs.forEach(log => {
+                        let activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
+                        let tabColor = window.getStatusColorFromCSS(activeStatus);
+                        let badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
+
+                        listHTML += `
+                            <li class="article-li is-highlight" style="--tab-color: ${tabColor}; margin-bottom: 1rem;">
+                                <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${log.id}')">
+                                    <div class="article-item-icon-wrap">
+                                        <div class="article-item-fallback" style="color: ${tabColor};">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                <polyline points="10 9 9 9 8 9"></polyline>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="article-item-content">
+                                        <div class="article-item-title-row">
+                                            <span class="article-item-title"><span style="font-family: monospace; color: var(--accent-2); font-size: 1.15rem;">${log.version}</span>${badgeHTML}</span>
+                                            <span class="article-item-desc">- ${log.description}</span>
+                                        </div>
+                                        <span class="article-item-date">${log.date}</span>
+                                    </div>
+                                </a>
+                            </li>
+                        `;
+                    });
+                    listHTML += '</ul>';
+                    modalBody.innerHTML = listHTML;
+                }
+                
+                modalOverlay.classList.add('active');
+                window.lockScroll();
+            },
+            () => document.querySelector('.modal-content').scrollTop = 0
+        );
+    };
+
+    // 第二層：詳細記錄
+    window.renderChangelogDetail = function(logId) {
+        const targetLog = window.cachedChangelogs.find(l => l.id === logId);
+        if (!targetLog) return;
+
+        switchModalContent(
+            () => {
+                renderChangelogHeader(true, targetLog);
+                const modalBody = document.getElementById('modal-body');
+                modalBody.innerHTML = `
+                    <div class="markdown-body" style="margin-top: -0.5rem;">
+                        ${marked.parse(targetLog.content)}
+                    </div>
+                `;
+            },
+            () => document.querySelector('.modal-content').scrollTop = 0
+        );
+    };
+
+    window.renderChangelogIndex();
+};
 
 // === 4. 索引式 Markdown Modal 邏輯 ===
 const modalOverlay = document.getElementById('md-modal');
@@ -2927,7 +3270,7 @@ window.showCreditsModal = async function() {
 };
 
 // ==========================================
-// ✨ 升級版系統日誌：支援兩層式架構與平滑動畫過場 (全動態讀取 CSS 版)
+// ✨ 升級版系統日誌：支援兩層式架構、平滑動畫過場，與「手動強制更新檢查」！
 // ==========================================
 window.cachedChangelogs = null; 
 
@@ -2935,16 +3278,46 @@ window.showChangelogModal = async function() {
     document.body.style.cursor = 'wait';
     let fetchError = false;
 
-    if (!window.cachedChangelogs) {
-        try {
-            const response = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
-            if (!response.ok) throw new Error('找不到 changelogs.json');
-            window.cachedChangelogs = await response.json();
-        } catch (error) {
-            console.error(error);
-            fetchError = true;
+    // ✨ 移除 !window.cachedChangelogs 的限制，讓「每一次點擊按鈕」都強制向伺服器對答案！
+    try {
+        const response = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
+        if (!response.ok) throw new Error('找不到 changelogs.json');
+        const latestLogs = await response.json();
+        
+        // ✨ 手動更新偵測魔法：比對版本號
+        if (latestLogs && latestLogs.length > 0 && latestLogs[0].version !== CONFIG.VERSION) {
+            console.warn(`[MANUAL_UPDATE] 發現新版本 ${latestLogs[0].version}，準備強制更新...`);
+            
+            // 解除無限重啟鎖定，因為這是使用者手動按下的更新要求！
+            sessionStorage.removeItem('sys_reboot_count');
+
+            // 顯示專屬的手動更新終端機畫面
+            document.body.insertAdjacentHTML('beforeend', `
+                <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent);">
+                    <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
+                    <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${latestLogs[0].version}</div>
+                    <div class="loading-text" style="font-size: 1.1rem;">FETCHING_NEW_DATA_AND_REBOOTING</div>
+                </div>
+            `);
+            
+            // 強制加上時戳破壞快取並重新整理
+            setTimeout(() => {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('v', new Date().getTime());
+                window.location.replace(newUrl.toString());
+            }, 1800);
+            
+            return; // 🛑 直接中斷，不顯示日誌視窗，進入重開機程序
         }
+
+        // 如果版本一樣，就把最新資料寫入快取，給後面的 Modal 渲染用
+        window.cachedChangelogs = latestLogs;
+
+    } catch (error) {
+        console.error("日誌讀取或更新檢查失敗:", error);
+        fetchError = true;
     }
+    
     document.body.style.cursor = '';
 
     // 共用標題渲染 (邏輯同步精簡)

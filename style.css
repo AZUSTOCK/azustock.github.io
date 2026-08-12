@@ -750,9 +750,11 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
-.article-li a:hover span[style*="font-size: 1.15rem"], .article-li.simulate-hover a span[style*="font-size: 1.15rem"] {
-    color: var(--accent-hover) !important; 
-    text-shadow: 0 0 8px var(--glow-1);
+/* ✨ 乾淨俐落的標題 Hover 變色 */
+.article-li a:hover .article-item-title, 
+.article-li.simulate-hover a .article-item-title {
+    color: var(--accent-2) !important; 
+    text-shadow: 0 0 8px var(--glow-1); /* 保留原本微弱的發光感，更有層次 */
 }
 
 .article-li.is-normal a:hover, .article-li.is-normal.simulate-hover a {

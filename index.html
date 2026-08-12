@@ -9,6 +9,21 @@
 
   <title>風川梓 | Azustock</title>
 
+  <!-- ========================================== -->
+  <!-- ✨ 0 毫秒無縫接軌引擎：防止重整時舊畫面與遮罩閃爍 -->
+  <!-- ========================================== -->
+  <style>
+      /* 如果正在重啟，隱藏 body 內的所有東西，只准顯示黑底遮罩 */
+      html { background-color: #020617; }
+      html.sys-rebooting body > *:not(#sys-reboot-screen) { display: none !important; }
+  </style>
+  <script>
+      // 在畫面連第一幀都還沒畫出來之前，如果發現通行證，立刻披上隱形斗篷！
+      if (sessionStorage.getItem('sys_is_rebooting') === 'true') {
+          document.documentElement.classList.add('sys-rebooting');
+      }
+  </script>
+
   <!-- ✨ 1. 圖示與 PWA 設定 (已更新為 azustock 絕對路徑) -->
   <link rel="apple-touch-icon" sizes="180x180" href="https://azustock.github.io/assets/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="https://azustock.github.io/assets/favicon-32x32.png">
@@ -34,8 +49,8 @@
   
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="./style.css?u=1.5.0" />
-  <script defer src="./main.js?u=1.5.0"></script>
+  <link rel="stylesheet" href="./style.css?u=1.5.0.1" />
+  <script defer src="./main.js?u=1.5.0.1"></script>
 </head>
 <body>
 <button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
