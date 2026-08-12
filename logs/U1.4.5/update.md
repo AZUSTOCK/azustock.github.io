@@ -9,9 +9,10 @@
 
 ## adjust
 1. scroll timeout
+2. organize *.py to tools/
 
 ## fix
-1. 
+1. tools/*.py path & behavior
 
 ## deprecate
 1. 

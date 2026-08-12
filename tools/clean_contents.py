@@ -1,6 +1,9 @@
 import os
 
-def clean_old_contents_json(directory="projects"):
+# ✨ 魔法路徑：自動從 tools 資料夾往上一層找到 projects
+DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'projects'))
+
+def clean_old_contents_json(directory=DEFAULT_DIR):
     """
     遞迴掃描指定目錄，並刪除所有的 contents.json 檔案
     """

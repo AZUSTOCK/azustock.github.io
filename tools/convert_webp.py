@@ -2,6 +2,9 @@ import os
 import glob
 from PIL import Image
 
+# ✨ 魔法路徑：自動從 tools 資料夾往上一層找到 projects
+DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'projects'))
+
 # ==========================================
 # 🛡️ 防偽與轉檔設定區
 # ==========================================
@@ -11,7 +14,7 @@ AUTHOR_NAME = "風川梓 (Azustock)"
 COPYRIGHT_TEXT = f"Copyright (c) 2026 {AUTHOR_NAME}. All rights reserved."
 # ==========================================
 
-def convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=None, max_size=MAX_SIZE, ratio=RATIO):
+def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode=None, max_size=MAX_SIZE, ratio=RATIO):
     """
     掃描目錄下的圖片，進行「降解析度」、「壓印浮水印」、「寫入版權 EXIF」並轉換為 WebP。
     包含已存在檔案的處理策略選擇，並支援無外掛自動化執行。
@@ -37,9 +40,9 @@ def convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=
         print("\n✅ 已選擇「跳過」模式：只會處理尚未轉檔的新圖片。\n")
 
     search_patterns = [
-        f"{directory}/**/*.png",
-        f"{directory}/**/*.jpg",
-        f"{directory}/**/*.jpeg"
+        os.path.join(directory, "**/*.png"),
+        os.path.join(directory, "**/*.jpg"),
+        os.path.join(directory, "**/*.jpeg")
     ]
     
     image_files = []
@@ -64,13 +67,9 @@ def convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=
                     continue
                 
             with Image.open(img_path) as img:
-                # 1. 抽取純淨靈魂
                 clean_img = img.convert("RGBA")
-                
-                # 2. 物理超渡
                 clean_img.info.clear()
 
-                # 3. 降維打擊 (精準計算邊界，確保只執行單次運算)
                 orig_width, orig_height = clean_img.size
 
                 if orig_width > 300 and orig_height > 300:
@@ -84,7 +83,6 @@ def convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=
                 else:
                     clean_img.thumbnail(max_size, Image.Resampling.LANCZOS)
                 
-                # 4. 建立全新的數位簽名
                 clean_exif = clean_img.getexif()
                 clean_exif.clear() 
                 
@@ -94,16 +92,15 @@ def convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=
                 
                 exif_bytes = clean_exif.tobytes()
 
-                # 修改存檔參數，加入 method=6
                 clean_img.save(webp_path, "webp", quality=quality, exif=exif_bytes)
             
             original_size = os.path.getsize(img_path) / 1024
             new_size = os.path.getsize(webp_path) / 1024
             
             if force_overwrite and os.path.exists(webp_path):
-                 print(f"🔄 複寫成功: {img_path} ({original_size:.1f} KB -> {new_size:.1f} KB)")
+                 print(f"🔄 複寫成功: {os.path.basename(img_path)} ({original_size:.1f} KB -> {new_size:.1f} KB)")
             else:
-                 print(f"✅ 轉換成功: {img_path} ({original_size:.1f} KB -> {new_size:.1f} KB)")
+                 print(f"✅ 轉換成功: {os.path.basename(img_path)} ({original_size:.1f} KB -> {new_size:.1f} KB)")
             
             success_count += 1
             
@@ -119,10 +116,6 @@ def convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=
 def generate_cover_thumbnail(src_path, dest_path, max_width=320, quality=80):
     """
     讀取原始圖片，等比例縮小並轉換為 WebP，存入 api 資料夾。
-    :param src_path: 原始圖片路徑 (例如 projects/my_proj/cover.png)
-    :param dest_path: 目標儲存路徑 (例如 api/my_proj/cover_thumb.webp)
-    :param max_width: 縮圖的最大寬度限制
-    :param quality: WebP 壓縮品質
     """
     if not os.path.exists(src_path):
         print(f"⚠️ 找不到來源圖片: {src_path}")
@@ -143,18 +136,24 @@ def generate_cover_thumbnail(src_path, dest_path, max_width=320, quality=80):
                 # 使用 LANCZOS 演算法確保縮小後的畫質平滑
                 img = img.resize(new_size, Image.Resampling.LANCZOS)
             
+            # ✨ 核心修復：為所有縮圖注入 EXIF 數位版權簽章
+            clean_exif = img.getexif()
+            clean_exif.clear() 
+            clean_exif[40093] = (AUTHOR_NAME + '\x00').encode('utf-16le')
+            clean_exif[40092] = (COPYRIGHT_TEXT + '\x00').encode('utf-16le')
+            clean_exif[315] = "Azustock" 
+            exif_bytes = clean_exif.tobytes()
+
             # 確保 API 目標資料夾存在
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             
-            # 儲存為 WebP
-            img.save(dest_path, "WEBP", quality=quality)
+            # 儲存為 WebP (加上 exif 參數！)
+            img.save(dest_path, "WEBP", quality=quality, exif=exif_bytes)
             return True
             
     except Exception as e:
         print(f"❌ 縮圖生成失敗 {src_path}: {e}")
         return False
 
-
 if __name__ == "__main__":
-    # 將預設 quality 調高至 90，保留浮水印與畫面細節
-    convert_to_webp_with_protection(directory="projects", quality=90)
+    convert_to_webp_with_protection(quality=90)

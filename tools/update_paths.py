@@ -1,6 +1,10 @@
+import os
 import glob
 
-def update_extensions_to_webp(directory="projects"):
+# ✨ 魔法路徑：自動從 tools 資料夾往上一層找到 projects
+DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'projects'))
+
+def update_extensions_to_webp(directory=DEFAULT_DIR):
     """
     掃描指定目錄下的所有 .md 與 .json 檔案，
     將內文中的 .png, .jpg, .jpeg 批量替換為 .webp。
@@ -43,4 +47,4 @@ def update_extensions_to_webp(directory="projects"):
     print(f"\n🎉 系統路徑升級完成！共修改了 {success_count} 個檔案。")
 
 if __name__ == "__main__":
-    update_extensions_to_webp(directory="projects")
+    update_extensions_to_webp()
