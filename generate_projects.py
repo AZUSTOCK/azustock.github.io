@@ -269,6 +269,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             if proj_data.get('updated'): clean_proj_data['is_updated'] = True
             if proj_data.get('wip'): clean_proj_data['is_wip'] = True
             if proj_data.get('archived'): clean_proj_data['is_archived'] = True
+            if proj_data.get('hidden'): clean_proj_data['is_hidden'] = True
             if proj_data.get('groups'): clean_proj_data['groups'] = proj_data.get('groups')
             
             proj_cover = proj_data.get('cover')
@@ -584,7 +585,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             if sub_data.get('date'): article_obj["date"] = sub_data.get('date')
                             if sub_data.get('tags'): article_obj["tags"] = sub_data.get('tags')
                             
-                            for key in ['pinned', 'new', 'updated', 'wip', 'archived']:
+                            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden']:
                                 if sub_data.get(key): article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = True
 
                             if 'groups' in proj_data:

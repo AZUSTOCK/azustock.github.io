@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW" data-theme="light"> <!-- 預設背景 -->
+<html lang="zh-TW" data-theme="dark"> <!-- 預設主題 -->
 <head>
   <meta charset="UTF-8" />
   <!-- 強制瀏覽器每次都向伺服器驗證是否有新版本 HTML -->
@@ -34,8 +34,8 @@
   
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="./style.css?u=1.4.4.1" />
-  <script defer src="./main.js?u=1.4.4.1"></script>
+  <link rel="stylesheet" href="./style.css?u=1.5.0" />
+  <script defer src="./main.js?u=1.5.0"></script>
 </head>
 <body>
 <button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
@@ -185,10 +185,12 @@
     </button>
     </div>
   </header>
+    <!-- ✨ 跑馬燈外層容器 -->
     <div class="marquee-container">
-      <div class="marquee-content" id="marquee-text">
-        Loading skills...
-      </div>
+        <!-- ✨ 初始狀態：置中的 Loading 文字 (會被 JS 無縫替換) -->
+        <div id="marquee-text" class="initial-loading">
+            >_ SYSTEM_BOOTING : AWAITING_DATA_STREAM...
+        </div>
     </div>
 
   <main>
@@ -198,6 +200,12 @@
         一個名為「梓」的人的聚集地，通常都在寫寫字、寫程式、畫圖、音樂和財經及理解中。<br/>
         此亦為「梓本投資控股偽存公司」的官方網站，主要用於展示旗下梓們的作品。
       </p>
+      <div class="sys-quote-box">
+        <div class="quote-text">
+          「在某個特別的時間點，妳會遇見她。興許過了一段時間後，妳會到達那個，決定閱讀她的時間點。」
+        </div>
+        <div class="quote-author">風川梓</div>
+      </div>
     </section>
 
     <div id="portfolio-sections">
