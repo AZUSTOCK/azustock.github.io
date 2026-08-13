@@ -401,7 +401,15 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .tag.status-tag { cursor: pointer; padding: 0.18rem 0.65rem; border-radius: 999px; font-size: 0.72rem; margin-right: 0.3rem; margin-top: 0.3rem; }
 .tag.status-tag:hover, .tag.status-tag.active-tag { transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-2); background-image: linear-gradient(110deg, var(--accent-2) 35%, rgba(255,255,255,0.5) 50%, var(--accent-2) 65%) !important; background-color: var(--accent-2) !important; color: var(--card) !important; }
 .clickable-ticker-tag[data-status] .ticker-name { display: inline-block; padding: 2px 8px; border-radius: 4px; color: #fff !important; font-weight: 800; letter-spacing: 0.05em; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); background-color: var(--s-color); box-shadow: 0 0 6px var(--s-shadow); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
-.clickable-ticker-tag[data-status]:hover .ticker-name, .clickable-ticker-tag.active-tag[data-status] .ticker-name { background-color: var(--accent-2); color: var(--card) !important; text-shadow: none; box-shadow: 0 0 15px var(--accent-2), 0 0 5px var(--accent-2); transform: scale(1.08) translateZ(0); }
+/* ✨ 拔除 scale(1.08) 放大特效，只保留變色與微光 */
+.clickable-ticker-tag[data-status]:hover .ticker-name, 
+.clickable-ticker-tag.active-tag[data-status] .ticker-name { 
+    background-color: var(--accent-2); 
+    color: var(--card) !important; 
+    text-shadow: none; 
+    box-shadow: 0 0 15px var(--accent-2), 0 0 5px var(--accent-2); 
+    transform: translateZ(0); /* 移除 scale，保持字體原始大小，防止手機點擊暴衝 */
+}
 [data-status="ARCHIVED"] { animation: none !important; background-image: none !important; }
 
 /* 3-7. 浮動提示膠囊 (Toasts & Tooltips) */
