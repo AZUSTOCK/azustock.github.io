@@ -86,10 +86,12 @@
 /* ========================================================================== */
 html { 
     scroll-behavior: smooth; 
-    
-    /* ✨ 1. 把防跳動魔法加回來！ */
     scrollbar-gutter: stable; 
-    background-color: var(--bg); /* 預設底色，與你的網站背景融為一體 */
+    background-color: var(--bg);
+    
+    /* ✨ 終極修復：封殺 iOS Safari 的「點擊文字自動暴走放大」Bug！ */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 /* ✨ 2. 針對所有捲軸元件，確保它們在透明軌道下不會有奇怪的外框或陰影 */
@@ -1515,10 +1517,9 @@ body.is-touch-device #lightbox-img { cursor: default; }
 /* ========================================================================== */
 
 /* 1. 預設狀態：披上隱形斗篷，不佔用任何版面空間 */
-.sys-hidden-card { 
-    display: none !important; 
-}
-.sys-hidden-item { 
+.sys-hidden-card,
+.sys-hidden-item,
+.sys-hidden-ticker { 
     display: none !important; 
 }
 
@@ -1529,6 +1530,11 @@ body.system-override-active .card.sys-hidden-card {
 
 body.system-override-active .article-li.sys-hidden-item {
     display: block !important;
+}
+
+/* ✨ 讓跑馬燈裡的機密標籤也跟著解鎖出現 */
+body.system-override-active .sys-hidden-ticker {
+    display: inline-block !important;
 }
 
 /* 3. 機密圖釘 (SVG) - 行為與原生圖釘完全一致 */
