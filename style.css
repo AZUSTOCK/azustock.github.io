@@ -4,6 +4,7 @@
 
 /* 1-1. 深色模式 (Dark Mode) */
 [data-theme="dark"] {
+    color-scheme: dark; /* ✨ 核心魔法：強制原生 UI 啟用深色模式 */
     --bg: #020617; --card: #0b1220; --text: #e5e7eb; --muted: #9ca3af;
     --accent: #38bdf8; --accent-2: #f5d547; --accent-hover: #F5D547;
     --glow-1: rgba(16, 85, 137, 0.8); --glow-2: rgba(4, 47, 46, 0.8);
@@ -19,9 +20,10 @@
     --scrollbar-bg: transparent; --scrollbar-thumb: rgba(255, 255, 255, 0.25); --scrollbar-hover: rgba(56, 189, 248, 0.4); 
 }
 
-/* 2. 淺色模式 (Light Mode) */
+/* 2. 淺色模式 (Light Mode) - 極淨透亮調色盤 */
 [data-theme="light"] {
-    --bg: #F1F5F9; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
+    color-scheme: light; 
+    --bg: #e6e6e6; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
     --accent: #407899; --accent-2: #44D4BE; --accent-hover: #44D4BE;
     --glow-1: rgba(68, 212, 190, 0.3); --glow-2: rgba(245, 213, 71, 0.3);
     --glass-bg: rgba(255, 255, 255, 0.7); --glass-border: rgba(68, 212, 190, 0.4);
@@ -878,6 +880,57 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body p { margin-bottom: 1rem; }
 .markdown-body a { color: var(--accent-2); text-decoration: none; }
 .markdown-body a:hover { text-decoration: underline; color: var(--accent-hover); }
+/* ✨ 保護 Markdown 裡的實體按鈕不被超連結黃色污染 */
+.markdown-body a.btn { 
+    color: var(--accent) !important; 
+    text-decoration: none; 
+}
+.markdown-body a.btn:hover { 
+    color: var(--card) !important; 
+}
+
+/* ==========================================
+   ✨ 自訂按鈕擴充包 (Custom Buttons)
+   ========================================== */
+/* 1. 實心高光版 (btn btn-fill) */
+.markdown-body a.btn.btn-fill {
+    background: var(--accent);
+    color: var(--bg) !important;
+}
+.markdown-body a.btn.btn-fill:hover {
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    box-shadow: 0 4px 15px var(--glow-1);
+    color: var(--card) !important;
+}
+
+/* 2. 紅色警告版 (btn btn-danger) */
+.markdown-body a.btn.btn-danger {
+    border-color: var(--error-color);
+    color: var(--error-color) !important;
+}
+.markdown-body a.btn.btn-danger:hover {
+    background: var(--error-color);
+    color: #fff !important;
+    box-shadow: 0 4px 15px var(--error-shadow);
+}
+
+
+/* ==========================================
+   ✨ 小徽章排版完美對齊
+   ========================================== */
+.markdown-body img[alt="badge"] { 
+    display: inline-block; 
+    width: auto; 
+    height: auto; 
+    margin: 0 0.2rem; 
+    
+    /* 🚨 核心魔法：將圖片稍微往下壓，讓它跟旁邊的中/英文字完美切齊！ */
+    vertical-align: -3px; 
+    
+    box-shadow: none; 
+    border-radius: 4px; 
+}
 .markdown-body pre { background: var(--bg); padding: 1.2rem; border-radius: 0.6rem; overflow-x: auto; border: 1px solid var(--card-border); }
 .markdown-body code { font-family: 'Courier New', monospace; color: var(--accent-2); background: rgba(34, 211, 238, 0.1); padding: 0.2rem 0.4rem; border-radius: 4px; }
 .markdown-body pre code { background: transparent; padding: 0; color: var(--text); }
@@ -1045,7 +1098,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body .marquee-text-track {
     position: absolute;
     top: 0; left: 0;
-    width: max-content; /* ✨ 保證跑馬燈寬度充足，絕對不斷字 */
+    width: max-content; 
     height: 100%;
     display: flex;
     align-items: center;
@@ -1056,7 +1109,15 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     
     z-index: 1;
     pointer-events: none;
-    transition: color 0.3s ease; 
+    
+    /* ✨ 改動：預設完全透明，並加上 opacity 動畫過渡 */
+    opacity: 0;
+    transition: color 0.3s ease, opacity 0.3s ease; 
+}
+
+/* ✨ 新增：Hover 時浮現靜止的底字 */
+.markdown-body .md-highlight-text:hover .marquee-text-track {
+    opacity: 1;
 }
 
 /* 雙胞胎零件，無縫接力 */
@@ -1083,21 +1144,27 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .marquee-text-track {
     animation-play-state: running; 
     color: var(--dynamic-glow);
+    opacity: 1; /* ✨ 點擊後保證強制顯示 */
 }
 
-/* 3. Spoiler 幽靈化：防雷貼紙也跟著變透明，讓跑馬燈穿過去 */
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-text.revealed {
-    background-color: transparent !important;
-    box-shadow: none !important;
+/* ==========================================
+   ✨ X光透視模式下的防雷貼紙「色彩混和」升級
+   ========================================== */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(:hover) .spoiler-cover {
+    /* ✨ 將原本死灰色的遮罩，改成「高光色與背景色」的混和半透明質感 */
+    background-color: color-mix(in srgb, var(--dynamic-glow) 40%, var(--bg)) !important;
+    backdrop-filter: blur(2px); /* 微微的毛玻璃感，讓穿透底層的跑馬燈更有層次 */
+    transition: background-color 0.3s ease;
 }
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-content {
-    color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
+
+/* 讓貼紙內部的文字也染上一點高光色彩，完美融合 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(:hover) .spoiler-content {
+    color: color-mix(in srgb, var(--accent-2) 40%, var(--text)) !important;
 }
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-cover {
-    background-color: color-mix(in srgb, var(--text) 15%, transparent) !important;
-}
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-fold {
-    opacity: 0.15 !important;
+
+/* 讓紙張翻折的陰影更自然 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(:hover) .spoiler-fold {
+    opacity: 0.4 !important;
 }
 
 /* 4. Code 與 Link 在平時的平滑顏色過渡 */
@@ -1162,8 +1229,14 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body img[alt="icon"].is-loading, .markdown-body img[alt="icon"].is-broken { min-height: 48px; aspect-ratio: 1 / 1; }
 .markdown-body figure img { margin: 0 !important; width: 100% !important; }
 .markdown-body figure figcaption { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 0.6rem; line-height: 1.4; }
-.markdown-body .md-video { max-width: 100%; height: auto; border-radius: 0.6rem; box-shadow: 0 4px 15px var(--shadow-base); display: block; margin: 1.5rem auto; background: #000; }
-.markdown-body .md-audio { width: 100%; margin: 1.5rem 0; border-radius: 999px; box-shadow: 0 4px 15px var(--shadow-base); }
+.markdown-body .md-video { max-width: 100%; height: auto; border-radius: 0.6rem; box-shadow: 0 4px 15px var(--shadow-base); display: block; margin: 1.5rem auto; background: #000; border: 1px solid var(--card-border); }
+.markdown-body .md-audio { 
+    width: 100%; 
+    margin: 1.5rem 0; 
+    border-radius: 999px; 
+    box-shadow: 0 4px 15px var(--shadow-base); 
+    border: 1px solid var(--card-border); /* ✨ 畫上邊界，讓播放器永遠不消失！ */
+}
 
 /* 放大鏡互動按鈕 */
 .zoom-btn { background: transparent; border: none; color: var(--muted); border-radius: 6px; padding: 4px; margin-left: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.25s ease, background-color 0.25s ease, opacity 0.25s ease; vertical-align: middle; position: relative; top: -2px; transform: translateZ(0) scale(1); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
@@ -1175,6 +1248,22 @@ figure.no-caption img { margin: 0 !important; display: block; }
 .zoom-btn.floating { position: absolute; top: 10px; right: 10px; margin: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0.6; z-index: 10; transform: translateZ(0) scale(1); }
 figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 .zoom-btn.floating:hover { background: var(--accent); color: #fff; opacity: 1; transform: translateZ(0) scale(1.15); }
+/* ==========================================
+   ✨ 圖片 Hover 與放大鏡的完美視覺連動 (僅限獨立圖片)
+   ========================================== */
+/* 1. 帶有圖說的獨立圖片：滑鼠移到圖片上時，放大鏡跟著亮起 */
+figure.standalone-figure:has(img:hover) .zoom-btn {
+    color: var(--accent); 
+    transform: translateZ(0) scale(1.15); 
+}
+
+/* 2. 無圖說獨立圖片：滑鼠移到圖片上時，懸浮放大鏡跟著填滿顏色並發光 */
+figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating { 
+    background: var(--accent); 
+    color: #fff; 
+    opacity: 1; 
+    transform: translateZ(0) scale(1.15); 
+}
 
 /* 6-4. 畫廊系統 (Gallery) */
 .markdown-body .gallery { --g-width: 200px; --g-rows: 1; --g-ratio: 1/1; display: grid; gap: 1rem; margin: 0.2rem -0.8rem 0.2rem -0.8rem; padding: 0.5rem 0.8rem 1.5rem 0.8rem; grid-template-rows: repeat(var(--g-rows), auto); grid-auto-flow: column; grid-auto-columns: minmax(var(--g-width), var(--g-width)); overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }

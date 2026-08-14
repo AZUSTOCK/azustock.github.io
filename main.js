@@ -807,9 +807,10 @@ renderer.image = function(token_or_href, title, text) {
         fullUrl = parts[1];
     }
 
+    // ✨ 恢復純淨版 imgTag (移除內聯的 onclick 與 style，交給下方統一處理)
     const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
 
-    // ✨ 統一的 SVG 放大鏡圖示
+    // 統一的 SVG 放大鏡圖示
     const zoomIconSvg = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`;
 
     if (imgTitle) {
@@ -821,10 +822,9 @@ renderer.image = function(token_or_href, title, text) {
         const zoomBtn = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${zoomIconSvg}</button>`;
         return `<figure${figureClass}>${imgTag}<figcaption>${imgTitle}${zoomBtn}</figcaption></figure>`;
     } else {
-        // 【情境 B：沒有說明文字的圖】
+        // 【情境 B：沒有說明文字的圖 (包含 Icon 與 Badge)】
         if (altText === 'icon' || altText === 'badge') return imgTag;
         
-        // ✨ 修正 1：把 float-right / float-left 繼承給無圖說的 figure，修復排版
         let figureClass = 'no-caption';
         if (altText === 'float-right' || altText === 'float-left') {
             figureClass += ` ${altText}`;
@@ -886,32 +886,47 @@ renderer.code = function(token_or_code, language, isEscaped) {
 // 3. ✨ 攔截 Markdown 連結
 renderer.link = function(token_or_href, title, text) {
     const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
-    const linkText = typeof token_or_href === 'object' ? token_or_href.text : text;
     const linkTitle = typeof token_or_href === 'object' ? token_or_href.title : title;
     
+    // ✨ 核心修復：使用內部解析器把 ![badge](...) 語法轉化為真正的 <img> 標籤
+    let linkText = text;
+    if (typeof token_or_href === 'object') {
+        linkText = token_or_href.tokens ? this.parser.parseInline(token_or_href.tokens) : token_or_href.text;
+    }
+
+    // ✨ 魔法 1：支援多重樣式按鈕！只要 title 是以 btn 開頭，就直接把它當作 class 塞入
+    if (linkTitle && linkTitle.toLowerCase().startsWith('btn')) {
+        const btnClasses = linkTitle.toLowerCase(); // 例如 "btn btn-fill" 或 "btn btn-danger"
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="${btnClasses}" style="margin: 0.5rem 0.5rem 0.5rem 0; text-decoration: none; display: inline-flex;">${linkText}</a>`;
+    }
+
     const titleAttr = linkTitle ? ` title="${linkTitle}"` : '';
     if (!href) return `<a${titleAttr} style="font-weight: 600;">${linkText}</a>`;
 
-    // ✨ 核心修復 1：放寬 SPA 攔截條件！只要包含 ?p= 且非外部連結，一律攔截做無縫跳轉
+    // ✨ 魔法 2：智慧判斷如果連結裡面包的是圖片 (例如 GitHub 小徽章 Badge)，拔除外部箭頭與文字粗體
+    const isImageLink = linkText.includes('<img');
+    const baseStyle = isImageLink ? 'display: inline-block; vertical-align: middle; transition: transform 0.2s ease;' : 'font-weight: 600;';
+    const hoverFx = isImageLink ? ' onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'none\'"' : '';
+
+    // 攔截內部 SPA 跳轉
     if (href.includes('?p=') && !href.startsWith('http')) {
-        // 安全轉義單引號，防止破壞 HTML
         const safeHref = href.replace(/'/g, "\\'");
-        return `<a href="${href}" onclick="window.handleSpaLink(event, '${safeHref}')"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+        return `<a href="${href}" onclick="window.handleSpaLink(event, '${safeHref}')"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}</a>`;
     }
 
-    // ✨ 攔截內部錨點跳轉 (解決 Modal 內無法跳轉的問題，並修復字體變細)
+    // 攔截內部錨點跳轉
     if (href.startsWith('#')) {
         const safeHref = href.replace(/'/g, "\\'");
-        return `<a href="${href}" onclick="window.scrollToAnchor(event, '${safeHref}')"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+        return `<a href="${href}" onclick="window.scrollToAnchor(event, '${safeHref}')"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}</a>`;
     }
     
+    // 外部連結
     if (href.startsWith('http')) {
-        const extIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr} style="font-weight: 600;">${linkText}${extIcon}</a>`;
+        const extIcon = isImageLink ? '' : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}${extIcon}</a>`;
     }
 
-    // ✨ 確保所有漏網之魚的普通連結也享有粗體樣式
-    return `<a href="${href}"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+    return `<a href="${href}"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}</a>`;
 };
 
 // 4. ✨ 攔截 Markdown 標題，同時用全域陣列記住最新出現的標題文字
@@ -2723,26 +2738,80 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const figcaption = figure.querySelector('figcaption');
                 const img = figure.querySelector('img');
                 
-                if (figcaption) {
-                    figure.style.cursor = 'pointer'; 
-                    figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
+                // ✨ 偵測這張圖片是否在畫廊裡面
+                const isGallery = figure.closest('.gallery') !== null;
+                
+                if (isGallery) {
+                    // ==========================================
+                    // 📁 畫廊內的圖片 (維持原樣，點擊切換標題)
+                    // ==========================================
+                    if (figcaption) {
+                        figure.style.cursor = 'pointer'; 
+                        figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
+                        
+                        if (img && !figcaption.querySelector('.zoom-btn')) {
+                            const zoomBtn = document.createElement('button');
+                            zoomBtn.className = 'zoom-btn';
+                            zoomBtn.innerHTML = `
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="11" y1="8" x2="11" y2="14"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                                </svg>
+                            `;
+                            zoomBtn.onclick = (event) => {
+                                event.stopPropagation();
+                                window.openLightbox(zoomBtn, event);
+                            };
+                            figcaption.appendChild(zoomBtn);
+                        }
+                    }
+                } else {
+                    // ==========================================
+                    // 🖼️ 畫廊外的獨立圖片 (支援圖片點擊與 CSS 連動)
+                    // ==========================================
+                    figure.classList.add('standalone-figure'); 
                     
-                    if (img && !figcaption.querySelector('.zoom-btn')) {
-                        const zoomBtn = document.createElement('button');
-                        zoomBtn.className = 'zoom-btn';
-                        zoomBtn.innerHTML = `
-                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                <line x1="11" y1="8" x2="11" y2="14"></line>
-                                <line x1="8" y1="11" x2="14" y2="11"></line>
-                            </svg>
-                        `;
-                        zoomBtn.onclick = (event) => {
+                    if (img) {
+                        img.style.cursor = 'pointer';
+                        
+                        // 讓點擊圖片本體直接觸發大圖預覽
+                        img.addEventListener('click', (event) => {
                             event.stopPropagation();
-                            window.openLightbox(zoomBtn, event);
-                        };
-                        figcaption.appendChild(zoomBtn);
+                            window.openLightbox(img, event);
+                        });
+
+                        // ✨ 自動補全機制：拯救手寫 HTML 缺失的放大鏡按鈕
+                        const existingBtn = figure.querySelector('.zoom-btn');
+                        if (!existingBtn) {
+                            const zoomBtn = document.createElement('button');
+                            zoomBtn.setAttribute('data-tooltip', '放大檢視');
+                            zoomBtn.innerHTML = `
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="11" y1="8" x2="11" y2="14"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                                </svg>
+                            `;
+                            
+                            zoomBtn.onclick = (event) => {
+                                event.stopPropagation();
+                                window.openLightbox(zoomBtn, event);
+                            };
+
+                            if (figcaption) {
+                                // 情況 A：有圖說的 HTML，把放大鏡塞進 figcaption 裡
+                                zoomBtn.className = 'zoom-btn';
+                                figcaption.appendChild(zoomBtn);
+                            } else {
+                                // 情況 B：無圖說的 HTML，把放大鏡設定為懸浮樣式，並確保 figure 有對應的 class
+                                figure.classList.add('no-caption');
+                                zoomBtn.className = 'zoom-btn floating';
+                                figure.appendChild(zoomBtn);
+                            }
+                        }
                     }
                 }
             });
