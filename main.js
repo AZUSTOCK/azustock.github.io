@@ -932,23 +932,19 @@ renderer.image = function(token_or_href, title, text) {
         // 使用你系統預設的文章/文件 SVG 圖示
         const docSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
         
+        // 替換 PDF 圖示與新分頁開啟按鈕
         return `
         <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base);">
             <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
-                
-                <!-- 左側：系統文件 SVG 與檔名 -->
                 <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
-                    ${docSvg}
+                    ${GLOBAL_SVGS.docIcon}
                     <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
                 </div>
-                
-                <!-- 右側：新分頁開啟按鈕 -->
                 <a href="${href}" target="_blank" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    ${GLOBAL_SVGS.newTab}
                     新分頁開啟
                 </a>
             </div>
-            
             <iframe src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
         </div>`;
     }
@@ -984,28 +980,16 @@ renderer.image = function(token_or_href, title, text) {
     // ✨ 恢復純淨版 imgTag (移除內聯的 onclick 與 style，交給下方統一處理)
     const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
 
-    // 統一的 SVG 放大鏡圖示
-    const zoomIconSvg = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`;
+    const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
+    const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
     if (imgTitle) {
-        // 【情境 A：有說明文字的圖】
-        let figureClass = '';
-        if (altText === 'float-right' || altText === 'float-left') {
-            figureClass = ` class="${altText}"`;
-        }
-        const zoomBtn = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${zoomIconSvg}</button>`;
-        return `<figure${figureClass}>${imgTag}<figcaption>${imgTitle}${zoomBtn}</figcaption></figure>`;
+        let figureClass = (altText === 'float-right' || altText === 'float-left') ? ` class="${altText}"` : '';
+        return `<figure${figureClass}>${imgTag}<figcaption>${imgTitle}${zoomBtnHtml}</figcaption></figure>`;
     } else {
-        // 【情境 B：沒有說明文字的圖 (包含 Icon 與 Badge)】
         if (altText === 'icon' || altText === 'badge') return imgTag;
-        
-        let figureClass = 'no-caption';
-        if (altText === 'float-right' || altText === 'float-left') {
-            figureClass += ` ${altText}`;
-        }
-        
-        const zoomBtn = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${zoomIconSvg}</button>`;
-        return `<figure class="${figureClass}">${imgTag}${zoomBtn}</figure>`;
+        let figureClass = 'no-caption' + ((altText === 'float-right' || altText === 'float-left') ? ` ${altText}` : '');
+        return `<figure class="${figureClass}">${imgTag}${floatingZoomBtnHtml}</figure>`;
     }
 };
 
@@ -1034,19 +1018,11 @@ renderer.code = function(token_or_code, language, isEscaped) {
             <div class="mermaid-toolbar">
                 <span class="mermaid-title">${chartTitle}</span>
                 <div class="mermaid-btns">
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                    </button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="縮小">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                    </button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="重設比例">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
-                    </button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">${GLOBAL_SVGS.mermaidZoomIn}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="縮小">${GLOBAL_SVGS.mermaidZoomOut}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="重設比例">${GLOBAL_SVGS.mermaidReset}</button>
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="全螢幕">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                    </button>
+                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="全螢幕">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
             <div class="mermaid-wrapper">
@@ -1094,9 +1070,9 @@ renderer.link = function(token_or_href, title, text) {
         return `<a href="${href}" onclick="window.scrollToAnchor(event, '${safeHref}')"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}</a>`;
     }
     
-    // 外部連結
+    // 外部連結 (替換小圖示)
     if (href.startsWith('http')) {
-        const extIcon = isImageLink ? '' : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+        const extIcon = isImageLink ? '' : GLOBAL_SVGS.extLinkSm;
         return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}${extIcon}</a>`;
     }
 
@@ -1741,18 +1717,18 @@ async function loadProjects() {
                     // ✨ 核心修復：首頁卡片上的數字也同步扣除隱藏文章
                     const visibleCount = data.articles.filter(art => !art.is_hidden).length;
                     
+                    // 1. 如果有子文章 (套用資料夾開關 SVG)
                     actionText = `<div class="action-btn" style="margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease;">
                         <div style="position: relative; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">
-                            <svg class="icon-book-closed" style="position: absolute; transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
-                            <svg class="icon-book-open" style="position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                            ${GLOBAL_SVGS.folderClosed}
+                            ${GLOBAL_SVGS.folderOpen}
                         </div>展開系列 (${visibleCount})</div>`;
                 } else if (data.link) {
-                    card.style.cursor = 'pointer';
-                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.open(data.link, '_blank'); };
+                    // 2. 如果是外部連結 (套用外部連結與箭頭 SVG)
                     actionText = `<div class="action-btn" style="margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> 
+                        ${GLOBAL_SVGS.linkLg} 
                         前往外部專案 <span class="action-arrow" data-dir="up-right" style="display: flex; align-items: center; transition: transform 0.2s ease;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg></span></div>`;
+                        ${GLOBAL_SVGS.arrowUpRight}</span></div>`;
                 } else {
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
                     card.addEventListener('mouseenter', () => { card.style.cursor = window.currentActiveTag ? 'pointer' : 'default'; });
@@ -2178,9 +2154,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
                     let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                     
+                    // 替換清單沒有圖片時的佔位符
                     let baseIconHtml = art.cover_image 
                         ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
-                        : `<div class="article-item-fallback"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
+                        : `<div class="article-item-fallback" style="color: var(--muted);">${GLOBAL_SVGS.docIconLg}</div>`;
                     
                     let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
                     // ✨ 新增：機密小圖釘 HTML
@@ -2598,10 +2575,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             }
 
             const topLeft = document.getElementById('modal-top-left');
-            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></button>` : '';
+            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
-            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
+            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
 
             const tocMount = document.getElementById('toc-mount-point');
             tocMount.innerHTML = ''; 

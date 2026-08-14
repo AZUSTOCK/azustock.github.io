@@ -1577,9 +1577,17 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     .modal-content .hint-right { background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
     .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
 
-    /* 隱藏觸控裝置 Tooltip */
-    .toolbar-btn::after, .toolbar-btn::before, .lightbox-capsule-btn::after, .lightbox-capsule-btn::before, .zoom-btn::after, .zoom-btn::before, .mermaid-btn::after, .mermaid-btn::before { display: none !important; }
-
+    /* ✨ 隱藏觸控裝置 Tooltip (全面封殺所有帶有氣泡提示的按鈕，防止手機點擊後卡住殘影) */
+    .toast-btn::after, .toast-btn::before,
+    .mermaid-btn::after, .mermaid-btn::before,
+    .capsule-btn::after, .capsule-btn::before,
+    .zoom-btn::after, .zoom-btn::before,
+    .toolbar-btn::after, .toolbar-btn::before,
+    .lightbox-capsule-btn::after, .lightbox-capsule-btn::before,
+    .footer-btn::after, .footer-btn::before { 
+        display: none !important; 
+    }
+    
     /* Lightbox 收合工具列 (手機版彈出選單) */
     .toolbox-toggle-btn { display: flex; }
     .desktop-only-divider { display: none; }
