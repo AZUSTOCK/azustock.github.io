@@ -1449,13 +1449,6 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(env(safe-area-inset-bottom) + 80px)); }
 }
 
-/* 8-3. 純觸控螢幕防禦機制 (hover: none) */
-@media (hover: none) {
-    /* 避免點擊殘留卡片 Hover 狀態 */
-    .card:hover { transform: none !important; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important; }
-    .card.show:hover { border-color: rgba(64, 120, 153, 0.1) !important; }
-}
-
 /* 調整觸控狀態的游標 */
 body.is-touch-device #lightbox-img { cursor: default; }
 

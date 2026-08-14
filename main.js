@@ -10,7 +10,10 @@ const CONFIG = {
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
     
     // ✨ 跑馬燈速度設定：跑完一整圈需要的「秒數」(數字越大跑得越慢！)
-    MARQUEE_SPEED: 120,          
+    MARQUEE_SPEED: 120,
+
+    // ✨ 狀態標籤過期天數 (支援 NEW, UPDATED 等狀態)
+    TAG_EXPIRE_DAYS: 14,
 
     // 🔗 資源路徑
     FAVICON_LIGHT: "https://azustock.github.io/assets/OG_dark.png",
@@ -1307,18 +1310,85 @@ async function loadProjects() {
         const categories = db.categories;
         const projects = db.projects;
 
+        // ✨ 建立狀態時間驗證引擎
+        const nowMs = new Date().getTime();
+        const expireMs = CONFIG.TAG_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
+        
+        // 1. 處理「一般狀態」的過期 (例如 NEW, UPDATED 超過期限就消失)
+        const evaluateStatus = (val) => {
+            if (val === true || String(val).toLowerCase() === 'true') return true; 
+            if (typeof val === 'string' && /^\d{4}[-/]\d{2}[-/]\d{2}$/.test(val)) {
+                const tagDate = new Date(val.replace(/-/g, '/')).getTime();
+                return !isNaN(tagDate) && (nowMs - tagDate <= expireMs);
+            }
+            return !!val; 
+        };
+
+        // ✨ 1.5 處理「機密隱藏」的解封 (例如 HIDDEN，時間還沒到就隱藏，時間到了就公開)
+        const evaluateHidden = (val) => {
+            if (val === true || String(val).toLowerCase() === 'true') return true; 
+            if (typeof val === 'string' && /^\d{4}[-/]\d{2}[-/]\d{2}$/.test(val)) {
+                const unsealDate = new Date(val.replace(/-/g, '/')).getTime();
+                // 只要現在時間「小於」解封日，就保持隱藏 (true)
+                // 到了解封日當天或之後，就變成公開 (false)
+                return !isNaN(unsealDate) && (nowMs < unsealDate);
+            }
+            return !!val; 
+        };
+
+        // 2. 處理「標籤陣列」的過期 (例如 "tags": ["NEW:2026-08-14"])
+        const parseAndFilterTags = (tags) => {
+            if (!tags) return [];
+            let validTags = [];
+            tags.forEach(tag => {
+                const match = tag.match(/^(NEW|UPDATED|LATEST|FEATURE):(\d{4}[-/]\d{2}[-/]\d{2})$/i);
+                if (match) {
+                    const baseTag = match[1].toUpperCase();
+                    const tagDate = new Date(match[2].replace(/-/g, '/')).getTime();
+                    if (!isNaN(tagDate) && (nowMs - tagDate <= expireMs)) {
+                        validTags.push(baseTag);
+                    }
+                } else {
+                    validTags.push(tag); 
+                }
+            });
+            return validTags;
+        };
+
         // 智慧狀態推導與全域標籤冒泡
         projects.forEach(p => {
+            // ✨ 在推導邏輯之前，先結算所有獨立屬性
+            ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
+                if (p[k] !== undefined) p[k] = evaluateStatus(p[k]);
+            });
+            
+            // ✨ 針對 hidden 屬性使用專屬的解封邏輯
+            if (p.is_hidden !== undefined) p.is_hidden = evaluateHidden(p.is_hidden);
+            
+            // 結算標籤陣列，過期的會在這裡直接被丟棄
+            p.tags = parseAndFilterTags(p.tags);
+
             let isCardUpdated = p.is_updated;
-            p.tags = p.tags || [];
 
             if (p.articles && p.articles.length > 0) {
+                // 子文章也要提前執行結算
+                p.articles.forEach(art => {
+                    ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
+                        if (art[k] !== undefined) art[k] = evaluateStatus(art[k]);
+                    });
+                    
+                    // ✨ 子文章的 hidden 屬性
+                    if (art.is_hidden !== undefined) art.is_hidden = evaluateHidden(art.is_hidden);
+                    
+                    // 子文章的標籤陣列也要結算
+                    art.tags = parseAndFilterTags(art.tags);
+                });
+
                 // 如果專案本身不是全新的，只要底下有 新文章(NEW) 或 更新(UPDATED)，專案就掛上 UPDATED
                 if (!p.is_new && !isCardUpdated) {
                     if (p.articles.some(art => 
                         art.is_new || 
                         art.is_updated || 
-                        // ✨ 關鍵修正：同時去檢查 tags 陣列裡面有沒有這些關鍵字！
                         (art.tags && (art.tags.includes('NEW') || art.tags.includes('UPDATED') || art.tags.includes('LATEST')))
                     )) {
                         isCardUpdated = true;
