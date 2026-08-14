@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.0",          // 目前系統版本號
+    VERSION: "U1.5.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1826,7 +1826,7 @@ function showSystemRebootScreen(title, localV, remoteV, msg, immediate = false) 
     if (!screen) {
         screen = document.createElement('div');
         screen.id = 'sys-reboot-screen';
-        screen.style.cssText = `position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); opacity:${immediate ? '1' : '0'}; transition:opacity 0.3s ease;`;
+        screen.style.cssText = `position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); opacity:${immediate ? '1' : '0'}; transition:opacity 0.3s ease; cursor: wait;`;
         document.body.appendChild(screen);
         
         if (!immediate) {
@@ -1879,15 +1879,15 @@ function hideSystemRebootScreen(isSuccess = true) {
     }, 600);
 }
 
-// ==========================================
-// ✨ 全域引擎：版本快取防禦與自動重載系統 (Auto-Updater Engine)
-// ==========================================
+// 大約在 1319 行開始的 checkSystemVersionAndBoot 函數
 async function checkSystemVersionAndBoot() {
     const isRebooting = sessionStorage.getItem('sys_is_rebooting') === 'true';
     const expectedVersion = sessionStorage.getItem('sys_expected_version') || 'UNKNOWN';
+    
+    // ✨ 1. 取出使用者的操作意圖
+    const sysIntent = sessionStorage.getItem('sys_intent');
 
     if (isRebooting) {
-        // 如果剛重整完，畫面會因為 index.html 的設定保持全黑。我們立刻放上無縫遮罩！
         showSystemRebootScreen('SYSTEM_REBOOTING', CONFIG.VERSION, expectedVersion, 'VERIFYING_MODULES', true);
     }
 
@@ -1908,9 +1908,17 @@ async function checkSystemVersionAndBoot() {
                     sessionStorage.removeItem('sys_reboot_count'); 
                     sessionStorage.removeItem('sys_is_rebooting');
                     sessionStorage.removeItem('sys_expected_version');
+                    sessionStorage.removeItem('sys_intent'); // ✨ 清除意圖
                     
-                    hideSystemRebootScreen(false); // ✨ 傳入 false 顯示失敗狀態
+                    hideSystemRebootScreen(false); 
                     loadProjects(); 
+                    
+                    // ✨ 2. 判斷：只有當初是為了看版本紀錄，才在失敗後強制打開日誌
+                    if (sysIntent === 'changelog') {
+                        setTimeout(() => {
+                            if (window.showChangelogModal) window.showChangelogModal(true);
+                        }, 600); 
+                    }
                     
                     // ✨ 完美修復版 Toast：從右上角降落，且點擊消失
                     setTimeout(() => {
@@ -1973,7 +1981,7 @@ async function checkSystemVersionAndBoot() {
                 sessionStorage.setItem('sys_is_rebooting', 'true');
                 sessionStorage.setItem('sys_expected_version', remoteVersion);
 
-                showSystemRebootScreen('SYSTEM_VERSION_MISMATCH', CONFIG.VERSION, remoteVersion, 'SYS_UPDATING...', isRebooting);
+                showSystemRebootScreen('SYSTEM_VERSION_MISMATCH', CONFIG.VERSION, remoteVersion, 'SYS_UPDATING', isRebooting);
                 
                 setTimeout(() => {
                     const newUrl = new URL(window.location.href);
@@ -1986,11 +1994,20 @@ async function checkSystemVersionAndBoot() {
                 sessionStorage.removeItem('sys_reboot_count');
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
+                
+                // ✨ 3. 判斷：如果更新成功，且當初是為了看版本紀錄，幫他打開！
+                if (sysIntent === 'changelog') {
+                    setTimeout(() => {
+                        if (window.showChangelogModal) window.showChangelogModal(true);
+                    }, 600);
+                }
+                sessionStorage.removeItem('sys_intent'); // ✨ 清除意圖
             }
         }
     } catch (err) {
         console.warn("版本檢查程序跳過:", err);
         sessionStorage.removeItem('sys_is_rebooting');
+        sessionStorage.removeItem('sys_intent'); // 防呆清除
     }
     
     // ✨ 傳入 true 顯示成功狀態，並渲染新網站
@@ -3432,7 +3449,8 @@ window.showCreditsModal = async function() {
 // ==========================================
 window.cachedChangelogs = null; 
 
-window.showChangelogModal = async function() {
+// 修改函數定義，加入 isSystemFallback 參數，預設為 false (約 1888 行)
+window.showChangelogModal = async function(isSystemFallback = false) {
     document.body.style.cursor = 'wait';
     let fetchError = false;
 
@@ -3442,17 +3460,21 @@ window.showChangelogModal = async function() {
         if (!response.ok) throw new Error('找不到 changelogs.json');
         const latestLogs = await response.json();
         
+        // 大約在 1898 行，showChangelogModal 函數的強制更新檢查中
         // ✨ 手動更新偵測魔法：比對版本號
-        if (latestLogs && latestLogs.length > 0 && latestLogs[0].version !== CONFIG.VERSION) {
+        if (!isSystemFallback && latestLogs && latestLogs.length > 0 && latestLogs[0].version !== CONFIG.VERSION) {
             console.warn(`[MANUAL_UPDATE] 發現新版本 ${latestLogs[0].version}，準備強制更新...`);
+            
+            // ✨ 4. 記錄使用者意圖：他是點擊按鈕想看版本紀錄的
+            sessionStorage.setItem('sys_intent', 'changelog');
             
             // 解除無限重啟鎖定，因為這是使用者手動按下的更新要求！
             sessionStorage.removeItem('sys_reboot_count');
 
             // 顯示專屬的手動更新終端機畫面
             document.body.insertAdjacentHTML('beforeend', `
-                <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent);">
-                    <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
+            <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
+                <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
                     <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${latestLogs[0].version}</div>
                     <div class="loading-text" style="font-size: 1.1rem;">FETCHING_NEW_DATA_AND_REBOOTING</div>
                 </div>
