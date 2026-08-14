@@ -387,12 +387,24 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     margin-top: 0 !important;
     margin-bottom: 0 !important;
 }
-.marquee-content span { font-family: 'Courier New', monospace; font-size: 0.95rem; font-weight: 600; color: var(--accent); padding: 0 3rem; letter-spacing: 0.1em; white-space: nowrap; }
+.marquee-content span { font-family: 'Courier New', monospace; font-size: 0.95rem; font-weight: 600; color: var(--accent); letter-spacing: 0.1em; white-space: nowrap; }
+/* 2. 將間距 3rem (48px) 專門賦予給最外層的包裹器，達成兩個 | 之間的完美左右對稱 */
+.marquee-tag-wrapper {
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+}
+
 .marquee-container:hover .marquee-content { animation-play-state: paused; }
 @keyframes marquee-seamless { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 .kotoba-whisper { font-family: "Noto Serif TC", "Songti TC", serif; font-style: italic; font-size: 0.95rem; color: var(--muted); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: pointer; }
 .kotoba-whisper:hover { color: var(--accent-2); text-shadow: 0 0 10px var(--glow-1); opacity: 1; }
-.stock-up, .stock-down { margin-left: 8px; font-weight: bold; transition: color 0.5s ease; }
+/* ✨ 加大文字與漲跌數字之間的間距，讓視覺更有呼吸感 */
+.stock-up, .stock-down { 
+    margin-left: 2rem; 
+    font-weight: bold; 
+    transition: color 0.5s ease; 
+}
 [data-theme="dark"] .stock-up { color: #DB3069; } [data-theme="dark"] .stock-down { color: #44D4BE; }
 [data-theme="light"] .stock-up { color: #F93435; } [data-theme="light"] .stock-down { color: #333AFD; }
 .clickable-ticker-tag { cursor: pointer; transition: color 0.3s ease, text-shadow 0.3s ease; }

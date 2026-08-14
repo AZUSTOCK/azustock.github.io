@@ -276,15 +276,54 @@ window.focusAndBumpCard = function(targetCard) {
 // ==========================================
 window.refreshUIAfterOverrideToggle = function() {
     const isUnlocked = document.body.classList.contains('system-override-active');
+    
+    // 1. 動態重建跑馬燈 HTML 結構
+    const marquee = document.getElementById('marquee-text');
+    if (marquee && window.siteProjects) {
+        const projects = window.siteProjects;
+        const publicTags = projects.filter(p => !p.is_hidden).flatMap(p => p.tags.filter(t => !(p.secret_tags && p.secret_tags.includes(t))) || []);
+        const allTags = projects.flatMap(p => p.tags || []);
+        const uniqueTags = [...new Set(allTags)]; 
+
+        if (uniqueTags.length > 0) {
+            const stockContent = uniqueTags.map((tag, i) => {
+                let innerHtml = '';
+                const isSecret = !publicTags.includes(tag);
+                const isUp = i % 2 !== 0;
+                const change = (Math.random() * 3 + 0.1).toFixed(2); 
+                const arrow = isUp ? '▲' : '▼';
+                const colorClass = isUp ? 'stock-up' : 'stock-down';
+                const sign = isUp ? '+' : '-';
+                const statusAttr = window.STATUS_LIST.flat().includes(tag) ? `data-status="${tag}"` : '';
+                
+                innerHtml = `<span class="clickable-ticker-tag" data-tag="${tag}" ${statusAttr} onclick="window.filterByTag('${tag}', event)"><span class="ticker-name">${tag}</span> <span class="${colorClass}">${arrow} ${sign}${change}%</span></span>`;
+                
+                // ✨ 核心排版修復：利用 Flex 置中，並把 3rem 的完美對稱間距交給分隔線！
+                const wrapperClass = isSecret ? 'marquee-tag-wrapper sys-hidden-ticker' : 'marquee-tag-wrapper';
+                return `<span class="${wrapperClass}" style="display: inline-flex; align-items: center;">${innerHtml}<span style="color: var(--muted); opacity: 0.5; margin: 0 10rem;">|</span></span>`;
+            }).join('');
+
+            const container = marquee.parentElement;
+            container.innerHTML = `
+                <div class="marquee-content">${stockContent}</div>
+                <div class="marquee-content">${stockContent}</div>
+            `;
+            
+            container.onmouseenter = () => document.querySelectorAll('.marquee-content').forEach(m => { if (m.marqueePlayer) m.marqueePlayer.pause(); });
+            container.onmouseleave = () => document.querySelectorAll('.marquee-content').forEach(m => { if (m.marqueePlayer) m.marqueePlayer.play(); });
+        }
+    }
+
     const marquees = document.querySelectorAll('.marquee-content');
 
-    // 1. 凍結跑馬燈當前座標，並進行嚴格的餘數校正
+    // 2. 凍結座標，準備重新起跑
     marquees.forEach(m => {
+        if (isUnlocked) m.classList.add('suppress-secrets');
+        
         const matrix = new DOMMatrix(window.getComputedStyle(m).transform);
         let currentX = matrix.m41;
         const currentWidth = m.offsetWidth;
         
-        // ✨ 核心修復：透過求餘數，將亂七八糟的累積偏移量，安全對齊到當前寬度循環內！
         if (currentWidth > 0) {
             currentX = currentX % currentWidth;
             if (currentX > 0) currentX -= currentWidth;
@@ -297,11 +336,20 @@ window.refreshUIAfterOverrideToggle = function() {
         }
         m.style.transition = 'none';
         m.style.animation = 'none';
+
+        m.classList.remove('suppress-secrets');
+        m.classList.add('force-show-secrets');
     });
 
-    // 延遲 50 毫秒等待 DOM 穩定與權限類別切換
+    void document.body.offsetWidth;
+
+    marquees.forEach(m => {
+        m.dataset.targetWidth = m.offsetWidth;
+        m.classList.remove('force-show-secrets');
+        if (isUnlocked) m.classList.add('suppress-secrets');
+    });
+
     setTimeout(() => {
-        // 重算所有網格與卡片數字
         window.dispatchEvent(new Event('resize'));
         document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
         
@@ -325,12 +373,6 @@ window.refreshUIAfterOverrideToggle = function() {
             }
         });
 
-        // 記錄解封後的最終真實寬度
-        marquees.forEach(m => {
-            m.dataset.targetWidth = m.offsetWidth;
-        });
-
-        // 將高光標籤暫存，等光速轉動抵達終點後再精準對位
         if (window.currentActiveTag) {
             window._pendingActiveTag = window.currentActiveTag;
             window.currentActiveTag = null; 
@@ -338,12 +380,11 @@ window.refreshUIAfterOverrideToggle = function() {
             document.querySelectorAll('.active-tag').forEach(t => t.classList.remove('active-tag'));
         }
 
-        // 2. 啟動光速引擎！
+        // 3. 永遠啟動光速引擎！確保寬度變化時的平滑過渡
         marquees.forEach((m, index) => {
             const targetWidth = parseFloat(m.dataset.targetWidth) || m.offsetWidth;
             let startX = parseFloat(m.dataset.startX) || 0;
             
-            // 雙重防呆：確保起始點小於等於 0 且大於負的寬度
             if (startX > 0) startX = 0;
             if (startX < -targetWidth) startX = startX % targetWidth;
 
@@ -359,13 +400,19 @@ window.refreshUIAfterOverrideToggle = function() {
                 easing: 'ease-in-out'
             });
 
+            if (isUnlocked) {
+                setTimeout(() => {
+                    m.classList.remove('suppress-secrets');
+                }, duration / 2); 
+            }
+
             m.marqueePlayer.onfinish = () => {
                 m.style.transform = '';
                 m.style.filter = '';
                 m.style.animation = ''; 
                 m.marqueePlayer = null;
+                m.classList.remove('suppress-secrets'); 
 
-                // 動畫結束，無縫接軌並精準鎖定目標標籤
                 if (index === 0 && window._pendingActiveTag) {
                     const activeTag = window._pendingActiveTag;
                     window._pendingActiveTag = null; 
@@ -1622,9 +1669,9 @@ async function loadProjects() {
                         innerHtml = `<span class="clickable-ticker-tag" data-tag="${tag}" ${statusAttr} onclick="window.filterByTag('${tag}', event)"><span class="ticker-name">${tag}</span> <span class="${colorClass}">${arrow} ${sign}${change}%</span></span>`;
                     }
                     
-                    // ✨ 3. 將標籤與後方的「分隔線」包裝在同一個 span 裡，並掛上隱藏屬性
-                    const wrapperClass = isSecret ? 'marquee-tag-wrapper sys-hidden-ticker' : 'marquee-tag-wrapper';
-                    return `<span class="${wrapperClass}">${innerHtml} <span style="color: var(--muted); opacity: 0.5; margin: 0 1rem;">|</span> </span>`;
+                    // ✨ 核心排版修復：利用 Flex 置中，並把 3rem 的完美對稱間距交給分隔線！
+                const wrapperClass = isSecret ? 'marquee-tag-wrapper sys-hidden-ticker' : 'marquee-tag-wrapper';
+                return `<span class="${wrapperClass}" style="display: inline-flex; align-items: center;">${innerHtml}<span style="color: var(--muted); opacity: 0.5; margin: 0 10rem;">|</span></span>`;
                 }).join(''); // ✨ 直接串接，不再使用 join 加分隔線
 
                 const container = marquee.parentElement;
@@ -2845,21 +2892,19 @@ window.isKotobaActive = false;
 window.centerKotobaTag = function(event) {
     if (event) event.stopPropagation();
     
-    // ✨ 如果已經是啟用狀態，再次點擊就解除 (恢復跑馬燈輪播)
     if (window.isKotobaActive) {
         window.clearFilter();
         return;
     }
     
-    // 1. 清除任何卡片過濾狀態與舊的跑馬燈動畫
     window.clearFilter();
     window.isKotobaActive = true;
     
-    const firstContent = document.querySelector('.marquee-content');
-    const targetTagEl = firstContent ? firstContent.querySelector('.kotoba-whisper') : null;
+    // ✨ 鎖定使用者實際點擊的那一顆言の箱元素
+    const targetTagEl = event ? event.target.closest('.kotoba-whisper') : document.querySelector('.kotoba-whisper');
+    const firstContent = targetTagEl ? targetTagEl.closest('.marquee-content') : document.querySelector('.marquee-content');
     
-    if (targetTagEl) {
-        // 2. 讓點擊的言の箱文字亮起來 (套用高光特效)
+    if (targetTagEl && firstContent) {
         document.querySelectorAll('.kotoba-whisper').forEach(t => {
             t.style.color = 'var(--accent-2)';
             t.style.textShadow = '0 0 10px var(--glow-1)';
@@ -2868,19 +2913,17 @@ window.centerKotobaTag = function(event) {
 
         const contentWidth = firstContent.offsetWidth;
         
-        // ✨ 核心修復：強制重算 DOM 佈局，並精準抓取言の箱在跑馬燈內的「絕對左側座標」
         void firstContent.offsetWidth;
-        const wrapper = targetTagEl.closest('.marquee-tag-wrapper');
-        let absoluteLeft = wrapper ? wrapper.offsetLeft : targetTagEl.offsetLeft;
         
-        if (absoluteLeft === 0 && wrapper) {
-            absoluteLeft = wrapper.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
+        // ✨ 核心修復：直接抓取文字標籤本身的左側座標，徹底拔除 wrapper 帶來的偏移干擾！
+        let absoluteLeft = targetTagEl.offsetLeft;
+        if (absoluteLeft === 0) {
+            absoluteLeft = targetTagEl.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
         }
         
         let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
-        // 3. 執行置中動畫，並且「無限期停在該處」，直到再次點擊解除
         document.querySelectorAll('.marquee-content').forEach(m => {
             if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
             let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
@@ -2890,7 +2933,7 @@ window.centerKotobaTag = function(event) {
             m.style.transform = `translateX(${currentX}px)`;
             m.style.animation = 'none';
             
-            void m.offsetWidth; // 強制重繪
+            void m.offsetWidth; 
             
             const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
 
@@ -2942,21 +2985,28 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     window.currentActiveTag = targetTag;
     window.highlightedCards = []; 
     
-    const firstContent = document.querySelector('.marquee-content');
-    let targetTagEl = firstContent.querySelector(`.clickable-ticker-tag[data-tag="${targetTag}"]`);
+    // ✨ 鎖定使用者實際點擊的那一顆標籤元素
+    let targetTagEl = null;
+    if (event && event.target) {
+        targetTagEl = event.target.closest('.clickable-ticker-tag');
+    }
+    if (!targetTagEl && clickedElement) {
+        targetTagEl = clickedElement.closest('.clickable-ticker-tag');
+    }
     
-    if (targetTagEl) {
+    const firstContent = targetTagEl ? targetTagEl.closest('.marquee-content') : document.querySelector('.marquee-content');
+    if (!targetTagEl && firstContent) {
+        targetTagEl = firstContent.querySelector(`.clickable-ticker-tag[data-tag="${targetTag}"]`);
+    }
+    
+    if (targetTagEl && firstContent) {
         const contentWidth = firstContent.offsetWidth;
-        
-        // ✨ 核心防呆：強制強迫瀏覽器重新計算 DOM 佈局，確保剛解封的隱藏標籤寬度與 offsetLeft 100% 準確！
         void firstContent.offsetWidth;
 
-        const wrapper = targetTagEl.closest('.marquee-tag-wrapper');
-        let absoluteLeft = wrapper ? wrapper.offsetLeft : targetTagEl.offsetLeft;
-        
-        // 如果抓出來的 absoluteLeft 異常為 0（代表剛解封還在浮動渲染），給它強制重算一次
-        if (absoluteLeft === 0 && wrapper) {
-            absoluteLeft = wrapper.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
+        // ✨ 核心修復：直接抓取標籤本身的左側座標，徹底拔除 wrapper 帶來的偏移干擾！
+        let absoluteLeft = targetTagEl.offsetLeft;
+        if (absoluteLeft === 0) {
+            absoluteLeft = targetTagEl.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
         }
         
         let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
@@ -2980,20 +3030,16 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     document.querySelectorAll('.card').forEach(card => {
         const tags = card.getAttribute('data-tags');
         if (tags && tags.includes(targetTag)) { 
-            
-            // 權限防護：如果這是一張機密卡片，且系統尚未解鎖，就直接跳過不處理！
             if (card.classList.contains('sys-hidden-card') && !document.body.classList.contains('system-override-active')) {
                 return;
             }
-            
             card.classList.add('highlighted'); 
             window.highlightedCards.push(card); 
         }
     });
 
-    // ✨ 新增防呆：如果重新計算後，發現「一張符合的卡片都沒有」(例如上鎖後機密卡片消失)
     if (window.highlightedCards.length === 0) {
-        window.clearFilter(); // 徹底清除過濾與膠囊狀態
+        window.clearFilter(); 
         return;
     }
 
