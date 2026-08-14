@@ -22,16 +22,42 @@ const CONFIG = {
 };
 
 // ==========================================
-// ✨ 全域共用 SVG 圖標 (避免重複宣告)
+// ✨ 全域共用 SVG 圖標 (集中管理，消滅重複代碼)
 // ==========================================
 const GLOBAL_SVGS = {
+    // 🔗 基礎圖示
     link: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    linkLg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    extLinkSm: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    newTab: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
+    
+    // 📌 圖釘與機密
     pin: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>`,
     pinSmall: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg);"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>`,
-    
-    // ✨ 修改：只留一個扣環，並給它 'secret-shackle' 準備做物理彈出動畫
     secretPin: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path class="secret-shackle" d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`,
-    secretPinSmall: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path class="secret-shackle" d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`
+    secretPinSmall: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path class="secret-shackle" d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`,
+    
+    // 📄 媒體與檔案
+    zoomIcon: `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
+    docIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
+    docIconLg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
+    videoIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`,
+    audioIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`,
+    
+    // 🗂️ 首頁專案卡片
+    folderClosed: `<svg class="icon-book-closed" style="position: absolute; transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>`,
+    folderOpen: `<svg class="icon-book-open" style="position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
+    arrowUpRight: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>`,
+    
+    // ⬅️ 導覽與操作方向
+    arrowLeft: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
+    historyBack: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>`,
+    
+    // 📊 Mermaid 圖表工具列
+    mermaidZoomIn: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
+    mermaidZoomOut: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
+    mermaidReset: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
+    mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`
 };
 
 // ==========================================
@@ -276,88 +302,13 @@ window.focusAndBumpCard = function(targetCard) {
 // ==========================================
 window.refreshUIAfterOverrideToggle = function() {
     const isUnlocked = document.body.classList.contains('system-override-active');
-    
-    // 1. 動態重建跑馬燈 HTML 結構
-    const marquee = document.getElementById('marquee-text');
-    if (marquee && window.siteProjects) {
-        const projects = window.siteProjects;
-        const publicTags = projects.filter(p => !p.is_hidden).flatMap(p => p.tags.filter(t => !(p.secret_tags && p.secret_tags.includes(t))) || []);
-        const allTags = projects.flatMap(p => p.tags || []);
-        const uniqueTags = [...new Set(allTags)]; 
 
-        if (uniqueTags.length > 0) {
-            const stockContent = uniqueTags.map((tag, i) => {
-                let innerHtml = '';
-                const isSecret = !publicTags.includes(tag);
-                const isUp = i % 2 !== 0;
-                const change = (Math.random() * 3 + 0.1).toFixed(2); 
-                const arrow = isUp ? '▲' : '▼';
-                const colorClass = isUp ? 'stock-up' : 'stock-down';
-                const sign = isUp ? '+' : '-';
-                const statusAttr = window.STATUS_LIST.flat().includes(tag) ? `data-status="${tag}"` : '';
-                
-                innerHtml = `<span class="clickable-ticker-tag" data-tag="${tag}" ${statusAttr} onclick="window.filterByTag('${tag}', event)"><span class="ticker-name">${tag}</span> <span class="${colorClass}">${arrow} ${sign}${change}%</span></span>`;
-                
-                // ✨ 核心排版修復：利用 Flex 置中，並把 3rem 的完美對稱間距交給分隔線！
-                const wrapperClass = isSecret ? 'marquee-tag-wrapper sys-hidden-ticker' : 'marquee-tag-wrapper';
-                return `<span class="${wrapperClass}" style="display: inline-flex; align-items: center;">${innerHtml}<span style="color: var(--muted); opacity: 0.5; margin: 0 10rem;">|</span></span>`;
-            }).join('');
-
-            const container = marquee.parentElement;
-            container.innerHTML = `
-                <div class="marquee-content">${stockContent}</div>
-                <div class="marquee-content">${stockContent}</div>
-            `;
-            
-            container.onmouseenter = () => document.querySelectorAll('.marquee-content').forEach(m => { if (m.marqueePlayer) m.marqueePlayer.pause(); });
-            container.onmouseleave = () => document.querySelectorAll('.marquee-content').forEach(m => { if (m.marqueePlayer) m.marqueePlayer.play(); });
-        }
-    }
-
-    const marquees = document.querySelectorAll('.marquee-content');
-
-    // 2. 凍結座標，準備重新起跑
-    marquees.forEach(m => {
-        if (isUnlocked) m.classList.add('suppress-secrets');
-        
-        const matrix = new DOMMatrix(window.getComputedStyle(m).transform);
-        let currentX = matrix.m41;
-        const currentWidth = m.offsetWidth;
-        
-        if (currentWidth > 0) {
-            currentX = currentX % currentWidth;
-            if (currentX > 0) currentX -= currentWidth;
-        }
-        m.dataset.startX = currentX; 
-        
-        if (m.marqueePlayer) { 
-            m.marqueePlayer.cancel(); 
-            m.marqueePlayer = null; 
-        }
-        m.style.transition = 'none';
-        m.style.animation = 'none';
-
-        m.classList.remove('suppress-secrets');
-        m.classList.add('force-show-secrets');
-    });
-
-    void document.body.offsetWidth;
-
-    marquees.forEach(m => {
-        m.dataset.targetWidth = m.offsetWidth;
-        m.classList.remove('force-show-secrets');
-        if (isUnlocked) m.classList.add('suppress-secrets');
-    });
-
-    setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-        document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
-        
+    // ✨ 提煉重複邏輯：僅更新專案卡片上的數字
+    const updateCardCounts = () => {
         window.siteProjects.forEach(proj => {
             const grid = document.getElementById(`${proj.category}-grid`);
             if (grid && proj.articles && proj.articles.length > 0) {
-                const cards = grid.querySelectorAll('.card');
-                cards.forEach(card => {
+                grid.querySelectorAll('.card').forEach(card => {
                     const titleEl = card.querySelector('h3');
                     if (titleEl && titleEl.innerText.includes(proj.title)) {
                         const actionBtn = card.querySelector('.action-btn');
@@ -372,6 +323,52 @@ window.refreshUIAfterOverrideToggle = function() {
                 });
             }
         });
+    };
+
+    // ✨ 智慧防護：如果系統已經是解鎖狀態，且網頁一開始載入時已經跑過跑馬燈了，直接維持現狀並更新卡片即可！
+    if (isUnlocked && window._hasAlreadyUnlockedOnce) {
+        updateCardCounts();
+        return; 
+    }
+
+    if (isUnlocked) window._hasAlreadyUnlockedOnce = true;
+
+    const marquees = document.querySelectorAll('.marquee-content');
+
+    // 1. 凍結跑馬燈當前座標
+    marquees.forEach(m => {
+        if (isUnlocked) m.classList.add('suppress-secrets');
+        const matrix = new DOMMatrix(window.getComputedStyle(m).transform);
+        let currentX = matrix.m41;
+        const currentWidth = m.offsetWidth;
+        if (currentWidth > 0) {
+            currentX = currentX % currentWidth;
+            if (currentX > 0) currentX -= currentWidth;
+        }
+        m.dataset.startX = currentX; 
+        
+        if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
+        m.style.transition = 'none';
+        m.style.animation = 'none';
+
+        m.classList.remove('suppress-secrets');
+        m.classList.add('force-show-secrets');
+    });
+
+    void document.body.offsetWidth;
+
+    // 記錄最終真實寬度
+    marquees.forEach(m => {
+        m.dataset.targetWidth = m.offsetWidth;
+        m.classList.remove('force-show-secrets');
+        if (isUnlocked) m.classList.add('suppress-secrets');
+    });
+
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
+        
+        updateCardCounts();
 
         if (window.currentActiveTag) {
             window._pendingActiveTag = window.currentActiveTag;
@@ -380,7 +377,7 @@ window.refreshUIAfterOverrideToggle = function() {
             document.querySelectorAll('.active-tag').forEach(t => t.classList.remove('active-tag'));
         }
 
-        // 3. 永遠啟動光速引擎！確保寬度變化時的平滑過渡
+        // 2. 啟動光速引擎
         marquees.forEach((m, index) => {
             const targetWidth = parseFloat(m.dataset.targetWidth) || m.offsetWidth;
             let startX = parseFloat(m.dataset.startX) || 0;
@@ -395,24 +392,15 @@ window.refreshUIAfterOverrideToggle = function() {
                 { transform: `translateX(${startX}px)`, filter: 'blur(0px)' },
                 { transform: `translateX(${startX - (distance * 0.5)}px)`, filter: 'blur(3px)' }, 
                 { transform: `translateX(-${targetWidth}px)`, filter: 'blur(0px)' }
-            ], {
-                duration: duration,
-                easing: 'ease-in-out'
-            });
+            ], { duration, easing: 'ease-in-out' });
 
             if (isUnlocked) {
-                setTimeout(() => {
-                    m.classList.remove('suppress-secrets');
-                }, duration / 2); 
+                setTimeout(() => m.classList.remove('suppress-secrets'), duration / 2); 
             }
 
             m.marqueePlayer.onfinish = () => {
-                m.style.transform = '';
-                m.style.filter = '';
-                m.style.animation = ''; 
-                m.marqueePlayer = null;
+                m.style.transform = ''; m.style.filter = ''; m.style.animation = ''; m.marqueePlayer = null;
                 m.classList.remove('suppress-secrets'); 
-
                 if (index === 0 && window._pendingActiveTag) {
                     const activeTag = window._pendingActiveTag;
                     window._pendingActiveTag = null; 
@@ -965,26 +953,22 @@ renderer.image = function(token_or_href, title, text) {
         </div>`;
     }
 
-    if (href.match(/\.(mp4|webm|ogg)$/i)) {
-        const displayTitle = altText || imgTitle || '影片播放';
-        const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg><span>${displayTitle}</span></div>`;
+    // ✨ 完美合併影音解析器，減少大量贅字
+    const isVideo = href.match(/\.(mp4|webm|ogg)$/i);
+    const isAudio = href.match(/\.(mp3|wav)$/i);
+    if (isVideo || isAudio) {
+        const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
+        const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
+        const mediaTag = isVideo 
+            ? `<video preload="metadata" controls class="md-video" style="margin: 0; border: none; box-shadow: none; width: 100%; display: block;"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`
+            : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>`;
+
+        const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">${iconSvg}<span>${displayTitle}</span></div>`;
         
         return `
         <div style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--glass-bg);">
             ${titleHtml}
-            <!-- ✨ 補上 preload="metadata" 拯救效能 -->
-            <video preload="metadata" controls class="md-video" style="margin: 0; border: none; box-shadow: none; width: 100%; display: block;"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>
-        </div>`;
-    }
-    if (href.match(/\.(mp3|wav|ogg)$/i)) {
-        const displayTitle = altText || imgTitle || '音樂播放';
-        const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg><span>${displayTitle}</span></div>`;
-        
-        return `
-        <div style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--glass-bg);">
-            ${titleHtml}
-            <!-- ✨ 補上 preload="metadata" 拯救效能 -->
-            <audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>
+            ${mediaTag}
         </div>`;
     }
 
@@ -2494,25 +2478,6 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             
             modalBody.innerHTML = marked.parse(markdownContent);
 
-            // ✨ 攔截並相容原生 HTML 寫法的高光區塊
-            modalBody.querySelectorAll('.md-highlight-block').forEach(block => {
-                const badge = block.querySelector('.highlight-badge');
-                const textEl = block.querySelector('.highlight-text');
-                
-                if (textEl) {
-                    const badgeText = badge ? badge.innerText.trim() : '';
-                    const targetColor = badgeText ? window.getStatusColorFromCSS(badgeText.toUpperCase()) : 'var(--accent)';
-                    const displayText = badgeText ? badgeText : 'HIGHLIGHT';
-                    
-                    const repeatedText = `${displayText} • `.repeat(20);
-                    const bgHtml = `<span class="marquee-text-track" aria-hidden="true">${repeatedText}</span>`;
-                    
-                    block.className = `md-highlight-text`;
-                    block.style.setProperty('--dynamic-glow', targetColor);
-                    block.innerHTML = `${bgHtml}<span class="text-content">${textEl.innerHTML}</span>`;
-                }
-            });
-
             const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
             // ✨ 加上 idx 參數來對應陣列
             verticalWrappers.forEach((wrapper, idx) => {
@@ -2668,11 +2633,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     a.innerText = h.innerText;
                     a.href = "javascript:void(0)"; 
                     a.onclick = () => {
-                        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 90;
-                        const targetTop = h.getBoundingClientRect().top - document.querySelector('.modal-content').getBoundingClientRect().top + document.querySelector('.modal-content').scrollTop - topBarHeight - 20; // 減去動態高度，再多退 20px 留白
-                        document.querySelector('.modal-content').scrollTo({ top: targetTop, behavior: 'smooth' });
-                        h.classList.add('highlight-flash');
-                        setTimeout(() => h.classList.remove('highlight-flash'), 1000);
+                        // ✨ 消除多此一舉的座標計算，直接委託給統一跳轉引擎
+                        window.executeAnchorScroll('#' + h.id, false);
                         tocBtn.classList.remove('open');
                         tocDropdown.classList.remove('active');
                     };
@@ -3055,6 +3017,25 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     }
 
     if (window.highlightedCards.length > 0) window.focusAndBumpCard(window.highlightedCards[window.currentCardIndex]);
+};
+
+// ✨ 抽出共用引擎：跑馬燈平滑定位動畫
+window.scrollMarqueeTo = function(targetX, contentWidth) {
+    document.querySelectorAll('.marquee-content').forEach(m => {
+        if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
+        let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
+        if (currentX > 0) currentX -= contentWidth;
+        
+        m.style.transition = 'none';
+        m.style.transform = `translateX(${currentX}px)`;
+        m.style.animation = 'none';
+        
+        void m.offsetWidth; // 強制重繪
+        
+        const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
+        m.style.transition = `transform ${duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
+        m.style.transform = `translateX(${targetX}px)`;
+    });
 };
 
 window.scrollToNextCard = function(event) {
