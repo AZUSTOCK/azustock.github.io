@@ -1135,16 +1135,16 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 
 /* ✨ 移除了所有的 :hover 觸發，現在只有被點擊加上 .is-xray-active 時才會啟動 X光！ */
 
-/* 1. 主文字變透明 */
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .text-content {
+/* 1. 主文字變透明 (移除 Hover 限制，永遠保持幽靈化) */
+.markdown-body .md-highlight-text.is-xray-active .text-content {
     color: color-mix(in srgb, var(--text) 15%, transparent); 
 }
 
-/* 2. 跑馬燈甦醒並開始跑動！ */
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .marquee-text-track {
+/* 2. 跑馬燈甦醒並開始跑動！ (移除 Hover 限制，永遠保持跑動) */
+.markdown-body .md-highlight-text.is-xray-active .marquee-text-track {
     animation-play-state: running; 
     color: var(--dynamic-glow);
-    opacity: 1; /* ✨ 點擊後保證強制顯示 */
+    opacity: 1; 
 }
 
 /* ==========================================
@@ -1162,9 +1162,14 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     color: color-mix(in srgb, var(--accent-2) 40%, var(--text)) !important;
 }
 
-/* 讓紙張翻折的陰影更自然 */
-.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(:hover) .spoiler-fold {
+/* 讓紙張翻折的陰影更自然 (✨ 嚴格限定「未撕開」狀態，絕不復活已飛走的紙片) */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(.revealed):not(:hover) .spoiler-fold {
     opacity: 0.4 !important;
+}
+
+/* ✨ 確保紙片撕開飛走後，不管發生什麼事都絕對保持隱形 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed .spoiler-fold {
+    opacity: 0 !important;
 }
 
 /* 4. Code 與 Link 在平時的平滑顏色過渡 */
@@ -1173,13 +1178,44 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     transition: color 0.3s ease, background-color 0.3s ease;
 }
 
-/* 5. 確保 Code 強制移除背景色，與超連結一起幽靈化 */
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .text-content code {
+/* 5. 確保 Code 強制移除背景色，與超連結一起幽靈化 (移除 Hover 限制) */
+.markdown-body .md-highlight-text.is-xray-active .text-content code {
     background-color: transparent !important;
     color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
 }
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .text-content a {
+.markdown-body .md-highlight-text.is-xray-active .text-content a {
     color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
+}
+
+/* ✨ 讓貼紙撕開後 (Revealed) 的殘留底色，完美融入該區塊的高光色彩 (大幅降低亮度) */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed {
+    /* 濃度從 20% 大幅壓低到 8%，呈現極其微弱的底跡 */
+    background-color: color-mix(in srgb, var(--dynamic-glow) 8%, transparent) !important;
+    /* 邊框濃度從 30% 壓低到 15% */
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dynamic-glow) 15%, transparent) !important;
+    transition: background-color 0.2s ease , box-shadow 0.2s ease !important;
+}
+
+/* ✨ 1. 讓撕開後的文字在「未 Hover」時，跟周圍的普通文字一樣變成幽靈半透明 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:not(:hover) .spoiler-content {
+    color: color-mix(in srgb, var(--text) 15%, transparent) !important;
+    transition: color 0.2s ease !important;
+}
+
+/* ✨ 2. 當滑鼠 Hover 到已撕開的貼紙上時，文字重新亮起並染上高光色彩 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:hover .spoiler-content {
+    color: color-mix(in srgb, var(--dynamic-glow) 55%, var(--text)) !important;
+    transition: color 0.2s ease !important;
+}
+
+/* ==========================================
+   ✨ 新增：撕開後，滑鼠再次 Hover 上去時的「高光互動感」
+   ========================================== */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:hover {
+    /* Hover 變亮的效果也等比例降低，避免太過刺眼 */
+    background-color: color-mix(in srgb, var(--dynamic-glow) 15%, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dynamic-glow) 25%, transparent) !important;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease !important; 
 }
 
 /* ==========================================
@@ -1229,14 +1265,8 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body img[alt="icon"].is-loading, .markdown-body img[alt="icon"].is-broken { min-height: 48px; aspect-ratio: 1 / 1; }
 .markdown-body figure img { margin: 0 !important; width: 100% !important; }
 .markdown-body figure figcaption { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 0.6rem; line-height: 1.4; }
-.markdown-body .md-video { max-width: 100%; height: auto; border-radius: 0.6rem; box-shadow: 0 4px 15px var(--shadow-base); display: block; margin: 1.5rem auto; background: #000; border: 1px solid var(--card-border); }
-.markdown-body .md-audio { 
-    width: 100%; 
-    margin: 1.5rem 0; 
-    border-radius: 999px; 
-    box-shadow: 0 4px 15px var(--shadow-base); 
-    border: 1px solid var(--card-border); /* ✨ 畫上邊界，讓播放器永遠不消失！ */
-}
+.markdown-body .md-video { max-width: 100%; height: auto; display: block; background: #000; }
+.markdown-body .md-audio { display: block; border-radius: 999px; }
 
 /* 放大鏡互動按鈕 */
 .zoom-btn { background: transparent; border: none; color: var(--muted); border-radius: 6px; padding: 4px; margin-left: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.25s ease, background-color 0.25s ease, opacity 0.25s ease; vertical-align: middle; position: relative; top: -2px; transform: translateZ(0) scale(1); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }

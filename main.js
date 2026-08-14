@@ -773,8 +773,18 @@ renderer.image = function(token_or_href, title, text) {
     if (!href) return '';
 
     /// 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
-    if (href.match(/\.pdf$/i)) {
-        // ✨ 使用你系統預設的文章/文件 SVG 圖示
+    // 透過 split 排除 ? 和 # 後面的參數，精準判斷是否為 pdf
+    const cleanUrlForCheck = href.split('?')[0].split('#')[0];
+    
+    if (cleanUrlForCheck.match(/\.pdf$/i)) {
+        // ✨ 預設高度 600px，如果網址帶有 ?h=800 則抓取該數字當作高度！
+        let customHeight = "600px";
+        const hMatch = href.match(/[?&]h=(\d+)/i);
+        if (hMatch) {
+            customHeight = hMatch[1] + "px";
+        }
+        
+        // 使用你系統預設的文章/文件 SVG 圖示
         const docSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
         
         return `
@@ -794,15 +804,31 @@ renderer.image = function(token_or_href, title, text) {
                 </a>
             </div>
             
-            <iframe src="${href}" width="100%" height="600px" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+            <iframe src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
         </div>`;
     }
 
     if (href.match(/\.(mp4|webm|ogg)$/i)) {
-        return `<video controls class="md-video"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`;
+        // ✨ 優先使用 altText 當作標題，如果沒有才用 imgTitle
+        const displayTitle = altText || imgTitle || '影片播放';
+        const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg><span>${displayTitle}</span></div>`;
+        
+        return `
+        <div style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--glass-bg);">
+            ${titleHtml}
+            <video controls class="md-video" style="margin: 0; border: none; box-shadow: none; width: 100%; display: block;"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>
+        </div>`;
     }
     if (href.match(/\.(mp3|wav|ogg)$/i)) {
-        return `<audio controls class="md-audio"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>`;
+        // ✨ 優先使用 altText 當作標題，如果沒有才用 imgTitle
+        const displayTitle = altText || imgTitle || '音樂播放';
+        const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg><span>${displayTitle}</span></div>`;
+        
+        return `
+        <div style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--glass-bg);">
+            ${titleHtml}
+            <audio controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>
+        </div>`;
     }
 
     // 解析縮圖與原圖 (透過 Python 塞入的 #full= 傳遞)
