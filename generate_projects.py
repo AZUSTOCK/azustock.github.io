@@ -87,7 +87,8 @@ def create_og_image(original_path, output_path, bg_path=None):
         return False
 
 def parse_folder_meta(folder_name):
-    match = re.match(r'^(\d+)_+(.*)$', folder_name)
+    # ✨ 核心修復：在 \d 前面加上 -?，代表「允許前面帶有一個可有可無的負號」！
+    match = re.match(r'^(-?\d+)_+(.*)$', folder_name)
     if match:
         return int(match.group(1)), match.group(2)
     return 999, folder_name
@@ -261,15 +262,24 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             if proj_data.get('description'): clean_proj_data['description'] = proj_data.get('description')
             if proj_data.get('date'): clean_proj_data['date'] = proj_data.get('date')
             if proj_data.get('version'): clean_proj_data['version'] = str(proj_data.get('version'))
-            if proj_data.get('tags'): clean_proj_data['tags'] = proj_data.get('tags')
+            if proj_data.get('tags'):
+                sys_tags = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED', 'WIP', 'OC'}
+                clean_tags = []
+                for t in proj_data.get('tags'):
+                    # 擷取冒號前的單字並轉大寫 (支援 new:2026-08-14)
+                    base = str(t).split(':')[0].upper()
+                    if base in sys_tags:
+                        clean_tags.append(str(t).upper()) # 系統標籤強制轉大寫
+                    else:
+                        clean_tags.append(t) # 普通標籤維持原樣 (如 Python)
+                clean_proj_data['tags'] = clean_tags
+                
             if proj_data.get('link'): clean_proj_data['link'] = proj_data.get('link')
             
-            if proj_data.get('pinned'): clean_proj_data['pinned'] = True
-            if proj_data.get('new'): clean_proj_data['is_new'] = True
-            if proj_data.get('updated'): clean_proj_data['is_updated'] = True
-            if proj_data.get('wip'): clean_proj_data['is_wip'] = True
-            if proj_data.get('archived'): clean_proj_data['is_archived'] = True
-            if proj_data.get('hidden'): clean_proj_data['is_hidden'] = True
+            # ✨ 支援布林值(True)與日期字串("YYYY-MM-DD")的通用轉發 (大小寫通吃)
+            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden']:
+                val = proj_data.get(key) or proj_data.get(key.upper())
+                if val is not None: clean_proj_data[f'is_{key}' if key != 'pinned' else 'pinned'] = val
             if proj_data.get('groups'): clean_proj_data['groups'] = proj_data.get('groups')
             
             proj_cover = proj_data.get('cover')
@@ -583,10 +593,20 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             if meta_desc: article_obj["description"] = meta_desc
                             if meta_cover: article_obj["cover_image"] = meta_cover_url
                             if sub_data.get('date'): article_obj["date"] = sub_data.get('date')
-                            if sub_data.get('tags'): article_obj["tags"] = sub_data.get('tags')
+                            if sub_data.get('tags'):
+                                sys_tags = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED', 'WIP', 'OC'}
+                                clean_tags = []
+                                for t in sub_data.get('tags'):
+                                    base = str(t).split(':')[0].upper()
+                                    if base in sys_tags:
+                                        clean_tags.append(str(t).upper())
+                                    else:
+                                        clean_tags.append(t)
+                                article_obj["tags"] = clean_tags
                             
                             for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden']:
-                                if sub_data.get(key): article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = True
+                                val = sub_data.get(key) or sub_data.get(key.upper())
+                                if val is not None: article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = val
 
                             if 'groups' in proj_data:
                                 art_group = sub_data.get('group')

@@ -4,6 +4,7 @@
 
 /* 1-1. 深色模式 (Dark Mode) */
 [data-theme="dark"] {
+    color-scheme: dark; /* ✨ 核心魔法：強制原生 UI 啟用深色模式 */
     --bg: #020617; --card: #0b1220; --text: #e5e7eb; --muted: #9ca3af;
     --accent: #38bdf8; --accent-2: #f5d547; --accent-hover: #F5D547;
     --glow-1: rgba(16, 85, 137, 0.8); --glow-2: rgba(4, 47, 46, 0.8);
@@ -19,9 +20,10 @@
     --scrollbar-bg: transparent; --scrollbar-thumb: rgba(255, 255, 255, 0.25); --scrollbar-hover: rgba(56, 189, 248, 0.4); 
 }
 
-/* 2. 淺色模式 (Light Mode) */
+/* 2. 淺色模式 (Light Mode) - 極淨透亮調色盤 */
 [data-theme="light"] {
-    --bg: #F1F5F9; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
+    color-scheme: light; 
+    --bg: #e6e6e6; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
     --accent: #407899; --accent-2: #44D4BE; --accent-hover: #44D4BE;
     --glow-1: rgba(68, 212, 190, 0.3); --glow-2: rgba(245, 213, 71, 0.3);
     --glass-bg: rgba(255, 255, 255, 0.7); --glass-border: rgba(68, 212, 190, 0.4);
@@ -61,8 +63,9 @@
 [data-status="MAJOR"]    { --s-color: #E11D48;            --s-shadow: rgba(225, 29, 72, 0.6); } 
 [data-status="HOTFIX"]   { --s-color: #FF5722;            --s-shadow: rgba(255, 87, 34, 0.6); } 
 [data-status="FEATURE"]  { --s-color: #10B981;            --s-shadow: rgba(16, 185, 129, 0.5); } 
+[data-status="DEV"]      { --s-color: #3B82F6;            --s-shadow: rgba(59, 130, 246, 0.5); } /* ✨ DEV 專屬科技藍 */
 [data-status="REFACTOR"] { --s-color: #6366F1;            --s-shadow: rgba(99, 102, 241, 0.5); } 
-[data-status="PATCH"]    { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); } 
+[data-status="PATCH"]    { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); }
 
 /* 1-5. 動畫可擴充模組化引擎 (預設：VisionOS 景深) */
 :root {
@@ -75,6 +78,15 @@
 [data-modal-fx="vision-os"] { --modal-transition: opacity 0.12s ease-out, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.12s ease-out; --modal-will-change: opacity, transform, filter; --modal-out-transform: scale(0.92) translateY(10px); --modal-out-filter: blur(8px); }
 [data-modal-fx="magnetic"] { --modal-transition: opacity 0.12s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); --modal-will-change: opacity, transform; --modal-out-transform: translateX(15px); --modal-out-filter: none; }
 [data-modal-fx="fade"] { --modal-transition: opacity 0.3s ease; --modal-will-change: opacity; --modal-out-transform: none; --modal-out-filter: none; }
+
+/* 1-6. 系統共用 SVG 圖標庫 (CSS Data URIs 集中管理) */
+:root {
+    --svg-broken-img: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21 15 16 10 5 21'/%3E%3C/svg%3E");
+    --svg-watermark-default: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5'%3E%3Cpolygon points='12 2 2 7 12 12 22 7 12 2'/%3E%3Cpolyline points='2 17 12 22 22 17'/%3E%3Cpolyline points='2 12 12 17 22 12'/%3E%3C/svg%3E");
+    --svg-watermark-profile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'%3E%3C/path%3E%3Ccircle cx='12' cy='7' r='4'%3E%3C/circle%3E%3C/svg%3E");
+    --svg-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='12 5 19 12 12 19'/%3E%3C/svg%3E");
+    --svg-arrow-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='19' y1='12' x2='5' y2='12'/%3E%3Cpolyline points='12 19 5 12 12 5'/%3E%3C/svg%3E");
+}
 
 /* 👇 請補上這兩行，動畫引擎才會真正啟動！ */
 #modal-body, #modal-top-left, #toc-mount-point { transition: var(--modal-transition) !important; will-change: var(--modal-will-change); transform-origin: var(--modal-origin); }
@@ -94,18 +106,6 @@ html {
     text-size-adjust: 100%;
 }
 
-/* ✨ 2. 針對所有捲軸元件，確保它們在透明軌道下不會有奇怪的外框或陰影 */
-::-webkit-scrollbar,
-::-webkit-scrollbar-track,
-::-webkit-scrollbar-thumb {
-    box-shadow: none !important;
-    border: none !important;
-}
-
-/* 讓原本預設的軌道徹底變透明 */
-::-webkit-scrollbar-track { 
-    background: transparent !important; 
-}
 body {
     margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
     /* ✨ 改用 max(1200px, 80vw) 確保在大螢幕上光暈一樣能覆蓋背景 */
@@ -132,7 +132,7 @@ section { margin-top: 3.5rem; }
 @keyframes skeleton-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 img { color: transparent !important; font-size: 0; }
 .is-loading { background: linear-gradient(110deg, var(--bg) 25%, var(--card-border) 50%, var(--bg) 75%); background-size: 200% 100%; animation: loading-sweep 1.5s infinite linear, skeleton-breathe 2.5s infinite ease-in-out; transition: background-color 0.4s ease, min-height 0.4s ease; }
-img.is-broken { display: block; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpolyline points='21 15 16 10 5 21'/%3E%3C/svg%3E"), linear-gradient(110deg, transparent 25%, var(--card-border) 50%, transparent 75%), linear-gradient(var(--box-bg), var(--box-bg)); background-position: center, 200% 0, 0 0; background-size: clamp(20px, 30%, 48px) clamp(20px, 30%, 48px), 200% 100%, 100% 100%; background-repeat: no-repeat, no-repeat, no-repeat; border: 1px dashed var(--muted); animation: broken-sweep 2s infinite linear, skeleton-breathe 2.5s infinite ease-in-out; }
+img.is-broken { display: block; background-image: var(--svg-broken-img), linear-gradient(110deg, transparent 25%, var(--card-border) 50%, transparent 75%), linear-gradient(var(--box-bg), var(--box-bg)); background-position: center, 200% 0, 0 0; background-size: clamp(20px, 30%, 48px) clamp(20px, 30%, 48px), 200% 100%, 100% 100%; background-repeat: no-repeat, no-repeat, no-repeat; border: 1px dashed var(--muted); animation: broken-sweep 2s infinite linear, skeleton-breathe 2.5s infinite ease-in-out; }
 
 .loading-container { grid-column: 1 / -1; text-align: center; padding: 3rem 0; }
 .loading-text { font-family: 'Courier New', monospace; font-size: 1rem; font-weight: 600; letter-spacing: 0.1em; color: var(--accent); }
@@ -152,23 +152,29 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     width: 14px;  
     height: 14px; 
 }
+::-webkit-scrollbar,
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-thumb {
+    box-shadow: none !important;
+    border: none !important;
+}
 /* 讓軌道完全隱形，這樣不管是淺色或深色模式，軌道都會直接透出網頁底色 */
 ::-webkit-scrollbar-track { 
     background: transparent !important; 
 }
 ::-webkit-scrollbar-thumb { 
-    background-color: var(--scrollbar-thumb); /* ✨ 動態吃你設定的主題變數 */
+    background-color: var(--scrollbar-thumb); 
     border-radius: 10px; 
     border: 4px solid transparent; 
     background-clip: padding-box; 
     transition: background-color 0.3s ease; 
 }
 ::-webkit-scrollbar-thumb:hover { 
-    background-color: var(--scrollbar-hover); /* ✨ 動態吃你設定的主題 Hover 變數 */
+    background-color: var(--scrollbar-hover); 
     border-width: 3px; 
 }
 
-/* Firefox 原生支援 (僅能設定顏色) */
+/* Firefox 原生支援 */
 * { 
     scrollbar-width: thin; 
     scrollbar-color: var(--scrollbar-thumb) transparent; 
@@ -379,21 +385,41 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     white-space: nowrap !important;
 }
 
-/* ✨ 核心修復 2：消除真兇！拔除跑馬燈內部標籤的 margin-top，防止它們把高度撐歪 */
+/* ✨ 精準控制跑馬燈元件，不污染其他 Span */
+.marquee-tag-wrapper {
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+}
 .marquee-content .tag {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
 }
-.marquee-content span { font-family: 'Courier New', monospace; font-size: 0.95rem; font-weight: 600; color: var(--accent); padding: 0 3rem; letter-spacing: 0.1em; white-space: nowrap; }
+/* 把字體與顏色精準交給實際點擊的本體 */
+.clickable-ticker-tag { 
+    font-family: 'Courier New', monospace; 
+    font-size: 0.95rem; 
+    font-weight: 600; 
+    color: var(--accent); 
+    letter-spacing: 0.1em; 
+    white-space: nowrap; 
+    cursor: pointer; 
+    transition: color 0.3s ease, text-shadow 0.3s ease; 
+}
+.clickable-ticker-tag:hover, .clickable-ticker-tag.active-tag { color: var(--accent-2); text-shadow: 0 0 10px var(--accent-2); }
+
 .marquee-container:hover .marquee-content { animation-play-state: paused; }
 @keyframes marquee-seamless { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-.kotoba-whisper { font-family: "Noto Serif TC", "Songti TC", serif; font-style: italic; font-size: 0.95rem; color: var(--muted); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: pointer; }
+.kotoba-whisper { font-style: italic; font-size: 0.95rem; color: var(--accent); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: pointer; }
 .kotoba-whisper:hover { color: var(--accent-2); text-shadow: 0 0 10px var(--glow-1); opacity: 1; }
-.stock-up, .stock-down { margin-left: 8px; font-weight: bold; transition: color 0.5s ease; }
+/* ✨ 加大文字與漲跌數字之間的間距，讓視覺更有呼吸感 */
+.stock-up, .stock-down { 
+    margin-left: 2rem; 
+    font-weight: bold; 
+    transition: color 0.5s ease; 
+}
 [data-theme="dark"] .stock-up { color: #DB3069; } [data-theme="dark"] .stock-down { color: #44D4BE; }
 [data-theme="light"] .stock-up { color: #F93435; } [data-theme="light"] .stock-down { color: #333AFD; }
-.clickable-ticker-tag { cursor: pointer; transition: color 0.3s ease, text-shadow 0.3s ease; }
-.clickable-ticker-tag:hover, .clickable-ticker-tag.active-tag { color: var(--accent-2); text-shadow: 0 0 10px var(--accent-2); }
 .marquee-content.paused { animation-play-state: paused !important; }
 
 /* 狀態徽章與特殊標籤特效 */
@@ -526,21 +552,21 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 /* ========================================================================== */
-/* ✨ 全域共用 Tooltip 氣泡 (完整支援所有按鈕) */
+/* ✨ 全域共用 Tooltip 氣泡 (乾淨俐落的屬性選擇器版) */
 /* ========================================================================== */
-.toast-btn::after, .mermaid-btn::after, .capsule-btn::after, .zoom-btn::after, .toolbar-btn::after, .lightbox-capsule-btn::after, .footer-btn::after { 
+[data-tooltip]::after { 
     content: attr(data-tooltip); position: absolute; top: -38px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--card); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; 
 }
-.toast-btn::before, .mermaid-btn::before, .capsule-btn::before, .zoom-btn::before, .toolbar-btn::before, .lightbox-capsule-btn::before, .footer-btn::before { 
+[data-tooltip]::before { 
     content: ''; position: absolute; top: -12px; left: 50%; transform: translateX(-50%) translateY(8px); border-width: 5px; border-style: solid; border-color: var(--text) transparent transparent transparent; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 10000; 
 }
 
 /* 顯示 Hover 狀態 */
-.toast-btn:hover::after, .toast-btn:hover::before, .mermaid-btn:hover::after, .mermaid-btn:hover::before, .capsule-btn:hover::after, .capsule-btn:hover::before, .zoom-btn:hover::after, .zoom-btn:hover::before, .toolbar-btn:hover::after, .toolbar-btn:hover::before, .lightbox-capsule-btn:hover::after, .lightbox-capsule-btn:hover::before, .footer-btn:hover::after, .footer-btn:hover::before { 
+[data-tooltip]:hover::after, [data-tooltip]:hover::before { 
     opacity: 1; transform: translateX(-50%) translateY(0); 
 }
 
-/* ⬇️ 將 .mermaid-btn 加入往下彈出的清單中，避免被容器頂部切掉 */
+/* ⬇️ 將特定按鈕加入往下彈出的清單中，避免被容器頂部切掉 */
 .capsule-btn::after, .zoom-btn.floating::after, .toolbar-btn::after, .lightbox-capsule-btn::after, .mermaid-btn::after { 
     top: 100%; margin-top: 10px; bottom: auto; transform: translateX(-50%) translateY(-8px); 
 }
@@ -556,7 +582,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 main section { position: relative; scroll-margin-top: 100px; --sec-color: var(--accent); }
 main section h2 { font-size: 1.6rem; margin-bottom: 1.2rem; padding-left: 1.2rem; border-left: none !important; margin-left: 0; position: relative; display: inline-flex !important; }
 main section h2::before { content: ''; position: absolute; left: 0; top: 10%; bottom: 10%; width: 4px; background: var(--sec-color); border-radius: 4px; }
-main section::before { content: ''; position: absolute; top: -10px; right: 20px; width: 250px; height: 250px; max-height: calc(100% - 20px); max-width: 40vw; opacity: 0.08; z-index: 0; pointer-events: none; background-color: var(--sec-color); --default-watermark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5'%3E%3Cpolygon points='12 2 2 7 12 12 22 7 12 2'/%3E%3Cpolyline points='2 17 12 22 22 17'/%3E%3Cpolyline points='2 12 12 17 22 12'/%3E%3C/svg%3E"); -webkit-mask-image: var(--custom-watermark, var(--default-watermark)); mask-image: var(--custom-watermark, var(--default-watermark)); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: right top; mask-position: right top; transform: rotate(-10deg) scale(1); transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s ease; }
+main section::before { content: ''; position: absolute; top: -10px; right: 20px; width: 250px; height: 250px; max-height: calc(100% - 20px); max-width: 40vw; opacity: 0.08; z-index: 0; pointer-events: none; background-color: var(--sec-color); /* ✨ 原本又臭又長的 mask 設定，用一行簡寫完美解決！ */ -webkit-mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; transform: rotate(-10deg) scale(1); transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s ease; }
 main section:hover::before { transform: rotate(0deg) scale(1.1); opacity: 0.25; }
 main section::after { content: ''; position: absolute; top: -24px; bottom: -24px; left: -24px; right: -24px; border-radius: 20px; pointer-events: none; z-index: 0; opacity: 0; }
 /* 原本的區塊光暈動畫 */
@@ -564,23 +590,19 @@ main section::after { content: ''; position: absolute; top: -24px; bottom: -24px
     0%, 100% { opacity: 0; transform: scale(0.98); } 
     30% { opacity: 1; transform: scale(1); background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent); } 
 }
-/* ✨ 補上 .force-target::after */
 main section:target::after, main section.force-target::after { animation: target-section-glow-expand 3s cubic-bezier(0.25, 0.8, 0.25, 1); }
-/* ✨ 新增：類別 SVG 浮水印跳轉時的「偽 Hover」動畫 */
 @keyframes watermark-target-bump { 
     0%, 100% { transform: rotate(-10deg) scale(1); opacity: 0.08; } 
     30% { transform: rotate(0deg) scale(1.1); opacity: 0.25; } 
 }
-/* ✨ 補上 .force-target::before */
-main section:target::before, main section.force-target::before { 
-    animation: watermark-target-bump 3s cubic-bezier(0.25, 0.8, 0.25, 1); 
-}
+main section:target::before, main section.force-target::before { animation: watermark-target-bump 3s cubic-bezier(0.25, 0.8, 0.25, 1); }
 main section:nth-of-type(5n+1) { --sec-color: var(--group-c1); }
 main section:nth-of-type(5n+2) { --sec-color: var(--group-c2); }
 main section:nth-of-type(5n+3) { --sec-color: var(--group-c3); }
 main section:nth-of-type(5n+4) { --sec-color: var(--group-c4); }
 main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
-.watermark-profile { --custom-watermark: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23000000%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2%22%3E%3C/path%3E%3Ccircle cx=%2212%22 cy=%227%22 r=%224%22%3E%3C/circle%3E%3C/svg%3E'); }
+/* ✨ Profile 專屬浮水印直接呼叫 CSS 變數 */
+.watermark-profile { --custom-watermark: var(--svg-watermark-profile); }
 
 /* 4-2. 網格與卡片 */
 .grid { display: grid; gap: 1.5rem; grid-template-rows: auto; grid-auto-flow: column; grid-auto-columns: minmax(320px, 320px); overflow-x: auto; overflow-y: hidden; padding: 2.5rem 0.5rem; margin-top: -1.5rem; margin-left: -0.5rem; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
@@ -677,8 +699,9 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 
 /* 5-2. 頂部控制列 */
 .modal-top-bar { position: sticky; top: 0; margin: 0 -3rem 1.5rem -3rem; padding: 1.5rem 1.5rem 1.2rem 3rem; box-shadow: 0 -2px 0 0 var(--glass-bg); border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; background: var(--glass-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); z-index: 1060; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s ease, border-color 0.3s ease; }
-#modal-top-left { display: flex; align-items: center; margin: 0 !important; padding: 0 !important; gap: 0.5rem; }
-#modal-top-right { display: flex; align-items: center; margin: 0 !important; padding: 0 !important; gap: 0rem; align-self: flex-start; }
+#modal-top-left, #modal-top-right { display: flex; align-items: center; margin: 0 !important; padding: 0 !important; }
+#modal-top-left { gap: 0.5rem; }
+#modal-top-right { gap: 0rem; align-self: flex-start; }
 #modal-top-right:has(.toc-wrapper) { gap: 1rem; }
 .modal-close-btn, .toc-toggle-btn { box-sizing: border-box !important; flex-shrink: 0 !important; }
 
@@ -878,6 +901,57 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body p { margin-bottom: 1rem; }
 .markdown-body a { color: var(--accent-2); text-decoration: none; }
 .markdown-body a:hover { text-decoration: underline; color: var(--accent-hover); }
+/* ✨ 保護 Markdown 裡的實體按鈕不被超連結黃色污染 */
+.markdown-body a.btn { 
+    color: var(--accent) !important; 
+    text-decoration: none; 
+}
+.markdown-body a.btn:hover { 
+    color: var(--card) !important; 
+}
+
+/* ==========================================
+   ✨ 自訂按鈕擴充包 (Custom Buttons)
+   ========================================== */
+/* 1. 實心高光版 (btn btn-fill) */
+.markdown-body a.btn.btn-fill {
+    background: var(--accent);
+    color: var(--bg) !important;
+}
+.markdown-body a.btn.btn-fill:hover {
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    box-shadow: 0 4px 15px var(--glow-1);
+    color: var(--card) !important;
+}
+
+/* 2. 紅色警告版 (btn btn-danger) */
+.markdown-body a.btn.btn-danger {
+    border-color: var(--error-color);
+    color: var(--error-color) !important;
+}
+.markdown-body a.btn.btn-danger:hover {
+    background: var(--error-color);
+    color: #fff !important;
+    box-shadow: 0 4px 15px var(--error-shadow);
+}
+
+
+/* ==========================================
+   ✨ 小徽章排版完美對齊
+   ========================================== */
+.markdown-body img[alt="badge"] { 
+    display: inline-block; 
+    width: auto; 
+    height: auto; 
+    margin: 0 0.2rem; 
+    
+    /* 🚨 核心魔法：將圖片稍微往下壓，讓它跟旁邊的中/英文字完美切齊！ */
+    vertical-align: -3px; 
+    
+    box-shadow: none; 
+    border-radius: 4px; 
+}
 .markdown-body pre { background: var(--bg); padding: 1.2rem; border-radius: 0.6rem; overflow-x: auto; border: 1px solid var(--card-border); }
 .markdown-body code { font-family: 'Courier New', monospace; color: var(--accent-2); background: rgba(34, 211, 238, 0.1); padding: 0.2rem 0.4rem; border-radius: 4px; }
 .markdown-body pre code { background: transparent; padding: 0; color: var(--text); }
@@ -908,7 +982,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 
 .spoiler-text { 
     /* ✨ 統一全域撕紙秒數，保證遮罩與折紙 100% 同步！ */
-    --tear-dur: 0.4s;
+    --tear-dur: 0.3s;
     --tear-ease: cubic-bezier(0.4, 0, 0.2, 1);
 
     position: relative;
@@ -1045,7 +1119,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body .marquee-text-track {
     position: absolute;
     top: 0; left: 0;
-    width: max-content; /* ✨ 保證跑馬燈寬度充足，絕對不斷字 */
+    width: max-content; 
     height: 100%;
     display: flex;
     align-items: center;
@@ -1056,7 +1130,15 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     
     z-index: 1;
     pointer-events: none;
-    transition: color 0.3s ease; 
+    
+    /* ✨ 改動：預設完全透明，並加上 opacity 動畫過渡 */
+    opacity: 0;
+    transition: color 0.3s ease, opacity 0.3s ease; 
+}
+
+/* ✨ 新增：Hover 時浮現靜止的底字 */
+.markdown-body .md-highlight-text:hover .marquee-text-track {
+    opacity: 1;
 }
 
 /* 雙胞胎零件，無縫接力 */
@@ -1074,45 +1156,67 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 
 /* ✨ 移除了所有的 :hover 觸發，現在只有被點擊加上 .is-xray-active 時才會啟動 X光！ */
 
-/* 1. 主文字變透明 */
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .text-content {
+/* 1. 主文字變透明 (移除 Hover 限制，永遠保持幽靈化) */
+.markdown-body .md-highlight-text.is-xray-active .text-content {
     color: color-mix(in srgb, var(--text) 15%, transparent); 
 }
 
-/* 2. 跑馬燈甦醒並開始跑動！ */
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .marquee-text-track {
+/* 2. 跑馬燈甦醒並開始跑動！ (移除 Hover 限制，永遠保持跑動) */
+.markdown-body .md-highlight-text.is-xray-active .marquee-text-track {
     animation-play-state: running; 
     color: var(--dynamic-glow);
+    opacity: 1; 
 }
 
-/* 3. Spoiler 幽靈化：防雷貼紙也跟著變透明，讓跑馬燈穿過去 */
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-text.revealed {
-    background-color: transparent !important;
-    box-shadow: none !important;
-}
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-content {
-    color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
-}
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-cover {
-    background-color: color-mix(in srgb, var(--text) 15%, transparent) !important;
-}
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .spoiler-fold {
-    opacity: 0.15 !important;
+/* ==========================================
+   ✨ X光透視模式下的防雷貼紙「色彩混和」升級
+   ========================================== */
+
+/* 1. 未撕開狀態的混色與毛玻璃 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(.revealed) .spoiler-cover {
+    background-color: color-mix(in srgb, var(--dynamic-glow) 40%, var(--bg)) !important;
+    backdrop-filter: blur(2px);
 }
 
-/* 4. Code 與 Link 在平時的平滑顏色過渡 */
+/* 2. ✨ 確保紙片撕開飛走後，不管發生什麼事都絕對保持隱形 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed .spoiler-fold {
+    opacity: 0 !important;
+}
+
+/* 3. Code 與 Link 的幽靈化 */
 .markdown-body .md-highlight-text .text-content code,
 .markdown-body .md-highlight-text .text-content a {
     transition: color 0.3s ease, background-color 0.3s ease;
 }
-
-/* 5. 確保 Code 強制移除背景色，與超連結一起幽靈化 */
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .text-content code {
+.markdown-body .md-highlight-text.is-xray-active .text-content code {
     background-color: transparent !important;
     color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
 }
-.markdown-body .md-highlight-text.is-xray-active:not(:has(.spoiler-text:hover)) .text-content a {
+.markdown-body .md-highlight-text.is-xray-active .text-content a {
     color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
+}
+
+/* 4. ✨ 撕開後 (Revealed) 的極致內斂底跡 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed {
+    background-color: color-mix(in srgb, var(--dynamic-glow) 8%, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dynamic-glow) 15%, transparent) !important;
+}
+
+/* 5. ✨ 撕開後的文字在「未 Hover」時，變成幽靈半透明 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:not(:hover) .spoiler-content {
+    color: color-mix(in srgb, var(--text) 15%, transparent) !important;
+}
+
+/* 6. ✨ 當滑鼠 Hover 到已撕開的貼紙上時：底框與文字一起亮起 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:hover {
+    background-color: color-mix(in srgb, var(--dynamic-glow) 15%, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dynamic-glow) 25%, transparent) !important;
+    /* Hover 的互動反應可以稍微快一點點 (0.2s) 讓手感更好 */
+    transition: background-color 0.2s ease, box-shadow 0.2s ease !important; 
+}
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:hover .spoiler-content {
+    color: color-mix(in srgb, var(--dynamic-glow) 55%, var(--text)) !important;
+    transition: color 0.2s ease !important;
 }
 
 /* ==========================================
@@ -1162,8 +1266,8 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body img[alt="icon"].is-loading, .markdown-body img[alt="icon"].is-broken { min-height: 48px; aspect-ratio: 1 / 1; }
 .markdown-body figure img { margin: 0 !important; width: 100% !important; }
 .markdown-body figure figcaption { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 0.6rem; line-height: 1.4; }
-.markdown-body .md-video { max-width: 100%; height: auto; border-radius: 0.6rem; box-shadow: 0 4px 15px var(--shadow-base); display: block; margin: 1.5rem auto; background: #000; }
-.markdown-body .md-audio { width: 100%; margin: 1.5rem 0; border-radius: 999px; box-shadow: 0 4px 15px var(--shadow-base); }
+.markdown-body .md-video { max-width: 100%; height: auto; display: block; background: #000; }
+.markdown-body .md-audio { display: block; border-radius: 999px; }
 
 /* 放大鏡互動按鈕 */
 .zoom-btn { background: transparent; border: none; color: var(--muted); border-radius: 6px; padding: 4px; margin-left: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.25s cubic-bezier(0.25, 0.8, 0.25, 1), color 0.25s ease, background-color 0.25s ease, opacity 0.25s ease; vertical-align: middle; position: relative; top: -2px; transform: translateZ(0) scale(1); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
@@ -1175,6 +1279,22 @@ figure.no-caption img { margin: 0 !important; display: block; }
 .zoom-btn.floating { position: absolute; top: 10px; right: 10px; margin: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0.6; z-index: 10; transform: translateZ(0) scale(1); }
 figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 .zoom-btn.floating:hover { background: var(--accent); color: #fff; opacity: 1; transform: translateZ(0) scale(1.15); }
+/* ==========================================
+   ✨ 圖片 Hover 與放大鏡的完美視覺連動 (僅限獨立圖片)
+   ========================================== */
+/* 1. 帶有圖說的獨立圖片：滑鼠移到圖片上時，放大鏡跟著亮起 */
+figure.standalone-figure:has(img:hover) .zoom-btn {
+    color: var(--accent); 
+    transform: translateZ(0) scale(1.15); 
+}
+
+/* 2. 無圖說獨立圖片：滑鼠移到圖片上時，懸浮放大鏡跟著填滿顏色並發光 */
+figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating { 
+    background: var(--accent); 
+    color: #fff; 
+    opacity: 1; 
+    transform: translateZ(0) scale(1.15); 
+}
 
 /* 6-4. 畫廊系統 (Gallery) */
 .markdown-body .gallery { --g-width: 200px; --g-rows: 1; --g-ratio: 1/1; display: grid; gap: 1rem; margin: 0.2rem -0.8rem 0.2rem -0.8rem; padding: 0.5rem 0.8rem 1.5rem 0.8rem; grid-template-rows: repeat(var(--g-rows), auto); grid-auto-flow: column; grid-auto-columns: minmax(var(--g-width), var(--g-width)); overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
@@ -1308,11 +1428,12 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 .hint-right.visible:hover { box-shadow: inset -40px 0 40px var(--tag-bg); }
 .hint-left.visible:hover { box-shadow: inset 40px 0 40px var(--tag-bg); }
 .scroll-hint.visible:hover::after { transform: scale(1.3); background-color: var(--accent-2); filter: drop-shadow(0 0 6px var(--accent-2)); transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.2s ease, filter 0.2s ease; }
-.hint-right::after, .hint-left::after { content: ""; display: block; width: 24px; height: 24px; background-color: var(--accent); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
+/* ✨ 使用 CSS 變數與 mask 簡寫，大幅瘦身箭頭遮罩代碼 */
+.hint-right::after, .hint-left::after { content: ""; display: block; width: 24px; height: 24px; background-color: var(--accent); }
 .hint-right { right: -2px; justify-content: flex-end; padding-right: 8px; background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--bg) 90%, var(--bg) 100%); }
-.hint-right::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='12 5 19 12 12 19'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='12 5 19 12 12 19'/%3E%3C/svg%3E"); animation: hint-pulse-right 1.5s infinite ease-in-out; }
+.hint-right::after { -webkit-mask: var(--svg-arrow-right) center / contain no-repeat; mask: var(--svg-arrow-right) center / contain no-repeat; animation: hint-pulse-right 1.5s infinite ease-in-out; }
 .hint-left { left: -2px; justify-content: flex-start; padding-left: 8px; background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--bg) 80%, var(--bg) 100%); }
-.hint-left::after { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='19' y1='12' x2='5' y2='12'/%3E%3Cpolyline points='12 19 5 12 12 5'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='19' y1='12' x2='5' y2='12'/%3E%3Cpolyline points='12 19 5 12 12 5'/%3E%3C/svg%3E"); animation: hint-pulse-left 1.5s infinite ease-in-out; }
+.hint-left::after { -webkit-mask: var(--svg-arrow-left) center / contain no-repeat; mask: var(--svg-arrow-left) center / contain no-repeat; animation: hint-pulse-left 1.5s infinite ease-in-out; }
 .modal-content .hint-right { right: -1.2rem; background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--card) 80%, var(--card) 100%); }
 .modal-content .hint-left { left: -1.2rem; background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--card) 80%, var(--card) 100%); }
 #portfolio-sections .hint-left { left: -0.8rem; }
@@ -1376,8 +1497,33 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 
 /* 7-4. 圖片主體與文字 */
 .lightbox-content-wrapper { position: relative; z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; padding: 80px 20px 120px 20px; box-sizing: border-box; pointer-events: none; }
-.lightbox-img-wrapper { flex: 1; min-height: 0; min-width: 0; width: 100%; display: flex; justify-content: center; align-items: center; overflow: visible; pointer-events: auto; }
-#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); transform-origin: center center; touch-action: none; cursor: grab; }
+.lightbox-img-wrapper { flex: 1; min-height: 0; min-width: 0; width: 100%; display: flex; justify-content: center; align-items: center; overflow: visible; pointer-events: auto; position: relative; }
+
+/* ✨ 新增：大圖預覽的專屬讀取動畫 (Loading Spinner) */
+.lightbox-img-wrapper::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--card-border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: lightbox-spin 0.8s linear infinite;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+.lightbox-img-wrapper.is-fetching::before {
+    opacity: 1;
+    visibility: visible;
+}
+@keyframes lightbox-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ✨ 加入 opacity 過渡，讓圖片載入後平滑淡入 */
+#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease; transform-origin: center center; touch-action: none; cursor: grab; }
 #lightbox-img.is-dragging { cursor: grabbing; transition: none !important; }
 
 /* 底部圖片說明膠囊 (動態主題適應) */
@@ -1429,8 +1575,8 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     .modal-content .hint-right { background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
     .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
 
-    /* 隱藏觸控裝置 Tooltip */
-    .toolbar-btn::after, .toolbar-btn::before, .lightbox-capsule-btn::after, .lightbox-capsule-btn::before, .zoom-btn::after, .zoom-btn::before, .mermaid-btn::after, .mermaid-btn::before { display: none !important; }
+    /* ✨ 隱藏觸控裝置 Tooltip (全面封殺所有氣泡，防止點擊後卡住殘影) */
+    [data-tooltip]::after, [data-tooltip]::before { display: none !important; }
 
     /* Lightbox 收合工具列 (手機版彈出選單) */
     .toolbox-toggle-btn { display: flex; }
@@ -1447,13 +1593,6 @@ figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
     /* 縮小返回頂部按鈕，並避開跳轉膠囊 */
     .btt-btn { width: 42px; height: 42px; right: 1rem; bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem)); }
     body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(env(safe-area-inset-bottom) + 80px)); }
-}
-
-/* 8-3. 純觸控螢幕防禦機制 (hover: none) */
-@media (hover: none) {
-    /* 避免點擊殘留卡片 Hover 狀態 */
-    .card:hover { transform: none !important; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important; }
-    .card.show:hover { border-color: rgba(64, 120, 153, 0.1) !important; }
 }
 
 /* 調整觸控狀態的游標 */
@@ -1519,7 +1658,8 @@ body.is-touch-device #lightbox-img { cursor: default; }
 /* 1. 預設狀態：披上隱形斗篷，不佔用任何版面空間 */
 .sys-hidden-card,
 .sys-hidden-item,
-.sys-hidden-ticker { 
+.sys-hidden-ticker,
+.sys-hidden-tag { 
     display: none !important; 
 }
 
@@ -1532,9 +1672,14 @@ body.system-override-active .article-li.sys-hidden-item {
     display: block !important;
 }
 
-/* ✨ 讓跑馬燈裡的機密標籤也跟著解鎖出現 */
+/* 讓跑馬燈裡的機密標籤也跟著解鎖出現 */
 body.system-override-active .sys-hidden-ticker {
     display: inline-block !important;
+}
+
+/* ✨ 讓卡片上的機密標籤解鎖後出現 */
+body.system-override-active .sys-hidden-tag {
+    display: inline-flex !important;
 }
 
 /* 3. 機密圖釘 (SVG) - 行為與原生圖釘完全一致 */
@@ -1636,4 +1781,27 @@ body.system-override-active .sys-hidden-ticker {
 
 .secret-admin-trigger:hover::after {
     opacity: 1;
+}
+
+/* ==========================================
+   ✨ 跑馬燈光速注入引擎 (Warp Speed Injection)
+   ========================================== */
+/* 1. 量測未來寬度時的強制顯示器 */
+.marquee-content.force-show-secrets .sys-hidden-ticker { 
+    display: inline-block !important; 
+}
+/* 2. 動畫醞釀期的隱形壓抑器 */
+.marquee-content.suppress-secrets .sys-hidden-ticker { 
+    display: none !important; 
+}
+
+/* 3. 標籤注入瞬間的「高光爆發與動態傾斜」特效 */
+@keyframes inject-flash {
+    0% { filter: brightness(2) drop-shadow(0 0 12px var(--accent-2)); transform: scale(1.15) skewX(-15deg); }
+    100% { filter: brightness(1) drop-shadow(0 0 0 transparent); transform: scale(1) skewX(0); }
+}
+
+/* 只要隱形壓抑器一解除，機密標籤就會以爆發動畫現身！ */
+body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-ticker {
+    animation: inject-flash 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }

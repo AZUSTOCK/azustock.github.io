@@ -4,13 +4,16 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.0",          // 目前系統版本號
+    VERSION: "U1.5.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
     
     // ✨ 跑馬燈速度設定：跑完一整圈需要的「秒數」(數字越大跑得越慢！)
-    MARQUEE_SPEED: 120,          
+    MARQUEE_SPEED: 120,
+
+    // ✨ 狀態標籤過期天數 (支援 NEW, UPDATED 等狀態)
+    TAG_EXPIRE_DAYS: 14,
 
     // 🔗 資源路徑
     FAVICON_LIGHT: "https://azustock.github.io/assets/OG_dark.png",
@@ -19,16 +22,42 @@ const CONFIG = {
 };
 
 // ==========================================
-// ✨ 全域共用 SVG 圖標 (避免重複宣告)
+// ✨ 全域共用 SVG 圖標 (集中管理，消滅重複代碼)
 // ==========================================
 const GLOBAL_SVGS = {
+    // 🔗 基礎圖示
     link: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    linkLg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    extLinkSm: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    newTab: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
+    
+    // 📌 圖釘與機密
     pin: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>`,
     pinSmall: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg);"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>`,
-    
-    // ✨ 修改：只留一個扣環，並給它 'secret-shackle' 準備做物理彈出動畫
     secretPin: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path class="secret-shackle" d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`,
-    secretPinSmall: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path class="secret-shackle" d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`
+    secretPinSmall: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path class="secret-shackle" d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`,
+    
+    // 📄 媒體與檔案
+    zoomIcon: `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
+    docIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
+    docIconLg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
+    videoIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`,
+    audioIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`,
+    
+    // 🗂️ 首頁專案卡片
+    folderClosed: `<svg class="icon-book-closed" style="position: absolute; transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>`,
+    folderOpen: `<svg class="icon-book-open" style="position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
+    arrowUpRight: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>`,
+    
+    // ⬅️ 導覽與操作方向
+    arrowLeft: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
+    historyBack: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>`,
+    
+    // 📊 Mermaid 圖表工具列
+    mermaidZoomIn: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
+    mermaidZoomOut: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
+    mermaidReset: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
+    mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`
 };
 
 // ==========================================
@@ -41,7 +70,8 @@ const GLOBAL_SVGS = {
 window.STATUS_LIST = [
     ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED'], 
     ['WIP'], 
-    ['OC']
+    ['OC'],
+    ['DEV']
 ];
 
 // ==========================================
@@ -188,9 +218,16 @@ window.getArticleSequence = function(projectId) {
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !proj.articles) return [];
     
+    // ✨ 新增：判斷系統是否已經解鎖 (System Override 狀態)
+    const isUnlocked = document.body.classList.contains('system-override-active');
+    
     // 讀取專案獨立排序
     let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
-    let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
+    
+    // ✨ 核心修復：直接從源頭剔除沒有權限查看的隱藏文章！
+    let displayArticles = proj.articles
+        .map((art, idx) => ({ art, idx }))
+        .filter(item => isUnlocked || !item.art.is_hidden);
     
     const pinned = displayArticles.filter(item => item.art.pinned);
     const unpinned = displayArticles.filter(item => !item.art.pinned);
@@ -258,6 +295,120 @@ window.focusAndBumpCard = function(targetCard) {
         targetCard.classList.add('jump-bump');
         setTimeout(() => targetCard.classList.remove('jump-bump'), 600);
     }, dynamicDelay);
+};
+
+// ==========================================
+// ✨ 系統權限切換重刷引擎 (System Override UI Updater)
+// ==========================================
+window.refreshUIAfterOverrideToggle = function() {
+    const isUnlocked = document.body.classList.contains('system-override-active');
+
+    // ✨ 提煉重複邏輯：僅更新專案卡片上的數字
+    const updateCardCounts = () => {
+        window.siteProjects.forEach(proj => {
+            const grid = document.getElementById(`${proj.category}-grid`);
+            if (grid && proj.articles && proj.articles.length > 0) {
+                grid.querySelectorAll('.card').forEach(card => {
+                    const titleEl = card.querySelector('h3');
+                    if (titleEl && titleEl.innerText.includes(proj.title)) {
+                        const actionBtn = card.querySelector('.action-btn');
+                        if (actionBtn && actionBtn.innerText.includes('展開系列')) {
+                            const count = isUnlocked ? proj.articles.length : proj.articles.filter(art => !art.is_hidden).length;
+                            const iconWrap = actionBtn.querySelector('div');
+                            actionBtn.innerHTML = '';
+                            if (iconWrap) actionBtn.appendChild(iconWrap);
+                            actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
+                        }
+                    }
+                });
+            }
+        });
+    };
+
+    // ✨ 智慧防護：如果系統已經是解鎖狀態，且網頁一開始載入時已經跑過跑馬燈了，直接維持現狀並更新卡片即可！
+    if (isUnlocked && window._hasAlreadyUnlockedOnce) {
+        updateCardCounts();
+        return; 
+    }
+
+    if (isUnlocked) window._hasAlreadyUnlockedOnce = true;
+
+    const marquees = document.querySelectorAll('.marquee-content');
+
+    // 1. 凍結跑馬燈當前座標
+    marquees.forEach(m => {
+        if (isUnlocked) m.classList.add('suppress-secrets');
+        const matrix = new DOMMatrix(window.getComputedStyle(m).transform);
+        let currentX = matrix.m41;
+        const currentWidth = m.offsetWidth;
+        if (currentWidth > 0) {
+            currentX = currentX % currentWidth;
+            if (currentX > 0) currentX -= currentWidth;
+        }
+        m.dataset.startX = currentX; 
+        
+        if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
+        m.style.transition = 'none';
+        m.style.animation = 'none';
+
+        m.classList.remove('suppress-secrets');
+        m.classList.add('force-show-secrets');
+    });
+
+    void document.body.offsetWidth;
+
+    // 記錄最終真實寬度
+    marquees.forEach(m => {
+        m.dataset.targetWidth = m.offsetWidth;
+        m.classList.remove('force-show-secrets');
+        if (isUnlocked) m.classList.add('suppress-secrets');
+    });
+
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+        document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
+        
+        updateCardCounts();
+
+        if (window.currentActiveTag) {
+            window._pendingActiveTag = window.currentActiveTag;
+            window.currentActiveTag = null; 
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('highlighted', 'jump-bump'));
+            document.querySelectorAll('.active-tag').forEach(t => t.classList.remove('active-tag'));
+        }
+
+        // 2. 啟動光速引擎
+        marquees.forEach((m, index) => {
+            const targetWidth = parseFloat(m.dataset.targetWidth) || m.offsetWidth;
+            let startX = parseFloat(m.dataset.startX) || 0;
+            
+            if (startX > 0) startX = 0;
+            if (startX < -targetWidth) startX = startX % targetWidth;
+
+            const distance = Math.abs(-targetWidth - startX);
+            const duration = Math.max(600, Math.min(1600, (distance / targetWidth) * 2000));
+
+            m.marqueePlayer = m.animate([
+                { transform: `translateX(${startX}px)`, filter: 'blur(0px)' },
+                { transform: `translateX(${startX - (distance * 0.5)}px)`, filter: 'blur(3px)' }, 
+                { transform: `translateX(-${targetWidth}px)`, filter: 'blur(0px)' }
+            ], { duration, easing: 'ease-in-out' });
+
+            if (isUnlocked) {
+                setTimeout(() => m.classList.remove('suppress-secrets'), duration / 2); 
+            }
+
+            m.marqueePlayer.onfinish = () => {
+                m.style.transform = ''; m.style.filter = ''; m.style.animation = ''; m.marqueePlayer = null;
+                m.classList.remove('suppress-secrets'); 
+                if (index === 0 && window._pendingActiveTag) {
+                    const activeTag = window._pendingActiveTag;
+                    window._pendingActiveTag = null; 
+                    window.filterByTag(activeTag);  
+                }
+            };
+        });
+    }, 50);
 };
 
 // ==========================================
@@ -401,41 +552,18 @@ window.openLightbox = function(btn, event) {
     }
 
     if (lightboxImg && lightboxModal) {
-        // ✨ 設定大圖來源為高畫質原圖
-        lightboxImg.src = targetImg.getAttribute('data-full') || targetImg.src; 
-        
-        // 重置大圖定位與縮放
+        // 重置大圖定位動畫 (關閉過渡)
         lightboxImg.style.transition = 'none';
-        lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
 
         // 2. 顯示 Modal
         lightboxModal.classList.add('is-active');
 
-        // ✨ 補回這行，膠囊與按鈕才會真正被呼叫顯示出來！
+        // ✨ 統一將圖片設定、載入與計算交給 View 更新器處理
         window.updateLightboxView();
-
-        // 3. 定義「計算原圖 2 倍限制」的函數
-        const calculateMaxZoomForNatural = () => {
-            const naturalWidth = lightboxImg.naturalWidth; 
-            const displayWidth = lightboxImg.clientWidth;   
-            
-            if (displayWidth > 0 && naturalWidth > 0) {
-                window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
-            } else {
-                window.lightboxState.maxZoom = 2; // 防呆備用值
-            }
-        };
-
-        // 4. 確保圖片載入後再進行計算
-        if (lightboxImg.complete) {
-            calculateMaxZoomForNatural();
-        } else {
-            lightboxImg.onload = calculateMaxZoomForNatural;
-        }
 
         // 恢復動畫過渡效果
         setTimeout(() => { 
-            lightboxImg.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'; 
+            lightboxImg.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease'; 
         }, 50);
     }
 };
@@ -464,14 +592,43 @@ window.updateLightboxView = function() {
     const lightboxImg = document.getElementById('lightbox-img');
     const lightboxBackdrop = document.getElementById('lightbox-backdrop');
     const lightboxCaption = document.getElementById('lightbox-caption');
+    const wrapper = document.querySelector('.lightbox-img-wrapper'); // 抓取轉圈圈容器
     
     if (lightboxImg) {
         state.zoom = 1; 
         state.x = 0; 
         state.y = 0; 
         lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
+        
+        // ✨ 1. 圖片變透明，顯示讀取圈圈
+        lightboxImg.style.opacity = '0';
+        if (wrapper) wrapper.classList.add('is-fetching');
+
+        // ✨ 2. 綁定「真正載入完成」時的觸發事件
+        lightboxImg.onload = () => {
+            // 圖片載入完成，關閉圈圈，平滑淡入！
+            if (wrapper) wrapper.classList.remove('is-fetching');
+            lightboxImg.style.opacity = '1';
+
+            // 重新計算這張新圖片的最大縮放極限
+            const naturalWidth = lightboxImg.naturalWidth; 
+            const displayWidth = lightboxImg.clientWidth;   
+            if (displayWidth > 0 && naturalWidth > 0) {
+                window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
+            } else {
+                window.lightboxState.maxZoom = 2; // 防呆備用值
+            }
+        };
+
+        // ✨ 3. 賦予新網址，觸發瀏覽器下載圖片
         lightboxImg.src = currentItem.src;
+        
+        // 防呆機制：如果這張圖早就被瀏覽器快取 (Cached)，可能不會觸發 onload，我們手動觸發
+        if (lightboxImg.complete && lightboxImg.naturalHeight > 0) {
+            lightboxImg.onload();
+        }
     }
+    
     if (lightboxBackdrop) lightboxBackdrop.src = currentItem.src;
     
     // ✨ 精準控制說明文字的顯示與隱藏
@@ -490,11 +647,9 @@ window.updateLightboxView = function() {
         if (navCapsule) navCapsule.style.display = 'inline-flex';
         if (counter) counter.innerText = `${state.currentIndex + 1} / ${state.images.length}`;
         
-        // 動態加上或移除 disabled 樣式
         if (prevBtn) prevBtn.classList.toggle('disabled', state.currentIndex === 0);
         if (nextBtn) nextBtn.classList.toggle('disabled', state.currentIndex === state.images.length - 1);
     } else {
-        // 如果只有單張圖片，直接隱藏整個膠囊
         if (navCapsule) navCapsule.style.display = 'none';
     }
 };
@@ -763,36 +918,54 @@ renderer.image = function(token_or_href, title, text) {
     if (!href) return '';
 
     /// 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
-    if (href.match(/\.pdf$/i)) {
-        // ✨ 使用你系統預設的文章/文件 SVG 圖示
+    // 透過 split 排除 ? 和 # 後面的參數，精準判斷是否為 pdf
+    const cleanUrlForCheck = href.split('?')[0].split('#')[0];
+    
+    if (cleanUrlForCheck.match(/\.pdf$/i)) {
+        // ✨ 預設高度 600px，如果網址帶有 ?h=800 則抓取該數字當作高度！
+        let customHeight = "600px";
+        const hMatch = href.match(/[?&]h=(\d+)/i);
+        if (hMatch) {
+            customHeight = hMatch[1] + "px";
+        }
+        
+        // 使用你系統預設的文章/文件 SVG 圖示
         const docSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
         
+        // 替換 PDF 圖示與新分頁開啟按鈕
         return `
         <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base);">
             <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
-                
-                <!-- 左側：系統文件 SVG 與檔名 -->
                 <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
-                    ${docSvg}
+                    ${GLOBAL_SVGS.docIcon}
                     <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
                 </div>
-                
-                <!-- 右側：新分頁開啟按鈕 -->
                 <a href="${href}" target="_blank" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    ${GLOBAL_SVGS.newTab}
                     新分頁開啟
                 </a>
             </div>
-            
-            <iframe src="${href}" width="100%" height="600px" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+            <iframe src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
         </div>`;
     }
 
-    if (href.match(/\.(mp4|webm|ogg)$/i)) {
-        return `<video controls class="md-video"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`;
-    }
-    if (href.match(/\.(mp3|wav|ogg)$/i)) {
-        return `<audio controls class="md-audio"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>`;
+    // ✨ 完美合併影音解析器，減少大量贅字
+    const isVideo = href.match(/\.(mp4|webm|ogg)$/i);
+    const isAudio = href.match(/\.(mp3|wav)$/i);
+    if (isVideo || isAudio) {
+        const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
+        const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
+        const mediaTag = isVideo 
+            ? `<video preload="metadata" controls class="md-video" style="margin: 0; border: none; box-shadow: none; width: 100%; display: block;"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`
+            : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>`;
+
+        const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">${iconSvg}<span>${displayTitle}</span></div>`;
+        
+        return `
+        <div style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--glass-bg);">
+            ${titleHtml}
+            ${mediaTag}
+        </div>`;
     }
 
     // 解析縮圖與原圖 (透過 Python 塞入的 #full= 傳遞)
@@ -804,31 +977,19 @@ renderer.image = function(token_or_href, title, text) {
         fullUrl = parts[1];
     }
 
+    // ✨ 恢復純淨版 imgTag (移除內聯的 onclick 與 style，交給下方統一處理)
     const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
 
-    // ✨ 統一的 SVG 放大鏡圖示
-    const zoomIconSvg = `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`;
+    const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
+    const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
     if (imgTitle) {
-        // 【情境 A：有說明文字的圖】
-        let figureClass = '';
-        if (altText === 'float-right' || altText === 'float-left') {
-            figureClass = ` class="${altText}"`;
-        }
-        const zoomBtn = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${zoomIconSvg}</button>`;
-        return `<figure${figureClass}>${imgTag}<figcaption>${imgTitle}${zoomBtn}</figcaption></figure>`;
+        let figureClass = (altText === 'float-right' || altText === 'float-left') ? ` class="${altText}"` : '';
+        return `<figure${figureClass}>${imgTag}<figcaption>${imgTitle}${zoomBtnHtml}</figcaption></figure>`;
     } else {
-        // 【情境 B：沒有說明文字的圖】
         if (altText === 'icon' || altText === 'badge') return imgTag;
-        
-        // ✨ 修正 1：把 float-right / float-left 繼承給無圖說的 figure，修復排版
-        let figureClass = 'no-caption';
-        if (altText === 'float-right' || altText === 'float-left') {
-            figureClass += ` ${altText}`;
-        }
-        
-        const zoomBtn = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${zoomIconSvg}</button>`;
-        return `<figure class="${figureClass}">${imgTag}${zoomBtn}</figure>`;
+        let figureClass = 'no-caption' + ((altText === 'float-right' || altText === 'float-left') ? ` ${altText}` : '');
+        return `<figure class="${figureClass}">${imgTag}${floatingZoomBtnHtml}</figure>`;
     }
 };
 
@@ -857,19 +1018,11 @@ renderer.code = function(token_or_code, language, isEscaped) {
             <div class="mermaid-toolbar">
                 <span class="mermaid-title">${chartTitle}</span>
                 <div class="mermaid-btns">
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                    </button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="縮小">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-                    </button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="重設比例">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
-                    </button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">${GLOBAL_SVGS.mermaidZoomIn}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="縮小">${GLOBAL_SVGS.mermaidZoomOut}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="重設比例">${GLOBAL_SVGS.mermaidReset}</button>
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="全螢幕">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-                    </button>
+                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="全螢幕">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
             <div class="mermaid-wrapper">
@@ -883,32 +1036,47 @@ renderer.code = function(token_or_code, language, isEscaped) {
 // 3. ✨ 攔截 Markdown 連結
 renderer.link = function(token_or_href, title, text) {
     const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
-    const linkText = typeof token_or_href === 'object' ? token_or_href.text : text;
     const linkTitle = typeof token_or_href === 'object' ? token_or_href.title : title;
     
+    // ✨ 核心修復：使用內部解析器把 ![badge](...) 語法轉化為真正的 <img> 標籤
+    let linkText = text;
+    if (typeof token_or_href === 'object') {
+        linkText = token_or_href.tokens ? this.parser.parseInline(token_or_href.tokens) : token_or_href.text;
+    }
+
+    // ✨ 魔法 1：支援多重樣式按鈕！只要 title 是以 btn 開頭，就直接把它當作 class 塞入
+    if (linkTitle && linkTitle.toLowerCase().startsWith('btn')) {
+        const btnClasses = linkTitle.toLowerCase(); // 例如 "btn btn-fill" 或 "btn btn-danger"
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="${btnClasses}" style="margin: 0.5rem 0.5rem 0.5rem 0; text-decoration: none; display: inline-flex;">${linkText}</a>`;
+    }
+
     const titleAttr = linkTitle ? ` title="${linkTitle}"` : '';
     if (!href) return `<a${titleAttr} style="font-weight: 600;">${linkText}</a>`;
 
-    // ✨ 核心修復 1：放寬 SPA 攔截條件！只要包含 ?p= 且非外部連結，一律攔截做無縫跳轉
+    // ✨ 魔法 2：智慧判斷如果連結裡面包的是圖片 (例如 GitHub 小徽章 Badge)，拔除外部箭頭與文字粗體
+    const isImageLink = linkText.includes('<img');
+    const baseStyle = isImageLink ? 'display: inline-block; vertical-align: middle; transition: transform 0.2s ease;' : 'font-weight: 600;';
+    const hoverFx = isImageLink ? ' onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'none\'"' : '';
+
+    // 攔截內部 SPA 跳轉
     if (href.includes('?p=') && !href.startsWith('http')) {
-        // 安全轉義單引號，防止破壞 HTML
         const safeHref = href.replace(/'/g, "\\'");
-        return `<a href="${href}" onclick="window.handleSpaLink(event, '${safeHref}')"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+        return `<a href="${href}" onclick="window.handleSpaLink(event, '${safeHref}')"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}</a>`;
     }
 
-    // ✨ 攔截內部錨點跳轉 (解決 Modal 內無法跳轉的問題，並修復字體變細)
+    // 攔截內部錨點跳轉
     if (href.startsWith('#')) {
         const safeHref = href.replace(/'/g, "\\'");
-        return `<a href="${href}" onclick="window.scrollToAnchor(event, '${safeHref}')"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+        return `<a href="${href}" onclick="window.scrollToAnchor(event, '${safeHref}')"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}</a>`;
     }
     
+    // 外部連結 (替換小圖示)
     if (href.startsWith('http')) {
-        const extIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr} style="font-weight: 600;">${linkText}${extIcon}</a>`;
+        const extIcon = isImageLink ? '' : GLOBAL_SVGS.extLinkSm;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}${extIcon}</a>`;
     }
 
-    // ✨ 確保所有漏網之魚的普通連結也享有粗體樣式
-    return `<a href="${href}"${titleAttr} style="font-weight: 600;">${linkText}</a>`;
+    return `<a href="${href}"${titleAttr} style="${baseStyle}"${hoverFx}>${linkText}</a>`;
 };
 
 // 4. ✨ 攔截 Markdown 標題，同時用全域陣列記住最新出現的標題文字
@@ -1221,19 +1389,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // ✨ 核心魔法：切換系統覆寫狀態，強制顯現/隱藏機密檔案！
                 document.body.classList.toggle('system-override-active');
                 
-                // 延遲 100 毫秒重新計算網格捲軸 (因為有新卡片被塞進來了)
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                    // ✨ 核心修復：精準呼叫真正在滾動的 .grid 與畫廊，強制重新計算 Scroll Hint！
-                    document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
-                    
-                    // ✨ 動態更新懸浮膠囊與高光狀態！
-                    if (window.currentActiveTag) {
-                        const activeTag = window.currentActiveTag;
-                        window.currentActiveTag = null; // 繞過原本的取消點擊邏輯，強制重刷
-                        window.filterByTag(activeTag);  // 重新套用該標籤，更新數字與亮光
-                    }
-                }, 100);
+                // ✨ 呼叫全域重刷引擎，統一更新所有卡片數字與版面
+                window.refreshUIAfterOverrideToggle();
                 
                 const currentHeight = profileSection.offsetHeight;
                 profileSection.style.height = currentHeight + 'px';
@@ -1307,47 +1464,127 @@ async function loadProjects() {
         const categories = db.categories;
         const projects = db.projects;
 
-        // 智慧狀態推導與全域標籤冒泡
+        // ✨ 建立狀態時間驗證引擎
+        const nowMs = new Date().getTime();
+        const expireMs = CONFIG.TAG_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
+        
+        // 1. 處理「一般狀態」的過期 (例如 NEW, UPDATED 超過期限就消失)
+        const evaluateStatus = (val) => {
+            if (val === true || String(val).toLowerCase() === 'true') return true; 
+            if (typeof val === 'string' && /^\d{4}[-/]\d{2}[-/]\d{2}$/.test(val)) {
+                const tagDate = new Date(val.replace(/-/g, '/')).getTime();
+                return !isNaN(tagDate) && (nowMs - tagDate <= expireMs);
+            }
+            return !!val; 
+        };
+
+        // ✨ 1.5 處理「機密隱藏」的解封 (例如 HIDDEN，時間還沒到就隱藏，時間到了就公開)
+        const evaluateHidden = (val) => {
+            if (val === true || String(val).toLowerCase() === 'true') return true; 
+            if (typeof val === 'string' && /^\d{4}[-/]\d{2}[-/]\d{2}$/.test(val)) {
+                const unsealDate = new Date(val.replace(/-/g, '/')).getTime();
+                // 只要現在時間「小於」解封日，就保持隱藏 (true)
+                // 到了解封日當天或之後，就變成公開 (false)
+                return !isNaN(unsealDate) && (nowMs < unsealDate);
+            }
+            return !!val; 
+        };
+
+        // 2. 處理「標籤陣列」的過期 (例如 "tags": ["NEW:2026-08-14"])
+        const parseAndFilterTags = (tags) => {
+            if (!tags) return [];
+            let validTags = [];
+            tags.forEach(tag => {
+                const match = tag.match(/^(NEW|UPDATED|LATEST|FEATURE):(\d{4}[-/]\d{2}[-/]\d{2})$/i);
+                if (match) {
+                    const baseTag = match[1].toUpperCase();
+                    const tagDate = new Date(match[2].replace(/-/g, '/')).getTime();
+                    if (!isNaN(tagDate) && (nowMs - tagDate <= expireMs)) {
+                        validTags.push(baseTag);
+                    }
+                } else {
+                    validTags.push(tag); 
+                }
+            });
+            return validTags;
+        };
+
+       // 智慧狀態推導與全域標籤冒泡
         projects.forEach(p => {
-            let isCardUpdated = p.is_updated;
-            p.tags = p.tags || [];
+            ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
+                if (p[k] !== undefined) p[k] = evaluateStatus(p[k]);
+            });
+            if (p.is_hidden !== undefined) p.is_hidden = evaluateHidden(p.is_hidden);
+            p.tags = parseAndFilterTags(p.tags);
+
+            let isAllUpdated = p.is_updated;
+            let isPublicUpdated = p.is_updated;
 
             if (p.articles && p.articles.length > 0) {
-                // 如果專案本身不是全新的，只要底下有 新文章(NEW) 或 更新(UPDATED)，專案就掛上 UPDATED
-                if (!p.is_new && !isCardUpdated) {
-                    if (p.articles.some(art => 
-                        art.is_new || 
-                        art.is_updated || 
-                        // ✨ 關鍵修正：同時去檢查 tags 陣列裡面有沒有這些關鍵字！
-                        (art.tags && (art.tags.includes('NEW') || art.tags.includes('UPDATED') || art.tags.includes('LATEST')))
-                    )) {
-                        isCardUpdated = true;
-                    }
+                p.articles.forEach(art => {
+                    ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
+                        if (art[k] !== undefined) art[k] = evaluateStatus(art[k]);
+                    });
+                    if (art.is_hidden !== undefined) art.is_hidden = evaluateHidden(art.is_hidden);
+                    art.tags = parseAndFilterTags(art.tags);
+                });
+
+                if (!p.is_new) {
+                    p.articles.forEach(art => {
+                        const hasUpdate = art.is_new || art.is_updated || (art.tags && (art.tags.includes('NEW') || art.tags.includes('UPDATED') || art.tags.includes('LATEST')));
+                        if (hasUpdate) {
+                            isAllUpdated = true;
+                            // ✨ 只有當文章是公開時，才認定它是「公開級別」的更新
+                            if (!art.is_hidden) isPublicUpdated = true;
+                        }
+                    });
                 }
             }
-            p.computed_is_updated = isCardUpdated;
+            p.computed_is_updated = isAllUpdated;
 
-            let activeStates = new Set();
+            let allActiveStates = new Set();
+            let publicActiveStates = new Set();
             const flatStatusList = window.STATUS_LIST.flat(); 
 
             flatStatusList.forEach(status => {
                 const boolKey = `is_${status.toLowerCase()}`;
-                const isTrue = status === 'UPDATED' ? isCardUpdated : p[boolKey];
-
-                // 1. 處理專案「自己」的屬性 (如果專案本身是 NEW，這裡依然會正確加上 NEW)
-                if (isTrue || p.tags.includes(status)) activeStates.add(status);
                 
-                // 2. 處理「子文章」的狀態冒泡 (✨ 關鍵：擋下子文章的 NEW，不讓它傳染給專案)
-                if (status !== 'NEW' && p.articles && p.articles.some(art => art[`is_${status.toLowerCase()}`] === true || (art.tags && art.tags.includes(status)))) {
-                    activeStates.add(status);
+                // 1. 處理專案「自己」的屬性
+                if (p[boolKey] === true || p.tags.includes(status)) {
+                    allActiveStates.add(status);
+                    publicActiveStates.add(status);
+                }
+
+                // 2. 處理「子文章」的狀態冒泡
+                if (status !== 'NEW' && p.articles) {
+                    p.articles.forEach(art => {
+                        if (art[boolKey] === true || (art.tags && art.tags.includes(status))) {
+                            allActiveStates.add(status);
+                            // ✨ 只有公開文章的標籤，才能進入公開狀態池
+                            if (!art.is_hidden) publicActiveStates.add(status);
+                        }
+                    });
+                }
+
+                // 特別處理 UPDATED 的冒泡
+                if (status === 'UPDATED') {
+                    if (isAllUpdated) allActiveStates.add('UPDATED');
+                    if (isPublicUpdated) publicActiveStates.add('UPDATED');
                 }
             });
 
             p.tags = p.tags.filter(t => !flatStatusList.includes(t));
+            p.secret_tags = []; // ✨ 準備紀錄哪些標籤是「僅存在於隱藏文章中」的機密標籤
 
             [...window.STATUS_LIST].reverse().forEach(group => {
-                const winningStatus = group.find(status => activeStates.has(status));
-                if (winningStatus) p.tags.unshift(winningStatus);
+                const winningStatus = group.find(status => allActiveStates.has(status));
+                if (winningStatus) {
+                    p.tags.unshift(winningStatus);
+                    // 如果這個最終贏得的標籤「不在」公開狀態池裡，那它就是機密標籤！
+                    if (!publicActiveStates.has(winningStatus)) {
+                        p.secret_tags.push(winningStatus);
+                    }
+                }
             });
         });
 
@@ -1355,8 +1592,8 @@ async function loadProjects() {
 
         // 1. 處理跑馬燈橫幅
         if (marquee) {
-            // ✨ 1. 建立「公開白名單」：找出所有未隱藏專案的標籤
-            const publicTags = projects.filter(p => !p.is_hidden).flatMap(p => p.tags || []);
+            // ✨ 1. 建立「公開白名單」：找出所有未隱藏專案中，不屬於機密的標籤
+            const publicTags = projects.filter(p => !p.is_hidden).flatMap(p => p.tags.filter(t => !(p.secret_tags && p.secret_tags.includes(t))) || []);
             
             // 2. 找出所有標籤 (用於亂數排列)
             const allTags = projects.flatMap(p => p.tags || []);
@@ -1392,9 +1629,9 @@ async function loadProjects() {
                         innerHtml = `<span class="clickable-ticker-tag" data-tag="${tag}" ${statusAttr} onclick="window.filterByTag('${tag}', event)"><span class="ticker-name">${tag}</span> <span class="${colorClass}">${arrow} ${sign}${change}%</span></span>`;
                     }
                     
-                    // ✨ 3. 將標籤與後方的「分隔線」包裝在同一個 span 裡，並掛上隱藏屬性
-                    const wrapperClass = isSecret ? 'marquee-tag-wrapper sys-hidden-ticker' : 'marquee-tag-wrapper';
-                    return `<span class="${wrapperClass}">${innerHtml} <span style="color: var(--muted); opacity: 0.5; margin: 0 1rem;">|</span> </span>`;
+                    // ✨ 核心排版修復：利用 Flex 置中，並把 3rem 的完美對稱間距交給分隔線！
+                const wrapperClass = isSecret ? 'marquee-tag-wrapper sys-hidden-ticker' : 'marquee-tag-wrapper';
+                return `<span class="${wrapperClass}" style="display: inline-flex; align-items: center;">${innerHtml}<span style="color: var(--muted); opacity: 0.5; margin: 0 10rem;">|</span></span>`;
                 }).join(''); // ✨ 直接串接，不再使用 join 加分隔線
 
                 const container = marquee.parentElement;
@@ -1464,7 +1701,11 @@ async function loadProjects() {
                 
                 const flatList = window.STATUS_LIST.flat(); 
                 let tagsHTML = (data.tags || []).map(tag => {
-                    const statusAttr = flatList.includes(tag) ? ` data-status="${tag}" class="tag status-tag"` : ' class="tag"';
+                    // ✨ 動態判斷是否需要加上機密隱形斗篷 class
+                    const isSecretTag = data.secret_tags && data.secret_tags.includes(tag);
+                    const secretClass = isSecretTag ? ' sys-hidden-tag' : '';
+                    
+                    const statusAttr = flatList.includes(tag) ? ` data-status="${tag}" class="tag status-tag${secretClass}"` : ` class="tag${secretClass}"`;
                     return `<span${statusAttr} data-tag="${tag}" onclick="window.filterByTag('${tag}', event, this)">${tag}</span>`;
                 }).join('');
                 
@@ -1472,18 +1713,22 @@ async function loadProjects() {
                 if (data.articles && data.articles.length > 0) {
                     card.style.cursor = 'pointer';
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); openProjectIndex(data.id); };
+                    
+                    // ✨ 核心修復：首頁卡片上的數字也同步扣除隱藏文章
+                    const visibleCount = data.articles.filter(art => !art.is_hidden).length;
+                    
+                    // 1. 如果有子文章 (套用資料夾開關 SVG)
                     actionText = `<div class="action-btn" style="margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease;">
                         <div style="position: relative; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">
-                            <svg class="icon-book-closed" style="position: absolute; transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
-                            <svg class="icon-book-open" style="position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-                        </div>展開系列 (${data.articles.length})</div>`;
+                            ${GLOBAL_SVGS.folderClosed}
+                            ${GLOBAL_SVGS.folderOpen}
+                        </div>展開系列 (${visibleCount})</div>`;
                 } else if (data.link) {
-                    card.style.cursor = 'pointer';
-                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.open(data.link, '_blank'); };
+                    // 2. 如果是外部連結 (套用外部連結與箭頭 SVG)
                     actionText = `<div class="action-btn" style="margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> 
+                        ${GLOBAL_SVGS.linkLg} 
                         前往外部專案 <span class="action-arrow" data-dir="up-right" style="display: flex; align-items: center; transition: transform 0.2s ease;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg></span></div>`;
+                        ${GLOBAL_SVGS.arrowUpRight}</span></div>`;
                 } else {
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
                     card.addEventListener('mouseenter', () => { card.style.cursor = window.currentActiveTag ? 'pointer' : 'default'; });
@@ -1581,7 +1826,7 @@ function showSystemRebootScreen(title, localV, remoteV, msg, immediate = false) 
     if (!screen) {
         screen = document.createElement('div');
         screen.id = 'sys-reboot-screen';
-        screen.style.cssText = `position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); opacity:${immediate ? '1' : '0'}; transition:opacity 0.3s ease;`;
+        screen.style.cssText = `position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); opacity:${immediate ? '1' : '0'}; transition:opacity 0.3s ease; cursor: wait;`;
         document.body.appendChild(screen);
         
         if (!immediate) {
@@ -1634,15 +1879,15 @@ function hideSystemRebootScreen(isSuccess = true) {
     }, 600);
 }
 
-// ==========================================
-// ✨ 全域引擎：版本快取防禦與自動重載系統 (Auto-Updater Engine)
-// ==========================================
+// 大約在 1319 行開始的 checkSystemVersionAndBoot 函數
 async function checkSystemVersionAndBoot() {
     const isRebooting = sessionStorage.getItem('sys_is_rebooting') === 'true';
     const expectedVersion = sessionStorage.getItem('sys_expected_version') || 'UNKNOWN';
+    
+    // ✨ 1. 取出使用者的操作意圖
+    const sysIntent = sessionStorage.getItem('sys_intent');
 
     if (isRebooting) {
-        // 如果剛重整完，畫面會因為 index.html 的設定保持全黑。我們立刻放上無縫遮罩！
         showSystemRebootScreen('SYSTEM_REBOOTING', CONFIG.VERSION, expectedVersion, 'VERIFYING_MODULES', true);
     }
 
@@ -1663,9 +1908,17 @@ async function checkSystemVersionAndBoot() {
                     sessionStorage.removeItem('sys_reboot_count'); 
                     sessionStorage.removeItem('sys_is_rebooting');
                     sessionStorage.removeItem('sys_expected_version');
+                    sessionStorage.removeItem('sys_intent'); // ✨ 清除意圖
                     
-                    hideSystemRebootScreen(false); // ✨ 傳入 false 顯示失敗狀態
+                    hideSystemRebootScreen(false); 
                     loadProjects(); 
+                    
+                    // ✨ 2. 判斷：只有當初是為了看版本紀錄，才在失敗後強制打開日誌
+                    if (sysIntent === 'changelog') {
+                        setTimeout(() => {
+                            if (window.showChangelogModal) window.showChangelogModal(true);
+                        }, 600); 
+                    }
                     
                     // ✨ 完美修復版 Toast：從右上角降落，且點擊消失
                     setTimeout(() => {
@@ -1728,7 +1981,7 @@ async function checkSystemVersionAndBoot() {
                 sessionStorage.setItem('sys_is_rebooting', 'true');
                 sessionStorage.setItem('sys_expected_version', remoteVersion);
 
-                showSystemRebootScreen('SYSTEM_VERSION_MISMATCH', CONFIG.VERSION, remoteVersion, 'SYS_UPDATING...', isRebooting);
+                showSystemRebootScreen('SYSTEM_VERSION_MISMATCH', CONFIG.VERSION, remoteVersion, 'SYS_UPDATING', isRebooting);
                 
                 setTimeout(() => {
                     const newUrl = new URL(window.location.href);
@@ -1741,11 +1994,20 @@ async function checkSystemVersionAndBoot() {
                 sessionStorage.removeItem('sys_reboot_count');
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
+                
+                // ✨ 3. 判斷：如果更新成功，且當初是為了看版本紀錄，幫他打開！
+                if (sysIntent === 'changelog') {
+                    setTimeout(() => {
+                        if (window.showChangelogModal) window.showChangelogModal(true);
+                    }, 600);
+                }
+                sessionStorage.removeItem('sys_intent'); // ✨ 清除意圖
             }
         }
     } catch (err) {
         console.warn("版本檢查程序跳過:", err);
         sessionStorage.removeItem('sys_is_rebooting');
+        sessionStorage.removeItem('sys_intent'); // 防呆清除
     }
     
     // ✨ 傳入 true 顯示成功狀態，並渲染新網站
@@ -1754,166 +2016,6 @@ async function checkSystemVersionAndBoot() {
 }
 
 window.addEventListener('DOMContentLoaded', checkSystemVersionAndBoot);
-// ==========================================
-// ✨ 升級版系統日誌：支援「手動強制更新檢查」
-// ==========================================
-window.cachedChangelogs = null; 
-
-window.showChangelogModal = async function() {
-    document.body.style.cursor = 'wait';
-    let fetchError = false;
-
-    try {
-        const response = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
-        if (!response.ok) throw new Error('找不到 changelogs.json');
-        const latestLogs = await response.json();
-        
-        if (latestLogs && latestLogs.length > 0 && latestLogs[0].version !== CONFIG.VERSION) {
-            console.warn(`[MANUAL_UPDATE] 發現新版本 ${latestLogs[0].version}，準備強制更新...`);
-            
-            // 手動更新，核發「無縫重整通行證」
-            sessionStorage.removeItem('sys_reboot_count');
-            sessionStorage.setItem('sys_is_rebooting', 'true');
-            sessionStorage.setItem('sys_expected_version', latestLogs[0].version);
-
-            showSystemRebootScreen('MANUAL_OVERRIDE : UPDATE', CONFIG.VERSION, latestLogs[0].version, 'SYS_REBOOTING...');
-            
-            setTimeout(() => {
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('v', new Date().getTime());
-                window.location.replace(newUrl.toString());
-            }, 1800);
-            
-            return; 
-        }
-
-        window.cachedChangelogs = latestLogs;
-
-    } catch (error) {
-        console.error("日誌讀取或更新檢查失敗:", error);
-        fetchError = true;
-    }
-    
-    document.body.style.cursor = '';
-
-    // 共用標題渲染
-    function renderChangelogHeader(isDetail = false, logData = null) {
-        const modalTopLeft = document.getElementById('modal-top-left');
-        if (!modalTopLeft) return;
-        
-        if (!isDetail) {
-            modalTopLeft.innerHTML = `
-                <div class="index-header-container">
-                    <h1 class="index-header-title">System Changelog</h1>
-                    <div class="index-header-actions">
-                        <span class="article-count-badge">Update History</span>
-                    </div>
-                </div>
-            `;
-        } else {
-            let badgeHTML = '';
-            if (logData) {
-                let activeStatus = logData.status === 'LATEST' ? 'NEW' : logData.status;
-                badgeHTML = `<span class="status-badge" data-status="${activeStatus}">${logData.status}</span>`;
-            }
-
-            modalTopLeft.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;">
-                    <button class="modal-back-btn" onclick="window.renderChangelogIndex()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                        返回清單
-                    </button>
-                    <div style="display: flex; align-items: center; gap: 0.8rem;">
-                        <span style="font-family: monospace; font-weight: 900; color: var(--accent); font-size: 1.5rem; letter-spacing: 0.05em; line-height: 1; transform: translateY(1px);">${logData ? logData.version : ''}</span>
-                        ${badgeHTML}
-                        <span style="font-family: monospace; color: var(--muted); font-size: 0.9rem; margin-left: 0.2rem; transform: translateY(2px);">${logData ? logData.date : ''}</span>
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    // 第一層：索引清單
-    window.renderChangelogIndex = function() {
-        switchModalContent(
-            () => {
-                const modalOverlay = document.getElementById('md-modal');
-                const modalBody = document.getElementById('modal-body');
-                const tocMountPoint = document.getElementById('toc-mount-point');
-                
-                if (tocMountPoint) tocMountPoint.innerHTML = '';
-                renderChangelogHeader(false);
-
-                if (fetchError || !window.cachedChangelogs) {
-                    modalBody.innerHTML = `
-                        <div style="text-align:center; padding: 3rem 0; color: var(--error-color);">
-                            <p>System Error: 無法載入版本日誌。</p>
-                        </div>
-                    `;
-                } else {
-                    let listHTML = '<ul class="article-list-ul">';
-                    window.cachedChangelogs.forEach(log => {
-                        let activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
-                        let tabColor = window.getStatusColorFromCSS(activeStatus);
-                        let badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
-
-                        listHTML += `
-                            <li class="article-li is-highlight" style="--tab-color: ${tabColor}; margin-bottom: 1rem;">
-                                <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${log.id}')">
-                                    <div class="article-item-icon-wrap">
-                                        <div class="article-item-fallback" style="color: ${tabColor};">
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                                <polyline points="14 2 14 8 20 8"></polyline>
-                                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                                <line x1="16" y1="17" x2="8" y2="17"></line>
-                                                <polyline points="10 9 9 9 8 9"></polyline>
-                                            </svg>
-                                        </div>
-                                    </div>
-                                    <div class="article-item-content">
-                                        <div class="article-item-title-row">
-                                            <span class="article-item-title"><span style="font-family: monospace; color: var(--accent-2); font-size: 1.15rem;">${log.version}</span>${badgeHTML}</span>
-                                            <span class="article-item-desc">- ${log.description}</span>
-                                        </div>
-                                        <span class="article-item-date">${log.date}</span>
-                                    </div>
-                                </a>
-                            </li>
-                        `;
-                    });
-                    listHTML += '</ul>';
-                    modalBody.innerHTML = listHTML;
-                }
-                
-                modalOverlay.classList.add('active');
-                window.lockScroll();
-            },
-            () => document.querySelector('.modal-content').scrollTop = 0
-        );
-    };
-
-    // 第二層：詳細記錄
-    window.renderChangelogDetail = function(logId) {
-        const targetLog = window.cachedChangelogs.find(l => l.id === logId);
-        if (!targetLog) return;
-
-        switchModalContent(
-            () => {
-                renderChangelogHeader(true, targetLog);
-                const modalBody = document.getElementById('modal-body');
-                modalBody.innerHTML = `
-                    <div class="markdown-body" style="margin-top: -0.5rem;">
-                        ${marked.parse(targetLog.content)}
-                    </div>
-                `;
-            },
-            () => document.querySelector('.modal-content').scrollTop = 0
-        );
-    };
-
-    window.renderChangelogIndex();
-};
 
 // === 4. 索引式 Markdown Modal 邏輯 ===
 const modalOverlay = document.getElementById('md-modal');
@@ -2021,6 +2123,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
             sessionStorage.setItem(`sort_${projectId}`, currentSort);
 
+            // ✨ 精準計算「當下有權限看到」的文章數量
+            const isUnlocked = document.body.classList.contains('system-override-active');
+            const visibleCount = proj.articles.filter(a => isUnlocked || !a.is_hidden).length;
+
             const cleanPath = window.getCleanBasePath();
             const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}`;
             window.history.replaceState({ path: spaUrl }, '', spaUrl);
@@ -2031,7 +2137,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 <div class="index-header-container">
                     <h1 class="index-header-title">${proj.title} - 目錄</h1>
                     <div class="index-header-actions">
-                        <span class="article-count-badge">共 ${proj.articles.length} 篇</span>
+                        <!-- ✨ 使用 visibleCount 替換掉原本的 proj.articles.length -->
+                        <span class="article-count-badge">共 ${visibleCount} 篇</span>
                         <button id="toggle-sort-btn" class="share-link-btn sm">
                             <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
                             <span id="sort-btn-text" style="margin-left: 4px;"></span>
@@ -2042,9 +2149,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     </div>
                 </div>
             `;
-
-            let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
-
+            
             modalBody.innerHTML = `
                 <div id="article-list-container" style="transition: opacity 0.2s ease;"></div>
             `;
@@ -2066,9 +2171,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
                     let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                     
+                    // 替換清單沒有圖片時的佔位符
                     let baseIconHtml = art.cover_image 
                         ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
-                        : `<div class="article-item-fallback"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>`;
+                        : `<div class="article-item-fallback" style="color: var(--muted);">${GLOBAL_SVGS.docIconLg}</div>`;
                     
                     let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
                     // ✨ 新增：機密小圖釘 HTML
@@ -2366,25 +2472,6 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             
             modalBody.innerHTML = marked.parse(markdownContent);
 
-            // ✨ 攔截並相容原生 HTML 寫法的高光區塊
-            modalBody.querySelectorAll('.md-highlight-block').forEach(block => {
-                const badge = block.querySelector('.highlight-badge');
-                const textEl = block.querySelector('.highlight-text');
-                
-                if (textEl) {
-                    const badgeText = badge ? badge.innerText.trim() : '';
-                    const targetColor = badgeText ? window.getStatusColorFromCSS(badgeText.toUpperCase()) : 'var(--accent)';
-                    const displayText = badgeText ? badgeText : 'HIGHLIGHT';
-                    
-                    const repeatedText = `${displayText} • `.repeat(20);
-                    const bgHtml = `<span class="marquee-text-track" aria-hidden="true">${repeatedText}</span>`;
-                    
-                    block.className = `md-highlight-text`;
-                    block.style.setProperty('--dynamic-glow', targetColor);
-                    block.innerHTML = `${bgHtml}<span class="text-content">${textEl.innerHTML}</span>`;
-                }
-            });
-
             const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
             // ✨ 加上 idx 參數來對應陣列
             verticalWrappers.forEach((wrapper, idx) => {
@@ -2505,10 +2592,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             }
 
             const topLeft = document.getElementById('modal-top-left');
-            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></button>` : '';
+            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
-            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
+            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
 
             const tocMount = document.getElementById('toc-mount-point');
             tocMount.innerHTML = ''; 
@@ -2540,11 +2627,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     a.innerText = h.innerText;
                     a.href = "javascript:void(0)"; 
                     a.onclick = () => {
-                        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 90;
-                        const targetTop = h.getBoundingClientRect().top - document.querySelector('.modal-content').getBoundingClientRect().top + document.querySelector('.modal-content').scrollTop - topBarHeight - 20; // 減去動態高度，再多退 20px 留白
-                        document.querySelector('.modal-content').scrollTo({ top: targetTop, behavior: 'smooth' });
-                        h.classList.add('highlight-flash');
-                        setTimeout(() => h.classList.remove('highlight-flash'), 1000);
+                        // ✨ 消除多此一舉的座標計算，直接委託給統一跳轉引擎
+                        window.executeAnchorScroll('#' + h.id, false);
                         tocBtn.classList.remove('open');
                         tocDropdown.classList.remove('active');
                     };
@@ -2653,26 +2737,80 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const figcaption = figure.querySelector('figcaption');
                 const img = figure.querySelector('img');
                 
-                if (figcaption) {
-                    figure.style.cursor = 'pointer'; 
-                    figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
+                // ✨ 偵測這張圖片是否在畫廊裡面
+                const isGallery = figure.closest('.gallery') !== null;
+                
+                if (isGallery) {
+                    // ==========================================
+                    // 📁 畫廊內的圖片 (維持原樣，點擊切換標題)
+                    // ==========================================
+                    if (figcaption) {
+                        figure.style.cursor = 'pointer'; 
+                        figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
+                        
+                        if (img && !figcaption.querySelector('.zoom-btn')) {
+                            const zoomBtn = document.createElement('button');
+                            zoomBtn.className = 'zoom-btn';
+                            zoomBtn.innerHTML = `
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="11" y1="8" x2="11" y2="14"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                                </svg>
+                            `;
+                            zoomBtn.onclick = (event) => {
+                                event.stopPropagation();
+                                window.openLightbox(zoomBtn, event);
+                            };
+                            figcaption.appendChild(zoomBtn);
+                        }
+                    }
+                } else {
+                    // ==========================================
+                    // 🖼️ 畫廊外的獨立圖片 (支援圖片點擊與 CSS 連動)
+                    // ==========================================
+                    figure.classList.add('standalone-figure'); 
                     
-                    if (img && !figcaption.querySelector('.zoom-btn')) {
-                        const zoomBtn = document.createElement('button');
-                        zoomBtn.className = 'zoom-btn';
-                        zoomBtn.innerHTML = `
-                            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                <line x1="11" y1="8" x2="11" y2="14"></line>
-                                <line x1="8" y1="11" x2="14" y2="11"></line>
-                            </svg>
-                        `;
-                        zoomBtn.onclick = (event) => {
+                    if (img) {
+                        img.style.cursor = 'pointer';
+                        
+                        // 讓點擊圖片本體直接觸發大圖預覽
+                        img.addEventListener('click', (event) => {
                             event.stopPropagation();
-                            window.openLightbox(zoomBtn, event);
-                        };
-                        figcaption.appendChild(zoomBtn);
+                            window.openLightbox(img, event);
+                        });
+
+                        // ✨ 自動補全機制：拯救手寫 HTML 缺失的放大鏡按鈕
+                        const existingBtn = figure.querySelector('.zoom-btn');
+                        if (!existingBtn) {
+                            const zoomBtn = document.createElement('button');
+                            zoomBtn.setAttribute('data-tooltip', '放大檢視');
+                            zoomBtn.innerHTML = `
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    <line x1="11" y1="8" x2="11" y2="14"></line>
+                                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                                </svg>
+                            `;
+                            
+                            zoomBtn.onclick = (event) => {
+                                event.stopPropagation();
+                                window.openLightbox(zoomBtn, event);
+                            };
+
+                            if (figcaption) {
+                                // 情況 A：有圖說的 HTML，把放大鏡塞進 figcaption 裡
+                                zoomBtn.className = 'zoom-btn';
+                                figcaption.appendChild(zoomBtn);
+                            } else {
+                                // 情況 B：無圖說的 HTML，把放大鏡設定為懸浮樣式，並確保 figure 有對應的 class
+                                figure.classList.add('no-caption');
+                                zoomBtn.className = 'zoom-btn floating';
+                                figure.appendChild(zoomBtn);
+                            }
+                        }
                     }
                 }
             });
@@ -2710,21 +2848,19 @@ window.isKotobaActive = false;
 window.centerKotobaTag = function(event) {
     if (event) event.stopPropagation();
     
-    // ✨ 如果已經是啟用狀態，再次點擊就解除 (恢復跑馬燈輪播)
     if (window.isKotobaActive) {
         window.clearFilter();
         return;
     }
     
-    // 1. 清除任何卡片過濾狀態與舊的跑馬燈動畫
     window.clearFilter();
     window.isKotobaActive = true;
     
-    const firstContent = document.querySelector('.marquee-content');
-    const targetTagEl = firstContent.querySelector('.kotoba-whisper');
+    // ✨ 鎖定使用者實際點擊的那一顆言の箱元素
+    const targetTagEl = event ? event.target.closest('.kotoba-whisper') : document.querySelector('.kotoba-whisper');
+    const firstContent = targetTagEl ? targetTagEl.closest('.marquee-content') : document.querySelector('.marquee-content');
     
-    if (targetTagEl) {
-        // 2. 讓點擊的言之箱文字亮起來 (套用高光特效)
+    if (targetTagEl && firstContent) {
         document.querySelectorAll('.kotoba-whisper').forEach(t => {
             t.style.color = 'var(--accent-2)';
             t.style.textShadow = '0 0 10px var(--glow-1)';
@@ -2732,10 +2868,18 @@ window.centerKotobaTag = function(event) {
         });
 
         const contentWidth = firstContent.offsetWidth;
-        let targetX = ((firstContent.parentElement.clientWidth / 2) - (targetTagEl.offsetLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
+        
+        void firstContent.offsetWidth;
+        
+        // ✨ 核心修復：直接抓取文字標籤本身的左側座標，徹底拔除 wrapper 帶來的偏移干擾！
+        let absoluteLeft = targetTagEl.offsetLeft;
+        if (absoluteLeft === 0) {
+            absoluteLeft = targetTagEl.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
+        }
+        
+        let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
-        // 3. 執行與一般 Tag 相同的置中動畫，並且「無限期停在該處」，等待使用者下一次操作
         document.querySelectorAll('.marquee-content').forEach(m => {
             if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
             let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
@@ -2745,7 +2889,7 @@ window.centerKotobaTag = function(event) {
             m.style.transform = `translateX(${currentX}px)`;
             m.style.animation = 'none';
             
-            void m.offsetWidth; // 強制重繪
+            void m.offsetWidth; 
             
             const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
 
@@ -2797,12 +2941,31 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     window.currentActiveTag = targetTag;
     window.highlightedCards = []; 
     
-    const firstContent = document.querySelector('.marquee-content');
-    const targetTagEl = firstContent.querySelector(`.clickable-ticker-tag[data-tag="${targetTag}"]`);
+    // ✨ 鎖定使用者實際點擊的那一顆標籤元素
+    let targetTagEl = null;
+    if (event && event.target) {
+        targetTagEl = event.target.closest('.clickable-ticker-tag');
+    }
+    if (!targetTagEl && clickedElement) {
+        targetTagEl = clickedElement.closest('.clickable-ticker-tag');
+    }
     
-    if (targetTagEl) {
+    const firstContent = targetTagEl ? targetTagEl.closest('.marquee-content') : document.querySelector('.marquee-content');
+    if (!targetTagEl && firstContent) {
+        targetTagEl = firstContent.querySelector(`.clickable-ticker-tag[data-tag="${targetTag}"]`);
+    }
+    
+    if (targetTagEl && firstContent) {
         const contentWidth = firstContent.offsetWidth;
-        let targetX = ((firstContent.parentElement.clientWidth / 2) - (targetTagEl.offsetLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
+        void firstContent.offsetWidth;
+
+        // ✨ 核心修復：直接抓取標籤本身的左側座標，徹底拔除 wrapper 帶來的偏移干擾！
+        let absoluteLeft = targetTagEl.offsetLeft;
+        if (absoluteLeft === 0) {
+            absoluteLeft = targetTagEl.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
+        }
+        
+        let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
         document.querySelectorAll('.marquee-content').forEach(m => {
@@ -2823,20 +2986,16 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     document.querySelectorAll('.card').forEach(card => {
         const tags = card.getAttribute('data-tags');
         if (tags && tags.includes(targetTag)) { 
-            
-            // 權限防護：如果這是一張機密卡片，且系統尚未解鎖，就直接跳過不處理！
             if (card.classList.contains('sys-hidden-card') && !document.body.classList.contains('system-override-active')) {
                 return;
             }
-            
             card.classList.add('highlighted'); 
             window.highlightedCards.push(card); 
         }
     });
 
-    // ✨ 新增防呆：如果重新計算後，發現「一張符合的卡片都沒有」(例如上鎖後機密卡片消失)
     if (window.highlightedCards.length === 0) {
-        window.clearFilter(); // 徹底清除過濾與膠囊狀態
+        window.clearFilter(); 
         return;
     }
 
@@ -2852,6 +3011,25 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     }
 
     if (window.highlightedCards.length > 0) window.focusAndBumpCard(window.highlightedCards[window.currentCardIndex]);
+};
+
+// ✨ 抽出共用引擎：跑馬燈平滑定位動畫
+window.scrollMarqueeTo = function(targetX, contentWidth) {
+    document.querySelectorAll('.marquee-content').forEach(m => {
+        if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
+        let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
+        if (currentX > 0) currentX -= contentWidth;
+        
+        m.style.transition = 'none';
+        m.style.transform = `translateX(${currentX}px)`;
+        m.style.animation = 'none';
+        
+        void m.offsetWidth; // 強制重繪
+        
+        const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
+        m.style.transition = `transform ${duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
+        m.style.transform = `translateX(${targetX}px)`;
+    });
 };
 
 window.scrollToNextCard = function(event) {
@@ -3153,11 +3331,8 @@ function show404Modal(title, message) {
         trigger.addEventListener('click', () => {
             document.body.classList.add('system-override-active');
             
-            // ✨ 順便幫這裡也加上重算廣播，確保退回首頁時，隱藏卡片的捲軸提示正確浮現！
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-                document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
-            }, 100);
+            // ✨ 呼叫全域重刷引擎，確保退回首頁時，卡片數字與捲軸提示都已完美更新！
+            window.refreshUIAfterOverrideToggle();
             
             const urlParams = new URLSearchParams(window.location.search);
             const pParam = urlParams.get('p');
@@ -3274,7 +3449,8 @@ window.showCreditsModal = async function() {
 // ==========================================
 window.cachedChangelogs = null; 
 
-window.showChangelogModal = async function() {
+// 修改函數定義，加入 isSystemFallback 參數，預設為 false (約 1888 行)
+window.showChangelogModal = async function(isSystemFallback = false) {
     document.body.style.cursor = 'wait';
     let fetchError = false;
 
@@ -3284,17 +3460,21 @@ window.showChangelogModal = async function() {
         if (!response.ok) throw new Error('找不到 changelogs.json');
         const latestLogs = await response.json();
         
+        // 大約在 1898 行，showChangelogModal 函數的強制更新檢查中
         // ✨ 手動更新偵測魔法：比對版本號
-        if (latestLogs && latestLogs.length > 0 && latestLogs[0].version !== CONFIG.VERSION) {
+        if (!isSystemFallback && latestLogs && latestLogs.length > 0 && latestLogs[0].version !== CONFIG.VERSION) {
             console.warn(`[MANUAL_UPDATE] 發現新版本 ${latestLogs[0].version}，準備強制更新...`);
+            
+            // ✨ 4. 記錄使用者意圖：他是點擊按鈕想看版本紀錄的
+            sessionStorage.setItem('sys_intent', 'changelog');
             
             // 解除無限重啟鎖定，因為這是使用者手動按下的更新要求！
             sessionStorage.removeItem('sys_reboot_count');
 
             // 顯示專屬的手動更新終端機畫面
             document.body.insertAdjacentHTML('beforeend', `
-                <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent);">
-                    <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
+            <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
+                <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
                     <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${latestLogs[0].version}</div>
                     <div class="loading-text" style="font-size: 1.1rem;">FETCHING_NEW_DATA_AND_REBOOTING</div>
                 </div>
