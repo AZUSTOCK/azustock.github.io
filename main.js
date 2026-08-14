@@ -411,41 +411,18 @@ window.openLightbox = function(btn, event) {
     }
 
     if (lightboxImg && lightboxModal) {
-        // ✨ 設定大圖來源為高畫質原圖
-        lightboxImg.src = targetImg.getAttribute('data-full') || targetImg.src; 
-        
-        // 重置大圖定位與縮放
+        // 重置大圖定位動畫 (關閉過渡)
         lightboxImg.style.transition = 'none';
-        lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
 
         // 2. 顯示 Modal
         lightboxModal.classList.add('is-active');
 
-        // ✨ 補回這行，膠囊與按鈕才會真正被呼叫顯示出來！
+        // ✨ 統一將圖片設定、載入與計算交給 View 更新器處理
         window.updateLightboxView();
-
-        // 3. 定義「計算原圖 2 倍限制」的函數
-        const calculateMaxZoomForNatural = () => {
-            const naturalWidth = lightboxImg.naturalWidth; 
-            const displayWidth = lightboxImg.clientWidth;   
-            
-            if (displayWidth > 0 && naturalWidth > 0) {
-                window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
-            } else {
-                window.lightboxState.maxZoom = 2; // 防呆備用值
-            }
-        };
-
-        // 4. 確保圖片載入後再進行計算
-        if (lightboxImg.complete) {
-            calculateMaxZoomForNatural();
-        } else {
-            lightboxImg.onload = calculateMaxZoomForNatural;
-        }
 
         // 恢復動畫過渡效果
         setTimeout(() => { 
-            lightboxImg.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)'; 
+            lightboxImg.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease'; 
         }, 50);
     }
 };
@@ -474,14 +451,43 @@ window.updateLightboxView = function() {
     const lightboxImg = document.getElementById('lightbox-img');
     const lightboxBackdrop = document.getElementById('lightbox-backdrop');
     const lightboxCaption = document.getElementById('lightbox-caption');
+    const wrapper = document.querySelector('.lightbox-img-wrapper'); // 抓取轉圈圈容器
     
     if (lightboxImg) {
         state.zoom = 1; 
         state.x = 0; 
         state.y = 0; 
         lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
+        
+        // ✨ 1. 圖片變透明，顯示讀取圈圈
+        lightboxImg.style.opacity = '0';
+        if (wrapper) wrapper.classList.add('is-fetching');
+
+        // ✨ 2. 綁定「真正載入完成」時的觸發事件
+        lightboxImg.onload = () => {
+            // 圖片載入完成，關閉圈圈，平滑淡入！
+            if (wrapper) wrapper.classList.remove('is-fetching');
+            lightboxImg.style.opacity = '1';
+
+            // 重新計算這張新圖片的最大縮放極限
+            const naturalWidth = lightboxImg.naturalWidth; 
+            const displayWidth = lightboxImg.clientWidth;   
+            if (displayWidth > 0 && naturalWidth > 0) {
+                window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
+            } else {
+                window.lightboxState.maxZoom = 2; // 防呆備用值
+            }
+        };
+
+        // ✨ 3. 賦予新網址，觸發瀏覽器下載圖片
         lightboxImg.src = currentItem.src;
+        
+        // 防呆機制：如果這張圖早就被瀏覽器快取 (Cached)，可能不會觸發 onload，我們手動觸發
+        if (lightboxImg.complete && lightboxImg.naturalHeight > 0) {
+            lightboxImg.onload();
+        }
     }
+    
     if (lightboxBackdrop) lightboxBackdrop.src = currentItem.src;
     
     // ✨ 精準控制說明文字的顯示與隱藏
@@ -500,11 +506,9 @@ window.updateLightboxView = function() {
         if (navCapsule) navCapsule.style.display = 'inline-flex';
         if (counter) counter.innerText = `${state.currentIndex + 1} / ${state.images.length}`;
         
-        // 動態加上或移除 disabled 樣式
         if (prevBtn) prevBtn.classList.toggle('disabled', state.currentIndex === 0);
         if (nextBtn) nextBtn.classList.toggle('disabled', state.currentIndex === state.images.length - 1);
     } else {
-        // 如果只有單張圖片，直接隱藏整個膠囊
         if (navCapsule) navCapsule.style.display = 'none';
     }
 };

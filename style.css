@@ -1477,8 +1477,33 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 
 /* 7-4. 圖片主體與文字 */
 .lightbox-content-wrapper { position: relative; z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; padding: 80px 20px 120px 20px; box-sizing: border-box; pointer-events: none; }
-.lightbox-img-wrapper { flex: 1; min-height: 0; min-width: 0; width: 100%; display: flex; justify-content: center; align-items: center; overflow: visible; pointer-events: auto; }
-#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); transform-origin: center center; touch-action: none; cursor: grab; }
+.lightbox-img-wrapper { flex: 1; min-height: 0; min-width: 0; width: 100%; display: flex; justify-content: center; align-items: center; overflow: visible; pointer-events: auto; position: relative; }
+
+/* ✨ 新增：大圖預覽的專屬讀取動畫 (Loading Spinner) */
+.lightbox-img-wrapper::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--card-border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: lightbox-spin 0.8s linear infinite;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+.lightbox-img-wrapper.is-fetching::before {
+    opacity: 1;
+    visibility: visible;
+}
+@keyframes lightbox-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ✨ 加入 opacity 過渡，讓圖片載入後平滑淡入 */
+#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease; transform-origin: center center; touch-action: none; cursor: grab; }
 #lightbox-img.is-dragging { cursor: grabbing; transition: none !important; }
 
 /* 底部圖片說明膠囊 (動態主題適應) */

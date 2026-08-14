@@ -104,7 +104,7 @@ graph TD
 </figure>
 
 ![float-right](./architecture.webp)
-這段文字會環繞在圖片附近
+文字
 
 <div class="md-clear"></div>
 
