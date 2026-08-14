@@ -44,7 +44,8 @@ const GLOBAL_SVGS = {
 window.STATUS_LIST = [
     ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED'], 
     ['WIP'], 
-    ['OC']
+    ['OC'],
+    ['DEV']
 ];
 
 // ==========================================
@@ -268,6 +269,111 @@ window.focusAndBumpCard = function(targetCard) {
         targetCard.classList.add('jump-bump');
         setTimeout(() => targetCard.classList.remove('jump-bump'), 600);
     }, dynamicDelay);
+};
+
+// ==========================================
+// ✨ 系統權限切換重刷引擎 (System Override UI Updater)
+// ==========================================
+window.refreshUIAfterOverrideToggle = function() {
+    const isUnlocked = document.body.classList.contains('system-override-active');
+    const marquees = document.querySelectorAll('.marquee-content');
+
+    // 1. 凍結跑馬燈當前座標，並進行嚴格的餘數校正
+    marquees.forEach(m => {
+        const matrix = new DOMMatrix(window.getComputedStyle(m).transform);
+        let currentX = matrix.m41;
+        const currentWidth = m.offsetWidth;
+        
+        // ✨ 核心修復：透過求餘數，將亂七八糟的累積偏移量，安全對齊到當前寬度循環內！
+        if (currentWidth > 0) {
+            currentX = currentX % currentWidth;
+            if (currentX > 0) currentX -= currentWidth;
+        }
+        m.dataset.startX = currentX; 
+        
+        if (m.marqueePlayer) { 
+            m.marqueePlayer.cancel(); 
+            m.marqueePlayer = null; 
+        }
+        m.style.transition = 'none';
+        m.style.animation = 'none';
+    });
+
+    // 延遲 50 毫秒等待 DOM 穩定與權限類別切換
+    setTimeout(() => {
+        // 重算所有網格與卡片數字
+        window.dispatchEvent(new Event('resize'));
+        document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
+        
+        window.siteProjects.forEach(proj => {
+            const grid = document.getElementById(`${proj.category}-grid`);
+            if (grid && proj.articles && proj.articles.length > 0) {
+                const cards = grid.querySelectorAll('.card');
+                cards.forEach(card => {
+                    const titleEl = card.querySelector('h3');
+                    if (titleEl && titleEl.innerText.includes(proj.title)) {
+                        const actionBtn = card.querySelector('.action-btn');
+                        if (actionBtn && actionBtn.innerText.includes('展開系列')) {
+                            const count = isUnlocked ? proj.articles.length : proj.articles.filter(art => !art.is_hidden).length;
+                            const iconWrap = actionBtn.querySelector('div');
+                            actionBtn.innerHTML = '';
+                            if (iconWrap) actionBtn.appendChild(iconWrap);
+                            actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
+                        }
+                    }
+                });
+            }
+        });
+
+        // 記錄解封後的最終真實寬度
+        marquees.forEach(m => {
+            m.dataset.targetWidth = m.offsetWidth;
+        });
+
+        // 將高光標籤暫存，等光速轉動抵達終點後再精準對位
+        if (window.currentActiveTag) {
+            window._pendingActiveTag = window.currentActiveTag;
+            window.currentActiveTag = null; 
+            document.querySelectorAll('.card').forEach(c => c.classList.remove('highlighted', 'jump-bump'));
+            document.querySelectorAll('.active-tag').forEach(t => t.classList.remove('active-tag'));
+        }
+
+        // 2. 啟動光速引擎！
+        marquees.forEach((m, index) => {
+            const targetWidth = parseFloat(m.dataset.targetWidth) || m.offsetWidth;
+            let startX = parseFloat(m.dataset.startX) || 0;
+            
+            // 雙重防呆：確保起始點小於等於 0 且大於負的寬度
+            if (startX > 0) startX = 0;
+            if (startX < -targetWidth) startX = startX % targetWidth;
+
+            const distance = Math.abs(-targetWidth - startX);
+            const duration = Math.max(600, Math.min(1600, (distance / targetWidth) * 2000));
+
+            m.marqueePlayer = m.animate([
+                { transform: `translateX(${startX}px)`, filter: 'blur(0px)' },
+                { transform: `translateX(${startX - (distance * 0.5)}px)`, filter: 'blur(3px)' }, 
+                { transform: `translateX(-${targetWidth}px)`, filter: 'blur(0px)' }
+            ], {
+                duration: duration,
+                easing: 'ease-in-out'
+            });
+
+            m.marqueePlayer.onfinish = () => {
+                m.style.transform = '';
+                m.style.filter = '';
+                m.style.animation = ''; 
+                m.marqueePlayer = null;
+
+                // 動畫結束，無縫接軌並精準鎖定目標標籤
+                if (index === 0 && window._pendingActiveTag) {
+                    const activeTag = window._pendingActiveTag;
+                    window._pendingActiveTag = null; 
+                    window.filterByTag(activeTag);  
+                }
+            };
+        });
+    }, 50);
 };
 
 // ==========================================
@@ -1276,45 +1382,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // ✨ 核心魔法：切換系統覆寫狀態，強制顯現/隱藏機密檔案！
                 document.body.classList.toggle('system-override-active');
                 
-                // 延遲 100 毫秒重新計算網格捲軸並更新卡片數字
-                setTimeout(() => {
-                    window.dispatchEvent(new Event('resize'));
-                    document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
-                    
-                    // ✨ 核心修復：當解鎖或重新上鎖時，動態更新所有首頁卡片的「展開系列 (X)」數字！
-                    const isUnlocked = document.body.classList.contains('system-override-active');
-                    window.siteProjects.forEach(proj => {
-                        // 尋找對應專案的卡片 (透過比對該專案底下的分類 grid)
-                        const grid = document.getElementById(`${proj.category}-grid`);
-                        if (grid && proj.articles && proj.articles.length > 0) {
-                            // 遍尋該 grid 裡的所有卡片，找出標題符合的卡片
-                            const cards = grid.querySelectorAll('.card');
-                            cards.forEach(card => {
-                                const titleEl = card.querySelector('h3');
-                                if (titleEl && titleEl.innerText.includes(proj.title)) {
-                                    const actionBtn = card.querySelector('.action-btn');
-                                    if (actionBtn && actionBtn.innerText.includes('展開系列')) {
-                                        // 根據當前解鎖狀態，決定要顯示全部數量還是扣除隱藏文章的數量
-                                        const count = isUnlocked ? proj.articles.length : proj.articles.filter(art => !art.is_hidden).length;
-                                        
-                                        // 保留原本完美的 SVG 圖標，只替換後方的文字數字
-                                        const iconWrap = actionBtn.querySelector('div');
-                                        actionBtn.innerHTML = '';
-                                        if (iconWrap) actionBtn.appendChild(iconWrap);
-                                        actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
-                                    }
-                                }
-                            });
-                        }
-                    });
-
-                    // ✨ 動態更新懸浮膠囊與高光狀態！
-                    if (window.currentActiveTag) {
-                        const activeTag = window.currentActiveTag;
-                        window.currentActiveTag = null; 
-                        window.filterByTag(activeTag);  
-                    }
-                }, 100);
+                // ✨ 呼叫全域重刷引擎，統一更新所有卡片數字與版面
+                window.refreshUIAfterOverrideToggle();
                 
                 const currentHeight = profileSection.offsetHeight;
                 profileSection.style.height = currentHeight + 'px';
@@ -1433,69 +1502,82 @@ async function loadProjects() {
             return validTags;
         };
 
-        // 智慧狀態推導與全域標籤冒泡
+       // 智慧狀態推導與全域標籤冒泡
         projects.forEach(p => {
-            // ✨ 在推導邏輯之前，先結算所有獨立屬性
             ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
                 if (p[k] !== undefined) p[k] = evaluateStatus(p[k]);
             });
-            
-            // ✨ 針對 hidden 屬性使用專屬的解封邏輯
             if (p.is_hidden !== undefined) p.is_hidden = evaluateHidden(p.is_hidden);
-            
-            // 結算標籤陣列，過期的會在這裡直接被丟棄
             p.tags = parseAndFilterTags(p.tags);
 
-            let isCardUpdated = p.is_updated;
+            let isAllUpdated = p.is_updated;
+            let isPublicUpdated = p.is_updated;
 
             if (p.articles && p.articles.length > 0) {
-                // 子文章也要提前執行結算
                 p.articles.forEach(art => {
                     ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
                         if (art[k] !== undefined) art[k] = evaluateStatus(art[k]);
                     });
-                    
-                    // ✨ 子文章的 hidden 屬性
                     if (art.is_hidden !== undefined) art.is_hidden = evaluateHidden(art.is_hidden);
-                    
-                    // 子文章的標籤陣列也要結算
                     art.tags = parseAndFilterTags(art.tags);
                 });
 
-                // 如果專案本身不是全新的，只要底下有 新文章(NEW) 或 更新(UPDATED)，專案就掛上 UPDATED
-                if (!p.is_new && !isCardUpdated) {
-                    if (p.articles.some(art => 
-                        art.is_new || 
-                        art.is_updated || 
-                        (art.tags && (art.tags.includes('NEW') || art.tags.includes('UPDATED') || art.tags.includes('LATEST')))
-                    )) {
-                        isCardUpdated = true;
-                    }
+                if (!p.is_new) {
+                    p.articles.forEach(art => {
+                        const hasUpdate = art.is_new || art.is_updated || (art.tags && (art.tags.includes('NEW') || art.tags.includes('UPDATED') || art.tags.includes('LATEST')));
+                        if (hasUpdate) {
+                            isAllUpdated = true;
+                            // ✨ 只有當文章是公開時，才認定它是「公開級別」的更新
+                            if (!art.is_hidden) isPublicUpdated = true;
+                        }
+                    });
                 }
             }
-            p.computed_is_updated = isCardUpdated;
+            p.computed_is_updated = isAllUpdated;
 
-            let activeStates = new Set();
+            let allActiveStates = new Set();
+            let publicActiveStates = new Set();
             const flatStatusList = window.STATUS_LIST.flat(); 
 
             flatStatusList.forEach(status => {
                 const boolKey = `is_${status.toLowerCase()}`;
-                const isTrue = status === 'UPDATED' ? isCardUpdated : p[boolKey];
-
-                // 1. 處理專案「自己」的屬性 (如果專案本身是 NEW，這裡依然會正確加上 NEW)
-                if (isTrue || p.tags.includes(status)) activeStates.add(status);
                 
-                // 2. 處理「子文章」的狀態冒泡 (✨ 關鍵：擋下子文章的 NEW，不讓它傳染給專案)
-                if (status !== 'NEW' && p.articles && p.articles.some(art => art[`is_${status.toLowerCase()}`] === true || (art.tags && art.tags.includes(status)))) {
-                    activeStates.add(status);
+                // 1. 處理專案「自己」的屬性
+                if (p[boolKey] === true || p.tags.includes(status)) {
+                    allActiveStates.add(status);
+                    publicActiveStates.add(status);
+                }
+
+                // 2. 處理「子文章」的狀態冒泡
+                if (status !== 'NEW' && p.articles) {
+                    p.articles.forEach(art => {
+                        if (art[boolKey] === true || (art.tags && art.tags.includes(status))) {
+                            allActiveStates.add(status);
+                            // ✨ 只有公開文章的標籤，才能進入公開狀態池
+                            if (!art.is_hidden) publicActiveStates.add(status);
+                        }
+                    });
+                }
+
+                // 特別處理 UPDATED 的冒泡
+                if (status === 'UPDATED') {
+                    if (isAllUpdated) allActiveStates.add('UPDATED');
+                    if (isPublicUpdated) publicActiveStates.add('UPDATED');
                 }
             });
 
             p.tags = p.tags.filter(t => !flatStatusList.includes(t));
+            p.secret_tags = []; // ✨ 準備紀錄哪些標籤是「僅存在於隱藏文章中」的機密標籤
 
             [...window.STATUS_LIST].reverse().forEach(group => {
-                const winningStatus = group.find(status => activeStates.has(status));
-                if (winningStatus) p.tags.unshift(winningStatus);
+                const winningStatus = group.find(status => allActiveStates.has(status));
+                if (winningStatus) {
+                    p.tags.unshift(winningStatus);
+                    // 如果這個最終贏得的標籤「不在」公開狀態池裡，那它就是機密標籤！
+                    if (!publicActiveStates.has(winningStatus)) {
+                        p.secret_tags.push(winningStatus);
+                    }
+                }
             });
         });
 
@@ -1503,8 +1585,8 @@ async function loadProjects() {
 
         // 1. 處理跑馬燈橫幅
         if (marquee) {
-            // ✨ 1. 建立「公開白名單」：找出所有未隱藏專案的標籤
-            const publicTags = projects.filter(p => !p.is_hidden).flatMap(p => p.tags || []);
+            // ✨ 1. 建立「公開白名單」：找出所有未隱藏專案中，不屬於機密的標籤
+            const publicTags = projects.filter(p => !p.is_hidden).flatMap(p => p.tags.filter(t => !(p.secret_tags && p.secret_tags.includes(t))) || []);
             
             // 2. 找出所有標籤 (用於亂數排列)
             const allTags = projects.flatMap(p => p.tags || []);
@@ -1612,7 +1694,11 @@ async function loadProjects() {
                 
                 const flatList = window.STATUS_LIST.flat(); 
                 let tagsHTML = (data.tags || []).map(tag => {
-                    const statusAttr = flatList.includes(tag) ? ` data-status="${tag}" class="tag status-tag"` : ' class="tag"';
+                    // ✨ 動態判斷是否需要加上機密隱形斗篷 class
+                    const isSecretTag = data.secret_tags && data.secret_tags.includes(tag);
+                    const secretClass = isSecretTag ? ' sys-hidden-tag' : '';
+                    
+                    const statusAttr = flatList.includes(tag) ? ` data-status="${tag}" class="tag status-tag${secretClass}"` : ` class="tag${secretClass}"`;
                     return `<span${statusAttr} data-tag="${tag}" onclick="window.filterByTag('${tag}', event, this)">${tag}</span>`;
                 }).join('');
                 
@@ -2770,10 +2856,10 @@ window.centerKotobaTag = function(event) {
     window.isKotobaActive = true;
     
     const firstContent = document.querySelector('.marquee-content');
-    const targetTagEl = firstContent.querySelector('.kotoba-whisper');
+    const targetTagEl = firstContent ? firstContent.querySelector('.kotoba-whisper') : null;
     
     if (targetTagEl) {
-        // 2. 讓點擊的言之箱文字亮起來 (套用高光特效)
+        // 2. 讓點擊的言の箱文字亮起來 (套用高光特效)
         document.querySelectorAll('.kotoba-whisper').forEach(t => {
             t.style.color = 'var(--accent-2)';
             t.style.textShadow = '0 0 10px var(--glow-1)';
@@ -2781,10 +2867,20 @@ window.centerKotobaTag = function(event) {
         });
 
         const contentWidth = firstContent.offsetWidth;
-        let targetX = ((firstContent.parentElement.clientWidth / 2) - (targetTagEl.offsetLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
+        
+        // ✨ 核心修復：強制重算 DOM 佈局，並精準抓取言の箱在跑馬燈內的「絕對左側座標」
+        void firstContent.offsetWidth;
+        const wrapper = targetTagEl.closest('.marquee-tag-wrapper');
+        let absoluteLeft = wrapper ? wrapper.offsetLeft : targetTagEl.offsetLeft;
+        
+        if (absoluteLeft === 0 && wrapper) {
+            absoluteLeft = wrapper.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
+        }
+        
+        let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
-        // 3. 執行與一般 Tag 相同的置中動畫，並且「無限期停在該處」，等待使用者下一次操作
+        // 3. 執行置中動畫，並且「無限期停在該處」，直到再次點擊解除
         document.querySelectorAll('.marquee-content').forEach(m => {
             if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
             let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
@@ -2847,11 +2943,23 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     window.highlightedCards = []; 
     
     const firstContent = document.querySelector('.marquee-content');
-    const targetTagEl = firstContent.querySelector(`.clickable-ticker-tag[data-tag="${targetTag}"]`);
+    let targetTagEl = firstContent.querySelector(`.clickable-ticker-tag[data-tag="${targetTag}"]`);
     
     if (targetTagEl) {
         const contentWidth = firstContent.offsetWidth;
-        let targetX = ((firstContent.parentElement.clientWidth / 2) - (targetTagEl.offsetLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
+        
+        // ✨ 核心防呆：強制強迫瀏覽器重新計算 DOM 佈局，確保剛解封的隱藏標籤寬度與 offsetLeft 100% 準確！
+        void firstContent.offsetWidth;
+
+        const wrapper = targetTagEl.closest('.marquee-tag-wrapper');
+        let absoluteLeft = wrapper ? wrapper.offsetLeft : targetTagEl.offsetLeft;
+        
+        // 如果抓出來的 absoluteLeft 異常為 0（代表剛解封還在浮動渲染），給它強制重算一次
+        if (absoluteLeft === 0 && wrapper) {
+            absoluteLeft = wrapper.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
+        }
+        
+        let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
         document.querySelectorAll('.marquee-content').forEach(m => {
@@ -3202,11 +3310,8 @@ function show404Modal(title, message) {
         trigger.addEventListener('click', () => {
             document.body.classList.add('system-override-active');
             
-            // ✨ 順便幫這裡也加上重算廣播，確保退回首頁時，隱藏卡片的捲軸提示正確浮現！
-            setTimeout(() => {
-                window.dispatchEvent(new Event('resize'));
-                document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
-            }, 100);
+            // ✨ 呼叫全域重刷引擎，確保退回首頁時，卡片數字與捲軸提示都已完美更新！
+            window.refreshUIAfterOverrideToggle();
             
             const urlParams = new URLSearchParams(window.location.search);
             const pParam = urlParams.get('p');

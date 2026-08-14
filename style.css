@@ -63,8 +63,9 @@
 [data-status="MAJOR"]    { --s-color: #E11D48;            --s-shadow: rgba(225, 29, 72, 0.6); } 
 [data-status="HOTFIX"]   { --s-color: #FF5722;            --s-shadow: rgba(255, 87, 34, 0.6); } 
 [data-status="FEATURE"]  { --s-color: #10B981;            --s-shadow: rgba(16, 185, 129, 0.5); } 
+[data-status="DEV"]      { --s-color: #3B82F6;            --s-shadow: rgba(59, 130, 246, 0.5); } /* ✨ DEV 專屬科技藍 */
 [data-status="REFACTOR"] { --s-color: #6366F1;            --s-shadow: rgba(99, 102, 241, 0.5); } 
-[data-status="PATCH"]    { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); } 
+[data-status="PATCH"]    { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); }
 
 /* 1-5. 動畫可擴充模組化引擎 (預設：VisionOS 景深) */
 :root {
@@ -1150,30 +1151,34 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 /* ==========================================
    ✨ X光透視模式下的防雷貼紙「色彩混和」升級
    ========================================== */
-.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(:hover) .spoiler-cover {
-    /* ✨ 將原本死灰色的遮罩，改成「高光色與背景色」的混和半透明質感 */
+
+/* 🚨 關鍵修復：統一高光區塊內所有貼紙零件的過渡時間為 0.3s，與主文字、跑馬燈 100% 同步！ */
+.markdown-body .md-highlight-text .spoiler-text .spoiler-cover {
+    transition: clip-path var(--tear-dur) var(--tear-ease), background-color 0.3s ease !important;
+}
+.markdown-body .md-highlight-text .spoiler-text.revealed {
+    transition: background-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+.markdown-body .md-highlight-text .spoiler-text.revealed .spoiler-content {
+    transition: color 0.3s ease !important;
+}
+
+/* 1. 未撕開狀態的混色與毛玻璃 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(.revealed) .spoiler-cover {
     background-color: color-mix(in srgb, var(--dynamic-glow) 40%, var(--bg)) !important;
-    backdrop-filter: blur(2px); /* 微微的毛玻璃感，讓穿透底層的跑馬燈更有層次 */
-    transition: background-color 0.3s ease;
+    backdrop-filter: blur(2px);
 }
 
-/* 讓紙張翻折的陰影更自然 (✨ 嚴格限定「未撕開」狀態，絕不復活已飛走的紙片) */
-.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(.revealed):not(:hover) .spoiler-fold {
-    opacity: 0.4 !important;
-}
-
-/* ✨ 確保紙片撕開飛走後，不管發生什麼事都絕對保持隱形 */
+/* 2. ✨ 確保紙片撕開飛走後，不管發生什麼事都絕對保持隱形 */
 .markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed .spoiler-fold {
     opacity: 0 !important;
 }
 
-/* 4. Code 與 Link 在平時的平滑顏色過渡 */
+/* 3. Code 與 Link 的幽靈化 */
 .markdown-body .md-highlight-text .text-content code,
 .markdown-body .md-highlight-text .text-content a {
     transition: color 0.3s ease, background-color 0.3s ease;
 }
-
-/* 5. 確保 Code 強制移除背景色，與超連結一起幽靈化 (移除 Hover 限制) */
 .markdown-body .md-highlight-text.is-xray-active .text-content code {
     background-color: transparent !important;
     color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
@@ -1182,19 +1187,24 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     color: color-mix(in srgb, var(--accent-2) 15%, transparent) !important;
 }
 
-/* ✨ 讓貼紙撕開後 (Revealed) 的殘留底色，完美融入該區塊的高光色彩 (大幅降低亮度) */
+/* 4. ✨ 撕開後 (Revealed) 的極致內斂底跡 */
 .markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed {
-    opacity: 0.5;
-    transition: opacity 0.3s ease;
+    background-color: color-mix(in srgb, var(--dynamic-glow) 8%, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dynamic-glow) 15%, transparent) !important;
 }
 
-/* ✨ 1. 讓撕開後的文字在「未 Hover」時，跟周圍的普通文字一樣變成幽靈半透明 */
+/* 5. ✨ 撕開後的文字在「未 Hover」時，變成幽靈半透明 */
 .markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:not(:hover) .spoiler-content {
     color: color-mix(in srgb, var(--text) 15%, transparent) !important;
-    transition: color 0.2s ease !important;
 }
 
-/* ✨ 2. 當滑鼠 Hover 到已撕開的貼紙上時，文字重新亮起並染上高光色彩 */
+/* 6. ✨ 當滑鼠 Hover 到已撕開的貼紙上時：底框與文字一起亮起 */
+.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:hover {
+    background-color: color-mix(in srgb, var(--dynamic-glow) 15%, transparent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dynamic-glow) 25%, transparent) !important;
+    /* Hover 的互動反應可以稍微快一點點 (0.2s) 讓手感更好 */
+    transition: background-color 0.2s ease, box-shadow 0.2s ease !important; 
+}
 .markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:hover .spoiler-content {
     color: color-mix(in srgb, var(--dynamic-glow) 55%, var(--text)) !important;
     transition: color 0.2s ease !important;
@@ -1638,7 +1648,8 @@ body.is-touch-device #lightbox-img { cursor: default; }
 /* 1. 預設狀態：披上隱形斗篷，不佔用任何版面空間 */
 .sys-hidden-card,
 .sys-hidden-item,
-.sys-hidden-ticker { 
+.sys-hidden-ticker,
+.sys-hidden-tag { 
     display: none !important; 
 }
 
@@ -1651,9 +1662,14 @@ body.system-override-active .article-li.sys-hidden-item {
     display: block !important;
 }
 
-/* ✨ 讓跑馬燈裡的機密標籤也跟著解鎖出現 */
+/* 讓跑馬燈裡的機密標籤也跟著解鎖出現 */
 body.system-override-active .sys-hidden-ticker {
     display: inline-block !important;
+}
+
+/* ✨ 讓卡片上的機密標籤解鎖後出現 */
+body.system-override-active .sys-hidden-tag {
+    display: inline-flex !important;
 }
 
 /* 3. 機密圖釘 (SVG) - 行為與原生圖釘完全一致 */
@@ -1755,4 +1771,27 @@ body.system-override-active .sys-hidden-ticker {
 
 .secret-admin-trigger:hover::after {
     opacity: 1;
+}
+
+/* ==========================================
+   ✨ 跑馬燈光速注入引擎 (Warp Speed Injection)
+   ========================================== */
+/* 1. 量測未來寬度時的強制顯示器 */
+.marquee-content.force-show-secrets .sys-hidden-ticker { 
+    display: inline-block !important; 
+}
+/* 2. 動畫醞釀期的隱形壓抑器 */
+.marquee-content.suppress-secrets .sys-hidden-ticker { 
+    display: none !important; 
+}
+
+/* 3. 標籤注入瞬間的「高光爆發與動態傾斜」特效 */
+@keyframes inject-flash {
+    0% { filter: brightness(2) drop-shadow(0 0 12px var(--accent-2)); transform: scale(1.15) skewX(-15deg); }
+    100% { filter: brightness(1) drop-shadow(0 0 0 transparent); transform: scale(1) skewX(0); }
+}
+
+/* 只要隱形壓抑器一解除，機密標籤就會以爆發動畫現身！ */
+body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-ticker {
+    animation: inject-flash 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
