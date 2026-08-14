@@ -191,9 +191,16 @@ window.getArticleSequence = function(projectId) {
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !proj.articles) return [];
     
+    // ✨ 新增：判斷系統是否已經解鎖 (System Override 狀態)
+    const isUnlocked = document.body.classList.contains('system-override-active');
+    
     // 讀取專案獨立排序
     let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
-    let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
+    
+    // ✨ 核心修復：直接從源頭剔除沒有權限查看的隱藏文章！
+    let displayArticles = proj.articles
+        .map((art, idx) => ({ art, idx }))
+        .filter(item => isUnlocked || !item.art.is_hidden);
     
     const pinned = displayArticles.filter(item => item.art.pinned);
     const unpinned = displayArticles.filter(item => !item.art.pinned);
@@ -1239,17 +1246,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 // ✨ 核心魔法：切換系統覆寫狀態，強制顯現/隱藏機密檔案！
                 document.body.classList.toggle('system-override-active');
                 
-                // 延遲 100 毫秒重新計算網格捲軸 (因為有新卡片被塞進來了)
+                // 延遲 100 毫秒重新計算網格捲軸並更新卡片數字
                 setTimeout(() => {
                     window.dispatchEvent(new Event('resize'));
-                    // ✨ 核心修復：精準呼叫真正在滾動的 .grid 與畫廊，強制重新計算 Scroll Hint！
                     document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
                     
+                    // ✨ 核心修復：當解鎖或重新上鎖時，動態更新所有首頁卡片的「展開系列 (X)」數字！
+                    const isUnlocked = document.body.classList.contains('system-override-active');
+                    window.siteProjects.forEach(proj => {
+                        // 尋找對應專案的卡片 (透過比對該專案底下的分類 grid)
+                        const grid = document.getElementById(`${proj.category}-grid`);
+                        if (grid && proj.articles && proj.articles.length > 0) {
+                            // 遍尋該 grid 裡的所有卡片，找出標題符合的卡片
+                            const cards = grid.querySelectorAll('.card');
+                            cards.forEach(card => {
+                                const titleEl = card.querySelector('h3');
+                                if (titleEl && titleEl.innerText.includes(proj.title)) {
+                                    const actionBtn = card.querySelector('.action-btn');
+                                    if (actionBtn && actionBtn.innerText.includes('展開系列')) {
+                                        // 根據當前解鎖狀態，決定要顯示全部數量還是扣除隱藏文章的數量
+                                        const count = isUnlocked ? proj.articles.length : proj.articles.filter(art => !art.is_hidden).length;
+                                        
+                                        // 保留原本完美的 SVG 圖標，只替換後方的文字數字
+                                        const iconWrap = actionBtn.querySelector('div');
+                                        actionBtn.innerHTML = '';
+                                        if (iconWrap) actionBtn.appendChild(iconWrap);
+                                        actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
+                                    }
+                                }
+                            });
+                        }
+                    });
+
                     // ✨ 動態更新懸浮膠囊與高光狀態！
                     if (window.currentActiveTag) {
                         const activeTag = window.currentActiveTag;
-                        window.currentActiveTag = null; // 繞過原本的取消點擊邏輯，強制重刷
-                        window.filterByTag(activeTag);  // 重新套用該標籤，更新數字與亮光
+                        window.currentActiveTag = null; 
+                        window.filterByTag(activeTag);  
                     }
                 }, 100);
                 
@@ -1557,11 +1590,15 @@ async function loadProjects() {
                 if (data.articles && data.articles.length > 0) {
                     card.style.cursor = 'pointer';
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); openProjectIndex(data.id); };
+                    
+                    // ✨ 核心修復：首頁卡片上的數字也同步扣除隱藏文章
+                    const visibleCount = data.articles.filter(art => !art.is_hidden).length;
+                    
                     actionText = `<div class="action-btn" style="margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease;">
                         <div style="position: relative; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">
                             <svg class="icon-book-closed" style="position: absolute; transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
                             <svg class="icon-book-open" style="position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-                        </div>展開系列 (${data.articles.length})</div>`;
+                        </div>展開系列 (${visibleCount})</div>`;
                 } else if (data.link) {
                     card.style.cursor = 'pointer';
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.open(data.link, '_blank'); };
@@ -2106,6 +2143,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
             sessionStorage.setItem(`sort_${projectId}`, currentSort);
 
+            // ✨ 精準計算「當下有權限看到」的文章數量
+            const isUnlocked = document.body.classList.contains('system-override-active');
+            const visibleCount = proj.articles.filter(a => isUnlocked || !a.is_hidden).length;
+
             const cleanPath = window.getCleanBasePath();
             const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}`;
             window.history.replaceState({ path: spaUrl }, '', spaUrl);
@@ -2116,7 +2157,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 <div class="index-header-container">
                     <h1 class="index-header-title">${proj.title} - 目錄</h1>
                     <div class="index-header-actions">
-                        <span class="article-count-badge">共 ${proj.articles.length} 篇</span>
+                        <!-- ✨ 使用 visibleCount 替換掉原本的 proj.articles.length -->
+                        <span class="article-count-badge">共 ${visibleCount} 篇</span>
                         <button id="toggle-sort-btn" class="share-link-btn sm">
                             <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
                             <span id="sort-btn-text" style="margin-left: 4px;"></span>
@@ -2127,9 +2169,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     </div>
                 </div>
             `;
-
-            let displayArticles = proj.articles.map((art, idx) => ({ art, idx }));
-
+            
             modalBody.innerHTML = `
                 <div id="article-list-container" style="transition: opacity 0.2s ease;"></div>
             `;

@@ -87,7 +87,8 @@ def create_og_image(original_path, output_path, bg_path=None):
         return False
 
 def parse_folder_meta(folder_name):
-    match = re.match(r'^(\d+)_+(.*)$', folder_name)
+    # ✨ 核心修復：在 \d 前面加上 -?，代表「允許前面帶有一個可有可無的負號」！
+    match = re.match(r'^(-?\d+)_+(.*)$', folder_name)
     if match:
         return int(match.group(1)), match.group(2)
     return 999, folder_name
