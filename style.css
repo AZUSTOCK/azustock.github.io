@@ -1157,11 +1157,6 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     transition: background-color 0.3s ease;
 }
 
-/* 讓貼紙內部的文字也染上一點高光色彩，完美融合 */
-.markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(:hover) .spoiler-content {
-    color: color-mix(in srgb, var(--accent-2) 40%, var(--text)) !important;
-}
-
 /* 讓紙張翻折的陰影更自然 (✨ 嚴格限定「未撕開」狀態，絕不復活已飛走的紙片) */
 .markdown-body .md-highlight-text.is-xray-active .spoiler-text:not(.revealed):not(:hover) .spoiler-fold {
     opacity: 0.4 !important;
@@ -1189,11 +1184,8 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 
 /* ✨ 讓貼紙撕開後 (Revealed) 的殘留底色，完美融入該區塊的高光色彩 (大幅降低亮度) */
 .markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed {
-    /* 濃度從 20% 大幅壓低到 8%，呈現極其微弱的底跡 */
-    background-color: color-mix(in srgb, var(--dynamic-glow) 8%, transparent) !important;
-    /* 邊框濃度從 30% 壓低到 15% */
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dynamic-glow) 15%, transparent) !important;
-    transition: background-color 0.2s ease , box-shadow 0.2s ease !important;
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
 }
 
 /* ✨ 1. 讓撕開後的文字在「未 Hover」時，跟周圍的普通文字一樣變成幽靈半透明 */
@@ -1206,16 +1198,6 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:hover .spoiler-content {
     color: color-mix(in srgb, var(--dynamic-glow) 55%, var(--text)) !important;
     transition: color 0.2s ease !important;
-}
-
-/* ==========================================
-   ✨ 新增：撕開後，滑鼠再次 Hover 上去時的「高光互動感」
-   ========================================== */
-.markdown-body .md-highlight-text.is-xray-active .spoiler-text.revealed:hover {
-    /* Hover 變亮的效果也等比例降低，避免太過刺眼 */
-    background-color: color-mix(in srgb, var(--dynamic-glow) 15%, transparent) !important;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dynamic-glow) 25%, transparent) !important;
-    transition: background-color 0.2s ease, box-shadow 0.2s ease !important; 
 }
 
 /* ==========================================
