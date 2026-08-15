@@ -2244,7 +2244,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             // ✨ 新增：敏感內容攔截 (如果不通過，中斷執行並呼叫彈窗)
             if (proj.is_sensitive && window._hasAgreedSensitiveContent !== true) {
-                window.showSensitiveAgreementModal(() => window.openProjectIndex(projectId, restoreScroll));
+                window.showSensitiveAgreementModal(
+                    () => window.openProjectIndex(projectId, restoreScroll),
+                    () => closeModal() // ✨ 拒絕時：關閉系統 Modal，退回主頁 (這會同時消滅 403 畫面)
+                );
                 return;
             }
 
@@ -2578,7 +2581,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     
     // ✨ 新增：敏感內容攔截 (改用全域變數檢查)
     if ((proj.is_sensitive || article.is_sensitive) && window._hasAgreedSensitiveContent !== true) {
-        window.showSensitiveAgreementModal(() => window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls));
+        window.showSensitiveAgreementModal(
+            () => window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls),
+            () => window.openProjectIndex(projectId) // ✨ 拒絕時：退回該專案的目錄 (這會覆蓋掉 403 畫面)
+        );
         return;
     }
     
@@ -3536,11 +3542,10 @@ function show404Modal(title, message) {
 // ==========================================
 // ✨ 敏感內容/使用者協議攔截引擎 (Content Warning Engine)
 // ==========================================
-// ✨ 1. 定義一個全域變數，只要網頁一重整，它就會變回 false
 window._hasAgreedSensitiveContent = false;
 
-window.showSensitiveAgreementModal = function(onAgreeCallback) {
-    // ✨ 2. 改為檢查全域變數
+// ✨ 1. 加入第二個參數 onDeclineCallback
+window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback) {
     if (window._hasAgreedSensitiveContent === true) {
         if (onAgreeCallback) onAgreeCallback();
         return;
@@ -3560,8 +3565,8 @@ window.showSensitiveAgreementModal = function(onAgreeCallback) {
             </svg>
             <h2 style="margin: 0 0 1rem 0; color: var(--error-color);">內容警告 (Content Warning)</h2>
             <p style="color: var(--muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 2rem;">
-                此條目包括但不限於：負面、一時興起、莫名奇妙、取景框。<br>
-                <span style="font-size: 0.8rem; opacity: 0.7;">(點擊「我已了解前往」後，本次造訪將不再提示。)</span>
+                此條目包括但不限於：負面、一時興起、莫名奇妙、取景框。<br>點擊前往即表示您已了解。<br>
+                <span style="font-size: 0.8rem; opacity: 0.7;">(同意後若重新整理頁面，需再次確認)</span>
             </p>
             <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
                 <button id="sensitive-decline-btn" class="btn">返回</button>
@@ -3576,10 +3581,16 @@ window.showSensitiveAgreementModal = function(onAgreeCallback) {
     document.getElementById('sensitive-decline-btn').onclick = () => {
         overlay.remove();
         window.unlockScroll();
+        // ✨ 2. 如果有設定退回行為，就執行它
+        if (onDeclineCallback) {
+            onDeclineCallback();
+        } else {
+            // 防呆 fallback
+            window.history.replaceState(null, '', window.location.pathname);
+        }
     };
 
     document.getElementById('sensitive-agree-btn').onclick = () => {
-        // ✨ 3. 同意時，將全域變數設為 true
         window._hasAgreedSensitiveContent = true;
         overlay.remove();
         if (onAgreeCallback) onAgreeCallback();
