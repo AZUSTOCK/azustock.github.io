@@ -114,6 +114,10 @@ body {
     background: radial-gradient(max(1200px, 80vw) max(600px, 50vh) at 20% -10%, var(--glow-1), transparent), 
                 radial-gradient(max(800px, 50vw) max(400px, 40vh) at 80% 10%, var(--glow-2), transparent), 
                 var(--bg);
+    
+    /* ✨ 新增這行：讓背景光暈固定在視窗上，不隨捲軸移動 */
+    /* background-attachment: fixed;  */
+    
     color: var(--text); line-height: 1.7; transition: background-color 0.5s ease, color 0.5s ease; 
 }
 header { padding: 5rem 1.5rem 4rem; text-align: center; }
@@ -607,7 +611,7 @@ main section { position: relative; scroll-margin-top: 100px; --sec-color: var(--
 main section h2 { font-size: 1.6rem; margin-bottom: 1.2rem; padding-left: 1.2rem; border-left: none !important; margin-left: 0; position: relative; display: inline-flex !important; }
 main section h2::before { content: ''; position: absolute; left: 0; top: 10%; bottom: 10%; width: 4px; background: var(--sec-color); border-radius: 4px; }
 main section::before { content: ''; position: absolute; top: -10px; right: 20px; width: 250px; height: 250px; max-height: calc(100% - 20px); max-width: 40vw; opacity: 0.08; z-index: 0; pointer-events: none; background-color: var(--sec-color); /* ✨ 原本又臭又長的 mask 設定，用一行簡寫完美解決！ */ -webkit-mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; transform: rotate(-10deg) scale(1); transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s ease; }
-main section:hover::before { transform: rotate(0deg) scale(1.1); opacity: 0.25; }
+main section:hover::before { transform: rotate(0deg) scale(1.1); opacity: 0.25; animation: none !important;}
 main section::after { content: ''; position: absolute; top: -24px; bottom: -24px; left: -24px; right: -24px; border-radius: 20px; pointer-events: none; z-index: 0; opacity: 0; }
 /* 原本的區塊光暈動畫 */
 @keyframes target-section-glow-expand { 
