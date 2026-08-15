@@ -23,7 +23,7 @@
 /* 2. 淺色模式 (Light Mode) - 極淨透亮調色盤 */
 [data-theme="light"] {
     color-scheme: light; 
-    --bg: #e6e6e6; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
+    --bg: #ebebeb; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
     --accent: #407899; --accent-2: #44D4BE; --accent-hover: #44D4BE;
     --glow-1: rgba(68, 212, 190, 0.3); --glow-2: rgba(245, 213, 71, 0.3);
     --glass-bg: rgba(255, 255, 255, 0.7); --glass-border: rgba(68, 212, 190, 0.4);
@@ -97,6 +97,7 @@
 /* 🏗️ 第二層：全域基底與版面 (Base & Layout)                                   */
 /* ========================================================================== */
 html { 
+    touch-action: manipulation;
     scroll-behavior: smooth; 
     scrollbar-gutter: stable; 
     background-color: var(--bg);
@@ -107,11 +108,16 @@ html {
 }
 
 body {
+    touch-action: manipulation;
     margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
     /* ✨ 改用 max(1200px, 80vw) 確保在大螢幕上光暈一樣能覆蓋背景 */
     background: radial-gradient(max(1200px, 80vw) max(600px, 50vh) at 20% -10%, var(--glow-1), transparent), 
                 radial-gradient(max(800px, 50vw) max(400px, 40vh) at 80% 10%, var(--glow-2), transparent), 
                 var(--bg);
+    
+    /* ✨ 新增這行：讓背景光暈固定在視窗上，不隨捲軸移動 */
+    /* background-attachment: fixed;  */
+    
     color: var(--text); line-height: 1.7; transition: background-color 0.5s ease, color 0.5s ease; 
 }
 header { padding: 5rem 1.5rem 4rem; text-align: center; }
@@ -212,6 +218,28 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     border-color: var(--accent-hover); 
     color: var(--card); 
     box-shadow: 0 4px 12px var(--card); 
+}
+
+/* ==========================================
+   ✨ 敏感內容協議按鈕特效 (Content Warning)
+   ========================================== */
+#sensitive-agree-btn { 
+    background: var(--error-color) !important; 
+    color: #fff !important; 
+    border-color: var(--error-color) !important; 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* 預設給一點基礎陰影讓它有實體感 */
+}
+
+#sensitive-agree-btn:hover { 
+    background: var(--error-color) !important; /* 維持實心紅底 */
+    color: #fff !important;                    /* 維持白字 */
+    border-color: var(--error-color) !important;
+    
+    /* ✨ 雙層強烈紅光：一層負責範圍擴散，一層負責中心高光 */
+    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important; 
+    
+    /* 讓紅色瞬間提亮，視覺更吸睛 */
+    filter: brightness(1.15); 
 }
 
 /* ✨ 首頁大分享按鈕：鎖定尺寸 */
@@ -410,7 +438,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 
 .marquee-container:hover .marquee-content { animation-play-state: paused; }
 @keyframes marquee-seamless { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-.kotoba-whisper { font-style: italic; font-size: 0.95rem; color: var(--accent); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: pointer; }
+.kotoba-whisper { font-style: italic; font: bold;font-size: 0.95rem; color: var(--accent); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: pointer; }
 .kotoba-whisper:hover { color: var(--accent-2); text-shadow: 0 0 10px var(--glow-1); opacity: 1; }
 /* ✨ 加大文字與漲跌數字之間的間距，讓視覺更有呼吸感 */
 .stock-up, .stock-down { 
@@ -583,7 +611,7 @@ main section { position: relative; scroll-margin-top: 100px; --sec-color: var(--
 main section h2 { font-size: 1.6rem; margin-bottom: 1.2rem; padding-left: 1.2rem; border-left: none !important; margin-left: 0; position: relative; display: inline-flex !important; }
 main section h2::before { content: ''; position: absolute; left: 0; top: 10%; bottom: 10%; width: 4px; background: var(--sec-color); border-radius: 4px; }
 main section::before { content: ''; position: absolute; top: -10px; right: 20px; width: 250px; height: 250px; max-height: calc(100% - 20px); max-width: 40vw; opacity: 0.08; z-index: 0; pointer-events: none; background-color: var(--sec-color); /* ✨ 原本又臭又長的 mask 設定，用一行簡寫完美解決！ */ -webkit-mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; transform: rotate(-10deg) scale(1); transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.6s ease; }
-main section:hover::before { transform: rotate(0deg) scale(1.1); opacity: 0.25; }
+main section:hover::before { transform: rotate(0deg) scale(1.1); opacity: 0.25; animation: none !important;}
 main section::after { content: ''; position: absolute; top: -24px; bottom: -24px; left: -24px; right: -24px; border-radius: 20px; pointer-events: none; z-index: 0; opacity: 0; }
 /* 原本的區塊光暈動畫 */
 @keyframes target-section-glow-expand { 
@@ -957,6 +985,116 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body pre code { background: transparent; padding: 0; color: var(--text); }
 .markdown-body blockquote { border-left: 4px solid var(--accent); margin: 1.5rem 0; padding-left: 1rem; color: var(--muted); background: rgba(255,255,255,0.02); }
 
+/* ==========================================
+   ✨ 程式碼區塊 (Code Block) 視覺與按鈕優化
+   ========================================== */
+.markdown-body .code-block-wrapper {
+    position: relative;
+    margin: 1.5rem 0;
+    border-radius: 0.6rem;
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    overflow: visible; /* ✨ 1. 移除 hidden，允許 Tooltip 突破邊界顯示 */
+    box-shadow: 0 4px 15px var(--shadow-base);
+}
+
+.markdown-body .code-block-wrapper pre {
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 0 0.6rem 0.6rem !important; /* ✨ 因為移除了 hidden，所以手動把底部圓角加回來 */
+    padding-top: 2.8rem; /* 留出上方空間給標籤與按鈕 */
+    box-shadow: none !important;
+}
+
+/* 左上角：語言標籤 */
+.markdown-body .code-lang-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: var(--box-bg);
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.8rem;
+    border-top-left-radius: 0.6rem; /* ✨ 補回左上方圓角以防凸出 */
+    border-bottom-right-radius: 0.6rem;
+    border-right: 1px solid var(--card-border);
+    border-bottom: 1px solid var(--card-border);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    z-index: 5;
+}
+
+/* 右上角：純外框複製按鈕 (仿 share-link-btn 樣式) */
+.markdown-body .code-copy-btn {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 4px;
+    width: 86px; /* ✨ 2. 固定寬度，讓按鈕外圍大小在 Copy / Copied 切換時維持不變 */
+    justify-content: center;
+    font-family: inherit; /* ✨ 2. 移除 monospace 字體設定，恢復繼承網站預設字型 */
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 10;
+    box-sizing: border-box;
+
+    /* ✨ 3. 終極防抖動設定：開啟硬體加速與字體平滑化，徹底防止 Hover 造成的文字抖動 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* 仿造 share-link-btn 的 Hover 變色特效 */
+.markdown-body .code-copy-btn:hover {
+    color: var(--card);
+    border-color: var(--accent-2);
+    background: var(--accent-2);
+    box-shadow: 0 0 12px var(--glow-1);
+}
+
+/* 確保圖示大小與微調旋轉動畫一致 */
+.markdown-body .code-copy-btn svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+    flex-shrink: 0; /* ✨ 防止 flex 因寬度固定而擠壓圖示 */
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+/* Hover 時圖示放大並微傾斜 */
+.markdown-body .code-copy-btn:hover svg {
+    transform: scale(1.15) rotate(10deg) translateZ(0);
+}
+
+/* 複製成功的狀態 */
+.markdown-body .code-copy-btn.copied {
+    color: var(--card) !important;
+    background: var(--accent-2) !important;
+    border-color: var(--accent-2) !important;
+    box-shadow: 0 0 15px var(--accent-2) !important;
+    transform: translateZ(0) !important; /* ✨ 維持硬體加速狀態 */
+}
+
+.markdown-body .code-copy-btn.copied svg {
+    transform: translateZ(0) !important;
+}
+
 /* 文章標題區塊整合 */
 .article-header-wrapper { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; border-bottom: 2px solid var(--card-border); padding-bottom: 0.5rem; margin-bottom: 0.8rem; }
 .header-left { 
@@ -1308,7 +1446,16 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 .markdown-body .gallery figure.hide-caption figcaption { transform: translateY(105%) !important; }
 
 /* 6-5. Mermaid 圖表引擎 */
-.mermaid-container { position: relative; margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; background: var(--bg); overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); transition: all 0.3s ease; }
+.mermaid-container { 
+    position: relative; 
+    margin: 2rem 0; 
+    border: 1px solid var(--card-border); 
+    border-radius: 0.8rem; 
+    background: var(--bg); 
+    overflow: visible; /* ✨ 1. 將 hidden 改為 visible，允許 Tooltip 突破邊界顯示 */
+    box-shadow: 0 4px 15px var(--shadow-base); 
+    transition: all 0.3s ease; 
+}
 
 /* 全螢幕背景與佈局 */
 .mermaid-container:fullscreen, .mermaid-container:-webkit-full-screen { border: none; border-radius: 0; margin: 0; display: flex; flex-direction: column; background: var(--bg); }
@@ -1321,6 +1468,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     background: var(--glass-bg); 
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--card-border); 
+    border-radius: 0.8rem 0.8rem 0 0; /* ✨ 2. 手動為頂部工具列加上圓角 */
     
     /* ✨ 核心修復 1：建立定位並拉高圖層，確保氣泡提示絕對不會被下方的圖表蓋住！ */
     position: relative;
@@ -1338,7 +1486,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 
 .mermaid-btns { display: flex; gap: 0.5rem; }
 .mermaid-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(4px); position: relative; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
-.mermaid-btn:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); transform: scale(1.1) translateZ(0); box-shadow: 0 4px 12px var(--glow-1); }
+.mermaid-btn:hover { background: var(--accent); color: var(--card); border-color: var(--accent); transform: scale(1.1) translateZ(0); box-shadow: 0 4px 12px var(--glow-1); }
 .mermaid-btn svg { display: block; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
 
 /* ✨ 拔除原生捲軸，改為固定高度與隱藏溢出，讓矩陣拖曳取代醜陋的捲軸 */
@@ -1351,8 +1499,14 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     box-sizing: border-box; 
     cursor: grab; 
     position: relative;
+    touch-action: none;
+    border-radius: 0 0 0.8rem 0.8rem; /* ✨ 3. 手動為底部畫布區加上圓角 */
 }
 .mermaid-wrapper:active { cursor: grabbing; }
+/* ✨ 核心修復：當圖表處於拖曳狀態時，強制拔除所有延遲動畫 */
+.mermaid-wrapper.is-dragging .mermaid {
+    transition: none !important;
+}
 
 /* 全螢幕時解除高度限制，撐滿整個畫面 */
 .mermaid-container:fullscreen .mermaid-wrapper, 
@@ -1523,7 +1677,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 }
 
 /* ✨ 加入 opacity 過渡，讓圖片載入後平滑淡入 */
-#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease; transform-origin: center center; touch-action: none; cursor: grab; }
+#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease; transform-origin: center center; touch-action: none; cursor: grab; }
 #lightbox-img.is-dragging { cursor: grabbing; transition: none !important; }
 
 /* 底部圖片說明膠囊 (動態主題適應) */
@@ -1586,6 +1740,16 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     /* ✨ 將 rgba(0,0,0,0.7) 換成 var(--glass-bg) */
     .toolbox-group { position: absolute; top: 100%; margin-top: 15px; right: 0; flex-direction: row; align-items: center; justify-content: center; background: var(--glass-bg); backdrop-filter: blur(15px); padding: 8px; border-radius: 12px; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px var(--shadow-base); width: max-content; will-change: transform, opacity; opacity: 0; visibility: hidden; transform: translateY(-15px) scale(0.95) translateZ(0); transform-origin: top right; transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease; }
     .toolbox-group.is-open { opacity: 1; visibility: visible; transform: translateY(0) scale(1) translateZ(0); pointer-events: auto; }
+
+    /* ✨ Mermaid 手機版簡化為「預覽模式」 */
+    .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]),
+    .mermaid-btns div[style*="width: 1px"] {
+        display: none !important; /* 隱藏除了放大檢視以外的所有按鈕與分隔線 */
+    }
+    .mermaid-wrapper {
+        touch-action: auto !important; /* 解除觸控鎖定，讓使用者可以順暢上下滑動整篇文章 */
+        cursor: pointer !important;    /* 將游標改為手指，提示可以點擊 */
+    }
 }
 
 /* 8-2. 針對非常小的手機螢幕 (max-width: 500px) */

@@ -1,4 +1,4 @@
-# 萬能測試 Markdown 文件
+# 萬能測試 Markdown
 
 這是一份用來測試所有自訂擴充功能、Markdown 排版與互動特效的綜合測試文件。
 
@@ -56,18 +56,18 @@
 * 第三項：包含內部 SPA 路由連結 [日記的故事](?p=storyOFdiary&a=introduction#yona)
 
 ### 功能對照表
-| 功能項目 | 語法格式 | 支援狀態 |
-| :--- | :--- | :--- |
-| 防雷貼紙 | `\|\|文字\|\|`| ✅ 完美支援 |
-| 行內高光 | `++[Badge]文字++` | ✅ 完美支援 |
-| 日文小字 | `^^文字(小字)^^` | ✅ 完美支援 |
-| 區塊高光 | `:::highlight<多行文字>:::` | ✅ 完美支援 |
+| 功能項目 | 語法格式 |
+| :--- | :--- |
+| 防雷貼紙 | `\|\|文字\|\|`|
+| 行內高光 | `++[Badge]文字++` |
+| 日文小字 | `^^文字(小字)^^` |
+| 區塊高光 | `:::highlight<多行文字>:::` |
 
 ---
 
 ## 5. 程式碼與圖表引擎 (Code & Mermaid)
 
-### 程式碼區塊 (JavaScript)
+### 程式碼區塊
 ```javascript
 const universalTest = () => {
     console.log("System initialized successfully.");
@@ -75,12 +75,37 @@ const universalTest = () => {
 universalTest();
 ```
 
+```python
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+def process_transcriptions(df):
+    """
+    清理並轉換資料集特徵矩陣
+    """
+    df = df.dropna(subset=['transcription'])
+    vectorizer = TfidfVectorizer(max_features=1000)
+    features = vectorizer.fit_transform(df['transcription'])
+    return features
+```
+
 ### Mermaid 流程圖引擎
-```mermaid[程式碼片段]
+```mermaid[簡易測試]
 graph TD
     A[開始測試] --> B{功能是否正常？}
     B -->|是| C[完美通過 🎉]
     B -->|否| D[檢查 CSS 與 JS 修正]
+```
+
+```mermaid[顏色&樣式測試]
+flowchart LR
+    
+    Start((開始)):::base --> Check{狀態確認}:::base
+    Check -->|通過| Run[執行核心程序]:::active
+    Check -.->|失敗| Error>記錄日誌]:::base
+    
+    style Error fill:var(--error-color),color:#fff,stroke:none
+    linkStyle 1 stroke:var(--accent-2),stroke-width:3px
 ```
 
 ## 6. 結語

@@ -5,7 +5,7 @@
   <!-- 強制瀏覽器每次都向伺服器驗證是否有新版本 HTML -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
   <title>風川梓 | Azustock</title>
 
@@ -49,8 +49,8 @@
   
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="./style.css?u=1.5.1" />
-  <script defer src="./main.js?u=1.5.1"></script>
+  <link rel="stylesheet" href="./style.css?u=1.5.2" />
+  <script defer src="./main.js?u=1.5.2"></script>
 </head>
 <body>
 <button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
@@ -132,7 +132,7 @@
             </svg>
           </button>
           <button class="toolbar-btn" onclick="window.lightboxAction('reset', event)" data-tooltip="初始狀態">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
           </button>
           <div class="toolbar-divider"></div>
           <button class="toolbar-btn" onclick="window.lightboxAction('new-tab', event)" data-tooltip="新分頁開啟">
@@ -252,7 +252,7 @@
       <p style="text-align: right; margin-top: 0.5rem; margin-bottom: 0;">
         <!-- 版本號按鈕 -->
         <button id="sys-version-btn" class="footer-btn version-btn" onclick="window.showChangelogModal()">
-            <span id="sys-version" class="sys-version"></span>
+            <span id="sys-version" class="sys-version">U1.5.1</span>
         </button>
       </p>
     </div>

@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.1",          // 目前系統版本號
+    VERSION: "U1.5.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -434,6 +434,27 @@ window.getKotobaList = async function() {
 };
 
 // ==========================================
+// ✨ Mermaid 全域樣式快取系統 (Singleton Pattern)
+// ==========================================
+window.cachedMermaidStyles = null;
+window.getMermaidStyles = async function() {
+    if (window.cachedMermaidStyles !== null) return window.cachedMermaidStyles;
+    
+    try {
+        const res = await fetch(`./mermaid_styles.txt?t=${new Date().getTime()}`);
+        if (res.ok) {
+            window.cachedMermaidStyles = await res.text();
+        } else {
+            window.cachedMermaidStyles = '';
+        }
+    } catch (err) {
+        console.warn("Mermaid 全域樣式載入失敗:", err);
+        window.cachedMermaidStyles = '';
+    }
+    return window.cachedMermaidStyles;
+};
+
+// ==========================================
 // ✨ 系統名言題庫快取系統 (Singleton Pattern)
 // ==========================================
 window.cachedQuotesList = null;
@@ -587,73 +608,77 @@ window.updateLightboxView = function() {
     if (state.images.length === 0) return;
     
     const currentItem = state.images[state.currentIndex];
-    
-    // 更新影像與背景
     const lightboxImg = document.getElementById('lightbox-img');
+    const customDom = document.getElementById('lightbox-custom-dom');
     const lightboxBackdrop = document.getElementById('lightbox-backdrop');
     const lightboxCaption = document.getElementById('lightbox-caption');
-    const wrapper = document.querySelector('.lightbox-img-wrapper'); // 抓取轉圈圈容器
+    const wrapper = document.querySelector('.lightbox-img-wrapper'); 
     
-    if (lightboxImg) {
-        state.zoom = 1; 
-        state.x = 0; 
-        state.y = 0; 
-        lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
-        
-        // ✨ 1. 圖片變透明，顯示讀取圈圈
-        lightboxImg.style.opacity = '0';
-        if (wrapper) wrapper.classList.add('is-fetching');
-
-        // ✨ 2. 綁定「真正載入完成」時的觸發事件
-        lightboxImg.onload = () => {
-            // 圖片載入完成，關閉圈圈，平滑淡入！
-            if (wrapper) wrapper.classList.remove('is-fetching');
-            lightboxImg.style.opacity = '1';
-
-            // 重新計算這張新圖片的最大縮放極限
-            const naturalWidth = lightboxImg.naturalWidth; 
-            const displayWidth = lightboxImg.clientWidth;   
-            if (displayWidth > 0 && naturalWidth > 0) {
-                window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
-            } else {
-                window.lightboxState.maxZoom = 2; // 防呆備用值
-            }
-        };
-
-        // ✨ 3. 賦予新網址，觸發瀏覽器下載圖片
-        lightboxImg.src = currentItem.src;
-        
-        // 防呆機制：如果這張圖早就被瀏覽器快取 (Cached)，可能不會觸發 onload，我們手動觸發
-        if (lightboxImg.complete && lightboxImg.naturalHeight > 0) {
-            lightboxImg.onload();
+    // ✨ 修改後：同步隱藏/顯示前方的分隔線
+    const newTabBtn = document.querySelector('.toolbar-btn[onclick*="new-tab"]');
+    if (newTabBtn) {
+        newTabBtn.style.display = state.isDomMode ? 'none' : 'flex';
+        const prevDivider = newTabBtn.previousElementSibling;
+        if (prevDivider && prevDivider.classList.contains('toolbar-divider')) {
+            prevDivider.style.display = state.isDomMode ? 'none' : 'block';
         }
     }
+
+    if (state.isDomMode) {
+        state.zoom = 1; state.x = 0; state.y = 0; 
+        if (lightboxImg) lightboxImg.style.display = 'none';
+        if (customDom) customDom.style.display = 'flex';
+        
+        const target = document.getElementById('lightbox-active-mermaid');
+        if (target) target.style.transform = `translate(0px, 0px) scale(1)`;
+        if (wrapper) wrapper.classList.remove('is-fetching');
+        if (lightboxBackdrop) lightboxBackdrop.src = '';
+    } else {
+        if (customDom) customDom.style.display = 'none';
+        if (lightboxImg) {
+            lightboxImg.style.display = 'block';
+            state.zoom = 1; state.x = 0; state.y = 0; 
+            lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
+            
+            lightboxImg.style.opacity = '0';
+            if (wrapper) wrapper.classList.add('is-fetching');
+
+            lightboxImg.onload = () => {
+                if (wrapper) wrapper.classList.remove('is-fetching');
+                lightboxImg.style.opacity = '1';
+                const naturalWidth = lightboxImg.naturalWidth; 
+                const displayWidth = lightboxImg.clientWidth;   
+                if (displayWidth > 0 && naturalWidth > 0) {
+                    window.lightboxState.maxZoom = (naturalWidth / displayWidth) * 1.5;
+                } else {
+                    window.lightboxState.maxZoom = 2; 
+                }
+            };
+            lightboxImg.src = currentItem.src;
+            if (lightboxImg.complete && lightboxImg.naturalHeight > 0) lightboxImg.onload();
+        }
+        if (lightboxBackdrop) lightboxBackdrop.src = currentItem.src;
+    }
     
-    if (lightboxBackdrop) lightboxBackdrop.src = currentItem.src;
-    
-    // ✨ 精準控制說明文字的顯示與隱藏
     if (lightboxCaption) {
         lightboxCaption.innerText = currentItem.caption || "";
         lightboxCaption.style.display = currentItem.caption ? "block" : "none";
     }
 
-    // ✨ 更新膠囊導覽列與計數器
     const navCapsule = document.getElementById('lightbox-nav-capsule');
     const counter = document.getElementById('lightbox-counter');
     const prevBtn = document.getElementById('lightbox-prev');
     const nextBtn = document.getElementById('lightbox-next');
 
-    if (state.images.length > 1) {
+    if (state.images.length > 1 && !state.isDomMode) {
         if (navCapsule) navCapsule.style.display = 'inline-flex';
         if (counter) counter.innerText = `${state.currentIndex + 1} / ${state.images.length}`;
-        
         if (prevBtn) prevBtn.classList.toggle('disabled', state.currentIndex === 0);
         if (nextBtn) nextBtn.classList.toggle('disabled', state.currentIndex === state.images.length - 1);
     } else {
         if (navCapsule) navCapsule.style.display = 'none';
     }
 };
-
 // 相簿前後切換邏輯
 window.navigateLightbox = function(direction, event) {
     if (event) event.stopPropagation();
@@ -671,32 +696,25 @@ window.navigateLightbox = function(direction, event) {
 // 工具列按鈕動作處理器
 window.lightboxAction = function(action, event) {
     if (event) event.stopPropagation();
-    const img = document.getElementById('lightbox-img');
     const state = window.lightboxState;
-    if (!img) return;
+    // ✨ 動態抓取操作目標
+    const target = state.isDomMode ? document.getElementById('lightbox-active-mermaid') : document.getElementById('lightbox-img');
+    if (!target) return;
 
     if (action === 'zoom-in') {
-        // ✨ 改為使用計算出的 maxZoom
         state.zoom = Math.min(state.zoom + 0.5, state.maxZoom);
     } else if (action === 'zoom-out') {
         state.zoom = Math.max(state.zoom - 0.5, 0.5);
-    } else if (action === 'reset') {
-        state.zoom = 1;
-        state.x = 0;
-        state.y = 0;
-    } 
-    // ✨ 新增：僅將圖片位移歸零，但不改變縮放比例
-    else if (action === 'center') {
-        state.x = 0;
-        state.y = 0;
-    } 
-    else if (action === 'new-tab') {
-        window.open(img.src, '_blank');
+    } else if (action === 'reset' || action === 'center') {
+        if(action === 'reset') state.zoom = 1;
+        state.x = 0; state.y = 0;
+    } else if (action === 'new-tab') {
+        if (state.isDomMode) return;
+        window.open(target.src, '_blank');
         return;
     }
     
-    // 套用 transform
-    img.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
+    target.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
 };
 
 // ✨ 手機版工具列開關
@@ -711,22 +729,23 @@ window.closeLightbox = function() {
     const toolbox = document.getElementById('lightbox-toolbox');
     if (lightboxModal) {
         lightboxModal.classList.remove('is-active');
+        if (toolbox) toolbox.classList.remove('is-open');
 
-        if (toolbox) {
-            toolbox.classList.remove('is-open');
-        }
-        // 延遲清空，避免關閉動畫破圖
         setTimeout(() => {
-            document.getElementById('lightbox-img').src = "";
-            document.getElementById('lightbox-backdrop').src = "";
-            document.getElementById('lightbox-caption').innerText = "";
+            const lightboxImg = document.getElementById('lightbox-img');
+            if (lightboxImg) lightboxImg.src = "";
+            const backdrop = document.getElementById('lightbox-backdrop');
+            if (backdrop) backdrop.src = "";
+            const caption = document.getElementById('lightbox-caption');
+            if (caption) caption.innerText = "";
+            
+            // 清理 Mermaid 記憶體
+            const customDom = document.getElementById('lightbox-custom-dom');
+            if (customDom) customDom.innerHTML = "";
+            window.lightboxState.isDomMode = false;
         }, 300);
     }
-    
-    // ✨ 新增：強制清除當前元素焦點，消滅 Esc 退出時的奇怪按鈕外框
-    if (document.activeElement) {
-        document.activeElement.blur();
-    }
+    if (document.activeElement) document.activeElement.blur();
 };
 
 // ==========================================
@@ -755,55 +774,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. ✨ Lightbox 多指觸控與拖曳引擎
     const wrapper = document.querySelector('.lightbox-img-wrapper');
-    const lightboxImg = document.getElementById('lightbox-img');
-    
-    // 狀態變數
+    // 移除原本寫死的 const lightboxImg = ...
+
     let isDragging = false;
     let startClientX = 0, startClientY = 0;
-    
-    // 儲存目前在螢幕上的觸控點 (支援多指)
     let activePointers = [];
     let initialPinchDistance = null;
     let initialZoom = 1;
 
-    if (lightboxImg) {
-        // 🛑 封殺原生拖曳殘影
-        lightboxImg.addEventListener('dragstart', (e) => e.preventDefault());
+    if (wrapper) {
+        // ✨ 動態解析目標
+        const getActiveTarget = () => window.lightboxState.isDomMode 
+            ? document.getElementById('lightbox-active-mermaid') 
+            : document.getElementById('lightbox-img');
 
         const updateTransform = () => {
-            lightboxImg.style.transform = `translate(${window.lightboxState.x}px, ${window.lightboxState.y}px) scale(${window.lightboxState.zoom})`;
+            const target = getActiveTarget();
+            if (target) {
+                target.style.transform = `translate(${window.lightboxState.x}px, ${window.lightboxState.y}px) scale(${window.lightboxState.zoom})`;
+            }
         };
 
+        wrapper.addEventListener('dragstart', (e) => {
+            if (e.target.tagName === 'IMG') e.preventDefault();
+        });
+
         const onPointerMove = (e) => {
-            // 更新觸控點最新座標
             const index = activePointers.findIndex(p => p.id === e.pointerId);
             if (index !== -1) {
                 activePointers[index].x = e.clientX;
                 activePointers[index].y = e.clientY;
             }
 
-            // 【模式 A：單指平移】
             if (activePointers.length === 1 && isDragging) {
                 e.preventDefault();
                 window.lightboxState.x = activePointers[0].x - startClientX;
                 window.lightboxState.y = activePointers[0].y - startClientY;
                 requestAnimationFrame(updateTransform);
-            } 
-            // 【模式 B：雙指縮放】
-            else if (activePointers.length === 2) {
+            } else if (activePointers.length === 2) {
                 e.preventDefault();
-                // 1. 計算兩指間的最新距離
                 const currentDistance = Math.hypot(
                     activePointers[0].x - activePointers[1].x,
                     activePointers[0].y - activePointers[1].y
                 );
 
                 if (initialPinchDistance) {
-                    // 2. 算出新的縮放比例
                     let newZoom = initialZoom * (currentDistance / initialPinchDistance);
-                    newZoom = Math.max(1, Math.min(newZoom, window.lightboxState.maxZoom)); // 限制在最低與最大倍率之間
-
-                    // 3. 找出雙指中心點，實現「往手指中心放大」的自然手感
+                    newZoom = Math.max(1, Math.min(newZoom, window.lightboxState.maxZoom)); 
                     const centerX = (activePointers[0].x + activePointers[1].x) / 2;
                     const centerY = (activePointers[0].y + activePointers[1].y) / 2;
                     const ratio = newZoom / window.lightboxState.zoom - 1;
@@ -811,53 +828,46 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.lightboxState.x -= (centerX - (window.innerWidth / 2) - window.lightboxState.x) * ratio;
                     window.lightboxState.y -= (centerY - (window.innerHeight / 2) - window.lightboxState.y) * ratio;
                     window.lightboxState.zoom = newZoom;
-                    
                     requestAnimationFrame(updateTransform);
                 }
             }
         };
 
         const onPointerUp = (e) => {
-            // 移除放開的那根手指
             activePointers = activePointers.filter(p => p.id !== e.pointerId);
+            if (activePointers.length < 2) initialPinchDistance = null; 
 
-            // 如果手指剩下不到兩根，重置雙指縮放初始值
-            if (activePointers.length < 2) {
-                initialPinchDistance = null; 
-            }
-
-            // 狀態轉換
             if (activePointers.length === 1) {
-                // 如果原本是雙指，放開一指後，剩下一指無縫接軌繼續「平移」
                 isDragging = true;
                 startClientX = activePointers[0].x - window.lightboxState.x;
                 startClientY = activePointers[0].y - window.lightboxState.y;
             } else if (activePointers.length === 0) {
-                // 手指全放開，徹底停止所有動作
                 isDragging = false;
-                lightboxImg.classList.remove('is-dragging');
-                if (lightboxImg.hasPointerCapture && lightboxImg.hasPointerCapture(e.pointerId)) {
-                    lightboxImg.releasePointerCapture(e.pointerId);
+                wrapper.classList.remove('is-dragging');
+                if (wrapper.hasPointerCapture && wrapper.hasPointerCapture(e.pointerId)) {
+                    wrapper.releasePointerCapture(e.pointerId);
                 }
-                
                 window.removeEventListener('pointermove', onPointerMove);
                 window.removeEventListener('pointerup', onPointerUp);
                 window.removeEventListener('pointercancel', onPointerUp);
             }
         };
 
-        lightboxImg.addEventListener('pointerdown', (e) => {
-            if (e.target.id !== 'lightbox-img') return;
-            e.preventDefault(); // 🛑 核心：封殺瀏覽器原生點擊反應，交由 JS 全權接管
+        wrapper.addEventListener('pointerdown', (e) => {
+            const target = getActiveTarget();
+            // 確保點擊點在目標圖表或圖片身上
+            if (!target || (!target.contains(e.target) && e.target !== target)) return;
+            
+            if (e.target.tagName === 'IMG' || e.target.closest('svg')) {
+                 e.preventDefault(); 
+            }
 
-            // 紀錄按下的這根手指
             activePointers.push({ id: e.pointerId, x: e.clientX, y: e.clientY });
 
             if (activePointers.length === 1) {
-                // 【觸發單指平移】
                 isDragging = true;
-                lightboxImg.classList.add('is-dragging');
-                if (lightboxImg.setPointerCapture) lightboxImg.setPointerCapture(e.pointerId);
+                wrapper.classList.add('is-dragging');
+                if (wrapper.setPointerCapture) wrapper.setPointerCapture(e.pointerId);
                 
                 startClientX = e.clientX - window.lightboxState.x;
                 startClientY = e.clientY - window.lightboxState.y;
@@ -866,9 +876,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.addEventListener('pointerup', onPointerUp);
                 window.addEventListener('pointercancel', onPointerUp);
             } else if (activePointers.length === 2) {
-                // 【觸發雙指縮放】
-                isDragging = false; // 暫停平移
-                // 記下雙指剛按下的初始距離與圖片當下縮放率
+                isDragging = false; 
                 initialPinchDistance = Math.hypot(
                     activePointers[0].x - activePointers[1].x,
                     activePointers[0].y - activePointers[1].y
@@ -876,18 +884,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 initialZoom = window.lightboxState.zoom;
             }
         });
-    }
-
-    // 4. 滾輪縮放引擎 (維持現狀，給電腦使用)
-    if (wrapper && lightboxImg) {
+        
         wrapper.addEventListener('wheel', (e) => {
             if (!document.getElementById('lightbox-modal').classList.contains('is-active')) return;
             e.preventDefault();
             
+            const target = getActiveTarget();
+            if(!target) return;
+
             const state = window.lightboxState;
             const delta = e.deltaY < 0 ? 1 : -1;
             
-            // ✨ 將 15 倍的死值改為動態的 state.maxZoom
             let newZoom = Math.max(1, Math.min(state.zoom * (1 + delta * 0.15), state.maxZoom));
             newZoom = Math.max(1, Math.min(newZoom, state.maxZoom));
             
@@ -899,7 +906,7 @@ document.addEventListener('DOMContentLoaded', () => {
             state.y -= (e.clientY - centerY - state.y) * ratio;
             state.zoom = newZoom;
             
-            lightboxImg.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
+            target.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
         }, { passive: false });
     }
 });
@@ -908,6 +915,43 @@ document.addEventListener('DOMContentLoaded', () => {
 // ✨ 攔截 Markdown 渲染，讓圖片一出生就自帶載入中特效，0毫秒延遲！
 // ==========================================
 const renderer = new marked.Renderer();
+
+// ==========================================
+// ✨ Mermaid CSS 變數轉譯引擎 (將 var 與 rgba 轉為標準 Hex 色碼)
+// ==========================================
+window.processMermaidCssVars = function(text) {
+    // 1. 物理超渡隱形空白 (避免全形空白報錯)
+    let processed = text.replace(/[\u00A0\u3000]/g, ' ');
+
+    // 2. 將 var(--xxx) 替換為當下實際的 CSS 數值 (從根目錄抓取)
+    processed = processed.replace(/var\((--[^,)]+)(?:,[^)]+)?\)/g, (match, varName) => {
+        let val = getComputedStyle(document.documentElement).getPropertyValue(varName.trim()).trim();
+        return val || match;
+    });
+
+    // 3. 將 rgba() / rgb() 轉為 Mermaid 100% 支援的 8/6 碼 Hex 色碼
+    processed = processed.replace(/rgba?\(([^)]+)\)/g, (match, inner) => {
+        let parts = inner.split(',').map(s => s.trim());
+        if (parts.length >= 3) {
+            let r = parseInt(parts[0]);
+            let g = parseInt(parts[1]);
+            let b = parseInt(parts[2]);
+            let a = parts.length >= 4 ? parseFloat(parts[3]) : 1;
+            
+            // 轉換 RGB 為 6 碼 Hex
+            let hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+            // 若有透明度，轉換 Alpha 頻道為後 2 碼 Hex
+            if (a < 1) {
+                let alphaHex = Math.round(a * 255).toString(16).padStart(2, '0').toUpperCase();
+                hex += alphaHex;
+            }
+            return hex;
+        }
+        return match;
+    });
+
+    return processed;
+};
 
 /// 1. ✨ 修復與升級：攔截圖片，支援影音，並自動轉換 Figure 圖片說明與高質感 Tooltip！
 renderer.image = function(token_or_href, title, text) {
@@ -993,14 +1037,29 @@ renderer.image = function(token_or_href, title, text) {
     }
 };
 
-// 2. ✨ 攔截 Mermaid 程式碼區塊 (支援自訂標題與自動尋找)
+// 2. ✨ 攔截 Mermaid 程式碼區塊與一般程式碼區塊
 const originalCodeRenderer = renderer.code.bind(renderer);
 renderer.code = function(token_or_code, language, isEscaped) {
     const lang = typeof token_or_code === 'object' ? token_or_code.lang : language;
-    const text = typeof token_or_code === 'object' ? token_or_code.text : token_or_code;
+    
+    // 抓取「完全沒有處理過」的原文
+    let rawText = typeof token_or_code === 'object' ? token_or_code.text : token_or_code;
 
     if (lang && lang.startsWith('mermaid')) {
-        // ✨ 優先檢查是否有自訂標題 (支援 ```mermaid[我的標題] 寫法)
+        
+        // ✨ 魔法 1：從快取讀取獨立檔案中的全域樣式並注入
+        const globalMermaidClasses = window.cachedMermaidStyles || '';
+        if (globalMermaidClasses) {
+            // 偵測如果是流程圖 (graph 或 flowchart)，就在宣告後自動換行並注入樣式
+            rawText = rawText.replace(/^(graph\s+[A-Za-z]+|flowchart\s+[A-Za-z]+)/im, `$1\n${globalMermaidClasses}\n`);
+        }
+
+        // 將注入完樣式的原文編碼並鎖在 data-original-text 裡當作備份
+        const encodedText = encodeURIComponent(rawText);
+        
+        // 使用翻譯蒟蒻，將原文裡的 var() 與 rgba 轉成 Hex 色碼
+        const processedText = window.processMermaidCssVars(rawText);
+
         let chartTitle = "流程圖 (Flowchart)";
         const fullLang = typeof token_or_code === 'object' ? (token_or_code.lang || language) : (language || '');
         const titleMatch = fullLang.match(/\[(.*?)\]/);
@@ -1008,11 +1067,9 @@ renderer.code = function(token_or_code, language, isEscaped) {
         if (titleMatch && titleMatch[1]) {
             chartTitle = titleMatch[1];
         } else if (window._lastMarkdownHeadings && window._lastMarkdownHeadings.length > 0) {
-            // 如果沒寫中括號，自動抓取文章中圖表上方最近的一個 Markdown 標題
             chartTitle = window._lastMarkdownHeadings[window._lastMarkdownHeadings.length - 1];
         }
 
-        const encodedText = encodeURIComponent(text);
         return `
         <div class="mermaid-container" data-zoom="1" data-x="0" data-y="0">
             <div class="mermaid-toolbar">
@@ -1020,17 +1077,78 @@ renderer.code = function(token_or_code, language, isEscaped) {
                 <div class="mermaid-btns">
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">${GLOBAL_SVGS.mermaidZoomIn}</button>
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="縮小">${GLOBAL_SVGS.mermaidZoomOut}</button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="重設比例">${GLOBAL_SVGS.mermaidReset}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'center')" data-tooltip="置中">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <circle cx="12" cy="12" r="3" />
+                            <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+                            <path d="M12 2v3M2 12h3M22 12h-3M12 22v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg>
+                    </button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="全螢幕">${GLOBAL_SVGS.mermaidFull}</button>
+                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
             <div class="mermaid-wrapper">
-                <div class="mermaid" data-original-text="${encodedText}">${text}</div>
+                <div class="mermaid" data-original-text="${encodedText}">${processedText}</div>
             </div>
         </div>`;
     }
-    return originalCodeRenderer.apply(this, arguments);
+
+    // ✨ 非 Mermaid 的普通程式碼區塊：加上複製按鈕與語言標籤
+    const cleanLang = lang ? lang.split('[')[0].trim() : 'text'; // 容錯處理，預設為 text
+    // 進行基礎的 HTML 跳脫，防止 XSS 與破版
+    const escapedText = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    // 複製圖示 SVG
+    const copyIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+
+    return `
+    <div class="code-block-wrapper">
+        <div class="code-lang-label">${cleanLang}</div>
+        <!-- ✨ 拔除了 data-tooltip 屬性 -->
+        <button class="code-copy-btn" onclick="window.copyCodeBlock(this)">
+            ${copyIcon} <span class="copy-text">Copy</span>
+        </button>
+        <pre><code class="language-${cleanLang}">${escapedText}</code></pre>
+    </div>`;
+};
+
+// ==========================================
+// ✨ 新增：程式碼區塊一鍵複製引擎
+// ==========================================
+window.copyCodeBlock = function(btn) {
+    // 防止重複點擊
+    if (btn.classList.contains('copied')) return;
+    
+    // 往上找到外層容器，再往下精準抓取 code 裡面的文字
+    const wrapper = btn.closest('.code-block-wrapper');
+    const codeEl = wrapper.querySelector('code');
+    if (!codeEl) return;
+
+    // innerText 會自動處理好換行與跳脫字元，拿來複製最精準
+    const textToCopy = codeEl.innerText;
+
+    // 儲存原本的按鈕內容
+    const originalHtml = btn.innerHTML;
+    // 打勾圖示 SVG
+    const checkIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        // 成功時切換狀態與文字
+        btn.classList.add('copied');
+        btn.innerHTML = `${checkIcon} <span class="copy-text">Copied!</span>`;
+
+        // 2 秒後恢復原狀
+        setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = originalHtml;
+        }, 2000);
+    }).catch(err => {
+        console.error('程式碼複製失敗:', err);
+        btn.innerHTML = `<span class="copy-text" style="color: var(--error-color);">Error</span>`;
+        setTimeout(() => btn.innerHTML = originalHtml, 2000);
+    });
 };
 
 // 3. ✨ 攔截 Markdown 連結
@@ -1262,20 +1380,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 securityLevel: 'loose' 
             });
             
-            // ✨ 核心修復 2：只在「文章已經打開，且畫面上真的有圖表」時，才觸發重繪
             const mermaidEls = document.querySelectorAll('.mermaid');
             if (mermaidEls.length > 0) {
                 mermaidEls.forEach(el => {
+                    // 取出含有 var() 的備份原文
                     const originalText = decodeURIComponent(el.getAttribute('data-original-text') || '');
                     if (originalText) {
-                        el.textContent = originalText; 
+                        // ✨ 魔法發生：重新丟進翻譯蒟蒻，這時它會抓到新主題的 CSS 色碼！
+                        el.textContent = window.processMermaidCssVars(originalText); 
                         el.removeAttribute('data-processed'); 
                     }
                 });
                 window.mermaid.run({ querySelector: '.mermaid' }).catch(() => {});
             }
         }
-    
+        //主題網頁標籤示切換//
         // const targetFaviconUrl = theme === 'light' ? CONFIG.FAVICON_LIGHT : CONFIG.FAVICON_DARK;
         // document.querySelectorAll("link[rel='icon']").forEach(link => link.href = targetFaviconUrl);
 
@@ -2015,7 +2134,10 @@ async function checkSystemVersionAndBoot() {
     loadProjects();
 }
 
-window.addEventListener('DOMContentLoaded', checkSystemVersionAndBoot);
+window.addEventListener('DOMContentLoaded', () => {
+    checkSystemVersionAndBoot();
+    window.getMermaidStyles(); // ✨ 在背景無感預先載入 Mermaid 樣式
+});
 
 // === 4. 索引式 Markdown Modal 邏輯 ===
 const modalOverlay = document.getElementById('md-modal');
@@ -2119,6 +2241,12 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             const proj = window.siteProjects.find(p => p.id === projectId);
             if (!proj || !proj.articles) return;
+
+            // ✨ 新增：敏感內容攔截 (如果不通過，中斷執行並呼叫彈窗)
+            if (proj.is_sensitive && window._hasAgreedSensitiveContent !== true) {
+                window.showSensitiveAgreementModal(() => window.openProjectIndex(projectId, restoreScroll));
+                return;
+            }
 
             let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
             sessionStorage.setItem(`sort_${projectId}`, currentSort);
@@ -2448,6 +2576,12 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     const proj = window.siteProjects.find(p => p.id === projectId);
     const article = proj.articles[articleIndex];
     
+    // ✨ 新增：敏感內容攔截 (改用全域變數檢查)
+    if ((proj.is_sensitive || article.is_sensitive) && window._hasAgreedSensitiveContent !== true) {
+        window.showSensitiveAgreementModal(() => window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls));
+        return;
+    }
+    
     document.body.style.cursor = 'wait';
     let markdownContent = "載入失敗";
     
@@ -2536,7 +2670,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     });
 
                     document.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
-                    window.mermaid.run({ querySelector: '.mermaid' }).then(() => window.initMermaidDrag()).catch(e => console.warn('Mermaid 語法錯誤:', e));
+                    window.mermaid.run({ querySelector: '.mermaid' })
+                    .catch(e => console.warn('Mermaid 語法錯誤:', e))
+                    .finally(() => window.initMermaidDrag());
                 } else {
                     setTimeout(renderMermaid, 300);
                 }
@@ -3151,6 +3287,9 @@ window.zoomMermaid = function(btn, action) {
 
     if (action === 'reset') {
         zoom = 1; x = 0; y = 0;
+    } else if (action === 'center') {
+        // ✨ 新增：只將座標歸零，但不改變目前的縮放倍率
+        x = 0; y = 0;
     } else if (action === 'zoom-in') {
         zoom = Math.min(zoom + 0.5, 3);
     } else if (action === 'zoom-out') {
@@ -3163,45 +3302,61 @@ window.zoomMermaid = function(btn, action) {
     mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
 };
 
-function restoreScrollAfterFullscreen() {
-    const modalContainer = document.querySelector('.modal-content');
-    
-    // 如果是退出全螢幕，恢復文章 Modal 的捲軸位置
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        if (modalContainer && window.preFullscreenScrollTop !== undefined) {
-            setTimeout(() => { modalContainer.scrollTop = window.preFullscreenScrollTop; }, 50); 
-        }
-    }
-
-    // ✨ 核心修復 2：無論是進入或退出全螢幕，強制重設所有圖表比例與置中點，讓 CSS 接手自適應！
-    document.querySelectorAll('.mermaid-container').forEach(container => {
-        container.dataset.zoom = 1;
-        container.dataset.x = 0;
-        container.dataset.y = 0;
-        const mermaidDiv = container.querySelector('.mermaid');
-        if (mermaidDiv) {
-            mermaidDiv.style.transform = `translate(0px, 0px) scale(1)`;
-        }
-    });
-}
-
-document.addEventListener('fullscreenchange', restoreScrollAfterFullscreen);
-document.addEventListener('webkitfullscreenchange', restoreScrollAfterFullscreen); 
-
+// ✨ 全新：完美偽裝成 Lightbox 的 Mermaid 全螢幕引擎
 window.fullscreenMermaid = function(btn) {
     const container = btn.closest('.mermaid-container');
-    const modalContainer = document.querySelector('.modal-content');
+    const mermaidDiv = container.querySelector('.mermaid');
+    const titleNode = container.querySelector('.mermaid-title');
+    if (!mermaidDiv) return;
 
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        if (modalContainer) window.preFullscreenScrollTop = modalContainer.scrollTop;
-        if (container.requestFullscreen) container.requestFullscreen();
-        else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen(); 
-    } else {
-        if (document.exitFullscreen) document.exitFullscreen();
-        else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); 
+    const lightboxModal = document.getElementById('lightbox-modal');
+    const lightboxWrapper = document.querySelector('.lightbox-img-wrapper');
+    
+    // 1. 動態建立一個專屬的 DOM 容器放在 Lightbox 裡
+    let customContainer = document.getElementById('lightbox-custom-dom');
+    if (!customContainer) {
+        customContainer = document.createElement('div');
+        customContainer.id = 'lightbox-custom-dom';
+        customContainer.style.cssText = 'display: none; position: absolute; inset: 0; width: 100%; height: 100%; align-items: center; justify-content: center; pointer-events: none;';
+        lightboxWrapper.appendChild(customContainer);
     }
+
+    // 2. 完美克隆圖表，並上色保護
+    const clonedMermaid = mermaidDiv.cloneNode(true);
+    clonedMermaid.id = 'lightbox-active-mermaid';
+    clonedMermaid.style.transform = 'translate(0px, 0px) scale(1)';
+    clonedMermaid.style.pointerEvents = 'auto'; // 讓它能被點擊/拖曳
+    
+    // 強制加上背景色，否則透明黑底會看不見黑色字
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    clonedMermaid.style.backgroundColor = currentTheme === 'dark' ? 'var(--bg)' : 'var(--card)';
+    clonedMermaid.style.padding = '20px';
+    clonedMermaid.style.borderRadius = '12px';
+    clonedMermaid.style.boxShadow = '0 10px 40px var(--shadow-base)';
+    clonedMermaid.style.maxHeight = '90vh';
+    clonedMermaid.style.maxWidth = '90vw';
+    
+    customContainer.innerHTML = '';
+    customContainer.appendChild(clonedMermaid);
+
+    // 3. 設定 Lightbox 狀態，加上 isDomMode 隱藏屬性
+    window.lightboxState = { 
+        images: [{ src: '', caption: titleNode ? titleNode.innerText : "Mermaid 流程圖" }], 
+        currentIndex: 0, 
+        zoom: 1, 
+        x: 0, 
+        y: 0,
+        maxZoom: 5, // 圖表允許放得更大
+        isDomMode: true
+    };
+
+    lightboxModal.classList.add('is-active');
+    window.updateLightboxView();
 };
 
+// ==========================================
+// ✨ Mermaid 專業控制台引擎 (支援手機點擊與桌機絲滑拖曳)
+// ==========================================
 window.initMermaidDrag = function() {
     document.querySelectorAll('.mermaid-container').forEach(container => {
         if (container.dataset.engineInit) return;
@@ -3211,37 +3366,66 @@ window.initMermaidDrag = function() {
         const mermaidDiv = container.querySelector('.mermaid');
         if (!wrapper || !mermaidDiv) return;
 
-        let isDragging = false;
-        let startX = 0, startY = 0;
-
-        // 1. 滑鼠拖曳平移 (Pan)
-        wrapper.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return;
-            isDragging = true;
-            startX = e.clientX - (parseFloat(container.dataset.x) || 0);
-            startY = e.clientY - (parseFloat(container.dataset.y) || 0);
-            wrapper.style.cursor = 'grabbing';
+        // ✨ 手機版專屬：點擊直接進入大圖預覽
+        wrapper.addEventListener('click', (e) => {
+            if (window.innerWidth <= 600) {
+                const btn = container.querySelector('.mermaid-btn[onclick*="fullscreenMermaid"]');
+                if (btn) btn.click();
+            }
         });
 
-        window.addEventListener('mousemove', (e) => {
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let animationFrameId = null; // 用於高更新率螢幕的效能優化
+
+        // 1. 滑鼠與觸控平移 (Pan)
+        wrapper.addEventListener('pointerdown', (e) => {
+            if (window.innerWidth <= 600) return; // 手機版不啟用內嵌拖曳
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            
+            isDragging = true;
+            wrapper.classList.add('is-dragging'); // ✨ 核心：掛上 class 瞬間拔除 CSS 動畫
+            wrapper.style.cursor = 'grabbing';
+            
+            startX = e.clientX - (parseFloat(container.dataset.x) || 0);
+            startY = e.clientY - (parseFloat(container.dataset.y) || 0);
+            
+            if (wrapper.setPointerCapture) wrapper.setPointerCapture(e.pointerId);
+        });
+
+        wrapper.addEventListener('pointermove', (e) => {
             if (!isDragging) return;
+            
             let x = e.clientX - startX;
             let y = e.clientY - startY;
             container.dataset.x = x;
             container.dataset.y = y;
             const zoom = parseFloat(container.dataset.zoom) || 1;
-            mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
+            
+            // ✨ 核心：使用 requestAnimationFrame 確保拖曳時畫面不撕裂
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(() => {
+                mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
+            });
         });
 
-        window.addEventListener('mouseup', () => {
+        const endDrag = (e) => {
             if (isDragging) {
                 isDragging = false;
+                wrapper.classList.remove('is-dragging'); // ✨ 核心：放開滑鼠時把 CSS 動畫還回去
                 wrapper.style.cursor = 'grab';
+                
+                if (wrapper.releasePointerCapture) wrapper.releasePointerCapture(e.pointerId);
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
             }
-        });
+        };
 
-        // 2. 滾輪對準游標中心縮放 (Wheel Zoom - 完美對齊 Lightbox 手感)
+        wrapper.addEventListener('pointerup', endDrag);
+        wrapper.addEventListener('pointercancel', endDrag);
+
+        // 2. 滾輪對準游標中心縮放
         wrapper.addEventListener('wheel', (e) => {
+            if (window.innerWidth <= 600) return; 
             e.preventDefault();
             let zoom = parseFloat(container.dataset.zoom) || 1;
             let x = parseFloat(container.dataset.x) || 0;
@@ -3348,6 +3532,59 @@ function show404Modal(title, message) {
         });
     }
 }
+
+// ==========================================
+// ✨ 敏感內容/使用者協議攔截引擎 (Content Warning Engine)
+// ==========================================
+// ✨ 1. 定義一個全域變數，只要網頁一重整，它就會變回 false
+window._hasAgreedSensitiveContent = false;
+
+window.showSensitiveAgreementModal = function(onAgreeCallback) {
+    // ✨ 2. 改為檢查全域變數
+    if (window._hasAgreedSensitiveContent === true) {
+        if (onAgreeCallback) onAgreeCallback();
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'sensitive-modal-overlay';
+    overlay.className = 'modal-overlay active'; 
+    overlay.style.zIndex = '1100'; 
+    
+    overlay.innerHTML = `
+        <div class="modal-content" style="max-width: 500px; text-align: center; padding: 3rem 2rem; opacity: 1;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--error-color)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; filter: drop-shadow(0 0 10px var(--error-shadow));">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <h2 style="margin: 0 0 1rem 0; color: var(--error-color);">內容警告 (Content Warning)</h2>
+            <p style="color: var(--muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 2rem;">
+                此條目包括但不限於：負面、一時興起、莫名奇妙、取景框。<br>
+                <span style="font-size: 0.8rem; opacity: 0.7;">(點擊「我已了解前往」後，本次造訪將不再提示。)</span>
+            </p>
+            <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                <button id="sensitive-decline-btn" class="btn">返回</button>
+                <button id="sensitive-agree-btn" class="btn">我已了解並前往</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    window.lockScroll();
+
+    document.getElementById('sensitive-decline-btn').onclick = () => {
+        overlay.remove();
+        window.unlockScroll();
+    };
+
+    document.getElementById('sensitive-agree-btn').onclick = () => {
+        // ✨ 3. 同意時，將全域變數設為 true
+        window._hasAgreedSensitiveContent = true;
+        overlay.remove();
+        if (onAgreeCallback) onAgreeCallback();
+    };
+};
 
 // ✨ 專為 JSON/Markdown 轉 HTML 後的中文排版處理器
 window.applyIndentToVerticalWrapper = function(container) {
