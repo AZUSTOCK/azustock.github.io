@@ -2,13 +2,16 @@ import os
 import json
 import re
 from PIL import Image
+from datetime import datetime, timedelta # ✨ 新增：用於計算過期時間
 from tools.convert_webp import convert_to_webp_with_protection, generate_cover_thumbnail
 from tools.update_paths import update_extensions_to_webp
 
 # 準備一個 Set 來記錄所有合法的 API 檔案絕對路徑，用於最後的清理階段
 valid_api_files = set()
 
-# 全域統計數據 (加入「新增」維度)
+expiration_l = []
+
+# 全域統計數據
 stats = {
     "proj_total": 0, "proj_new": 0, "proj_updated": 0, "proj_skipped": 0,       
     "art_total": 0,  "art_new": 0,  "art_updated": 0,  "art_skipped": 0,        
@@ -22,21 +25,15 @@ stats = {
 # 🛠️ 輔助系統 (Helper Functions)
 # ==========================================
 def get_file_status(source_paths, target_path, force_overwrite=False):
-    """
-    智慧判斷目標檔案的狀態，回傳: 'NEW', 'UPDATED', 'SKIPPED'
-    """
     if not os.path.exists(target_path):
         return 'NEW'
-        
     if force_overwrite:
         return 'UPDATED'
-        
     target_time = os.path.getmtime(target_path)
     for src in source_paths:
         if src and os.path.exists(src):
             if os.path.getmtime(src) > target_time:
                 return 'UPDATED'
-                
     return 'SKIPPED'
 
 def print_conversion(tag, src_path, dest_path):
@@ -50,7 +47,6 @@ def create_og_image(original_path, output_path, bg_path=None):
     """將任意尺寸的圖片疊加到 1200x630 的背景圖中央，生成完美的 OG 分享圖"""
     try:
         OG_SIZE = (1200, 630) 
-        
         img = Image.open(original_path).convert("RGBA")
         
         if bg_path and os.path.exists(bg_path):
@@ -62,15 +58,12 @@ def create_og_image(original_path, output_path, bg_path=None):
         max_h, max_w = 600, 1100
         ratio = min(max_w / img.width, max_h / img.height)
         new_size = (int(img.width * ratio), int(img.height * ratio))
-        
         img = img.resize(new_size, Image.Resampling.LANCZOS)
         
         x = (OG_SIZE[0] - new_size[0]) // 2
         y = (OG_SIZE[1] - new_size[1]) // 2
-        
         bg.paste(img, (x, y), img)
         
-        # ✨ 核心修復：為 OG 圖片注入 EXIF 數位版權簽章
         final_img = bg.convert("RGB")
         clean_exif = final_img.getexif()
         clean_exif.clear()
@@ -79,7 +72,6 @@ def create_og_image(original_path, output_path, bg_path=None):
         clean_exif[315] = "Azustock"
         exif_bytes = clean_exif.tobytes()
         
-        # 儲存時寫入 exif
         final_img.save(output_path, "WEBP", quality=90, exif=exif_bytes)
         return True
     except Exception as e:
@@ -87,7 +79,6 @@ def create_og_image(original_path, output_path, bg_path=None):
         return False
 
 def parse_folder_meta(folder_name):
-    # ✨ 核心修復：在 \d 前面加上 -?，代表「允許前面帶有一個可有可無的負號」！
     match = re.match(r'^(-?\d+)_+(.*)$', folder_name)
     if match:
         return int(match.group(1)), match.group(2)
@@ -101,6 +92,42 @@ def load_detail_json(json_path):
         except Exception as e:
             print(f"⚠️ Error reading {json_path}: {e}")
     return {}
+
+# ==========================================
+# ⏰ 時間戳過期偵測引擎 (Expiration Checker)
+# ==========================================
+def check_expiration_reminders(item_title, item_type, data_dict):
+    """檢查 JSON 內的日期標籤或屬性是否過期，並印出黃色警告提醒"""
+    now = datetime.now()
+    expire_delta = timedelta(days=14) # 與前端 JS 的 TAG_EXPIRE_DAYS 保持一致
+    
+    # 1. 檢查 Tags (例如 "NEW:2026-08-01")
+    tags = data_dict.get('tags') or data_dict.get('TAGS')
+    if tags:
+        for t in tags:
+            match = re.match(r'^(NEW|UPDATED|LATEST|FEATURE):(\d{4}[-/]\d{2}[-/]\d{2})$', str(t), re.IGNORECASE)
+            if match:
+                try:
+                    dt = datetime.strptime(match.group(2).replace('-', '/'), "%Y/%m/%d")
+                    if now - dt > expire_delta:
+                        expiration_l.append(f"\033[93m  ⏰ [標籤過期] {item_type} '{item_title}' 的 '{t}' 已過 14 天，建議刪除。\033[0m")
+                except Exception:
+                    pass
+    
+    # 2. 檢查屬性欄位 (例如 "new": "2026-08-01" 或 "hidden": "2026-08-01")
+    for key in ['new', 'updated', 'wip', 'archived', 'hidden']:
+        val = data_dict.get(key) or data_dict.get(key.upper())
+        if isinstance(val, str) and re.match(r'^\d{4}[-/]\d{2}[-/]\d{2}$', val):
+            try:
+                dt = datetime.strptime(val.replace('-', '/'), "%Y/%m/%d")
+                if key.lower() == 'hidden':
+                    if now >= dt:
+                        expiration_l.append(f"\033[92m  🔓 [解封提醒] {item_type} '{item_title}' 的隱藏期限 '{val}' 已到期(現已公開)，建議刪除。\033[0m")
+                else:
+                    if now - dt > expire_delta:
+                        expiration_l.append(f"\033[93m  ⏰ [狀態過期] {item_type} '{item_title}' 的 '{key}: {val}' 已過 14 天，建議刪除。\033[0m")
+            except Exception:
+                pass
 
 # ==========================================
 # 📝 升級版系統日誌生成器 (Changelog Generator)
@@ -123,9 +150,8 @@ def generate_changelogs_json():
         status = "UPDATE"
         description = "系統更新與優化記錄。"
         content = ""
-        is_hidden = False # ✨ 新增一個隱藏開關
+        is_hidden = False
 
-        # 讀取 detail.json
         detail_path = os.path.join(folder_path, 'detail.json')
         if os.path.exists(detail_path):
             detail = load_detail_json(detail_path)
@@ -133,18 +159,12 @@ def generate_changelogs_json():
             status = detail.get('status', status)
             version = detail.get('version', version)
             description = detail.get('description', description)
-            # ✨ 如果 JSON 裡有寫 "hidden": true，就會被捕捉
             is_hidden = detail.get('hidden', False)
 
-        # 🛡️ 終極防護過濾魔法：只要觸發以下「任何一個」條件，就絕對不打包！
-        # 1. JSON 裡的版本號有 3 個點以上 (如 U1.4.1.1)
-        # 2. 資料夾名稱有 3 個點以上 (如 logs/U1.4.1.1)
-        # 3. JSON 裡手動設定了 "hidden": true
         if str(version).count('.') >= 3 or str(version_folder).count('.') >= 3 or is_hidden:
             print(f"  ⏭️ 隱藏內部測試紀錄: {version_folder} (不會顯示於前端)")
             continue
 
-        # 讀取 md 檔案
         for file in os.listdir(folder_path):
             if file.endswith('.md'):
                 with open(os.path.join(folder_path, file), 'r', encoding='utf-8') as f:
@@ -153,18 +173,13 @@ def generate_changelogs_json():
         
         if content:
             output_data.append({
-                "id": version_folder,
-                "version": version,
-                "date": date,
-                "status": status,
-                "description": description,
-                "content": content
+                "id": version_folder, "version": version, "date": date,
+                "status": status, "description": description, "content": content
             })
 
     with open('changelogs.json', 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
-
-    print(f"✅ 升級版版本日誌 (Changelog) 打包完成，共對外發布 {len(output_data)} 筆紀錄。")
+    print(f"✅ 升級版版本日誌 (Changelog) 打包完成，共發布 {len(output_data)} 筆紀錄。")
 
 
 # ==========================================
@@ -178,27 +193,21 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
     API_DIR = os.path.join("api")
     os.makedirs(API_DIR, exist_ok=True)
     
-    # ✨ HTML 模板 (修復了 <script> 跳轉功能，保留精美的品牌頁面)
     html_template = """<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{title}</title>
-    <!-- Open Graph / Facebook / Line 專用 -->
     <meta property="og:type" content="article">
     <meta property="og:url" content="{share_url}">
     <meta property="og:title" content="{title}">
     <meta property="og:description" content="{description}">
     <meta property="og:image" content="{image}">
-    
-    <!-- Twitter 專用 -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{title}">
     <meta name="twitter:description" content="{description}">
     <meta name="twitter:image" content="{image}">
-    
-    <!-- 自動跳轉回主程式 -->
     <script>window.location.replace("{target_url}");</script>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: center; padding-top: 15vh; background: #f4f4f5; color: #3f3f46; margin: 0;">
@@ -206,9 +215,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
         <h1 style="font-size: 1.25rem; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 1.5rem; color: #18181b;">梓本投資控股</h1>
         <p style="font-size: 0.95rem; margin-bottom: 0.5rem;">System is routing to:</p>
         <p style="font-size: 1.1rem; font-weight: 600; color: #000; margin-top: 0;">{title}</p>
-        
         <div style="margin: 2.5rem 0 1.5rem 0; width: 100%; height: 1px; background: #e4e4e7;"></div>
-        
         <p style="color: #71717a; font-size: 0.85rem; line-height: 1.6;">
             若系統未自動跳轉，請 <a href="{target_url}" style="color: #3b82f6; text-decoration: none; font-weight: 600;">點擊此處前往</a>。<br>
             If not redirected, click the link above.
@@ -251,6 +258,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             proj_data = load_detail_json(proj_detail_path)
             default_proj_order, clean_proj_title = parse_folder_meta(proj_folder)
             
+            # ✨ 呼叫過期檢查引擎 (專案層級)
+            check_expiration_reminders(proj_data.get('title', clean_proj_title), "專案", proj_data)
+            
             clean_proj_data = {
                 'id': clean_proj_title,
                 'category': cat_folder,
@@ -266,18 +276,16 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 sys_tags = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED', 'WIP', 'OC'}
                 clean_tags = []
                 for t in proj_data.get('tags'):
-                    # 擷取冒號前的單字並轉大寫 (支援 new:2026-08-14)
                     base = str(t).split(':')[0].upper()
                     if base in sys_tags:
-                        clean_tags.append(str(t).upper()) # 系統標籤強制轉大寫
+                        clean_tags.append(str(t).upper())
                     else:
-                        clean_tags.append(t) # 普通標籤維持原樣 (如 Python)
+                        clean_tags.append(t)
                 clean_proj_data['tags'] = clean_tags
                 
             if proj_data.get('link'): clean_proj_data['link'] = proj_data.get('link')
             
-            # ✨ 支援布林值(True)與日期字串("YYYY-MM-DD")的通用轉發 (大小寫通吃)
-            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden']:
+            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive']:
                 val = proj_data.get(key) or proj_data.get(key.upper())
                 if val is not None: clean_proj_data[f'is_{key}' if key != 'pinned' else 'pinned'] = val
             if proj_data.get('groups'): clean_proj_data['groups'] = proj_data.get('groups')
@@ -289,7 +297,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             proj_data = clean_proj_data 
             articles = []
 
-            # 專案目錄 Share 中轉頁處理
             proj_id = clean_proj_title
             proj_title = proj_data.get('title', clean_proj_title)
             proj_desc = proj_data.get('description', '查看專案內容')
@@ -377,6 +384,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     meta_desc = sub_data.get('description')
                     meta_order = sub_data.get('order', default_art_order)
                     meta_cover = sub_data.get('cover')
+                    
+                    # ✨ 呼叫過期檢查引擎 (文章層級)
+                    check_expiration_reminders(meta_title, "文章", sub_data)
 
                     md_file_path = None
                     rel_base = f"{base_dir}/{cat_folder}/{proj_folder}/articles/{item}"
@@ -396,7 +406,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             content_filename = "contents.json"
                             content_filepath = os.path.join(art_dir, content_filename)
                             
-                            # ✨ 統一讀取 Markdown
                             with open(md_file_path, 'r', encoding='utf-8') as md_file:
                                 raw_md_content = md_file.read() 
                                 
@@ -406,10 +415,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             content = raw_md_content 
                             real_path = f"./projects/{cat_folder}/{proj_folder}/articles/{item}/"
                             
-                            # ✨ 正則替換區：掃描與生成內文縮圖 (保留 Thumbnails 目錄架構)
                             def replace_md_img(match):
                                 alt_text, url_part = match.group(1), match.group(2).strip()
-                                
                                 title_match = re.search(r'(.*?)\s+(["\'])(.*?)\2$', url_part)
                                 if title_match:
                                     url = title_match.group(1)
@@ -432,10 +439,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     if os.path.exists(local_img_path):
                                         stats["inline_thumb_total"] += 1
                                         safe_name = clean_url.replace('/', '_').replace('\\', '_')
-                                        
                                         thumb_dir = os.path.join(art_dir, "thumbnails")
                                         os.makedirs(thumb_dir, exist_ok=True)
-                                        
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
@@ -452,10 +457,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             stats["inline_thumb_skipped"] += 1
                                             
                                         valid_api_files.add(os.path.abspath(thumb_local_path))
-                                        
                                         thumb_url = f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}"
                                         return f"![{alt_text}]({thumb_url}#full={orig_url}{title_str})"
-                                        
                                 return f"![{alt_text}]({url_part})"
                                 
                             content = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', replace_md_img, content)
@@ -476,10 +479,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     if os.path.exists(local_img_path):
                                         stats["inline_thumb_total"] += 1
                                         safe_name = clean_url.replace('/', '_').replace('\\', '_')
-                                        
                                         thumb_dir = os.path.join(art_dir, "thumbnails")
                                         os.makedirs(thumb_dir, exist_ok=True)
-                                        
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
@@ -496,10 +497,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             stats["inline_thumb_skipped"] += 1
                                             
                                         valid_api_files.add(os.path.abspath(thumb_local_path))
-                                        
                                         thumb_url = f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}"
                                         return f'{prefix}{thumb_url}" data-full="{orig_url}"{suffix[1:]}'
-                                        
                                 return f"{prefix}{url}{suffix}"
                                 
                             content = re.sub(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)', replace_html_img, content)
@@ -541,7 +540,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     stats["og_skipped"] += 1
                                 valid_api_files.add(os.path.abspath(og_local_path))
 
-                                # ✨ 處理文章封面縮圖 (Thumbnail)
                                 art_thumb_filename = "cover_thumb.webp"
                                 art_thumb_local_path = os.path.join(art_dir, art_thumb_filename)
                                 stats["thumb_total"] += 1
@@ -582,7 +580,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     
                             valid_api_files.add(os.path.abspath(art_html_path))
 
-                            # 建立純淨的文章基底
                             article_obj = {
                                 "id": art_id,
                                 "sort_order": meta_order,     
@@ -604,7 +601,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         clean_tags.append(t)
                                 article_obj["tags"] = clean_tags
                             
-                            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden']:
+                            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive']:
                                 val = sub_data.get(key) or sub_data.get(key.upper())
                                 if val is not None: article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = val
 
@@ -637,7 +634,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
             output_data["projects"].append(proj_data)
 
-    # 4. 全域防呆排序與存檔
     def safe_sort(x):
         val = x.get('order', 999)
         return int(val) if str(val).isdigit() else 999
@@ -692,7 +688,6 @@ def cleanup_old_api_files(api_dir="api"):
 
 
 if __name__ == "__main__":
-    # ✨ 判斷是否為 GitHub Actions 環境 (CI/CD)
     is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
     
     overwrite_webp = False
@@ -730,19 +725,15 @@ if __name__ == "__main__":
             t_choice = input("  [D] 第二階段(4/4): 封面與內文縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_thumb = (t_choice == '2')
 
-    # --- 第一階段：轉換原圖 ---
     convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
     
-    # --- 第二階段：打包與生成縮圖 ---
     print(f"\n==========================================")
     print(f"📦 [第二階段] 開始解析 Markdown 並打包 JSON 資料庫...")
     print(f"==========================================")
     generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb)
     
-    # ✨ 呼叫剛寫好的日誌生成器
     generate_changelogs_json()
 
-    # --- 輸出統計 ---
     print(f"\n📊 [處理統計]")
     print(f"  - 專案 HTML (index)       : 共 {stats['proj_total']:>4} 個 | 新增 {stats['proj_new']:>4} 個 | 更新 {stats['proj_updated']:>4} 個 | 略過 {stats['proj_skipped']:>4} 個")
     print(f"  - 文章 HTML (index)       : 共 {stats['art_total']:>4} 個 | 新增 {stats['art_new']:>4} 個 | 更新 {stats['art_updated']:>4} 個 | 略過 {stats['art_skipped']:>4} 個")
@@ -751,10 +742,15 @@ if __name__ == "__main__":
     print(f"  - 封面縮圖 (cover_thumb)  : 共 {stats['thumb_total']:>4} 張 | 新增 {stats['thumb_new']:>4} 張 | 更新 {stats['thumb_updated']:>4} 張 | 略過 {stats['thumb_skipped']:>4} 張")
     print(f"  - 內文縮圖 (inline_thumb) : 共 {stats['inline_thumb_total']:>4} 張 | 新增 {stats['inline_thumb_new']:>4} 張 | 更新 {stats['inline_thumb_updated']:>4} 張 | 略過 {stats['inline_thumb_skipped']:>4} 張")
     
-    # --- 清理與收尾 ---
     cleanup_old_api_files()
     
     print(f"\n==========================================")
     print(f"📦 [最後階段] 開始修改路徑...")
     print(f"==========================================")
     update_extensions_to_webp()
+
+    print(f"\n==========================================")
+    print(f"過期tag提示")
+    print(f"==========================================")
+    for i in expiration_l:
+        print(i)

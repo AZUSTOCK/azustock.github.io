@@ -23,7 +23,7 @@
 /* 2. 淺色模式 (Light Mode) - 極淨透亮調色盤 */
 [data-theme="light"] {
     color-scheme: light; 
-    --bg: #e6e6e6; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
+    --bg: #ebebeb; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
     --accent: #407899; --accent-2: #44D4BE; --accent-hover: #44D4BE;
     --glow-1: rgba(68, 212, 190, 0.3); --glow-2: rgba(245, 213, 71, 0.3);
     --glass-bg: rgba(255, 255, 255, 0.7); --glass-border: rgba(68, 212, 190, 0.4);
@@ -214,6 +214,28 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     border-color: var(--accent-hover); 
     color: var(--card); 
     box-shadow: 0 4px 12px var(--card); 
+}
+
+/* ==========================================
+   ✨ 敏感內容協議按鈕特效 (Content Warning)
+   ========================================== */
+#sensitive-agree-btn { 
+    background: var(--error-color) !important; 
+    color: #fff !important; 
+    border-color: var(--error-color) !important; 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* 預設給一點基礎陰影讓它有實體感 */
+}
+
+#sensitive-agree-btn:hover { 
+    background: var(--error-color) !important; /* 維持實心紅底 */
+    color: #fff !important;                    /* 維持白字 */
+    border-color: var(--error-color) !important;
+    
+    /* ✨ 雙層強烈紅光：一層負責範圍擴散，一層負責中心高光 */
+    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important; 
+    
+    /* 讓紅色瞬間提亮，視覺更吸睛 */
+    filter: brightness(1.15); 
 }
 
 /* ✨ 首頁大分享按鈕：鎖定尺寸 */

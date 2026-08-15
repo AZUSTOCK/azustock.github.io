@@ -2242,6 +2242,12 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const proj = window.siteProjects.find(p => p.id === projectId);
             if (!proj || !proj.articles) return;
 
+            // ✨ 新增：敏感內容攔截 (如果不通過，中斷執行並呼叫彈窗)
+            if (proj.is_sensitive && window._hasAgreedSensitiveContent !== true) {
+                window.showSensitiveAgreementModal(() => window.openProjectIndex(projectId, restoreScroll));
+                return;
+            }
+
             let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
             sessionStorage.setItem(`sort_${projectId}`, currentSort);
 
@@ -2569,6 +2575,12 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
     const proj = window.siteProjects.find(p => p.id === projectId);
     const article = proj.articles[articleIndex];
+    
+    // ✨ 新增：敏感內容攔截 (改用全域變數檢查)
+    if ((proj.is_sensitive || article.is_sensitive) && window._hasAgreedSensitiveContent !== true) {
+        window.showSensitiveAgreementModal(() => window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls));
+        return;
+    }
     
     document.body.style.cursor = 'wait';
     let markdownContent = "載入失敗";
@@ -3520,6 +3532,59 @@ function show404Modal(title, message) {
         });
     }
 }
+
+// ==========================================
+// ✨ 敏感內容/使用者協議攔截引擎 (Content Warning Engine)
+// ==========================================
+// ✨ 1. 定義一個全域變數，只要網頁一重整，它就會變回 false
+window._hasAgreedSensitiveContent = false;
+
+window.showSensitiveAgreementModal = function(onAgreeCallback) {
+    // ✨ 2. 改為檢查全域變數
+    if (window._hasAgreedSensitiveContent === true) {
+        if (onAgreeCallback) onAgreeCallback();
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'sensitive-modal-overlay';
+    overlay.className = 'modal-overlay active'; 
+    overlay.style.zIndex = '1100'; 
+    
+    overlay.innerHTML = `
+        <div class="modal-content" style="max-width: 500px; text-align: center; padding: 3rem 2rem; opacity: 1;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--error-color)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; filter: drop-shadow(0 0 10px var(--error-shadow));">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <h2 style="margin: 0 0 1rem 0; color: var(--error-color);">內容警告 (Content Warning)</h2>
+            <p style="color: var(--muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 2rem;">
+                此條目包括但不限於：負面、一時興起、莫名奇妙、取景框。<br>
+                <span style="font-size: 0.8rem; opacity: 0.7;">(點擊「我已了解前往」後，本次造訪將不再提示。)</span>
+            </p>
+            <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                <button id="sensitive-decline-btn" class="btn">返回</button>
+                <button id="sensitive-agree-btn" class="btn">我已了解並前往</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    window.lockScroll();
+
+    document.getElementById('sensitive-decline-btn').onclick = () => {
+        overlay.remove();
+        window.unlockScroll();
+    };
+
+    document.getElementById('sensitive-agree-btn').onclick = () => {
+        // ✨ 3. 同意時，將全域變數設為 true
+        window._hasAgreedSensitiveContent = true;
+        overlay.remove();
+        if (onAgreeCallback) onAgreeCallback();
+    };
+};
 
 // ✨ 專為 JSON/Markdown 轉 HTML 後的中文排版處理器
 window.applyIndentToVerticalWrapper = function(container) {
