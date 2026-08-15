@@ -97,6 +97,7 @@
 /* 🏗️ 第二層：全域基底與版面 (Base & Layout)                                   */
 /* ========================================================================== */
 html { 
+    touch-action: manipulation;
     scroll-behavior: smooth; 
     scrollbar-gutter: stable; 
     background-color: var(--bg);
@@ -107,6 +108,7 @@ html {
 }
 
 body {
+    touch-action: manipulation;
     margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
     /* ✨ 改用 max(1200px, 80vw) 確保在大螢幕上光暈一樣能覆蓋背景 */
     background: radial-gradient(max(1200px, 80vw) max(600px, 50vh) at 20% -10%, var(--glow-1), transparent), 
@@ -410,7 +412,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 
 .marquee-container:hover .marquee-content { animation-play-state: paused; }
 @keyframes marquee-seamless { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-.kotoba-whisper { font-style: italic; font-size: 0.95rem; color: var(--accent); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: pointer; }
+.kotoba-whisper { font-style: italic; font: bold;font-size: 0.95rem; color: var(--accent); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: pointer; }
 .kotoba-whisper:hover { color: var(--accent-2); text-shadow: 0 0 10px var(--glow-1); opacity: 1; }
 /* ✨ 加大文字與漲跌數字之間的間距，讓視覺更有呼吸感 */
 .stock-up, .stock-down { 
@@ -1338,7 +1340,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 
 .mermaid-btns { display: flex; gap: 0.5rem; }
 .mermaid-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); backdrop-filter: blur(4px); position: relative; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
-.mermaid-btn:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); transform: scale(1.1) translateZ(0); box-shadow: 0 4px 12px var(--glow-1); }
+.mermaid-btn:hover { background: var(--accent); color: var(--card); border-color: var(--accent); transform: scale(1.1) translateZ(0); box-shadow: 0 4px 12px var(--glow-1); }
 .mermaid-btn svg { display: block; transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); }
 
 /* ✨ 拔除原生捲軸，改為固定高度與隱藏溢出，讓矩陣拖曳取代醜陋的捲軸 */
@@ -1351,8 +1353,13 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     box-sizing: border-box; 
     cursor: grab; 
     position: relative;
+    touch-action: none;
 }
 .mermaid-wrapper:active { cursor: grabbing; }
+/* ✨ 核心修復：當圖表處於拖曳狀態時，強制拔除所有延遲動畫 */
+.mermaid-wrapper.is-dragging .mermaid {
+    transition: none !important;
+}
 
 /* 全螢幕時解除高度限制，撐滿整個畫面 */
 .mermaid-container:fullscreen .mermaid-wrapper, 
@@ -1523,7 +1530,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 }
 
 /* ✨ 加入 opacity 過渡，讓圖片載入後平滑淡入 */
-#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease; transform-origin: center center; touch-action: none; cursor: grab; }
+#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease; transform-origin: center center; touch-action: none; cursor: grab; }
 #lightbox-img.is-dragging { cursor: grabbing; transition: none !important; }
 
 /* 底部圖片說明膠囊 (動態主題適應) */
@@ -1586,6 +1593,16 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     /* ✨ 將 rgba(0,0,0,0.7) 換成 var(--glass-bg) */
     .toolbox-group { position: absolute; top: 100%; margin-top: 15px; right: 0; flex-direction: row; align-items: center; justify-content: center; background: var(--glass-bg); backdrop-filter: blur(15px); padding: 8px; border-radius: 12px; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px var(--shadow-base); width: max-content; will-change: transform, opacity; opacity: 0; visibility: hidden; transform: translateY(-15px) scale(0.95) translateZ(0); transform-origin: top right; transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease; }
     .toolbox-group.is-open { opacity: 1; visibility: visible; transform: translateY(0) scale(1) translateZ(0); pointer-events: auto; }
+
+    /* ✨ Mermaid 手機版簡化為「預覽模式」 */
+    .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]),
+    .mermaid-btns div[style*="width: 1px"] {
+        display: none !important; /* 隱藏除了放大檢視以外的所有按鈕與分隔線 */
+    }
+    .mermaid-wrapper {
+        touch-action: auto !important; /* 解除觸控鎖定，讓使用者可以順暢上下滑動整篇文章 */
+        cursor: pointer !important;    /* 將游標改為手指，提示可以點擊 */
+    }
 }
 
 /* 8-2. 針對非常小的手機螢幕 (max-width: 500px) */
