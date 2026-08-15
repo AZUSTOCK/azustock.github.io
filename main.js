@@ -1037,7 +1037,7 @@ renderer.image = function(token_or_href, title, text) {
     }
 };
 
-// 2. ✨ 攔截 Mermaid 程式碼區塊 (支援自訂標題與自動尋找)
+// 2. ✨ 攔截 Mermaid 程式碼區塊與一般程式碼區塊
 const originalCodeRenderer = renderer.code.bind(renderer);
 renderer.code = function(token_or_code, language, isEscaped) {
     const lang = typeof token_or_code === 'object' ? token_or_code.lang : language;
@@ -1090,12 +1090,65 @@ renderer.code = function(token_or_code, language, isEscaped) {
                 </div>
             </div>
             <div class="mermaid-wrapper">
-                <!-- ✨ 這裡將 data 塞入備份原文，但畫面渲染使用轉換過 Hex 的 processedText！ -->
                 <div class="mermaid" data-original-text="${encodedText}">${processedText}</div>
             </div>
         </div>`;
     }
-    return originalCodeRenderer.apply(this, arguments);
+
+    // ✨ 非 Mermaid 的普通程式碼區塊：加上複製按鈕與語言標籤
+    const cleanLang = lang ? lang.split('[')[0].trim() : 'text'; // 容錯處理，預設為 text
+    // 進行基礎的 HTML 跳脫，防止 XSS 與破版
+    const escapedText = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    // 複製圖示 SVG
+    const copyIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+
+    return `
+    <div class="code-block-wrapper">
+        <div class="code-lang-label">${cleanLang}</div>
+        <!-- ✨ 拔除了 data-tooltip 屬性 -->
+        <button class="code-copy-btn" onclick="window.copyCodeBlock(this)">
+            ${copyIcon} <span class="copy-text">Copy</span>
+        </button>
+        <pre><code class="language-${cleanLang}">${escapedText}</code></pre>
+    </div>`;
+};
+
+// ==========================================
+// ✨ 新增：程式碼區塊一鍵複製引擎
+// ==========================================
+window.copyCodeBlock = function(btn) {
+    // 防止重複點擊
+    if (btn.classList.contains('copied')) return;
+    
+    // 往上找到外層容器，再往下精準抓取 code 裡面的文字
+    const wrapper = btn.closest('.code-block-wrapper');
+    const codeEl = wrapper.querySelector('code');
+    if (!codeEl) return;
+
+    // innerText 會自動處理好換行與跳脫字元，拿來複製最精準
+    const textToCopy = codeEl.innerText;
+
+    // 儲存原本的按鈕內容
+    const originalHtml = btn.innerHTML;
+    // 打勾圖示 SVG
+    const checkIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        // 成功時切換狀態與文字
+        btn.classList.add('copied');
+        btn.innerHTML = `${checkIcon} <span class="copy-text">Copied!</span>`;
+
+        // 2 秒後恢復原狀
+        setTimeout(() => {
+            btn.classList.remove('copied');
+            btn.innerHTML = originalHtml;
+        }, 2000);
+    }).catch(err => {
+        console.error('程式碼複製失敗:', err);
+        btn.innerHTML = `<span class="copy-text" style="color: var(--error-color);">Error</span>`;
+        setTimeout(() => btn.innerHTML = originalHtml, 2000);
+    });
 };
 
 // 3. ✨ 攔截 Markdown 連結

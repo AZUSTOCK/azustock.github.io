@@ -67,12 +67,26 @@
 
 ## 5. 程式碼與圖表引擎 (Code & Mermaid)
 
-### 程式碼區塊 (JavaScript)
+### 程式碼區塊
 ```javascript
 const universalTest = () => {
     console.log("System initialized successfully.");
 };
 universalTest();
+```
+
+```python
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+def process_transcriptions(df):
+    """
+    清理並轉換資料集特徵矩陣
+    """
+    df = df.dropna(subset=['transcription'])
+    vectorizer = TfidfVectorizer(max_features=1000)
+    features = vectorizer.fit_transform(df['transcription'])
+    return features
 ```
 
 ### Mermaid 流程圖引擎

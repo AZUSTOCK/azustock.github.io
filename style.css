@@ -959,6 +959,116 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body pre code { background: transparent; padding: 0; color: var(--text); }
 .markdown-body blockquote { border-left: 4px solid var(--accent); margin: 1.5rem 0; padding-left: 1rem; color: var(--muted); background: rgba(255,255,255,0.02); }
 
+/* ==========================================
+   ✨ 程式碼區塊 (Code Block) 視覺與按鈕優化
+   ========================================== */
+.markdown-body .code-block-wrapper {
+    position: relative;
+    margin: 1.5rem 0;
+    border-radius: 0.6rem;
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    overflow: visible; /* ✨ 1. 移除 hidden，允許 Tooltip 突破邊界顯示 */
+    box-shadow: 0 4px 15px var(--shadow-base);
+}
+
+.markdown-body .code-block-wrapper pre {
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 0 0.6rem 0.6rem !important; /* ✨ 因為移除了 hidden，所以手動把底部圓角加回來 */
+    padding-top: 2.8rem; /* 留出上方空間給標籤與按鈕 */
+    box-shadow: none !important;
+}
+
+/* 左上角：語言標籤 */
+.markdown-body .code-lang-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: var(--box-bg);
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.8rem;
+    border-top-left-radius: 0.6rem; /* ✨ 補回左上方圓角以防凸出 */
+    border-bottom-right-radius: 0.6rem;
+    border-right: 1px solid var(--card-border);
+    border-bottom: 1px solid var(--card-border);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    z-index: 5;
+}
+
+/* 右上角：純外框複製按鈕 (仿 share-link-btn 樣式) */
+.markdown-body .code-copy-btn {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 4px;
+    width: 86px; /* ✨ 2. 固定寬度，讓按鈕外圍大小在 Copy / Copied 切換時維持不變 */
+    justify-content: center;
+    font-family: inherit; /* ✨ 2. 移除 monospace 字體設定，恢復繼承網站預設字型 */
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    z-index: 10;
+    box-sizing: border-box;
+
+    /* ✨ 3. 終極防抖動設定：開啟硬體加速與字體平滑化，徹底防止 Hover 造成的文字抖動 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* 仿造 share-link-btn 的 Hover 變色特效 */
+.markdown-body .code-copy-btn:hover {
+    color: var(--card);
+    border-color: var(--accent-2);
+    background: var(--accent-2);
+    box-shadow: 0 0 12px var(--glow-1);
+}
+
+/* 確保圖示大小與微調旋轉動畫一致 */
+.markdown-body .code-copy-btn svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+    flex-shrink: 0; /* ✨ 防止 flex 因寬度固定而擠壓圖示 */
+    transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    will-change: transform;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    transform: translateZ(0);
+}
+
+/* Hover 時圖示放大並微傾斜 */
+.markdown-body .code-copy-btn:hover svg {
+    transform: scale(1.15) rotate(10deg) translateZ(0);
+}
+
+/* 複製成功的狀態 */
+.markdown-body .code-copy-btn.copied {
+    color: var(--card) !important;
+    background: var(--accent-2) !important;
+    border-color: var(--accent-2) !important;
+    box-shadow: 0 0 15px var(--accent-2) !important;
+    transform: translateZ(0) !important; /* ✨ 維持硬體加速狀態 */
+}
+
+.markdown-body .code-copy-btn.copied svg {
+    transform: translateZ(0) !important;
+}
+
 /* 文章標題區塊整合 */
 .article-header-wrapper { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; border-bottom: 2px solid var(--card-border); padding-bottom: 0.5rem; margin-bottom: 0.8rem; }
 .header-left { 
@@ -1310,7 +1420,16 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 .markdown-body .gallery figure.hide-caption figcaption { transform: translateY(105%) !important; }
 
 /* 6-5. Mermaid 圖表引擎 */
-.mermaid-container { position: relative; margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; background: var(--bg); overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); transition: all 0.3s ease; }
+.mermaid-container { 
+    position: relative; 
+    margin: 2rem 0; 
+    border: 1px solid var(--card-border); 
+    border-radius: 0.8rem; 
+    background: var(--bg); 
+    overflow: visible; /* ✨ 1. 將 hidden 改為 visible，允許 Tooltip 突破邊界顯示 */
+    box-shadow: 0 4px 15px var(--shadow-base); 
+    transition: all 0.3s ease; 
+}
 
 /* 全螢幕背景與佈局 */
 .mermaid-container:fullscreen, .mermaid-container:-webkit-full-screen { border: none; border-radius: 0; margin: 0; display: flex; flex-direction: column; background: var(--bg); }
@@ -1323,6 +1442,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     background: var(--glass-bg); 
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--card-border); 
+    border-radius: 0.8rem 0.8rem 0 0; /* ✨ 2. 手動為頂部工具列加上圓角 */
     
     /* ✨ 核心修復 1：建立定位並拉高圖層，確保氣泡提示絕對不會被下方的圖表蓋住！ */
     position: relative;
@@ -1354,6 +1474,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     cursor: grab; 
     position: relative;
     touch-action: none;
+    border-radius: 0 0 0.8rem 0.8rem; /* ✨ 3. 手動為底部畫布區加上圓角 */
 }
 .mermaid-wrapper:active { cursor: grabbing; }
 /* ✨ 核心修復：當圖表處於拖曳狀態時，強制拔除所有延遲動畫 */
