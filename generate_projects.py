@@ -93,6 +93,13 @@ def load_detail_json(json_path):
             print(f"⚠️ Error reading {json_path}: {e}")
     return {}
 
+def get_mtime_url(local_path, base_url):
+    """獲取帶有最後修改時間戳的網址 (精準 Cache Busting)"""
+    if os.path.exists(local_path):
+        mtime = int(os.path.getmtime(local_path))
+        return f"{base_url}?t={mtime}"
+    return base_url
+
 # ==========================================
 # ⏰ 時間戳過期偵測引擎 (Expiration Checker)
 # ==========================================
@@ -237,6 +244,12 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
         default_order, clean_title = parse_folder_meta(cat_folder)
         cat_data = load_detail_json(os.path.join(cat_path, 'detail.json'))
         cat_cover = cat_data.get('cover')
+        
+        # ✨ 新增時間戳處理
+        cat_cover_url = None
+        if cat_cover:
+            cat_cover_path = os.path.join(cat_path, cat_cover)
+            cat_cover_url = get_mtime_url(cat_cover_path, f"{base_dir}/{cat_folder}/{cat_cover}")
 
         output_data["categories"].append({
             "order": cat_data.get('order', default_order),
@@ -245,7 +258,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             "meta": cat_data.get('meta', ''),            
             "description": cat_data.get('description', ''), 
             "watermark_url": cat_data.get('watermark_url', ''), 
-            "cover_image": f"{base_dir}/{cat_folder}/{cat_cover}" if cat_cover else None
+            "cover_image": cat_cover_url # ✨ 替換為有時間戳的網址
         })
 
         # 2. 掃描分類底下的專案 (Projects)
@@ -336,12 +349,14 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 if thumb_status in ('NEW', 'UPDATED'):
                     if generate_cover_thumbnail(local_proj_cover, proj_thumb_local_path, max_width=180, quality=90):
                         print_conversion("🖼️ [專案縮圖]", local_proj_cover, proj_thumb_local_path)
-                        proj_data['cover_image'] = f"./api/{proj_id}/{proj_thumb_filename}"
+                        # ✨ 加上時間戳
+                        proj_data['cover_image'] = get_mtime_url(proj_thumb_local_path, f"./api/{proj_id}/{proj_thumb_filename}")
                         if thumb_status == 'NEW': stats["thumb_new"] += 1
                         else: stats["thumb_updated"] += 1
                 else:
-                    proj_data['cover_image'] = f"./api/{proj_id}/{proj_thumb_filename}"
-                    stats["thumb_skipped"] += 1 
+                    # ✨ 加上時間戳
+                    proj_data['cover_image'] = get_mtime_url(proj_thumb_local_path, f"./api/{proj_id}/{proj_thumb_filename}")
+                    stats["thumb_skipped"] += 1
                     
                 valid_api_files.add(os.path.abspath(proj_thumb_local_path))
 
@@ -457,8 +472,11 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             stats["inline_thumb_skipped"] += 1
                                             
                                         valid_api_files.add(os.path.abspath(thumb_local_path))
-                                        thumb_url = f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}"
-                                        return f"![{alt_text}]({thumb_url}#full={orig_url}{title_str})"
+                                        # ✨ 幫原圖與縮圖都加上時間戳
+                                        thumb_url = get_mtime_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
+                                        orig_url_t = get_mtime_url(local_img_path, orig_url)
+                                        return f"![{alt_text}]({thumb_url}#full={orig_url_t}{title_str})"
+                                        
                                 return f"![{alt_text}]({url_part})"
                                 
                             content = re.sub(r'!\[([^\]]*)\]\(([^)]+)\)', replace_md_img, content)
@@ -497,8 +515,11 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             stats["inline_thumb_skipped"] += 1
                                             
                                         valid_api_files.add(os.path.abspath(thumb_local_path))
-                                        thumb_url = f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}"
-                                        return f'{prefix}{thumb_url}" data-full="{orig_url}"{suffix[1:]}'
+                                        # ✨ 幫原圖與縮圖都加上時間戳
+                                        thumb_url = get_mtime_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
+                                        orig_url_t = get_mtime_url(local_img_path, orig_url)
+                                        return f'{prefix}{thumb_url}" data-full="{orig_url_t}"{suffix[1:]}'
+                                        
                                 return f"{prefix}{url}{suffix}"
                                 
                             content = re.sub(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)', replace_html_img, content)
@@ -548,14 +569,17 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 if art_thumb_status in ('NEW', 'UPDATED'):
                                     if generate_cover_thumbnail(local_cover_path, art_thumb_local_path, max_width=160, quality=90):
                                         print_conversion("🖼️ [文章縮圖]", local_cover_path, art_thumb_local_path)
-                                        meta_cover_url = f"./api/{proj_id}/{art_id}/{art_thumb_filename}"
+                                        # ✨ 加上時間戳
+                                        meta_cover_url = get_mtime_url(art_thumb_local_path, f"./api/{proj_id}/{art_id}/{art_thumb_filename}")
                                         if art_thumb_status == 'NEW': stats["thumb_new"] += 1
                                         else: stats["thumb_updated"] += 1 
                                     else:
-                                        meta_cover_url = f"{rel_base}/{meta_cover}" 
+                                        # ✨ 退回原圖也要加時間戳
+                                        meta_cover_url = get_mtime_url(local_cover_path, f"{rel_base}/{meta_cover}") 
                                 else:
-                                    meta_cover_url = f"./api/{proj_id}/{art_id}/{art_thumb_filename}"
-                                    stats["thumb_skipped"] += 1 
+                                    # ✨ 加上時間戳
+                                    meta_cover_url = get_mtime_url(art_thumb_local_path, f"./api/{proj_id}/{art_id}/{art_thumb_filename}")
+                                    stats["thumb_skipped"] += 1
                                     
                                 valid_api_files.add(os.path.abspath(art_thumb_local_path))
 

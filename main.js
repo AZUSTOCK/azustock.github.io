@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.2",          // 目前系統版本號
+    VERSION: "U1.5.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1000,7 +1000,7 @@ renderer.image = function(token_or_href, title, text) {
         const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
         const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
         const mediaTag = isVideo 
-            ? `<video preload="metadata" controls class="md-video" style="margin: 0; border: none; box-shadow: none; width: 100%; display: block;"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`
+            ? `<video preload="metadata" controls playsinline class="md-video" style="margin: 0; border: none; box-shadow: none; width: 100%; display: block;"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`
             : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>`;
 
         const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">${iconSvg}<span>${displayTitle}</span></div>`;
@@ -1885,34 +1885,55 @@ async function loadProjects() {
             
             if (grid && hintRight && hintLeft) {
                 window.initScrollHints(grid, hintLeft, hintRight);
-                const scrollOneItem = (direction) => {
-                    const cards = Array.from(grid.querySelectorAll('.card'));
-                    if (cards.length === 0) return;
+                
+                // ==========================================
+                // ✨ 將向右與向左按鈕的點擊行為，升級為「畫廊置中模式」(過濾隱藏卡片)
+                // ==========================================
+                
+                // 1. 向右滾動 (下一張置中)
+                hintRight.addEventListener('click', () => {
+                    // ✨ 核心修復：加上 .filter(card => card.offsetWidth > 0)，直接剔除隱形的機密卡片
+                    const cards = Array.from(grid.querySelectorAll('.card')).filter(card => card.offsetWidth > 0); 
+                    if (!cards.length) return;
 
-                    const containerRect = grid.getBoundingClientRect();
-                    const paddingLeft = parseFloat(window.getComputedStyle(grid).paddingLeft) || 0;
-                    const targetEdge = containerRect.left + paddingLeft;
-
-                    let closestIndex = 0;
-                    let minDistance = Infinity;
-
-                    cards.forEach((card, index) => {
-                        const distance = Math.abs(card.getBoundingClientRect().left - targetEdge);
-                        if (distance < minDistance) { minDistance = distance; closestIndex = index; }
-                    });
-
-                    let targetIndex = Math.max(0, Math.min(closestIndex + direction, cards.length - 1));
-                    let scrollAmount = cards[targetIndex].getBoundingClientRect().left - targetEdge;
-
-                    const maxScrollLeft = grid.scrollWidth - grid.clientWidth;
-                    if (direction > 0 && scrollAmount > maxScrollLeft - grid.scrollLeft) scrollAmount = maxScrollLeft - grid.scrollLeft;
-                    else if (direction < 0 && Math.abs(scrollAmount) > grid.scrollLeft) scrollAmount = -grid.scrollLeft;
+                    const containerCenter = grid.getBoundingClientRect().left + grid.clientWidth / 2;
                     
-                    grid.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-                };
+                    let targetCard = null;
+                    for (const card of cards) {
+                        const cardCenter = card.getBoundingClientRect().left + card.clientWidth / 2;
+                        if (cardCenter > containerCenter + 20) { 
+                            targetCard = card;
+                            break;
+                        }
+                    }
+                    
+                    if (targetCard) {
+                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                });
 
-                hintRight.addEventListener('click', () => scrollOneItem(1));
-                hintLeft.addEventListener('click', () => scrollOneItem(-1));
+                // 2. 向左滾動 (上一張置中)
+                hintLeft.addEventListener('click', () => {
+                    // ✨ 核心修復：加上 .filter(card => card.offsetWidth > 0)
+                    const cards = Array.from(grid.querySelectorAll('.card')).filter(card => card.offsetWidth > 0);
+                    if (!cards.length) return;
+
+                    const containerCenter = grid.getBoundingClientRect().left + grid.clientWidth / 2;
+                    
+                    let targetCard = null;
+                    for (let i = cards.length - 1; i >= 0; i--) {
+                        const card = cards[i];
+                        const cardCenter = card.getBoundingClientRect().left + card.clientWidth / 2;
+                        if (cardCenter < containerCenter - 20) { 
+                            targetCard = card;
+                            break;
+                        }
+                    }
+                    
+                    if (targetCard) {
+                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                });
             }
             if (grid && grid.children.length === 0) document.getElementById(`${cat.id}-section`).style.display = 'none';
         });
@@ -1930,8 +1951,28 @@ async function loadProjects() {
 
     } catch (err) {
         console.error("載入失敗:", err);
-        portfolioSections.innerHTML = `<div class="error-container"><span class="error-text">ERR: FAILED TO FETCH DATA</span></div>`;
-        if (marquee) { marquee.innerHTML = `<span>SYSTEM OFFLINE • CONNECTION REFUSED • </span>`.repeat(4); marquee.style.color = "var(--error-color)"; }
+        
+        const retrySvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`;
+        
+        // ✨ 擷取系統真實的錯誤文字，並轉成大寫以符合終端機風格
+        const errorDetail = err.message ? err.message.toUpperCase() : "UNKNOWN_SYSTEM_ERROR";
+        
+        // ✨ 在 error-container 加上 flex-direction: column，讓錯誤小字排在按鈕下方
+        portfolioSections.innerHTML = `
+            <div class="error-container" style="flex-direction: column; gap: 0.8rem;">
+                <span class="error-text" onclick="this.style.opacity='0.5'; this.innerHTML='>_ REBOOTING...'; window.location.reload();">
+                    ${retrySvg}ERR: FAILED TO FETCH DATA
+                </span>
+                <span style="font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--muted); opacity: 0.6; letter-spacing: 0.05em;">
+                    [SYS_DUMP] ${errorDetail}
+                </span>
+            </div>
+        `;
+        
+        if (marquee) { 
+            marquee.innerHTML = `<span>SYSTEM OFFLINE • CONNECTION REFUSED • </span>`.repeat(4); 
+            marquee.style.color = "var(--error-color)"; 
+        }
     }
 }
 
@@ -3558,18 +3599,18 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     
     overlay.innerHTML = `
         <div class="modal-content" style="max-width: 500px; text-align: center; padding: 3rem 2rem; opacity: 1;">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--error-color)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; filter: drop-shadow(0 0 10px var(--error-shadow));">
+            <svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                 <line x1="12" y1="9" x2="12" y2="13"></line>
                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
             </svg>
             <h2 style="margin: 0 0 1rem 0; color: var(--error-color);">內容警告 (Content Warning)</h2>
             <p style="color: var(--muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 2rem;">
-                此條目包括但不限於：負面、一時興起、莫名奇妙、取景框。<br>點擊前往即表示您已了解。<br>
-                <span style="font-size: 0.8rem; opacity: 0.7;">(同意後若重新整理頁面，需再次確認)</span>
+                此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。<br>
+                <span style="font-size: 0.8rem; opacity: 0.7;">(同意後於本次瀏覽器存續期間將不再提示)</span>
             </p>
             <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-                <button id="sensitive-decline-btn" class="btn">返回</button>
+                <button id="sensitive-decline-btn" class="btn">不感興趣</button>
                 <button id="sensitive-agree-btn" class="btn">我已了解並前往</button>
             </div>
         </div>
@@ -3828,7 +3869,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                                     </div>
                                     <div class="article-item-content">
                                         <div class="article-item-title-row">
-                                            <span class="article-item-title"><span style="font-family: monospace; color: var(--accent-2); font-size: 1.15rem;">${log.version}</span>${badgeHTML}</span>
+                                            <span class="article-item-title"><span style="font-family: monospace; color: var(--tab-color); font-size: 1.15rem;">${log.version}</span>${badgeHTML}</span>
                                             <span class="article-item-desc">- ${log.description}</span>
                                         </div>
                                         <span class="article-item-date">${log.date}</span>

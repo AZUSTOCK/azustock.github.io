@@ -23,7 +23,13 @@
 /* 2. 淺色模式 (Light Mode) - 極淨透亮調色盤 */
 [data-theme="light"] {
     color-scheme: light; 
-    --bg: #ebebeb; --card: #FFFFFF; --text: #1E293B; --muted: #64748B;
+    
+    /* ✨ 將背景稍微調亮並帶入極微弱的冷色調，徹底消除髒污感 */
+    --bg: #F1F5F9; 
+    --card: #FFFFFF; 
+    --text: #1E293B; 
+    --muted: #64748B; 
+
     --accent: #407899; --accent-2: #44D4BE; --accent-hover: #44D4BE;
     --glow-1: rgba(68, 212, 190, 0.3); --glow-2: rgba(245, 213, 71, 0.3);
     --glass-bg: rgba(255, 255, 255, 0.7); --glass-border: rgba(68, 212, 190, 0.4);
@@ -40,11 +46,11 @@
 
 /* 1-3. 群組標籤專屬色彩系統 (校色優化版) */
 :root, [data-theme="light"] {
-    --group-c1: #E11D48; --c1-text: #881337;
-    --group-c2: #059669; --c2-text: #064E3B;
-    --group-c3: #EA580C; --c3-text: #7C2D12;
-    --group-c4: #7C3AED; --c4-text: #4C1D95;
-    --group-c5: #0284C7; --c5-text: #082F49;
+    --group-c1: #b01436; --c1-text: #881337;
+    --group-c2: #08865e; --c2-text: #064E3B;
+    --group-c3: #cb4b05; --c3-text: #7C2D12;
+    --group-c4: #5420af; --c4-text: #4C1D95;
+    --group-c5: #006a9f; --c5-text: #082F49;
 }
 [data-theme="dark"] {
     --group-c1: #FF4D79; --c1-text: #FFE4E6;
@@ -145,11 +151,41 @@ img.is-broken { display: block; background-image: var(--svg-broken-img), linear-
 .loading-text::after { content: ''; animation: loading-dots 1.5s infinite steps(4, end); }
 @keyframes loading-dots { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
 
+/* ==========================================
+   ✨ 資料載入錯誤提示 (Error State)
+   ========================================== */
+.error-container { 
+    grid-column: 1 / -1; 
+    text-align: center; 
+    padding: 4rem 1rem; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.error-text { 
+    font-family: 'Courier New', monospace; 
+    font-size: 1.1rem; 
+    font-weight: 700; 
+    text-decoration: underline;
+    letter-spacing: 0.1em; 
+    color: var(--error-color); 
+    cursor: pointer; /* ✨ 加上手指游標，暗示這是一顆按鈕 */
+    animation: sys-error-pulse 2s infinite ease-in-out;
+}
+
+/* 讓錯誤訊息有如系統警告般緩慢呼吸閃爍 */
+@keyframes sys-error-pulse {
+    0%, 100% { opacity: 0.8; text-shadow: none; } /* ✨ 修正了重複的 text-shadow */
+    50% { opacity: 1; text-shadow: 0 0 12px var(--error-color); }
+}
+
 /* Footer 區塊 */
 footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .copyright-box { max-width: 800px; width: 100%; background: var(--box-bg); border: 1px solid var(--box-border); border-radius: 0.8rem; padding: 1.5rem 2rem; text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1.6; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); transition: background-color 0.5s ease, border-color 0.5s ease; }
 .copyright-box p { margin: 0 0 0.8rem 0; }
-.copyright-footer { border-top: 1px solid var(--divider-line); transition: border-color 0.5s ease; margin-bottom: 0 !important; font-family: 'Courier New', monospace; font-size: 0.8rem; opacity: 0.8; padding-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
+.copyright-footer { border-top: 1px solid var(--divider-line); transition: border-color 0.5s ease; margin-bottom: 0 !important; font-family: 'Courier New', monospace; font-size: 0.8rem; padding-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
 
 /* ========================================================================== */
 /* ✨ 全站自訂捲軸 (macOS 懸浮高質感風 - 自動跟隨主題) */
@@ -240,6 +276,31 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     
     /* 讓紅色瞬間提亮，視覺更吸睛 */
     filter: brightness(1.15); 
+}
+
+/* ==========================================
+   ✨ 內容警告大圖示動態連動 (Warning SVG Animation)
+   ========================================== */
+
+/* 1. SVG 預設狀態 */
+#sensitive-warning-svg {
+    stroke: var(--error-color);
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* 讓變化過程滑順柔和 */
+}
+
+/* ✨ 2. 當滑鼠 Hover 到「返回」時：警告標示解除武裝 (變黯淡、無陰影、稍微縮小) */
+.modal-content:has(#sensitive-decline-btn:hover) #sensitive-warning-svg {
+    stroke: var(--muted);
+    filter: none;
+    transform: scale(0.9);
+    opacity: 0.5;
+}
+
+/* ✨ 3. 當滑鼠 Hover 到「前往」時：警告標示危險升級 (放大、光暈爆發) */
+.modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-svg {
+    stroke: var(--error-color);
+    filter: drop-shadow(0 0 25px var(--error-color)); /* 陰影變得更亮更狂暴 */
+    transform: scale(1.15);
 }
 
 /* ✨ 首頁大分享按鈕：鎖定尺寸 */
@@ -837,11 +898,11 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .is-desc .sort-icon .sort-arr-left { stroke-dasharray: 15 24; } .is-desc .sort-icon .sort-arr-right { stroke-dasharray: 24 24; }
 
 /* 5-5. 文章內文底部導覽 (Next/Prev Cards) */
-.article-nav-cards { display: flex; gap: 1.2rem; margin-top: 2rem; padding-top: 2rem; border-top: 2px dashed var(--card-border); flex-wrap: wrap; clear: both; width: 100%; }
-.nav-card { flex: 1; min-width: 240px; padding: 1.2rem 1.5rem; background: var(--box-bg); border: 1px solid var(--box-border); border-radius: 0.8rem; text-decoration: none !important; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; flex-direction: column; gap: 0.4rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+.article-nav-cards { display: flex; gap: 1.2rem; margin-top: 2rem; padding-top: 2rem; border-top: 2px dashed var(--card-border); flex-wrap: nowrap; clear: both; width: 100%; } /* ✨ 改為 nowrap */
+.nav-card { flex: 1; min-width: 0; padding: 1.2rem 1.5rem; background: var(--box-bg); border: 1px solid var(--box-border); border-radius: 0.8rem; text-decoration: none !important; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; flex-direction: column; gap: 0.4rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); overflow: hidden; } /* ✨ min-width 改為 0，並加上 overflow: hidden 防撐破 */
 .nav-card.prev { text-align: left; align-items: flex-start; } .nav-card.next { text-align: right; align-items: flex-end; }
 .nav-card .nav-label { font-size: 0.85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.3s ease; }
-.nav-card .nav-title { font-size: 1.1rem; color: var(--accent); font-weight: bold; line-height: 1.4; transition: color 0.3s ease; }
+.nav-card .nav-title { font-size: 1.1rem; color: var(--accent); font-weight: bold; line-height: 1.4; transition: color 0.3s ease; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* ✨ 加上超長文字省略號 (...) 處理 */
 .nav-card:hover { background: var(--tag-bg); border-color: var(--accent-2); transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
 .nav-card:hover .nav-label, .nav-card:hover .nav-title { color: var(--accent-2); }
 
@@ -994,14 +1055,14 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     border-radius: 0.6rem;
     background: var(--bg);
     border: 1px solid var(--card-border);
-    overflow: visible; /* ✨ 1. 移除 hidden，允許 Tooltip 突破邊界顯示 */
+    overflow: hidden; /* ✨ 既然 Tooltip 拔除了，我們安心改回 hidden，完美解決圓角破圖問題 */
     box-shadow: 0 4px 15px var(--shadow-base);
 }
 
 .markdown-body .code-block-wrapper pre {
     margin: 0 !important;
     border: none !important;
-    border-radius: 0 0 0.6rem 0.6rem !important; /* ✨ 因為移除了 hidden，所以手動把底部圓角加回來 */
+    border-radius: 0 !important; /* ✨ 恢復預設，交給外層 hidden 完美裁切 */
     padding-top: 2.8rem; /* 留出上方空間給標籤與按鈕 */
     box-shadow: none !important;
 }
@@ -1017,10 +1078,10 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     font-size: 0.75rem;
     font-weight: 600;
     padding: 0.3rem 0.8rem;
-    border-top-left-radius: 0.6rem; /* ✨ 補回左上方圓角以防凸出 */
     border-bottom-right-radius: 0.6rem;
     border-right: 1px solid var(--card-border);
     border-bottom: 1px solid var(--card-border);
+    /* ✨ 移除了手動設定的左上角圓角，由外層 wrapper 自動裁切防溢出 */
     text-transform: uppercase;
     letter-spacing: 0.05em;
     z-index: 5;
@@ -1392,7 +1453,17 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body table tbody tr:hover { background-color: var(--tag-bg); transition: background-color 0.2s ease; }
 
 /* 6-3. 圖片與視聽媒體 */
-.markdown-body img { max-width: 100%; height: auto; border-radius: 0.6rem; box-shadow: 0 4px 15px var(--shadow-base); display: block; margin: 1.5rem auto; }
+.markdown-body img { 
+    max-width: 100%; 
+    height: auto; 
+    border-radius: 0.6rem; 
+    box-shadow: 0 4px 15px var(--shadow-base); 
+    display: block; 
+    margin: 1.5rem auto; 
+    
+    /* ✨ 新增這行外框，這條線會自動適應深淺色模式，完美勾勒出圖片邊界 */
+    border: 1px solid var(--card-border); 
+}
 .markdown-body img.is-loading, .markdown-body img.is-broken { width: 100%; min-height: 200px; max-height: 450px; aspect-ratio: 1 / 1; object-fit: cover; }
 .markdown-body img[alt="center"] { width: 75%; max-width: 600px; }
 .markdown-body img[alt="center"].is-loading, .markdown-body img[alt="center"].is-broken { aspect-ratio: 4 / 3; }
@@ -1713,14 +1784,12 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     /* 文章導覽膠囊與底部卡片 */
     .capsule-btn.main-back { padding: 0 0.8rem; }
     .capsule-progress { padding: 0 0.2rem; font-size: 0.75rem; }
-    .article-nav-cards { flex-wrap: nowrap; gap: 0.6rem; margin-top: 1.5rem; }
     .nav-card { min-width: 0; padding: 0.8rem; overflow: hidden; }
     .nav-card.prev { text-align: left; align-items: flex-start; }
     .nav-card.next { text-align: right; align-items: flex-end; }
     .nav-card .nav-label { font-size: 0.75rem; gap: 4px; }
     .nav-card .nav-label svg { width: 14px; height: 14px; }
     .nav-card.next .nav-label { flex-direction: row-reverse; }
-    .nav-card .nav-title { font-size: 0.95rem; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* 捲軸提示漸層優化 */
     .scroll-hint { width: 40px !important; }
