@@ -518,6 +518,82 @@ window.handleImageError = function(img) {
 };
 
 // ==========================================
+// ✨ 全域系統提示引擎 (Unified System Toast Engine)
+// ==========================================
+window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = 'error') {
+    // 1. 決定顏色主題 (未來可擴充 'success' 等)
+    const bgColor = type === 'error' ? 'var(--error-color)' : 'var(--accent)';
+    const shadowColor = type === 'error' ? 'var(--error-shadow)' : 'var(--glow-1)';
+
+    // 2. 移除畫面上舊的提示 (避免重疊堆高)
+    const oldToast = document.getElementById('sys-global-toast');
+    if (oldToast) {
+        clearTimeout(oldToast.autoRemoveTimer);
+        oldToast.remove();
+    }
+
+    // 3. 建立新的提示
+    const toast = document.createElement('div');
+    toast.id = 'sys-global-toast';
+    toast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);";
+    
+    toast.innerHTML = `
+        <div style="background: ${bgColor}; color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px ${shadowColor}; display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; position: relative; transition: box-shadow 0.3s ease;">
+            
+            <!-- 將寬高加大到 32px (手指最好點擊的尺寸)，並利用負的 top/right 把它推回原位 -->
+            <div class="toast-x-icon" style="position: absolute; top: 5px; right: 7px; width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; cursor: pointer;">
+                <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+
+            <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2); padding-right: 1.5rem;">${title}</strong>
+            <span style="opacity: 0.95; font-weight: 600;">${msg}</span>
+            <span style="opacity: 0.85; font-size: 0.8rem;">${subMsg}</span>
+        </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // 4. 進場動畫
+    setTimeout(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    }, 50);
+
+    const toastBox = toast.firstElementChild;
+    const xIcon = toast.querySelector('.toast-x-icon');
+
+    // 5. Hover 發光與 X 旋轉特效
+    toastBox.onmouseenter = () => { 
+        toastBox.style.boxShadow = `0 0 25px ${shadowColor}, 0 0 10px rgba(255,255,255,0.2)`; 
+        if (xIcon) xIcon.style.transform = 'rotate(90deg) scale(1.1)';
+    };
+    toastBox.onmouseleave = () => { 
+        toastBox.style.boxShadow = `0 4px 20px ${shadowColor}`; 
+        if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
+    };
+
+    // 6. 點擊 X 關閉事件
+    if (xIcon) {
+        xIcon.onclick = (e) => {
+            e.stopPropagation();
+            clearTimeout(toast.autoRemoveTimer);
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+            setTimeout(() => toast.remove(), 400);
+        };
+    }
+    
+    // 7. 定時自動消失
+    if (duration > 0) {
+        toast.autoRemoveTimer = setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+            setTimeout(() => toast.remove(), 400);
+        }, duration);
+    }
+};
+
+// ==========================================
 // ✨ 全域大圖預覽 (Lightbox 2.0) 控制引擎
 // ==========================================
 
@@ -2088,7 +2164,6 @@ function hideSystemRebootScreen(isSuccess = true) {
     }, 600);
 }
 
-// 大約在 1319 行開始的 checkSystemVersionAndBoot 函數
 async function checkSystemVersionAndBoot() {
     const isRebooting = sessionStorage.getItem('sys_is_rebooting') === 'true';
     const expectedVersion = sessionStorage.getItem('sys_expected_version') || 'UNKNOWN';
@@ -2129,61 +2204,15 @@ async function checkSystemVersionAndBoot() {
                         }, 600); 
                     }
                     
-                    // ✨ 完美修復版 Toast：從右上角降落，只能點擊 X 消失
+                    // ✨ 呼叫共用引擎：顯示更新失敗提示
                     setTimeout(() => {
-                        const errorToast = document.createElement('div');
-                        // ✨ 1. 移除了最外層的 cursor: pointer
-                        errorToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);";
-                        errorToast.innerHTML = `
-                            <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; transition: box-shadow 0.3s ease; position: relative;">
-                                
-                                <!-- ✨ 2. 在 X 圖示身上加入 cursor: pointer -->
-                                <div class="toast-x-icon" style="position: absolute; top: 12px; right: 14px; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; cursor: pointer;">
-                                    <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                </div>
-                                
-                                <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">>_ UPDATE_FAILED</strong>
-                                <span style="opacity: 0.95; font-weight: 600; padding-right: 1.5rem;">CDN_CACHE_DELAY_DETECTED</span>
-                                <span style="opacity: 0.85; font-size: 0.8rem;">已暫時還原為安全版本 (v${CONFIG.VERSION})</span>
-                            </div>
-                        `;
-
-                        document.body.appendChild(errorToast);
-
-                        setTimeout(() => {
-                            errorToast.style.opacity = '1';
-                            errorToast.style.transform = 'translateY(0)';
-                        }, 50);
-
-                        const toastBox = errorToast.firstElementChild;
-                        const xIcon = errorToast.querySelector('.toast-x-icon');
-
-                        // 懸停時增強陰影微光，X 完美繞著中心點順時針轉 90 度
-                        toastBox.onmouseenter = () => { 
-                            toastBox.style.boxShadow = '0 0 25px var(--error-shadow), 0 0 10px rgba(255,255,255,0.2)'; 
-                            if (xIcon) xIcon.style.transform = 'rotate(90deg) scale(1.1)';
-                        };
-                        toastBox.onmouseleave = () => { 
-                            toastBox.style.boxShadow = '0 4px 20px var(--error-shadow)'; 
-                            if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
-                        };
-
-                        // ✨ 3. 將點擊關閉事件綁定在 xIcon 身上，並防止事件冒泡
-                        if (xIcon) {
-                            xIcon.onclick = (e) => {
-                                e.stopPropagation();
-                                clearTimeout(autoRemoveTimer);
-                                errorToast.style.opacity = '0';
-                                errorToast.style.transform = 'translateY(-10px)';
-                                setTimeout(() => errorToast.remove(), 400);
-                            };
-                        }
-                        
-                        const autoRemoveTimer = setTimeout(() => {
-                            errorToast.style.opacity = '0';
-                            errorToast.style.transform = 'translateY(-10px)';
-                            setTimeout(() => errorToast.remove(), 400);
-                        }, 12000);
+                        window.showSystemToast(
+                            '>_ UPDATE_FAILED', 
+                            'CDN_CACHE_DELAY_DETECTED', 
+                            `已暫時還原為安全版本 (v${CONFIG.VERSION})`, 
+                            12000, 
+                            'error'
+                        );
                     }, 1000);
                     
                     return;
@@ -2713,20 +2742,44 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             const topBar = document.querySelector('.modal-top-bar');
                             const topBarHeight = topBar ? topBar.offsetHeight : 80;
                             
-                            // ✨ 2. 獲取還原捲軸後的最新真實座標
-                            const targetRect = targetItem.getBoundingClientRect();
-                            const containerRect = modalContainer.getBoundingClientRect();
-                            
-                            // ✨ 3. 判斷該卡片是否在當前「可視範圍」內 (頂部低於導覽列，底部高於視窗下緣)
-                            const isVisible = (targetRect.top >= containerRect.top + topBarHeight) && 
-                                              (targetRect.bottom <= containerRect.bottom);
+                            // ✨ 2. 捨棄受動畫縮放影響的 getBoundingClientRect，改用絕對物理座標 offsetTop
+                            let itemTop = targetItem.offsetTop;
+                            let currentEl = targetItem.offsetParent;
+                            // 遍歷往上加總，直到抵達 modalContainer，取得最真實的相對高度
+                            while(currentEl && currentEl !== modalContainer) {
+                                itemTop += currentEl.offsetTop;
+                                currentEl = currentEl.offsetParent;
+                            }
+                            const itemBottom = itemTop + targetItem.offsetHeight;
 
-                            // ✨ 4. 只有當目標不在可視範圍內 (例如經過上下篇跳轉後超出了原本畫面)，才執行瞬間跳轉！
+                            // ✨ 3. 計算容器的安全可視範圍 (相對座標)
+                            const containerHeight = modalContainer.clientHeight;
+                            const visibleTop = modalContainer.scrollTop + topBarHeight;
+                            const visibleBottom = modalContainer.scrollTop + containerHeight;
+
+                            // 判斷是否「完整」在可視範圍內
+                            const isVisible = (itemTop >= visibleTop) && (itemBottom <= visibleBottom);
+
+                            // ✨ 4. 智慧就近跳轉 (Scroll to Nearest)：免疫所有 CSS 動畫干擾
                             if (!isVisible) {
-                                modalContainer.scrollTop = modalContainer.scrollTop + (targetRect.top - containerRect.top) - topBarHeight - 40;
+                                if (itemTop < visibleTop) {
+                                    // 情況 A：卡片偏上被遮住 -> 往上拉，對齊頂部並留 20px 呼吸空間
+                                    modalContainer.scrollTop = itemTop - topBarHeight - 20;
+                                    
+                                } else if (itemBottom > visibleBottom) {
+                                    // 情況 B：卡片偏下掉出畫面 -> 往下拉，讓底部剛好進來並留 20px 安全距離
+                                    let newScrollTop = itemBottom + 20 - containerHeight;
+                                    
+                                    // 🛡️ 防呆：如果這張卡片特別長，往下拉會導致頭部被導覽列蓋住，則退回「對齊頂部」
+                                    if (itemTop < newScrollTop + topBarHeight) {
+                                        newScrollTop = itemTop - topBarHeight - 40;
+                                    }
+                                    
+                                    modalContainer.scrollTop = newScrollTop;
+                                }
                             }
                             
-                            // ✨ 5. 無論有沒有跳轉，都給予該文章高光提示，讓使用者知道自己讀到哪裡
+                            // ✨ 5. 無論有沒有跳轉，都給予該文章高光提示
                             targetItem.classList.add('simulate-hover');
                             setTimeout(() => {
                                 targetItem.classList.remove('simulate-hover');
@@ -4440,68 +4493,12 @@ window.addEventListener('offline', () => {
         window.hideSystemRebootScreen(false);
     }
 
-    // 建立一個高優先級的斷線 Toast 提示 (只能點擊 X 關閉)
-    const offlineToast = document.createElement('div');
-    offlineToast.id = 'sys-offline-toast';
-    // ✨ 1. 移除了最外層的 cursor: pointer
-    offlineToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);";
-    offlineToast.innerHTML = `
-        <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; position: relative; transition: box-shadow 0.3s ease;">
-            
-            <!-- ✨ 2. 在 X 圖示身上加入 cursor: pointer -->
-            <div class="toast-x-icon" style="position: absolute; top: 12px; right: 14px; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; cursor: pointer;">
-                <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </div>
-
-            <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2); padding-right: 1.5rem;">>_ SYSTEM_OFFLINE</strong>
-            <span style="opacity: 0.95; font-weight: 600;">網路連線中斷</span>
-            <span style="opacity: 0.85; font-size: 0.8rem;">請檢查您的網路設定，連線恢復後將自動重整。</span>
-        </div>
-    `;
-
-    // 移除舊的提示 (如果有的話)
-    const oldToast = document.getElementById('sys-offline-toast');
-    if (oldToast) {
-        clearTimeout(oldToast.autoRemoveTimer);
-        oldToast.remove();
-    }
-
-    document.body.appendChild(offlineToast);
-
-    // 觸發進場動畫
-    setTimeout(() => {
-        offlineToast.style.opacity = '1';
-        offlineToast.style.transform = 'translateY(0)';
-    }, 50);
-
-    const toastBox = offlineToast.firstElementChild;
-    const xIcon = offlineToast.querySelector('.toast-x-icon');
-
-    // Hover 特效
-    toastBox.onmouseenter = () => { 
-        toastBox.style.boxShadow = '0 0 25px var(--error-shadow), 0 0 10px rgba(255,255,255,0.2)'; 
-        if (xIcon) xIcon.style.transform = 'rotate(90deg) scale(1.1)';
-    };
-    toastBox.onmouseleave = () => { 
-        toastBox.style.boxShadow = '0 4px 20px var(--error-shadow)'; 
-        if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
-    };
-
-    // ✨ 3. 將點擊關閉事件綁定在 xIcon 身上，並防止事件冒泡
-    if (xIcon) {
-        xIcon.onclick = (e) => {
-            e.stopPropagation();
-            clearTimeout(offlineToast.autoRemoveTimer);
-            offlineToast.style.opacity = '0';
-            offlineToast.style.transform = 'translateY(-10px)';
-            setTimeout(() => offlineToast.remove(), 400);
-        };
-    }
-    
-    // 8 秒後自動消失，不干擾閱讀
-    offlineToast.autoRemoveTimer = setTimeout(() => {
-        offlineToast.style.opacity = '0';
-        offlineToast.style.transform = 'translateY(-10px)';
-        setTimeout(() => offlineToast.remove(), 400);
-    }, 12000);
+    // ✨ 呼叫共用引擎：顯示網路斷線提示
+    window.showSystemToast(
+        '>_ SYSTEM_OFFLINE', 
+        '網路連線中斷', 
+        '請檢查您的網路設定，連線恢復後系統將自動重整。', 
+        12000, 
+        'error'
+    );
 });

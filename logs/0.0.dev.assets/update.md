@@ -1,12 +1,26 @@
+## refactor
+1. 
+
 ## add
-1. video thumbnail
+1. 
 
 ## change / update
-1. inline code css: --inline-code-color, --inline-code-bg
+1. 
 
 ## adjust
-1. theme color
-2. css
+1. 
 
 ## fix
-1. cover image auto
+1. 
+
+## deprecate
+1. 
+
+## remove
+1. 
+
+## pending
+1. 
+
+## notice
+1. 

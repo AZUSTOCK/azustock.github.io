@@ -1,28 +1,26 @@
 ## refactor
-1. project card horizontal scrolling engine
+1. integrate `window.showSystemToast` (internet offline & update failed)
+2. `window.executeAnchorScroll`
 
 ## add
-1. error handler
-2. sensitive-warning-svg behavior
+1. Network Status Monitor
+2. offline hint
+3. Layout Shift Chaser
 
 ## change / update
-1. image cache busting
-2. light mode color
+1. index page Scroll to Nearest
 
 ## adjust
-1. nav-cards nowrap
-2. image border
-3. content warning page behavior & text
+1. toast hint X button
+2. `openProjectIndex` scroll locate
+3. inside page jump
+4. css
 
 ## fix
-1. video add playsinline
-2. .code-block-wrapper css
-3. main page scroll error by hidden cards
-4. .copyright-footer css
-5. page behavior
+1. mobile jitter
+2. anchor scroll shake
+3. scroll jump
 
-## pending
-1. gallery virtualization
-
-## notice
-1. Colors may vary between desktop and mobile devices.
+## remove
+1. old toast hint html
+2. toast hint `cursor: pointer`
