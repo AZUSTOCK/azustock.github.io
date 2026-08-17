@@ -1477,48 +1477,52 @@ document.addEventListener('DOMContentLoaded', () => {
     fullscreenMenu.addEventListener('click', (e) => {
         const navItem = e.target.closest('.nav-item');
         if (navItem) {
-            e.preventDefault(); // 攔截原生跳轉
+            e.preventDefault(); 
             
             const targetHash = navItem.getAttribute('href');
             const targetId = targetHash.substring(1);
+            const targetSection = document.getElementById(targetId);
             
-            // 1. 關閉選單並解鎖捲軸
+            if (!targetSection) return;
+
+            // 1. 關閉選單視覺
             menuToggle.classList.remove('open');
             fullscreenMenu.classList.remove('active');
-            window.unlockScroll();
             
-            // 2. 尋找目標並手動執行跳轉與動畫
-            const targetSection = document.getElementById(targetId);
-            if (targetSection) {
-                // 如果網址列不一樣，就手動更新網址列，但不觸發預設跳動
-                if (window.location.hash !== targetHash) {
-                    window.history.pushState(null, null, targetHash);
-                }
+            // 如果網址列不一樣，就手動更新網址列 (不觸發預設跳動)
+            if (window.location.hash !== targetHash) {
+                window.history.pushState(null, null, targetHash);
+            }
+
+            // ✨ 效能修復：先等選單的透明度動畫開始，再來做滾動，最後才解鎖 CSS 的 overflow: hidden
+            setTimeout(() => {
                 
-                // 平滑捲動回區塊頂端
+                // ✨ 定位修復：放棄寫死的座標，改回使用原生支援 CSS `scroll-margin-top` 的 scrollIntoView！
+                // 因為我們已經把它放進 setTimeout 避開了效能衝突，現在它既不卡頓，又能完美定位了。
                 targetSection.scrollIntoView({ behavior: 'smooth' });
+
+                // 處理光暈特效動畫重播
+                if (targetSection.animationTimer) clearTimeout(targetSection.animationTimer);
                 
-                // ✨ 終極修復 1：清除上一次的計時器，防止多次點擊互相干擾 (解決消失過快)
-                if (targetSection.animationTimer) {
-                    clearTimeout(targetSection.animationTimer);
-                }
-                
-                // ✨ 終極修復 2：暫時拔掉 ID 與 Class，徹底消滅 CSS 的 :target 狀態 (解決有時沒反應)
                 targetSection.id = '';
                 targetSection.classList.remove('force-target');
-                
-                // 強迫瀏覽器重新計算畫面 (Reflow，此時瀏覽器確認動畫被完全移除了)
                 void targetSection.offsetWidth; 
                 
-                // 把 ID 與 Class 裝回去，動畫從 0 秒完美重播！
                 targetSection.id = targetId;
                 targetSection.classList.add('force-target');
                 
-                // 重新獨立計時，3秒後清除 Class
                 targetSection.animationTimer = setTimeout(() => {
                     targetSection.classList.remove('force-target');
                 }, 3000);
-            }
+
+                // 動畫跑得差不多了，最後再把捲軸防護解開
+                setTimeout(() => {
+                    window.unlockScroll();
+                }, 200);
+
+            }, 50);
+
+
         }
     });
 
@@ -1991,25 +1995,31 @@ async function loadProjects() {
     } catch (err) {
         console.error("載入失敗:", err);
         
+        // ✨ 判斷是否為網路斷線或無法連線
+        const isOffline = !navigator.onLine || (err.message && err.message.includes('Failed to fetch'));
+        const errorTitle = isOffline ? "ERR: NO INTERNET CONNECTION" : "ERR: FAILED TO FETCH DATA";
+        const errorDetail = err.message ? err.message.toUpperCase() : "UNKNOWN_SYSTEM_ERROR";
+        const errorSub = isOffline ? "請檢查您的網路設定，連線恢復後請重新整理。" : `[SYS_DUMP] ${errorDetail}`;
+
         const retrySvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`;
         
-        // ✨ 擷取系統真實的錯誤文字，並轉成大寫以符合終端機風格
-        const errorDetail = err.message ? err.message.toUpperCase() : "UNKNOWN_SYSTEM_ERROR";
-        
-        // ✨ 在 error-container 加上 flex-direction: column，讓錯誤小字排在按鈕下方
         portfolioSections.innerHTML = `
             <div class="error-container" style="flex-direction: column; gap: 0.8rem;">
                 <span class="error-text" onclick="this.style.opacity='0.5'; this.innerHTML='>_ REBOOTING...'; window.location.reload();">
-                    ${retrySvg}ERR: FAILED TO FETCH DATA
+                    ${retrySvg} ${errorTitle}
                 </span>
                 <span style="font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--muted); opacity: 0.6; letter-spacing: 0.05em;">
-                    [SYS_DUMP] ${errorDetail}
+                    ${errorSub}
                 </span>
             </div>
         `;
         
+        // 確保萬一卡在啟動畫面時，強制關閉重開機遮罩
+        if (window.hideSystemRebootScreen) window.hideSystemRebootScreen(false);
+
         if (marquee) { 
-            marquee.innerHTML = `<span>SYSTEM OFFLINE • CONNECTION REFUSED • </span>`.repeat(4); 
+            const marqueeMsg = isOffline ? "NETWORK OFFLINE • PLEASE CHECK CONNECTION • " : "SYSTEM OFFLINE • CONNECTION REFUSED • ";
+            marquee.innerHTML = `<span>${marqueeMsg}</span>`.repeat(4); 
             marquee.style.color = "var(--error-color)"; 
         }
     }
@@ -2615,24 +2625,18 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                         jumpToast.onclick = () => {
                             if (!targetArticle) return;
-                            
-                            // ✨ 【關鍵修復 1】：把「當下的目標」鎖定進獨立的常數中！
-                            // 因為接下來開始捲動時，scroll 事件會觸發，把外層的 targetArticle 覆寫成 null。
                             const finalTarget = targetArticle;
                             
-                            // ✨ 【關鍵修復 2】：精準計算絕對高度 (對抗外層群組 position: relative 的干擾)
-                            let absoluteTop = finalTarget.offsetTop;
-                            let currentEl = finalTarget.offsetParent;
-                            while(currentEl && currentEl !== modalContainer) {
-                                absoluteTop += currentEl.offsetTop;
-                                currentEl = currentEl.offsetParent;
-                            }
+                            // ✨ 改用高精度真實座標計算
+                            const topBar = document.querySelector('.modal-top-bar');
+                            const topBarHeight = topBar ? topBar.offsetHeight : 80;
+                            const targetRect = finalTarget.getBoundingClientRect();
+                            const containerRect = modalContainer.getBoundingClientRect();
+                            const scrollOffset = targetRect.top - containerRect.top - topBarHeight - 40;
 
-                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 120;
-                            
                             // 1. 平滑捲動到精準位置
                             modalContainer.scrollTo({
-                                top: Math.max(0, absoluteTop - topBarHeight - 20),
+                                top: modalContainer.scrollTop + scrollOffset,
                                 behavior: 'smooth'
                             });
                             
@@ -2642,8 +2646,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             // 3. 等待捲動結束後，為「鎖定的目標」精準加上高光！
                             setTimeout(() => {
                                 finalTarget.classList.add('simulate-hover');
-                                
-                                // 4. 700 毫秒後移除高光
                                 setTimeout(() => {
                                     finalTarget.classList.remove('simulate-hover');
                                 }, 700);
@@ -2699,8 +2701,13 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     if (restoreScroll && window.lastReadArticleIndex !== undefined) {
                         const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
                         if (targetItem) {
-                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 120;
-                            modalContainer.scrollTop = Math.max(0, targetItem.offsetTop - topBarHeight - 20);
+                            // ✨ 改用高精度真實座標計算
+                            const topBar = document.querySelector('.modal-top-bar');
+                            const topBarHeight = topBar ? topBar.offsetHeight : 80;
+                            const targetRect = targetItem.getBoundingClientRect();
+                            const containerRect = modalContainer.getBoundingClientRect();
+                            
+                            modalContainer.scrollTop = modalContainer.scrollTop + (targetRect.top - containerRect.top) - topBarHeight - 40;
                             
                             // ✨ 觸發 simulate-hover 提示特效
                             targetItem.classList.add('simulate-hover');
@@ -4219,7 +4226,7 @@ window.scrollToAnchor = function(event, hash) {
 };
 
 // ==========================================
-// ✨ 獨立打包：終極精準捲動引擎 (拔除擾人的強制鎖定)
+// ✨ 獨立打包：終極精準捲動引擎 (真實座標定位版)
 // ==========================================
 window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
     const modalContainer = document.querySelector('.modal-content');
@@ -4229,18 +4236,21 @@ window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
         const el = window.findAnchorElement(hash);
         if (!el) return null;
         
-        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 90;
+        // 1. 動態抓取當下導覽列的真實高度
+        const topBar = document.querySelector('.modal-top-bar');
+        const topBarHeight = topBar ? topBar.offsetHeight : 80;
         
-        // 算出絕對高度
-        let absoluteTop = el.offsetTop;
-        let currentEl = el.offsetParent;
-        while(currentEl && currentEl !== modalContainer) {
-            absoluteTop += currentEl.offsetTop;
-            currentEl = currentEl.offsetParent;
-        }
+        // 2. 捨棄 offsetTop，改用高精度的真實視覺座標
+        const elRect = el.getBoundingClientRect();
+        const containerRect = modalContainer.getBoundingClientRect();
         
-        const targetTop = absoluteTop - topBarHeight - 20; 
-        modalContainer.scrollTo({ top: Math.max(0, targetTop), behavior: isSmooth ? 'smooth' : 'auto' });
+        // 3. 計算差值：目標元素頂部 - 容器頂部 - 導覽列高度 - 留白(15px)
+        const scrollOffset = elRect.top - containerRect.top - topBarHeight - 15; 
+        
+        modalContainer.scrollTo({ 
+            top: modalContainer.scrollTop + scrollOffset, 
+            behavior: isSmooth ? 'smooth' : 'auto' 
+        });
         return el;
     };
 
@@ -4248,7 +4258,7 @@ window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
     const foundEl = doScroll(!forceInstantFirst);
 
     if (foundEl) {
-        // ✨ 核心修復：拔除多重延遲強制拉回，只保留一次輕微延遲確保圖片撐出版面
+        // ✨ 輕微延遲確保圖片撐出版面後，再次校正座標
         setTimeout(() => doScroll(!forceInstantFirst), 150);
 
         // 智慧尋找發光目標
@@ -4345,4 +4355,46 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
         console.warn("系統名言載入失敗，維持預設顯示:", err);
     }
+});
+
+// ==========================================
+// ✨ 全域網路狀態監聽引擎 (Network Status Monitor)
+// ==========================================
+window.addEventListener('online', () => {
+    console.log("[SYS_NET] 網路連線已恢復，準備重新載入...");
+    // 網路恢復時，為了確保資料完整性，直接重整頁面
+    window.location.reload(); 
+});
+
+window.addEventListener('offline', () => {
+    console.warn("[SYS_NET] 網路連線已中斷！");
+    
+    // 如果系統有載入畫面的遮罩卡著，強制關閉它
+    if (window.hideSystemRebootScreen) {
+        window.hideSystemRebootScreen(false);
+    }
+
+    // 建立一個高優先級的斷線 Toast 提示
+    const offlineToast = document.createElement('div');
+    offlineToast.id = 'sys-offline-toast';
+    offlineToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: default;";
+    offlineToast.innerHTML = `
+        <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4;">
+            <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">>_ SYSTEM_OFFLINE</strong>
+            <span style="opacity: 0.95; font-weight: 600;">網路連線中斷</span>
+            <span style="opacity: 0.85; font-size: 0.8rem;">請檢查您的網路設定，連線恢復後系統將自動重整。</span>
+        </div>
+    `;
+
+    // 移除舊的提示 (如果有的話)
+    const oldToast = document.getElementById('sys-offline-toast');
+    if (oldToast) oldToast.remove();
+
+    document.body.appendChild(offlineToast);
+
+    // 觸發進場動畫
+    setTimeout(() => {
+        offlineToast.style.opacity = '1';
+        offlineToast.style.transform = 'translateY(0)';
+    }, 50);
 });
