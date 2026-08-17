@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.3",          // 目前系統版本號
+    VERSION: "U1.5.4",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -993,7 +993,7 @@ renderer.image = function(token_or_href, title, text) {
             <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
             
             <div class="pdf-mobile-placeholder" style="display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); flex-direction: column; align-items: center; gap: 1.2rem;">
-                <span style="font-size: 1.05rem; letter-spacing: 0.05em;">行動裝置與平板不支援內嵌 PDF 預覽</span>
+                <span style="font-size: 1.05rem; letter-spacing: 0.05em;">行動裝置或視窗過小不支援內嵌 PDF 預覽</span>
                 <span style="color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; background: var(--tag-bg); padding: 0.6rem 1.2rem; border-radius: 2rem;">
                     ${GLOBAL_SVGS.newTab} 點擊此處使用系統閱讀器開啟
                 </span>
@@ -2699,17 +2699,31 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 requestAnimationFrame(() => {
                     // 如果是返回操作，並且存有最後一次閱讀的 index
                     if (restoreScroll && window.lastReadArticleIndex !== undefined) {
+                        
+                        // ✨ 1. 先無縫還原「剛進入文章前」的原始目錄捲軸位置
+                        if (window._indexScrollTopCache !== undefined) {
+                            modalContainer.scrollTop = window._indexScrollTopCache;
+                        }
+
                         const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
                         if (targetItem) {
-                            // ✨ 改用高精度真實座標計算
                             const topBar = document.querySelector('.modal-top-bar');
                             const topBarHeight = topBar ? topBar.offsetHeight : 80;
+                            
+                            // ✨ 2. 獲取還原捲軸後的最新真實座標
                             const targetRect = targetItem.getBoundingClientRect();
                             const containerRect = modalContainer.getBoundingClientRect();
                             
-                            modalContainer.scrollTop = modalContainer.scrollTop + (targetRect.top - containerRect.top) - topBarHeight - 40;
+                            // ✨ 3. 判斷該卡片是否在當前「可視範圍」內 (頂部低於導覽列，底部高於視窗下緣)
+                            const isVisible = (targetRect.top >= containerRect.top + topBarHeight) && 
+                                              (targetRect.bottom <= containerRect.bottom);
+
+                            // ✨ 4. 只有當目標不在可視範圍內 (例如經過上下篇跳轉後超出了原本畫面)，才執行瞬間跳轉！
+                            if (!isVisible) {
+                                modalContainer.scrollTop = modalContainer.scrollTop + (targetRect.top - containerRect.top) - topBarHeight - 40;
+                            }
                             
-                            // ✨ 觸發 simulate-hover 提示特效
+                            // ✨ 5. 無論有沒有跳轉，都給予該文章高光提示，讓使用者知道自己讀到哪裡
                             targetItem.classList.add('simulate-hover');
                             setTimeout(() => {
                                 targetItem.classList.remove('simulate-hover');
@@ -2727,20 +2741,25 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 // ==========================================
 // 打開具體的「文章內文」
 // ==========================================
-// ✨ 修正：將 targetHash 加回來，並把 restoreInnerScrolls 放在最後面 (第 6 個參數)
 window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0, targetHash = null, restoreInnerScrolls = []) {
     const jumpToast = document.getElementById('new-jump-toast');
     if (jumpToast) jumpToast.classList.remove('is-visible');
 
     if (!isFromHistory) {
+        const modalContainer = document.querySelector('.modal-content');
         if (!window.historyStack) window.historyStack = [];
+        
+        // ✨ 1. 新增：當從「目錄頁」進入文章時 (此時 historyStack 是空的)，紀錄目錄的原始捲軸位置
+        if (window.historyStack.length === 0 && modalContainer) {
+            window._indexScrollTopCache = modalContainer.scrollTop;
+        }
+
         if (window.historyStack.length > 0) {
-            const modalContainer = document.querySelector('.modal-content');
             if (modalContainer) {
                 // 儲存主畫面的捲軸
                 window.historyStack[window.historyStack.length - 1].scrollTop = modalContainer.scrollTop;
                 
-                // ✨ 2. 新增：抓取當下所有的 vertical-wrapper 捲軸位置並存入歷史紀錄
+                // 抓取當下所有的 vertical-wrapper 捲軸位置並存入歷史紀錄
                 const wrappers = document.querySelectorAll('#modal-body .vertical-wrapper');
                 window.historyStack[window.historyStack.length - 1].innerScrolls = Array.from(wrappers).map(w => ({
                     scrollTop: w.scrollTop,
@@ -2748,7 +2767,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 }));
             }
         }
-        // ✨ 3. 新增 innerScrolls 初始陣列
+        // 新增 innerScrolls 初始陣列
         window.historyStack.push({ projectId, articleIndex, scrollTop: 0, innerScrolls: [] });
     }
 
@@ -2776,7 +2795,31 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         markdownContent = data.content; 
     } catch (error) {
         console.error("無法載入文章內容:", error);
-        markdownContent = "# 404 Not Found\n無法載入文章內容，請檢察網路連線與路徑是否正確。";
+        
+        // 動態判斷是網路斷線還是檔案遺失
+        const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
+        const errTitle = isOffline ? 'ERR_INTERNET_DISCONNECTED' : '404 NOT_FOUND';
+        const errMsg = isOffline ? '網路連線中斷，請檢查您的網路狀態。' : '無法載入文章內容，請檢查路徑是否正確。';
+        
+        // ✨ 核心魔法：第一行給予真實的文章標題 (article.title)，讓系統抽出並渲染完美的 Header！
+        // 接下來的內容則替換為置中的終端機風格錯誤提示。
+        markdownContent = `
+# ${article.title}
+
+<div style="text-align: center; padding: 4rem 1rem; color: var(--muted);">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5;">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+    <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; color: var(--error-color); margin-bottom: 0.5rem; letter-spacing: 0.05em;">
+        ${errTitle}
+    </div>
+    <div style="font-size: 0.95rem;">
+        ${errMsg}
+    </div>
+</div>
+        `.trim();
     } finally {
         document.body.style.cursor = '';
     }
@@ -4226,53 +4269,73 @@ window.scrollToAnchor = function(event, hash) {
 };
 
 // ==========================================
-// ✨ 獨立打包：終極精準捲動引擎 (真實座標定位版)
+// ✨ 獨立打包：終極精準捲動引擎 (動態追蹤定位版)
 // ==========================================
 window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
     const modalContainer = document.querySelector('.modal-content');
     if (!modalContainer) return false;
 
+    const targetEl = window.findAnchorElement(hash);
+    if (!targetEl) return null;
+
+    // 核心捲動邏輯 (抽離出來以便重複呼叫)
     const doScroll = (isSmooth = true) => {
-        const el = window.findAnchorElement(hash);
-        if (!el) return null;
-        
-        // 1. 動態抓取當下導覽列的真實高度
         const topBar = document.querySelector('.modal-top-bar');
         const topBarHeight = topBar ? topBar.offsetHeight : 80;
         
-        // 2. 捨棄 offsetTop，改用高精度的真實視覺座標
-        const elRect = el.getBoundingClientRect();
+        const elRect = targetEl.getBoundingClientRect();
         const containerRect = modalContainer.getBoundingClientRect();
         
-        // 3. 計算差值：目標元素頂部 - 容器頂部 - 導覽列高度 - 留白(15px)
-        const scrollOffset = elRect.top - containerRect.top - topBarHeight - 15; 
+        // 算出還差多少距離
+        const scrollOffset = elRect.top - containerRect.top - topBarHeight - 8; 
         
-        modalContainer.scrollTo({ 
-            top: modalContainer.scrollTop + scrollOffset, 
-            behavior: isSmooth ? 'smooth' : 'auto' 
-        });
-        return el;
+        // 防抖：誤差大於 2px 才執行捲動，避免浮點數差異造成效能浪費
+        if (Math.abs(scrollOffset) > 2) {
+            modalContainer.scrollTo({ 
+                top: modalContainer.scrollTop + scrollOffset, 
+                behavior: isSmooth ? 'smooth' : 'auto' 
+            });
+        }
     };
 
-    // 執行第一次跳轉 (決定要瞬間移動還是平滑捲動)
-    const foundEl = doScroll(!forceInstantFirst);
+    // 1. 執行第一次跳轉
+    doScroll(!forceInstantFirst);
 
-    if (foundEl) {
-        // ✨ 輕微延遲確保圖片撐出版面後，再次校正座標
-        setTimeout(() => doScroll(!forceInstantFirst), 150);
+    // 2. 佈局偏移追蹤引擎 (Layout Shift Chaser)
+    // 專門對付 loading="lazy" 圖片與 Mermaid 非同步渲染導致的高度變化
+    if (!forceInstantFirst) {
+        let trackers = [];
+        
+        // 設立三個時間檢查點，不斷重新瞄準正在移動的目標
+        // 圖片載入撐開畫面時，系統會自動往下修正，完美跟隨！
+        trackers.push(setTimeout(() => doScroll(true), 300));
+        trackers.push(setTimeout(() => doScroll(true), 600));
+        trackers.push(setTimeout(() => doScroll(true), 1200));
 
-        // 智慧尋找發光目標
-        let highlightEl = foundEl;
-        if (highlightEl.textContent.trim() === '') {
-            highlightEl = highlightEl.nextElementSibling || foundEl;
-        }
-
-        // 閃爍動畫
-        highlightEl.classList.add('highlight-flash');
-        setTimeout(() => highlightEl.classList.remove('highlight-flash'), 1000);
-        return true;
+        // ✋ 防呆中斷機制：
+        // 如果使用者在跳轉期間(1.2秒內)覺得不想等了，自己滑動了滾輪或觸控螢幕
+        // 就立刻放棄追蹤，把捲軸控制權還給使用者，避免系統跟使用者搶奪捲軸
+        const cancelTrackers = () => {
+            trackers.forEach(clearTimeout);
+            modalContainer.removeEventListener('wheel', cancelTrackers);
+            modalContainer.removeEventListener('touchstart', cancelTrackers);
+        };
+        
+        modalContainer.addEventListener('wheel', cancelTrackers, { passive: true });
+        modalContainer.addEventListener('touchstart', cancelTrackers, { passive: true });
     }
-    return false;
+
+    // 3. 智慧尋找發光目標
+    let highlightEl = targetEl;
+    if (highlightEl.textContent.trim() === '') {
+        highlightEl = highlightEl.nextElementSibling || targetEl;
+    }
+
+    // 閃爍動畫 (延長發光時間到 1.5s，配合追蹤引擎)
+    highlightEl.classList.add('highlight-flash');
+    setTimeout(() => highlightEl.classList.remove('highlight-flash'), 1500);
+    
+    return true;
 };
 
 // ==========================================
@@ -4374,21 +4437,29 @@ window.addEventListener('offline', () => {
         window.hideSystemRebootScreen(false);
     }
 
-    // 建立一個高優先級的斷線 Toast 提示
+    // 建立一個高優先級的斷線 Toast 提示 (加入游標與 Hover 動畫)
     const offlineToast = document.createElement('div');
     offlineToast.id = 'sys-offline-toast';
-    offlineToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: default;";
+    offlineToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer;";
     offlineToast.innerHTML = `
-        <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4;">
-            <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">>_ SYSTEM_OFFLINE</strong>
+        <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; position: relative; transition: box-shadow 0.3s ease;">
+            
+            <div class="toast-x-icon" style="position: absolute; top: 12px; right: 14px; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center;">
+                <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+
+            <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2); padding-right: 1.5rem;">>_ SYSTEM_OFFLINE</strong>
             <span style="opacity: 0.95; font-weight: 600;">網路連線中斷</span>
-            <span style="opacity: 0.85; font-size: 0.8rem;">請檢查您的網路設定，連線恢復後系統將自動重整。</span>
+            <span style="opacity: 0.85; font-size: 0.8rem;">請檢查您的網路設定，連線恢復後將自動重整。</span>
         </div>
     `;
 
     // 移除舊的提示 (如果有的話)
     const oldToast = document.getElementById('sys-offline-toast');
-    if (oldToast) oldToast.remove();
+    if (oldToast) {
+        clearTimeout(oldToast.autoRemoveTimer);
+        oldToast.remove();
+    }
 
     document.body.appendChild(offlineToast);
 
@@ -4397,4 +4468,32 @@ window.addEventListener('offline', () => {
         offlineToast.style.opacity = '1';
         offlineToast.style.transform = 'translateY(0)';
     }, 50);
+
+    const toastBox = offlineToast.firstElementChild;
+    const xIcon = offlineToast.querySelector('.toast-x-icon');
+
+    // Hover 特效
+    toastBox.onmouseenter = () => { 
+        toastBox.style.boxShadow = '0 0 25px var(--error-shadow), 0 0 10px rgba(255,255,255,0.2)'; 
+        if (xIcon) xIcon.style.transform = 'rotate(90deg) scale(1.1)';
+    };
+    toastBox.onmouseleave = () => { 
+        toastBox.style.boxShadow = '0 4px 20px var(--error-shadow)'; 
+        if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
+    };
+
+    // 點擊關閉
+    offlineToast.onclick = () => {
+        clearTimeout(offlineToast.autoRemoveTimer);
+        offlineToast.style.opacity = '0';
+        offlineToast.style.transform = 'translateY(-10px)';
+        setTimeout(() => offlineToast.remove(), 400);
+    };
+    
+    // 8 秒後自動消失，不干擾閱讀
+    offlineToast.autoRemoveTimer = setTimeout(() => {
+        offlineToast.style.opacity = '0';
+        offlineToast.style.transform = 'translateY(-10px)';
+        setTimeout(() => offlineToast.remove(), 400);
+    }, 8000);
 });
