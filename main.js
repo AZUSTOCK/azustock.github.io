@@ -2129,16 +2129,16 @@ async function checkSystemVersionAndBoot() {
                         }, 600); 
                     }
                     
-                    // ✨ 完美修復版 Toast：從右上角降落，且點擊消失
+                    // ✨ 完美修復版 Toast：從右上角降落，只能點擊 X 消失
                     setTimeout(() => {
                         const errorToast = document.createElement('div');
-                        errorToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer;";
+                        // ✨ 1. 移除了最外層的 cursor: pointer
+                        errorToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);";
                         errorToast.innerHTML = `
-                            <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; transition: box-shadow 0.3s ease;">
+                            <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; transition: box-shadow 0.3s ease; position: relative;">
                                 
-                                <!-- ✨ 修正 X 旋轉軸心偏移：鎖死尺寸、使用 flex 絕對置中，並設定 transform-origin -->
-                                <div class="toast-x-icon" style="position: absolute; top: 12px; right: 14px; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center;">
-                                    <!-- ✨ 加上 display: block 徹底消除 SVG 預設的文字底部隱形留白 -->
+                                <!-- ✨ 2. 在 X 圖示身上加入 cursor: pointer -->
+                                <div class="toast-x-icon" style="position: absolute; top: 12px; right: 14px; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; cursor: pointer;">
                                     <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                 </div>
                                 
@@ -2168,19 +2168,22 @@ async function checkSystemVersionAndBoot() {
                             if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
                         };
 
-                        // 點擊事件：立刻淡出並移除，且清除自動移除的計時器
-                        errorToast.onclick = () => {
-                            clearTimeout(autoRemoveTimer);
-                            errorToast.style.opacity = '0';
-                            errorToast.style.transform = 'translateY(-10px)';
-                            setTimeout(() => errorToast.remove(), 400);
-                        };
+                        // ✨ 3. 將點擊關閉事件綁定在 xIcon 身上，並防止事件冒泡
+                        if (xIcon) {
+                            xIcon.onclick = (e) => {
+                                e.stopPropagation();
+                                clearTimeout(autoRemoveTimer);
+                                errorToast.style.opacity = '0';
+                                errorToast.style.transform = 'translateY(-10px)';
+                                setTimeout(() => errorToast.remove(), 400);
+                            };
+                        }
                         
                         const autoRemoveTimer = setTimeout(() => {
                             errorToast.style.opacity = '0';
                             errorToast.style.transform = 'translateY(-10px)';
                             setTimeout(() => errorToast.remove(), 400);
-                        }, 8000);
+                        }, 12000);
                     }, 1000);
                     
                     return;
@@ -4437,14 +4440,16 @@ window.addEventListener('offline', () => {
         window.hideSystemRebootScreen(false);
     }
 
-    // 建立一個高優先級的斷線 Toast 提示 (加入游標與 Hover 動畫)
+    // 建立一個高優先級的斷線 Toast 提示 (只能點擊 X 關閉)
     const offlineToast = document.createElement('div');
     offlineToast.id = 'sys-offline-toast';
-    offlineToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer;";
+    // ✨ 1. 移除了最外層的 cursor: pointer
+    offlineToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);";
     offlineToast.innerHTML = `
         <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; position: relative; transition: box-shadow 0.3s ease;">
             
-            <div class="toast-x-icon" style="position: absolute; top: 12px; right: 14px; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center;">
+            <!-- ✨ 2. 在 X 圖示身上加入 cursor: pointer -->
+            <div class="toast-x-icon" style="position: absolute; top: 12px; right: 14px; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; cursor: pointer;">
                 <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </div>
 
@@ -4482,18 +4487,21 @@ window.addEventListener('offline', () => {
         if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
     };
 
-    // 點擊關閉
-    offlineToast.onclick = () => {
-        clearTimeout(offlineToast.autoRemoveTimer);
-        offlineToast.style.opacity = '0';
-        offlineToast.style.transform = 'translateY(-10px)';
-        setTimeout(() => offlineToast.remove(), 400);
-    };
+    // ✨ 3. 將點擊關閉事件綁定在 xIcon 身上，並防止事件冒泡
+    if (xIcon) {
+        xIcon.onclick = (e) => {
+            e.stopPropagation();
+            clearTimeout(offlineToast.autoRemoveTimer);
+            offlineToast.style.opacity = '0';
+            offlineToast.style.transform = 'translateY(-10px)';
+            setTimeout(() => offlineToast.remove(), 400);
+        };
+    }
     
     // 8 秒後自動消失，不干擾閱讀
     offlineToast.autoRemoveTimer = setTimeout(() => {
         offlineToast.style.opacity = '0';
         offlineToast.style.transform = 'translateY(-10px)';
         setTimeout(() => offlineToast.remove(), 400);
-    }, 8000);
+    }, 12000);
 });
