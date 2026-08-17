@@ -1314,12 +1314,29 @@ renderer.link = function(token_or_href, title, text) {
 // 4. ✨ 攔截 Markdown 標題，同時用全域陣列記住最新出現的標題文字
 window._lastMarkdownHeadings = [];
 renderer.heading = function(token_or_text, level, raw) {
-    const text = typeof token_or_text === 'object' ? token_or_text.text : token_or_text;
+    let text = typeof token_or_text === 'object' ? token_or_text.text : token_or_text;
     const depth = typeof token_or_text === 'object' ? token_or_text.depth : level;
     
-    window._lastMarkdownHeadings.push(text);
-    const id = text.toLowerCase().replace(/\s+/g, '-');
-    return `<h${depth} id="${id}">${text}</h${depth}>`;
+    // ✨ 核心魔法：偵測標題文字後面是否帶有 {#自訂ID}
+    let customId = null;
+    const idMatch = text.match(/\s+\{#([^}]+)\}$/);
+    
+    if (idMatch) {
+        customId = idMatch[1].trim();
+        // 把 "{#自訂ID}" 從標題文字中剔除，讓畫面上跟右上角目錄只顯示乾淨的標題
+        text = text.replace(/\s+\{#[^}]+\}$/, '').trim(); 
+    }
+
+    // 將最乾淨的標題文字存入全域，給 Mermaid 抓取當作圖表預設標題
+    window._lastMarkdownHeadings.push(text.replace(/<[^>]+>/g, '')); // 順手剝除 HTML 標籤
+    
+    // 如果有自訂 ID 就用自訂的，沒有的話就沿用預設的轉換邏輯
+    const id = customId || text.toLowerCase().replace(/\s+/g, '-').replace(/<[^>]+>/g, '');
+    
+    // ✨ 終極魔法：給所有標題 ID 加上 "md-sys-" 前綴！
+    // 這樣瀏覽器在網址列看到 #target 時，會找不到 id="target" 的元素，就會放棄原生跳躍。
+    // 而我們的 JS 引擎很聰明，會自動加上前綴去找它，完美接管捲動權權！
+    return `<h${depth} id="md-sys-${id}" data-raw-title="${encodeURIComponent(text)}">${text}</h${depth}>`;
 };
 
 // ==========================================
@@ -1512,12 +1529,6 @@ document.addEventListener('DOMContentLoaded', () => {
         //主題網頁標籤示切換//
         // const targetFaviconUrl = theme === 'light' ? CONFIG.FAVICON_LIGHT : CONFIG.FAVICON_DARK;
         // document.querySelectorAll("link[rel='icon']").forEach(link => link.href = targetFaviconUrl);
-
-        const iframe = document.querySelector('iframe.giscus-frame');
-        if (iframe && iframe.contentWindow) {
-            const newGiscusTheme = theme === 'light' ? 'light' : 'transparent_dark';
-            iframe.contentWindow.postMessage({ giscus: { setConfig: { theme: newGiscusTheme } } }, 'https://giscus.app');
-        }
     }
 
     applyTheme(initialTheme);
@@ -3033,8 +3044,6 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const tocList = tocDropdown.querySelector('.toc-list');
 
                 headings.forEach((h, index) => {
-                    // ✨ 核心修復：如果標題已經有 Markdown 產生好的文字 ID，就保留它！
-                    // 萬一沒有，才試著用標題文字轉換，最後手段才是加上 article-heading-X
                     if (!h.id) {
                         const textId = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-');
                         h.id = textId || `article-heading-${index}`;
@@ -3043,11 +3052,32 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     const li = document.createElement('li');
                     li.className = `toc-${h.tagName.toLowerCase()}`; 
                     const a = document.createElement('a');
-                    a.innerText = h.innerText;
-                    a.href = "javascript:void(0)"; 
+                    
+                    // ✨ 優先讀取我們剛才存在 data-raw-title 裡「已經剔除自訂 ID」的乾淨標題
+                    const rawTitle = h.getAttribute('data-raw-title');
+                    if (rawTitle) {
+                        // 因為剛剛 encode 過，這裡要 decode 回來，然後再把它當作 HTML 解析一次以支援內部標籤
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = decodeURIComponent(rawTitle);
+                        a.innerText = tempDiv.innerText;
+                    } else {
+                        a.innerText = h.innerText;
+                    }
+                    
+                    a.href = "javascript:void(0)";
                     a.onclick = () => {
-                        // ✨ 消除多此一舉的座標計算，直接委託給統一跳轉引擎
-                        window.executeAnchorScroll('#' + h.id, false);
+                        // ✨ 智慧判斷：如果標題剛好被外層 <div id="自訂ID"> 包覆，優先跳轉到該 div
+                        // 這樣才能確保 float 圖片或自訂的外圍排版不會被導覽列切掉！
+                        let targetHash = '#' + h.id;
+                        if (h.id.startsWith('md-sys-')) {
+                            const baseId = h.id.replace('md-sys-', '');
+                            // 檢查畫面上是否存在這個同名的外層 div
+                            if (document.getElementById(baseId)) {
+                                targetHash = '#' + baseId;
+                            }
+                        }
+                        
+                        window.executeAnchorScroll(targetHash, false);
                         tocBtn.classList.remove('open');
                         tocDropdown.classList.remove('active');
                     };
@@ -4290,13 +4320,14 @@ window.findAnchorElement = function(hash) {
     const dashedId = lowerDecoded.replace(/[\s&]+/g, '-').replace(/-+/g, '-'); 
 
     // 1. 標準精確比對
+    // ✨ 核心修復：優先搜尋「精確符合」的 HTML 元素 (使用者手寫的 div)，找不到才去搜尋系統產生的 md-sys- 標題！
     let el = document.getElementById(targetId) || 
              document.getElementById(decodedId) || 
-             document.getElementById(lowerId) || 
-             document.getElementById(lowerDecoded) ||
-             document.getElementById(dashedId) ||
-             document.querySelector(`[name="${targetId}"]`) ||
-             document.querySelector(`[name="${decodedId}"]`);
+             document.getElementById(`md-sys-${targetId}`) || 
+             document.getElementById(`md-sys-${decodedId}`) || 
+             document.getElementById(`md-sys-${lowerId}`) || 
+             document.getElementById(`md-sys-${lowerDecoded}`) ||
+             document.getElementById(`md-sys-${dashedId}`);
     
     // 2. 🚀 終極殺手鐧：模糊比對與文字掃描！
     if (!el) {
@@ -4325,9 +4356,9 @@ window.scrollToAnchor = function(event, hash) {
 };
 
 // ==========================================
-// ✨ 獨立打包：終極精準捲動引擎 (動態追蹤定位版)
+// ✨ 獨立打包：終極精準捲動引擎 (動態追蹤定位版 + 物理座標)
 // ==========================================
-window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
+window.executeAnchorScroll = function(hash, forceInstantFirst = false, disableTrackers = false) {
     const modalContainer = document.querySelector('.modal-content');
     if (!modalContainer) return false;
 
@@ -4339,16 +4370,21 @@ window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
         const topBar = document.querySelector('.modal-top-bar');
         const topBarHeight = topBar ? topBar.offsetHeight : 80;
         
-        const elRect = targetEl.getBoundingClientRect();
-        const containerRect = modalContainer.getBoundingClientRect();
+        // ✨ 捨棄受動畫縮放影響的 getBoundingClientRect，改用絕對物理座標 offsetTop
+        let itemTop = targetEl.offsetTop;
+        let currentEl = targetEl.offsetParent;
+        // 遍歷往上加總，直到抵達 modalContainer，取得最真實的相對高度
+        while(currentEl && currentEl !== modalContainer) {
+            itemTop += currentEl.offsetTop;
+            currentEl = currentEl.offsetParent;
+        }
         
-        // 算出還差多少距離
-        const scrollOffset = elRect.top - containerRect.top - topBarHeight - 8; 
+        const targetScrollTop = itemTop - topBarHeight - 7; 
         
-        // 防抖：誤差大於 2px 才執行捲動，避免浮點數差異造成效能浪費
-        if (Math.abs(scrollOffset) > 2) {
+        // 防抖：誤差大於 2px 才執行捲動
+        if (Math.abs(modalContainer.scrollTop - targetScrollTop) > 2) {
             modalContainer.scrollTo({ 
-                top: modalContainer.scrollTop + scrollOffset, 
+                top: targetScrollTop, 
                 behavior: isSmooth ? 'smooth' : 'auto' 
             });
         }
@@ -4358,19 +4394,14 @@ window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
     doScroll(!forceInstantFirst);
 
     // 2. 佈局偏移追蹤引擎 (Layout Shift Chaser)
-    // 專門對付 loading="lazy" 圖片與 Mermaid 非同步渲染導致的高度變化
-    if (!forceInstantFirst) {
+    // ✨ 加上判斷：當我們明確知道網頁已經載入完畢 (例如單純改網址) 時，封印追蹤引擎避免拉扯！
+    if (!disableTrackers) {
         let trackers = [];
-        
-        // 設立三個時間檢查點，不斷重新瞄準正在移動的目標
-        // 圖片載入撐開畫面時，系統會自動往下修正，完美跟隨！
         trackers.push(setTimeout(() => doScroll(true), 300));
         trackers.push(setTimeout(() => doScroll(true), 600));
         trackers.push(setTimeout(() => doScroll(true), 1200));
 
-        // ✋ 防呆中斷機制：
-        // 如果使用者在跳轉期間(1.2秒內)覺得不想等了，自己滑動了滾輪或觸控螢幕
-        // 就立刻放棄追蹤，把捲軸控制權還給使用者，避免系統跟使用者搶奪捲軸
+        // ✋ 防呆中斷機制：如果使用者在跳轉期間(1.2秒內)自己滑動了滾輪，立刻放棄追蹤
         const cancelTrackers = () => {
             trackers.forEach(clearTimeout);
             modalContainer.removeEventListener('wheel', cancelTrackers);
@@ -4418,11 +4449,13 @@ window.addEventListener('popstate', () => {
 window.addEventListener('hashchange', () => {
     const hash = window.location.hash;
     if (hash) {
-        // 如果使用者直接在網址列修改或補上 #hash，且 Modal 是開著的
-        // 直接呼叫精準滾動與發光引擎
         const modalOverlay = document.getElementById('md-modal');
         if (modalOverlay && modalOverlay.classList.contains('active')) {
-            window.executeAnchorScroll(hash, false);
+            setTimeout(() => {
+                // ✨ 傳入 true, true -> 瞬間移動、且「絕對不啟動追蹤引擎」！
+                // 瀏覽器已經原生跳轉完了，我們只做一次瞬間微調修正導覽列高度，絕不上下拉扯。
+                window.executeAnchorScroll(hash, true, true);
+            }, 10);
         }
     }
 });
