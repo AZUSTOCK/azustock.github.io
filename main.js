@@ -1048,11 +1048,11 @@ renderer.image = function(token_or_href, title, text) {
             customHeight = hMatch[1] + "px";
         }
         
-        // ✨ 替換 PDF 圖示與新分頁開啟按鈕 (加入純 JS 物理按壓回饋)
+       // ✨ 替換 PDF 圖示與新分頁開啟按鈕 (加入純 JS 物理按壓回饋)
         return `
         <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
-            onclick="if(window.innerWidth <= 768) window.open('${href}', '_blank');"
-            onpointerdown="if(window.innerWidth <= 768) this.style.transform='scale(0.98)';"
+            onclick="if(window.innerWidth <= 768 || document.body.classList.contains('is-touch-device')) window.open('${href}', '_blank');"
+            onpointerdown="if(window.innerWidth <= 768 || document.body.classList.contains('is-touch-device')) this.style.transform='scale(0.98)';"
             onpointerup="this.style.transform='none';"
             onpointerleave="this.style.transform='none';">
             <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
