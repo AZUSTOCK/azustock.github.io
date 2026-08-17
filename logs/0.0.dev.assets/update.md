@@ -1,6 +1,3 @@
-## refactor
-1. 
-
 ## add
 1. video thumbnail
 
@@ -9,18 +6,7 @@
 
 ## adjust
 1. theme color
+2. css
 
 ## fix
-1. 
-
-## deprecate
-1. 
-
-## remove
-1. 
-
-## pending
-1. 
-
-## notice
-1. 
+1. cover image auto

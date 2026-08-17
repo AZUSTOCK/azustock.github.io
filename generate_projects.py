@@ -103,7 +103,7 @@ def get_mtime_url(local_path, base_url):
 # ==========================================
 # ⏰ 時間戳過期偵測引擎 (Expiration Checker)
 # ==========================================
-def check_expiration_reminders(item_title, item_type, data_dict):
+def check_expiration_reminders(item_title, item_type, data_dict, detail_path):
     """檢查 JSON 內的日期標籤或屬性是否過期，並印出黃色警告提醒"""
     now = datetime.now()
     expire_delta = timedelta(days=14) # 與前端 JS 的 TAG_EXPIRE_DAYS 保持一致
@@ -117,7 +117,7 @@ def check_expiration_reminders(item_title, item_type, data_dict):
                 try:
                     dt = datetime.strptime(match.group(2).replace('-', '/'), "%Y/%m/%d")
                     if now - dt > expire_delta:
-                        expiration_l.append(f"\033[93m  ⏰ [標籤過期] {item_type} '{item_title}' 的 '{t}' 已過 14 天，建議刪除。\033[0m")
+                        expiration_l.append(f"\033[93m  ⏰ [標籤過期] {item_type} '{item_title}' 的 '{t}' 已過 14 天，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
                 except Exception:
                     pass
     
@@ -129,10 +129,10 @@ def check_expiration_reminders(item_title, item_type, data_dict):
                 dt = datetime.strptime(val.replace('-', '/'), "%Y/%m/%d")
                 if key.lower() == 'hidden':
                     if now >= dt:
-                        expiration_l.append(f"\033[92m  🔓 [解封提醒] {item_type} '{item_title}' 的隱藏期限 '{val}' 已到期(現已公開)，建議刪除。\033[0m")
+                        expiration_l.append(f"\033[92m  🔓 [解封提醒] {item_type} '{item_title}' 的隱藏期限 '{val}' 已到期(現已公開)，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
                 else:
                     if now - dt > expire_delta:
-                        expiration_l.append(f"\033[93m  ⏰ [狀態過期] {item_type} '{item_title}' 的 '{key}: {val}' 已過 14 天，建議刪除。\033[0m")
+                        expiration_l.append(f"\033[93m  ⏰ [狀態過期] {item_type} '{item_title}' 的 '{key}: {val}' 已過 14 天，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
             except Exception:
                 pass
 
@@ -272,7 +272,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             default_proj_order, clean_proj_title = parse_folder_meta(proj_folder)
             
             # ✨ 呼叫過期檢查引擎 (專案層級)
-            check_expiration_reminders(proj_data.get('title', clean_proj_title), "專案", proj_data)
+            check_expiration_reminders(proj_data.get('title', clean_proj_title), "專案", proj_data, proj_detail_path)
             
             clean_proj_data = {
                 'id': clean_proj_title,
@@ -398,10 +398,13 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     meta_title = sub_data.get('title', clean_art_title)
                     meta_desc = sub_data.get('description')
                     meta_order = sub_data.get('order', default_art_order)
+                    
+                    # ✨ 核心修正 1：判斷 JSON 內是否「有寫入」cover 屬性 (即使值為 null 也算數)
+                    has_explicit_cover = 'cover' in sub_data
                     meta_cover = sub_data.get('cover')
                     
                     # ✨ 呼叫過期檢查引擎 (文章層級)
-                    check_expiration_reminders(meta_title, "文章", sub_data)
+                    check_expiration_reminders(meta_title, "文章", sub_data, art_detail_path)
 
                     md_file_path = None
                     rel_base = f"{base_dir}/{cat_folder}/{proj_folder}/articles/{item}"
@@ -409,7 +412,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     for sub_item in os.listdir(item_path):
                         if sub_item.endswith('.md'):
                             md_file_path = os.path.join(item_path, sub_item)
-                        elif sub_item.lower().endswith(('.webp',)) and not meta_cover:
+                        # ✨ 核心修正 2：如果沒有手動設定 cover，且檔名符合白名單，才自動設為封面
+                        elif not has_explicit_cover and sub_item.lower() in ['basic.webp', 'architecture.webp']:
                             meta_cover = sub_item
                                 
                     if md_file_path:

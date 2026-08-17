@@ -1293,16 +1293,17 @@ const highlightExtension = {
     },
     renderer(token) {
         const badge = token.badgeText.trim();
-        const targetColor = badge ? window.getStatusColorFromCSS(badge.toUpperCase()) : 'var(--accent)';
+        // 拔除 getStatusColorFromCSS，改用 data-status 屬性
+        const statusAttr = badge ? ` data-status="${badge.toUpperCase()}"` : '';
+        const defaultStyle = badge ? '' : ' style="--dynamic-glow: var(--accent);"';
         const displayText = badge ? badge : 'HIGHLIGHT'; 
         
-        // ✨ 改成 20 次，並使用雙層 span 接力，徹底解決跑馬燈斷字問題
         const repeatedText = `${displayText} • `.repeat(20);
         const duration = Math.max(20, repeatedText.length * 0.4); 
         
         const bgHtml = `<span class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></span>`;
         
-        return `<span class="md-highlight-text" style="--dynamic-glow: ${targetColor};">${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
+        return `<span class="md-highlight-text"${statusAttr}${defaultStyle}>${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
     }
 };
 
@@ -1330,7 +1331,8 @@ const highlightBlockExtension = {
     },
     renderer(token) {
         const badge = token.badgeText.trim();
-        const targetColor = badge ? window.getStatusColorFromCSS(badge.toUpperCase()) : 'var(--accent)';
+        const statusAttr = badge ? ` data-status="${badge.toUpperCase()}"` : '';
+        const defaultStyle = badge ? '' : ' style="--dynamic-glow: var(--accent);"';
         const displayText = badge ? badge : 'HIGHLIGHT'; 
         
         const repeatedText = `${displayText} • `.repeat(50);
@@ -1338,8 +1340,7 @@ const highlightBlockExtension = {
         
         const bgHtml = `<div class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></div>`;
         
-        // ✨ 改用 div 並加上 is-block 類別
-        return `<div class="md-highlight-text is-block" style="--dynamic-glow: ${targetColor};">${bgHtml}<div class="text-content">${this.parser.parse(token.tokens)}</div></div>`;
+        return `<div class="md-highlight-text is-block"${statusAttr}${defaultStyle}>${bgHtml}<div class="text-content">${this.parser.parse(token.tokens)}</div></div>`;
     }
 };
 
