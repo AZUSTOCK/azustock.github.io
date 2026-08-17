@@ -441,29 +441,50 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     title_str = ""
                                 
                                 if not url.startswith(('http://', 'https://', 'data:')) and 'projects/' not in url:
-                                    clean_url = url[2:] if url.startswith('./') else url
-                                    orig_url = f"{real_path}{clean_url}"
-                                    local_img_path = os.path.normpath(orig_url)
+                                    # ✨ 1. 將所有出現的 './' 全局替換為專案真實路徑 (解決雙重路徑問題)
+                                    fixed_url = url.replace('./', real_path)
                                     
+                                    # 拆解網址，判斷主檔案類型
+                                    main_url = fixed_url.split('#')[0]
+                                    local_main_path = os.path.normpath(main_url)
+                                    ext = os.path.splitext(local_main_path)[1].lower()
+                                    
+                                    # ✨ 2. 擴充白名單，讓影音格式也能通過並加上時間戳
+                                    valid_media_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.mp4', '.webm', '.ogg', '.mp3', '.wav'}
+                                    if ext not in valid_media_exts:
+                                        return f"![{alt_text}]({fixed_url}{title_str})"
+                                        
+                                    # ✨ 3. 為所有的檔案碎片 (主檔名、#poster、#full) 精準加上快取時間戳
+                                    parts = fixed_url.split('#')
+                                    stamped_parts = []
+                                    for p in parts:
+                                        if p.startswith('poster='):
+                                            p_path = p[7:]
+                                            stamped_parts.append(f"poster={get_mtime_url(os.path.normpath(p_path), p_path)}")
+                                        elif p.startswith('full='):
+                                            p_path = p[5:]
+                                            stamped_parts.append(f"full={get_mtime_url(os.path.normpath(p_path), p_path)}")
+                                        else:
+                                            stamped_parts.append(get_mtime_url(os.path.normpath(p), p))
+                                            
+                                    final_stamped_url = '#'.join(stamped_parts)
+                                    
+                                    # ✨ 4. 如果是圖片，才進入縮圖產生邏輯
                                     valid_image_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'}
-                                    ext = os.path.splitext(local_img_path)[1].lower()
-                                    
-                                    if ext not in valid_image_exts:
-                                        return f"![{alt_text}]({orig_url}{title_str})"
-                                    
-                                    if os.path.exists(local_img_path):
+                                    if ext in valid_image_exts and os.path.exists(local_main_path):
                                         stats["inline_thumb_total"] += 1
+                                        clean_url = main_url.replace(real_path, '')
                                         safe_name = clean_url.replace('/', '_').replace('\\', '_')
                                         thumb_dir = os.path.join(art_dir, "thumbnails")
                                         os.makedirs(thumb_dir, exist_ok=True)
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
-                                        inline_status = get_file_status([local_img_path], thumb_local_path, overwrite_thumb)
+                                        inline_status = get_file_status([local_main_path], thumb_local_path, overwrite_thumb)
                                         if inline_status in ('NEW', 'UPDATED'):
-                                            success = generate_cover_thumbnail(local_img_path, thumb_local_path, max_width=800, quality=85)
+                                            success = generate_cover_thumbnail(local_main_path, thumb_local_path, max_width=800, quality=85)
                                             if success:
-                                                print_conversion("🖼️ [內文縮圖]", local_img_path, thumb_local_path)
+                                                print_conversion("🖼️ [內文縮圖]", local_main_path, thumb_local_path)
                                                 if inline_status == 'NEW': stats["inline_thumb_new"] += 1
                                                 else: stats["inline_thumb_updated"] += 1
                                             else:
@@ -472,10 +493,18 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             stats["inline_thumb_skipped"] += 1
                                             
                                         valid_api_files.add(os.path.abspath(thumb_local_path))
-                                        # ✨ 幫原圖與縮圖都加上時間戳
+                                        
                                         thumb_url = get_mtime_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
-                                        orig_url_t = get_mtime_url(local_img_path, orig_url)
-                                        return f"![{alt_text}]({thumb_url}#full={orig_url_t}{title_str})"
+                                        orig_url_t = get_mtime_url(local_main_path, main_url)
+                                        
+                                        # 組合帶有原圖連結的縮圖網址
+                                        if '#full=' in final_stamped_url:
+                                            return f"![{alt_text}]({thumb_url}#{final_stamped_url.split('#', 1)[1]}{title_str})"
+                                        else:
+                                            return f"![{alt_text}]({thumb_url}#full={orig_url_t}{title_str})"
+                                            
+                                    # ✨ 5. 如果是影片/音樂 (不會進縮圖) 或圖片不存在，直接回傳帶有正確路徑與時間戳的結果
+                                    return f"![{alt_text}]({final_stamped_url}{title_str})"
                                         
                                 return f"![{alt_text}]({url_part})"
                                 

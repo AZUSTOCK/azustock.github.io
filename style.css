@@ -18,6 +18,15 @@
     --nav-text-shadow: rgba(56, 189, 248, 0.6); --error-color: #ef4444;                  
     --error-shadow: rgba(239, 68, 68, 0.8);  
     --scrollbar-bg: transparent; --scrollbar-thumb: rgba(255, 255, 255, 0.25); --scrollbar-hover: rgba(56, 189, 248, 0.4); 
+    
+    --inline-code-color: #2dd4bf;  /* 螢光青綠色，在深色背景非常清晰 */
+    --inline-code-bg: rgba(45, 212, 191, 0.15); /* 微微的青綠色玻璃背板 */
+
+    --group-c1: #FF4D79; --c1-text: #FFE4E6;
+    --group-c2: #10E781; --c2-text: #D1FAE5;
+    --group-c3: #FF9F1C; --c3-text: #FFEDD5;
+    --group-c4: #C77DFF; --c4-text: #F3E8FF;
+    --group-c5: #00E5FF; --c5-text: #E0F2FE;
 }
 
 /* 2. 淺色模式 (Light Mode) - 極淨透亮調色盤 */
@@ -42,23 +51,48 @@
     --nav-text-shadow: rgba(219, 205, 48, 0.3); --error-color: #DB3069;                  
     --error-shadow: rgba(219, 48, 105, 0.5);  
     --scrollbar-bg: transparent; --scrollbar-thumb: rgba(0, 0, 0, 0.15); --scrollbar-hover: rgba(64, 120, 153, 0.4); 
-}
 
-/* 1-3. 群組標籤專屬色彩系統 (校色優化版) */
-:root, [data-theme="light"] {
+    --inline-code-color: #0f766e;  /* 深孔雀綠，在淺色背景擁有極佳的閱讀對比度 */
+    --inline-code-bg: rgba(15, 118, 110, 0.08); /* 非常淡的青綠色背景，不搶戲 */
+
     --group-c1: #b01436; --c1-text: #881337;
     --group-c2: #08865e; --c2-text: #064E3B;
     --group-c3: #cb4b05; --c3-text: #7C2D12;
     --group-c4: #5420af; --c4-text: #4C1D95;
     --group-c5: #006a9f; --c5-text: #082F49;
 }
-[data-theme="dark"] {
-    --group-c1: #FF4D79; --c1-text: #FFE4E6;
-    --group-c2: #10E781; --c2-text: #D1FAE5;
-    --group-c3: #FF9F1C; --c3-text: #FFEDD5;
-    --group-c4: #C77DFF; --c4-text: #F3E8FF;
-    --group-c5: #00E5FF; --c5-text: #E0F2FE;
+
+/* ==========================================
+   ✨ Group Color Classes (Theme Responsive)
+   ========================================== */
+/* We define a generic --current-group-color so the gradient can use it universally */
+.group-color-1 { --current-group-color: var(--group-c1); --c-text: var(--c1-text); }
+.group-color-2 { --current-group-color: var(--group-c2); --c-text: var(--c2-text); }
+.group-color-3 { --current-group-color: var(--group-c3); --c-text: var(--c3-text); }
+.group-color-4 { --current-group-color: var(--group-c4); --c-text: var(--c4-text); }
+.group-color-5 { --current-group-color: var(--group-c5); --c-text: var(--c5-text); }
+
+/* Apply to Group Header Titles */
+.group-header-title[class*="group-color-"] { 
+    color: var(--current-group-color); 
+    border-bottom-color: var(--current-group-color); 
 }
+
+/* Base style for group header titles */
+.group-header-title { 
+    font-size: 0.75rem; 
+    letter-spacing: 0.15em; 
+    border-bottom: 1px solid var(--divider-line); /* Default border */
+    color: var(--accent); /* Default color */
+    padding-bottom: 0.3rem; 
+    transition: color 0.5s ease, border-bottom-color 0.5s ease;
+}
+
+/* Fallback Icon Color */
+.article-li[class*="group-color-"] .article-item-fallback {
+    color: var(--current-group-color);
+}
+
 
 /* 1-4. 標籤與徽章狀態色盤 (含 SemVer 擴充) */
 [data-status="NEW"]      { --s-color: var(--error-color); --s-shadow: var(--error-shadow); }
@@ -288,8 +322,9 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* 讓變化過程滑順柔和 */
 }
 
-/* ✨ 2. 當滑鼠 Hover 到「返回」時：警告標示解除武裝 (變黯淡、無陰影、稍微縮小) */
-.modal-content:has(#sensitive-decline-btn:hover) #sensitive-warning-svg {
+/* ✨ 2. 當滑鼠 Hover 到「返回」、「X 按鈕」或「背景遮罩 (黑區)」時：警告標示解除武裝 (變黯淡、無陰影、稍微縮小) */
+.modal-content:has(#sensitive-decline-btn:hover, #sensitive-close-x:hover) #sensitive-warning-svg,
+#sensitive-modal-overlay:hover:not(:has(.modal-content:hover)) #sensitive-warning-svg {
     stroke: var(--muted);
     filter: none;
     transform: scale(0.9);
@@ -834,6 +869,14 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .toc-dropdown a:hover { color: var(--accent-hover) !important; transform: scale(1.03); }
 
 /* 5-4. 文章清單排版與動畫 (Index List) */
+/* 讓 .is-highlight 能夠自動去接 CSS 變數，而不是被 JS 寫死 */
+.article-li.is-highlight[data-status] {
+    --tab-color: var(--s-color);
+}
+.article-li.is-highlight[class*="group-color-"] {
+    --tab-color: var(--current-group-color);
+}
+
 .index-header-container { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 0rem; }
 .index-header-title { margin: 0 !important; padding: 0 !important; border: none !important; color: var(--accent) !important; word-break: break-word; font-weight: bold !important; display: inline-block; font-size: clamp(1.85rem, 6vw, 2.1rem) !important; line-height: 1.1 !important; }
 .index-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
@@ -850,7 +893,13 @@ img.article-item-cover { position: relative; z-index: 2; width: 44px !important;
 span.article-item-title { font-size: 1.15rem; color: var(--accent); font-weight: bold; }
 span.article-item-desc { font-size: 0.95rem; color: var(--muted); line-height: 1.4; }
 span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0; }
-.group-header-title { font-size: 0.75rem; letter-spacing: 0.15em; border-bottom: 1px solid; padding-bottom: 0.3rem; }
+.group-header-title { 
+    font-size: 0.75rem; 
+    letter-spacing: 0.15em; 
+    border-bottom: 1px solid; 
+    padding-bottom: 0.3rem; 
+    transition: color 0.5s ease, border-bottom-color 0.5s ease; /* ✨ 讓標題顏色跟著主題平滑切換 */
+}
 .group-header-desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
 
 /* 文章清單 Hover 磁吸動畫系統 */
@@ -1042,8 +1091,29 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     border-radius: 4px; 
 }
 .markdown-body pre { background: var(--bg); padding: 1.2rem; border-radius: 0.6rem; overflow-x: auto; border: 1px solid var(--card-border); }
-.markdown-body code { font-family: 'Courier New', monospace; color: var(--accent-2); background: rgba(34, 211, 238, 0.1); padding: 0.2rem 0.4rem; border-radius: 4px; }
-.markdown-body pre code { background: transparent; padding: 0; color: var(--text); }
+/* ==========================================
+   ✨ 行內程式碼樣式 (Inline Code)
+   ========================================== */
+/* 1. 針對所有的 code 標籤套用主題色與圓角 */
+.markdown-body code {
+    font-family: 'Courier New', Consolas, Monaco, monospace;
+    color: var(--inline-code-color);
+    background-color: var(--inline-code-bg);
+    padding: 0.2em 0.4em;
+    border-radius: 6px;
+    /* font-size: 0.85em; */
+    font-weight: 600; /* 稍微加粗增加辨識度 */
+    word-break: break-word;
+}
+
+/* 2. 豁免大區塊程式碼 (避免與 Code Block 衝突) */
+.markdown-body pre code {
+    color: inherit;
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+    font-weight: normal;
+}
 .markdown-body blockquote { border-left: 4px solid var(--accent); margin: 1.5rem 0; padding-left: 1rem; color: var(--muted); background: rgba(255,255,255,0.02); }
 
 /* ==========================================
@@ -1092,7 +1162,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     position: absolute;
     top: 0.4rem;
     right: 0.4rem;
-    background: transparent;
+    background: var(--box-bg);
     border: 1px solid var(--card-border);
     color: var(--muted);
     border-radius: 6px;
@@ -1154,6 +1224,10 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 
 .markdown-body .code-copy-btn.copied svg {
     transform: translateZ(0) !important;
+}
+
+.markdown-body .md-highlight-text[data-status] {
+    --dynamic-glow: var(--s-color);
 }
 
 /* 文章標題區塊整合 */
@@ -1835,7 +1909,28 @@ body.is-touch-device #lightbox-img { cursor: default; }
 @media (hover: none) and (pointer: coarse), (max-width: 768px) {
     .pdf-container iframe { display: none !important; }
     .pdf-container { position: relative; }
-    .pdf-container::after { content: '行動裝置與平板不支援內嵌 PDF 預覽\A請點擊右上角「新分頁開啟」以系統原生閱讀器瀏覽。'; white-space: pre-wrap; display: flex; align-items: center; justify-content: center; text-align: center; height: 180px; background: var(--bg); color: var(--muted); font-size: 0.95rem; line-height: 1.8; padding: 1.5rem; }
+    /* .pdf-container::after { content: '行動裝置與平板不支援內嵌 PDF 預覽\A請點擊右上角「新分頁開啟」以系統原生閱讀器瀏覽。'; white-space: pre-wrap; display: flex; align-items: center; justify-content: center; text-align: center; height: 180px; background: var(--bg); color: var(--muted); font-size: 0.95rem; line-height: 1.8; padding: 1.5rem; } */
+    .pdf-container { 
+        cursor: pointer; 
+        -webkit-tap-highlight-color: transparent; /* 移除手機點擊預設的灰底 */
+    }
+    
+    /* ✨ 點擊時微縮，給予物理反饋 */
+    .pdf-container:active { 
+        transform: scale(0.98); 
+    } 
+    
+    .pdf-iframe { 
+        display: none !important; 
+    }
+    
+    .pdf-mobile-placeholder { 
+        display: flex !important; 
+    }
+
+    .pdf-ext-btn {
+        display: none !important;
+    }
 }
 
 /* ========================================================================== */

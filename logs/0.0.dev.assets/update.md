@@ -2,13 +2,13 @@
 1. 
 
 ## add
-1. 
+1. video thumbnail
 
 ## change / update
-1. 
+1. inline code css: --inline-code-color, --inline-code-bg
 
 ## adjust
-1. 
+1. theme color
 
 ## fix
 1. 

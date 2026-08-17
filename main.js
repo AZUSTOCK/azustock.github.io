@@ -177,7 +177,7 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     const project = window.siteProjects.find(proj => proj.id === cleanProjectId);
     
     if (!project) {
-        show404Modal('404 Not Found', '無法找到您指定的專案。<br/>此連結可能已失效、被移除，或是輸入錯誤的網址。');
+        show404Modal('404 Project Not Found', '無法找到您指定的專案。<br/>可能不存在或已被移除');
         window.history.replaceState(null, '', window.location.pathname);
         return;
     }
@@ -205,7 +205,7 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
 
             window.openArticle(project.id, aIndex, false, 0, hashParam);
         } else {
-            show404Modal('Article Not Found', `在專案「${project.title}」中找不到此文章。<br/>可能不存在或已被移除。`);
+            show404Modal('404 Article Not Found', `在專案「${project.title}」中找不到此文章。<br/>可能不存在或已被移除。`);
             window.history.replaceState(null, '', window.location.pathname);
         }
     } else {
@@ -953,7 +953,7 @@ window.processMermaidCssVars = function(text) {
     return processed;
 };
 
-/// 1. ✨ 修復與升級：攔截圖片，支援影音，並自動轉換 Figure 圖片說明與高質感 Tooltip！
+// 1. ✨ 修復與升級：攔截圖片，支援影音，並自動轉換 Figure 圖片說明與高質感 Tooltip！
 renderer.image = function(token_or_href, title, text) {
     const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
     const altText = typeof token_or_href === 'object' ? token_or_href.text : text;
@@ -961,47 +961,82 @@ renderer.image = function(token_or_href, title, text) {
     
     if (!href) return '';
 
-    /// 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
+    // 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
     // 透過 split 排除 ? 和 # 後面的參數，精準判斷是否為 pdf
     const cleanUrlForCheck = href.split('?')[0].split('#')[0];
     
     if (cleanUrlForCheck.match(/\.pdf$/i)) {
-        // ✨ 預設高度 600px，如果網址帶有 ?h=800 則抓取該數字當作高度！
         let customHeight = "600px";
         const hMatch = href.match(/[?&]h=(\d+)/i);
         if (hMatch) {
             customHeight = hMatch[1] + "px";
         }
         
-        // 使用你系統預設的文章/文件 SVG 圖示
-        const docSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
-        
-        // 替換 PDF 圖示與新分頁開啟按鈕
+        // ✨ 替換 PDF 圖示與新分頁開啟按鈕 (加入純 JS 物理按壓回饋)
         return `
-        <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base);">
+        <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
+            onclick="if(window.innerWidth <= 768) window.open('${href}', '_blank');"
+            onpointerdown="if(window.innerWidth <= 768) this.style.transform='scale(0.98)';"
+            onpointerup="this.style.transform='none';"
+            onpointerleave="this.style.transform='none';">
             <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
                     ${GLOBAL_SVGS.docIcon}
                     <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
                 </div>
-                <a href="${href}" target="_blank" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'">
+                <a href="${href}" target="_blank" class="pdf-ext-btn" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" onclick="event.stopPropagation();">
                     ${GLOBAL_SVGS.newTab}
                     新分頁開啟
                 </a>
             </div>
-            <iframe src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+            
+            <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+            
+            <div class="pdf-mobile-placeholder" style="display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); flex-direction: column; align-items: center; gap: 1.2rem;">
+                <span style="font-size: 1.05rem; letter-spacing: 0.05em;">行動裝置與平板不支援內嵌 PDF 預覽</span>
+                <span style="color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; background: var(--tag-bg); padding: 0.6rem 1.2rem; border-radius: 2rem;">
+                    ${GLOBAL_SVGS.newTab} 點擊此處使用系統閱讀器開啟
+                </span>
+            </div>
         </div>`;
     }
 
-    // ✨ 完美合併影音解析器，減少大量贅字
-    const isVideo = href.match(/\.(mp4|webm|ogg)$/i);
-    const isAudio = href.match(/\.(mp3|wav)$/i);
+    // ==========================================
+    // ✨ 影音解析器：支援自訂縮圖 (#poster=) (終極防呆版)
+    // ==========================================
+    
+    // ✨ 防呆 1：Marked.js 有時會把 URL 裡的 # 偷偷轉碼成 %23，我們先把它還原！
+    const decodedHref = href.replace(/%23/g, '#');
+    
+    let cleanMediaUrl = decodedHref;
+    let posterUrl = '';
+    
+    if (decodedHref.includes('#poster=')) {
+        const parts = decodedHref.split('#poster=');
+        cleanMediaUrl = parts[0];
+        posterUrl = parts[1];
+    }
+
+    // ✨ 防呆 2：切掉網址後面的 ?t=123 時間戳，產生專門用來判斷副檔名的字串
+    const pureUrlForExt = cleanMediaUrl.split('?')[0];
+
+    // 改用 pureUrlForExt 來判斷結尾，這樣就不會被時間戳干擾了！
+    const isVideo = pureUrlForExt.match(/\.(mp4|webm|ogg)$/i);
+    const isAudio = pureUrlForExt.match(/\.(mp3|wav)$/i);
+    
     if (isVideo || isAudio) {
         const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
         const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
+        
+        const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
+        const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block;";
+
+        // ✨ 防呆 3：確保 <source type="..."> 也是吃到乾淨的副檔名
+        const ext = pureUrlForExt.split('.').pop().toLowerCase();
+        
         const mediaTag = isVideo 
-            ? `<video preload="metadata" controls playsinline class="md-video" style="margin: 0; border: none; box-shadow: none; width: 100%; display: block;"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`
-            : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>`;
+            ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}">您的瀏覽器不支援影片標籤。</video>`
+            : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}">您的瀏覽器不支援音樂標籤。</audio>`;
 
         const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">${iconSvg}<span>${displayTitle}</span></div>`;
         
@@ -1012,6 +1047,9 @@ renderer.image = function(token_or_href, title, text) {
         </div>`;
     }
 
+    // ==========================================
+    // ✨ 原本的圖片解析器 (支援 #full=)
+    // ==========================================
     // 解析縮圖與原圖 (透過 Python 塞入的 #full= 傳遞)
     let srcUrl = href;
     let fullUrl = href;
@@ -2384,22 +2422,62 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         if (groupArticles.length === 0) continue;
 
                         let groupColor = groupData.color;
-                        if (groupData.highlight && !groupColor) {
-                            groupColor = themePalette[colorIndex % themePalette.length];
+                        let themeClass = '';
+                        let customStyle = '';
+
+                        // ✨ The Logic: Use classes for highlight groups, inline styles ONLY for custom hex colors
+                        if (groupData.highlight) {
+                            const groupNum = (colorIndex % 5) + 1;
+                            themeClass = ` group-color-${groupNum}`;
                             colorIndex++; 
+                        } else if (groupColor) {
+                            // If they provided a specific hardcoded hex color
+                            customStyle = ` style="--current-group-color: ${groupColor};"`;
                         }
 
-                        let titleColorStyle = groupColor ? `color: ${groupColor}; border-bottom-color: ${groupColor};` : `color: var(--accent); border-bottom-color: var(--divider-line);`;
                         const topMargin = isFirstGroup ? '0rem' : '1.8rem';
-                        
+
+                        // Apply themeClass to the title, or customStyle if it's a hardcoded hex
                         html += `
                             <div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
-                                <div class="group-header-title" style="${titleColorStyle}">${groupData.title || groupId}</div>
+                                <div class="group-header-title${themeClass}"${customStyle}>${groupData.title || groupId}</div>
                                 ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
                             </div>
                             <ul class="article-list-ul">
                         `;
-                        groupArticles.forEach(({art, idx}) => { html += generateLi(art, idx, groupData.highlight, groupColor); });
+                        
+                        groupArticles.forEach(({art, idx}) => { 
+                            let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                            let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
+                            let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                            
+                            let baseIconHtml = art.cover_image 
+                                ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
+                                : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+                            
+                            let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                            let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                            let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                            let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
+                            
+                            // ✨ The Magic: Apply themeClass directly to the <li>
+                            let classList = `article-li ${groupData.highlight ? 'is-highlight' : 'is-normal'}${hiddenClass}${themeClass}`;
+
+                            html += `
+                                <li id="article-item-${idx}" class="${classList.trim()}"${customStyle}>
+                                    <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                        ${iconHtml}
+                                        <div class="article-item-content">
+                                            <div class="article-item-title-row">
+                                                <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                                ${descHtml}
+                                            </div>
+                                            ${dateHtml}
+                                        </div>
+                                    </a>
+                                </li>
+                            `;
+                        });
                         html += `</ul>`;
                         
                         isFirstGroup = false;
@@ -2408,12 +2486,63 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     if (ungrouped.length > 0) {
                         const topMargin = isFirstGroup ? '0rem' : '1.5rem';
                         html += `<ul class="article-list-ul" style="margin-top:${topMargin};">`;
-                        ungrouped.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
+                        
+                        ungrouped.forEach(({art, idx}) => { 
+                             // Inline generic li generation for ungrouped
+                             let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                             let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
+                             let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                             let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+                             let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                             let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                             let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                             let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
+ 
+                             html += `
+                                 <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
+                                     <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                         ${iconHtml}
+                                         <div class="article-item-content">
+                                             <div class="article-item-title-row">
+                                                 <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                                 ${descHtml}
+                                             </div>
+                                             ${dateHtml}
+                                         </div>
+                                     </a>
+                                 </li>
+                             `;
+                        });
                         html += `</ul>`;
                     }
                 } else {
                     html += `<ul class="article-list-ul" style="margin-top:0rem;">`;
-                    finalArray.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
+                    finalArray.forEach(({art, idx}) => { 
+                         // Generic li for projects with no groups
+                         let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                         let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
+                         let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                         let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+                         let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                         let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                         let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                         let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
+
+                         html += `
+                             <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
+                                 <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                     ${iconHtml}
+                                     <div class="article-item-content">
+                                         <div class="article-item-title-row">
+                                             <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                             ${descHtml}
+                                         </div>
+                                         ${dateHtml}
+                                     </div>
+                                 </a>
+                             </li>
+                         `;
+                    });
                     html += `</ul>`;
                 }
                 listContainer.innerHTML = html;
@@ -3585,7 +3714,6 @@ function show404Modal(title, message) {
 // ==========================================
 window._hasAgreedSensitiveContent = false;
 
-// ✨ 1. 加入第二個參數 onDeclineCallback
 window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback) {
     if (window._hasAgreedSensitiveContent === true) {
         if (onAgreeCallback) onAgreeCallback();
@@ -3597,8 +3725,39 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     overlay.className = 'modal-overlay active'; 
     overlay.style.zIndex = '1100'; 
     
+    // ✨ 移除原本的 title，保留游標暗示即可
+    overlay.style.cursor = 'pointer';
+    
+    // 將拒絕/關閉的邏輯抽出來
+    const declineAction = () => {
+        document.removeEventListener('keydown', escListener);
+        overlay.remove();
+        window.unlockScroll();
+        if (onDeclineCallback) {
+            onDeclineCallback();
+        } else {
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+    };
+
+    // 建立 ESC 鍵盤監聽器
+    const escListener = (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            declineAction();
+        }
+    };
+    document.addEventListener('keydown', escListener);
+
+    // ✨ 移除內層與按鈕的 title
     overlay.innerHTML = `
-        <div class="modal-content" style="max-width: 500px; text-align: center; padding: 3rem 2rem; opacity: 1;">
+        <div class="modal-content" style="cursor: auto; max-width: 500px; text-align: center; padding: 3rem 2rem; opacity: 1; position: relative;">
+            
+            <!-- ✨ 右上角 X 關閉按鈕：保留 Toast 的旋轉動畫 -->
+            <button id="sensitive-close-x" style="position: absolute; top: 1.2rem; right: 1.2rem; background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 0.5rem; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; opacity: 0.7;" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)'; this.style.transform='rotate(90deg) scale(1.1)';" onmouseout="this.style.opacity='0.7'; this.style.color='var(--muted)'; this.style.transform='rotate(0deg) scale(1)';">
+                <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
             <svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                 <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -3619,19 +3778,17 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     document.body.appendChild(overlay);
     window.lockScroll();
 
-    document.getElementById('sensitive-decline-btn').onclick = () => {
-        overlay.remove();
-        window.unlockScroll();
-        // ✨ 2. 如果有設定退回行為，就執行它
-        if (onDeclineCallback) {
-            onDeclineCallback();
-        } else {
-            // 防呆 fallback
-            window.history.replaceState(null, '', window.location.pathname);
-        }
+    // 綁定三個能觸發「拒絕/關閉」的元素
+    document.getElementById('sensitive-decline-btn').onclick = declineAction;
+    document.getElementById('sensitive-close-x').onclick = declineAction;
+    
+    // 點擊背景遮罩關閉
+    overlay.onclick = (e) => {
+        if (e.target === overlay) declineAction();
     };
 
     document.getElementById('sensitive-agree-btn').onclick = () => {
+        document.removeEventListener('keydown', escListener); 
         window._hasAgreedSensitiveContent = true;
         overlay.remove();
         if (onAgreeCallback) onAgreeCallback();
@@ -3848,16 +4005,16 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                     let listHTML = '<ul class="article-list-ul">';
                     window.cachedChangelogs.forEach(log => {
                         
-                        // ✨ 魔法發生地：推導狀態，並向 CSS 請求色彩！
                         let activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
-                        let tabColor = window.getStatusColorFromCSS(activeStatus);
                         let badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
 
+                        // 1. 在 li 加上 data-status 屬性，並移除寫死的 style
                         listHTML += `
-                            <li class="article-li is-highlight" style="--tab-color: ${tabColor}; margin-bottom: 1rem;">
+                            <li class="article-li is-highlight" data-status="${activeStatus}" style="margin-bottom: 1rem;">
                                 <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${log.id}')">
                                     <div class="article-item-icon-wrap">
-                                        <div class="article-item-fallback" style="color: ${tabColor};">
+                                        <!-- 2. 圖示顏色直接使用 var() 來繼承 -->
+                                        <div class="article-item-fallback" style="color: var(--tab-color, var(--accent));">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                                 <polyline points="14 2 14 8 20 8"></polyline>

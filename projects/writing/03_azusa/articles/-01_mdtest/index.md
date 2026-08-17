@@ -142,7 +142,7 @@ flowchart LR
 ![測試文件.pdf](./meme.pdf?h=450)
 
 **B. 影片與音樂播放器**
-![測試影片.mp4](./HBD-TETO-2026.mp4)
+![測試影片.mp4](./HBD-TETO-2026.mp4#poster=./HBD-TETO-2026.webp)
 ![測試音樂.wav](./HBD-TETO-2026.wav)
 
 ---
