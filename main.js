@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.3",          // 目前系統版本號
+    VERSION: "U1.5.4",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -177,7 +177,7 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     const project = window.siteProjects.find(proj => proj.id === cleanProjectId);
     
     if (!project) {
-        show404Modal('404 Not Found', '無法找到您指定的專案。<br/>此連結可能已失效、被移除，或是輸入錯誤的網址。');
+        show404Modal('404 Project Not Found', '無法找到您指定的專案。<br/>可能不存在或已被移除');
         window.history.replaceState(null, '', window.location.pathname);
         return;
     }
@@ -205,7 +205,7 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
 
             window.openArticle(project.id, aIndex, false, 0, hashParam);
         } else {
-            show404Modal('Article Not Found', `在專案「${project.title}」中找不到此文章。<br/>可能不存在或已被移除。`);
+            show404Modal('404 Article Not Found', `在專案「${project.title}」中找不到此文章。<br/>可能不存在或已被移除。`);
             window.history.replaceState(null, '', window.location.pathname);
         }
     } else {
@@ -515,6 +515,82 @@ window.handleImageError = function(img) {
     img.classList.remove('is-loading');
     img.classList.add('is-broken');
     img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+};
+
+// ==========================================
+// ✨ 全域系統提示引擎 (Unified System Toast Engine)
+// ==========================================
+window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = 'error') {
+    // 1. 決定顏色主題 (未來可擴充 'success' 等)
+    const bgColor = type === 'error' ? 'var(--error-color)' : 'var(--accent)';
+    const shadowColor = type === 'error' ? 'var(--error-shadow)' : 'var(--glow-1)';
+
+    // 2. 移除畫面上舊的提示 (避免重疊堆高)
+    const oldToast = document.getElementById('sys-global-toast');
+    if (oldToast) {
+        clearTimeout(oldToast.autoRemoveTimer);
+        oldToast.remove();
+    }
+
+    // 3. 建立新的提示
+    const toast = document.createElement('div');
+    toast.id = 'sys-global-toast';
+    toast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);";
+    
+    toast.innerHTML = `
+        <div style="background: ${bgColor}; color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px ${shadowColor}; display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; position: relative; transition: box-shadow 0.3s ease;">
+            
+            <!-- 將寬高加大到 32px (手指最好點擊的尺寸)，並利用負的 top/right 把它推回原位 -->
+            <div class="toast-x-icon" style="position: absolute; top: 5px; right: 7px; width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; cursor: pointer;">
+                <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+
+            <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2); padding-right: 1.5rem;">${title}</strong>
+            <span style="opacity: 0.95; font-weight: 600;">${msg}</span>
+            <span style="opacity: 0.85; font-size: 0.8rem;">${subMsg}</span>
+        </div>
+    `;
+
+    document.body.appendChild(toast);
+
+    // 4. 進場動畫
+    setTimeout(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    }, 50);
+
+    const toastBox = toast.firstElementChild;
+    const xIcon = toast.querySelector('.toast-x-icon');
+
+    // 5. Hover 發光與 X 旋轉特效
+    toastBox.onmouseenter = () => { 
+        toastBox.style.boxShadow = `0 0 25px ${shadowColor}, 0 0 10px rgba(255,255,255,0.2)`; 
+        if (xIcon) xIcon.style.transform = 'rotate(90deg) scale(1.1)';
+    };
+    toastBox.onmouseleave = () => { 
+        toastBox.style.boxShadow = `0 4px 20px ${shadowColor}`; 
+        if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
+    };
+
+    // 6. 點擊 X 關閉事件
+    if (xIcon) {
+        xIcon.onclick = (e) => {
+            e.stopPropagation();
+            clearTimeout(toast.autoRemoveTimer);
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+            setTimeout(() => toast.remove(), 400);
+        };
+    }
+    
+    // 7. 定時自動消失
+    if (duration > 0) {
+        toast.autoRemoveTimer = setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-10px)';
+            setTimeout(() => toast.remove(), 400);
+        }, duration);
+    }
 };
 
 // ==========================================
@@ -953,7 +1029,7 @@ window.processMermaidCssVars = function(text) {
     return processed;
 };
 
-/// 1. ✨ 修復與升級：攔截圖片，支援影音，並自動轉換 Figure 圖片說明與高質感 Tooltip！
+// 1. ✨ 修復與升級：攔截圖片，支援影音，並自動轉換 Figure 圖片說明與高質感 Tooltip！
 renderer.image = function(token_or_href, title, text) {
     const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
     const altText = typeof token_or_href === 'object' ? token_or_href.text : text;
@@ -961,47 +1037,82 @@ renderer.image = function(token_or_href, title, text) {
     
     if (!href) return '';
 
-    /// 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
+    // 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
     // 透過 split 排除 ? 和 # 後面的參數，精準判斷是否為 pdf
     const cleanUrlForCheck = href.split('?')[0].split('#')[0];
     
     if (cleanUrlForCheck.match(/\.pdf$/i)) {
-        // ✨ 預設高度 600px，如果網址帶有 ?h=800 則抓取該數字當作高度！
         let customHeight = "600px";
         const hMatch = href.match(/[?&]h=(\d+)/i);
         if (hMatch) {
             customHeight = hMatch[1] + "px";
         }
         
-        // 使用你系統預設的文章/文件 SVG 圖示
-        const docSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`;
-        
-        // 替換 PDF 圖示與新分頁開啟按鈕
+        // ✨ 替換 PDF 圖示與新分頁開啟按鈕 (加入純 JS 物理按壓回饋)
         return `
-        <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base);">
+        <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
+            onclick="if(window.innerWidth <= 768) window.open('${href}', '_blank');"
+            onpointerdown="if(window.innerWidth <= 768) this.style.transform='scale(0.98)';"
+            onpointerup="this.style.transform='none';"
+            onpointerleave="this.style.transform='none';">
             <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
                     ${GLOBAL_SVGS.docIcon}
                     <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
                 </div>
-                <a href="${href}" target="_blank" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'">
+                <a href="${href}" target="_blank" class="pdf-ext-btn" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" onclick="event.stopPropagation();">
                     ${GLOBAL_SVGS.newTab}
                     新分頁開啟
                 </a>
             </div>
-            <iframe src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+            
+            <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+            
+            <div class="pdf-mobile-placeholder" style="display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); flex-direction: column; align-items: center; gap: 1.2rem;">
+                <span style="font-size: 1.05rem; letter-spacing: 0.05em;">行動裝置或視窗過小不支援內嵌 PDF 預覽</span>
+                <span style="color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; background: var(--tag-bg); padding: 0.6rem 1.2rem; border-radius: 2rem;">
+                    ${GLOBAL_SVGS.newTab} 點擊此處使用系統閱讀器開啟
+                </span>
+            </div>
         </div>`;
     }
 
-    // ✨ 完美合併影音解析器，減少大量贅字
-    const isVideo = href.match(/\.(mp4|webm|ogg)$/i);
-    const isAudio = href.match(/\.(mp3|wav)$/i);
+    // ==========================================
+    // ✨ 影音解析器：支援自訂縮圖 (#poster=) (終極防呆版)
+    // ==========================================
+    
+    // ✨ 防呆 1：Marked.js 有時會把 URL 裡的 # 偷偷轉碼成 %23，我們先把它還原！
+    const decodedHref = href.replace(/%23/g, '#');
+    
+    let cleanMediaUrl = decodedHref;
+    let posterUrl = '';
+    
+    if (decodedHref.includes('#poster=')) {
+        const parts = decodedHref.split('#poster=');
+        cleanMediaUrl = parts[0];
+        posterUrl = parts[1];
+    }
+
+    // ✨ 防呆 2：切掉網址後面的 ?t=123 時間戳，產生專門用來判斷副檔名的字串
+    const pureUrlForExt = cleanMediaUrl.split('?')[0];
+
+    // 改用 pureUrlForExt 來判斷結尾，這樣就不會被時間戳干擾了！
+    const isVideo = pureUrlForExt.match(/\.(mp4|webm|ogg)$/i);
+    const isAudio = pureUrlForExt.match(/\.(mp3|wav)$/i);
+    
     if (isVideo || isAudio) {
         const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
         const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
+        
+        const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
+        const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block;";
+
+        // ✨ 防呆 3：確保 <source type="..."> 也是吃到乾淨的副檔名
+        const ext = pureUrlForExt.split('.').pop().toLowerCase();
+        
         const mediaTag = isVideo 
-            ? `<video preload="metadata" controls playsinline class="md-video" style="margin: 0; border: none; box-shadow: none; width: 100%; display: block;"><source src="${href}" type="video/${href.split('.').pop()}">您的瀏覽器不支援影片標籤。</video>`
-            : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${href}" type="audio/${href.split('.').pop()}">您的瀏覽器不支援音樂標籤。</audio>`;
+            ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}">您的瀏覽器不支援影片標籤。</video>`
+            : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}">您的瀏覽器不支援音樂標籤。</audio>`;
 
         const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">${iconSvg}<span>${displayTitle}</span></div>`;
         
@@ -1012,6 +1123,9 @@ renderer.image = function(token_or_href, title, text) {
         </div>`;
     }
 
+    // ==========================================
+    // ✨ 原本的圖片解析器 (支援 #full=)
+    // ==========================================
     // 解析縮圖與原圖 (透過 Python 塞入的 #full= 傳遞)
     let srcUrl = href;
     let fullUrl = href;
@@ -1255,16 +1369,17 @@ const highlightExtension = {
     },
     renderer(token) {
         const badge = token.badgeText.trim();
-        const targetColor = badge ? window.getStatusColorFromCSS(badge.toUpperCase()) : 'var(--accent)';
+        // 拔除 getStatusColorFromCSS，改用 data-status 屬性
+        const statusAttr = badge ? ` data-status="${badge.toUpperCase()}"` : '';
+        const defaultStyle = badge ? '' : ' style="--dynamic-glow: var(--accent);"';
         const displayText = badge ? badge : 'HIGHLIGHT'; 
         
-        // ✨ 改成 20 次，並使用雙層 span 接力，徹底解決跑馬燈斷字問題
         const repeatedText = `${displayText} • `.repeat(20);
         const duration = Math.max(20, repeatedText.length * 0.4); 
         
         const bgHtml = `<span class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></span>`;
         
-        return `<span class="md-highlight-text" style="--dynamic-glow: ${targetColor};">${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
+        return `<span class="md-highlight-text"${statusAttr}${defaultStyle}>${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
     }
 };
 
@@ -1292,7 +1407,8 @@ const highlightBlockExtension = {
     },
     renderer(token) {
         const badge = token.badgeText.trim();
-        const targetColor = badge ? window.getStatusColorFromCSS(badge.toUpperCase()) : 'var(--accent)';
+        const statusAttr = badge ? ` data-status="${badge.toUpperCase()}"` : '';
+        const defaultStyle = badge ? '' : ' style="--dynamic-glow: var(--accent);"';
         const displayText = badge ? badge : 'HIGHLIGHT'; 
         
         const repeatedText = `${displayText} • `.repeat(50);
@@ -1300,8 +1416,7 @@ const highlightBlockExtension = {
         
         const bgHtml = `<div class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></div>`;
         
-        // ✨ 改用 div 並加上 is-block 類別
-        return `<div class="md-highlight-text is-block" style="--dynamic-glow: ${targetColor};">${bgHtml}<div class="text-content">${this.parser.parse(token.tokens)}</div></div>`;
+        return `<div class="md-highlight-text is-block"${statusAttr}${defaultStyle}>${bgHtml}<div class="text-content">${this.parser.parse(token.tokens)}</div></div>`;
     }
 };
 
@@ -1438,48 +1553,52 @@ document.addEventListener('DOMContentLoaded', () => {
     fullscreenMenu.addEventListener('click', (e) => {
         const navItem = e.target.closest('.nav-item');
         if (navItem) {
-            e.preventDefault(); // 攔截原生跳轉
+            e.preventDefault(); 
             
             const targetHash = navItem.getAttribute('href');
             const targetId = targetHash.substring(1);
+            const targetSection = document.getElementById(targetId);
             
-            // 1. 關閉選單並解鎖捲軸
+            if (!targetSection) return;
+
+            // 1. 關閉選單視覺
             menuToggle.classList.remove('open');
             fullscreenMenu.classList.remove('active');
-            window.unlockScroll();
             
-            // 2. 尋找目標並手動執行跳轉與動畫
-            const targetSection = document.getElementById(targetId);
-            if (targetSection) {
-                // 如果網址列不一樣，就手動更新網址列，但不觸發預設跳動
-                if (window.location.hash !== targetHash) {
-                    window.history.pushState(null, null, targetHash);
-                }
+            // 如果網址列不一樣，就手動更新網址列 (不觸發預設跳動)
+            if (window.location.hash !== targetHash) {
+                window.history.pushState(null, null, targetHash);
+            }
+
+            // ✨ 效能修復：先等選單的透明度動畫開始，再來做滾動，最後才解鎖 CSS 的 overflow: hidden
+            setTimeout(() => {
                 
-                // 平滑捲動回區塊頂端
+                // ✨ 定位修復：放棄寫死的座標，改回使用原生支援 CSS `scroll-margin-top` 的 scrollIntoView！
+                // 因為我們已經把它放進 setTimeout 避開了效能衝突，現在它既不卡頓，又能完美定位了。
                 targetSection.scrollIntoView({ behavior: 'smooth' });
+
+                // 處理光暈特效動畫重播
+                if (targetSection.animationTimer) clearTimeout(targetSection.animationTimer);
                 
-                // ✨ 終極修復 1：清除上一次的計時器，防止多次點擊互相干擾 (解決消失過快)
-                if (targetSection.animationTimer) {
-                    clearTimeout(targetSection.animationTimer);
-                }
-                
-                // ✨ 終極修復 2：暫時拔掉 ID 與 Class，徹底消滅 CSS 的 :target 狀態 (解決有時沒反應)
                 targetSection.id = '';
                 targetSection.classList.remove('force-target');
-                
-                // 強迫瀏覽器重新計算畫面 (Reflow，此時瀏覽器確認動畫被完全移除了)
                 void targetSection.offsetWidth; 
                 
-                // 把 ID 與 Class 裝回去，動畫從 0 秒完美重播！
                 targetSection.id = targetId;
                 targetSection.classList.add('force-target');
                 
-                // 重新獨立計時，3秒後清除 Class
                 targetSection.animationTimer = setTimeout(() => {
                     targetSection.classList.remove('force-target');
                 }, 3000);
-            }
+
+                // 動畫跑得差不多了，最後再把捲軸防護解開
+                setTimeout(() => {
+                    window.unlockScroll();
+                }, 200);
+
+            }, 50);
+
+
         }
     });
 
@@ -1952,25 +2071,31 @@ async function loadProjects() {
     } catch (err) {
         console.error("載入失敗:", err);
         
+        // ✨ 判斷是否為網路斷線或無法連線
+        const isOffline = !navigator.onLine || (err.message && err.message.includes('Failed to fetch'));
+        const errorTitle = isOffline ? "ERR: NO INTERNET CONNECTION" : "ERR: FAILED TO FETCH DATA";
+        const errorDetail = err.message ? err.message.toUpperCase() : "UNKNOWN_SYSTEM_ERROR";
+        const errorSub = isOffline ? "請檢查您的網路設定，連線恢復後請重新整理。" : `[SYS_DUMP] ${errorDetail}`;
+
         const retrySvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`;
         
-        // ✨ 擷取系統真實的錯誤文字，並轉成大寫以符合終端機風格
-        const errorDetail = err.message ? err.message.toUpperCase() : "UNKNOWN_SYSTEM_ERROR";
-        
-        // ✨ 在 error-container 加上 flex-direction: column，讓錯誤小字排在按鈕下方
         portfolioSections.innerHTML = `
             <div class="error-container" style="flex-direction: column; gap: 0.8rem;">
                 <span class="error-text" onclick="this.style.opacity='0.5'; this.innerHTML='>_ REBOOTING...'; window.location.reload();">
-                    ${retrySvg}ERR: FAILED TO FETCH DATA
+                    ${retrySvg} ${errorTitle}
                 </span>
                 <span style="font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--muted); opacity: 0.6; letter-spacing: 0.05em;">
-                    [SYS_DUMP] ${errorDetail}
+                    ${errorSub}
                 </span>
             </div>
         `;
         
+        // 確保萬一卡在啟動畫面時，強制關閉重開機遮罩
+        if (window.hideSystemRebootScreen) window.hideSystemRebootScreen(false);
+
         if (marquee) { 
-            marquee.innerHTML = `<span>SYSTEM OFFLINE • CONNECTION REFUSED • </span>`.repeat(4); 
+            const marqueeMsg = isOffline ? "NETWORK OFFLINE • PLEASE CHECK CONNECTION • " : "SYSTEM OFFLINE • CONNECTION REFUSED • ";
+            marquee.innerHTML = `<span>${marqueeMsg}</span>`.repeat(4); 
             marquee.style.color = "var(--error-color)"; 
         }
     }
@@ -2039,7 +2164,6 @@ function hideSystemRebootScreen(isSuccess = true) {
     }, 600);
 }
 
-// 大約在 1319 行開始的 checkSystemVersionAndBoot 函數
 async function checkSystemVersionAndBoot() {
     const isRebooting = sessionStorage.getItem('sys_is_rebooting') === 'true';
     const expectedVersion = sessionStorage.getItem('sys_expected_version') || 'UNKNOWN';
@@ -2080,58 +2204,15 @@ async function checkSystemVersionAndBoot() {
                         }, 600); 
                     }
                     
-                    // ✨ 完美修復版 Toast：從右上角降落，且點擊消失
+                    // ✨ 呼叫共用引擎：顯示更新失敗提示
                     setTimeout(() => {
-                        const errorToast = document.createElement('div');
-                        errorToast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer;";
-                        errorToast.innerHTML = `
-                            <div style="background: var(--error-color); color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px var(--error-shadow); display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; transition: box-shadow 0.3s ease;">
-                                
-                                <!-- ✨ 修正 X 旋轉軸心偏移：鎖死尺寸、使用 flex 絕對置中，並設定 transform-origin -->
-                                <div class="toast-x-icon" style="position: absolute; top: 12px; right: 14px; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center;">
-                                    <!-- ✨ 加上 display: block 徹底消除 SVG 預設的文字底部隱形留白 -->
-                                    <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                </div>
-                                
-                                <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">>_ UPDATE_FAILED</strong>
-                                <span style="opacity: 0.95; font-weight: 600; padding-right: 1.5rem;">CDN_CACHE_DELAY_DETECTED</span>
-                                <span style="opacity: 0.85; font-size: 0.8rem;">已暫時還原為安全版本 (v${CONFIG.VERSION})</span>
-                            </div>
-                        `;
-
-                        document.body.appendChild(errorToast);
-
-                        setTimeout(() => {
-                            errorToast.style.opacity = '1';
-                            errorToast.style.transform = 'translateY(0)';
-                        }, 50);
-
-                        const toastBox = errorToast.firstElementChild;
-                        const xIcon = errorToast.querySelector('.toast-x-icon');
-
-                        // 懸停時增強陰影微光，X 完美繞著中心點順時針轉 90 度
-                        toastBox.onmouseenter = () => { 
-                            toastBox.style.boxShadow = '0 0 25px var(--error-shadow), 0 0 10px rgba(255,255,255,0.2)'; 
-                            if (xIcon) xIcon.style.transform = 'rotate(90deg) scale(1.1)';
-                        };
-                        toastBox.onmouseleave = () => { 
-                            toastBox.style.boxShadow = '0 4px 20px var(--error-shadow)'; 
-                            if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
-                        };
-
-                        // 點擊事件：立刻淡出並移除，且清除自動移除的計時器
-                        errorToast.onclick = () => {
-                            clearTimeout(autoRemoveTimer);
-                            errorToast.style.opacity = '0';
-                            errorToast.style.transform = 'translateY(-10px)';
-                            setTimeout(() => errorToast.remove(), 400);
-                        };
-                        
-                        const autoRemoveTimer = setTimeout(() => {
-                            errorToast.style.opacity = '0';
-                            errorToast.style.transform = 'translateY(-10px)';
-                            setTimeout(() => errorToast.remove(), 400);
-                        }, 8000);
+                        window.showSystemToast(
+                            '>_ UPDATE_FAILED', 
+                            'CDN_CACHE_DELAY_DETECTED', 
+                            `已暫時還原為安全版本 (v${CONFIG.VERSION})`, 
+                            12000, 
+                            'error'
+                        );
                     }, 1000);
                     
                     return;
@@ -2384,22 +2465,62 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         if (groupArticles.length === 0) continue;
 
                         let groupColor = groupData.color;
-                        if (groupData.highlight && !groupColor) {
-                            groupColor = themePalette[colorIndex % themePalette.length];
+                        let themeClass = '';
+                        let customStyle = '';
+
+                        // ✨ The Logic: Use classes for highlight groups, inline styles ONLY for custom hex colors
+                        if (groupData.highlight) {
+                            const groupNum = (colorIndex % 5) + 1;
+                            themeClass = ` group-color-${groupNum}`;
                             colorIndex++; 
+                        } else if (groupColor) {
+                            // If they provided a specific hardcoded hex color
+                            customStyle = ` style="--current-group-color: ${groupColor};"`;
                         }
 
-                        let titleColorStyle = groupColor ? `color: ${groupColor}; border-bottom-color: ${groupColor};` : `color: var(--accent); border-bottom-color: var(--divider-line);`;
                         const topMargin = isFirstGroup ? '0rem' : '1.8rem';
-                        
+
+                        // Apply themeClass to the title, or customStyle if it's a hardcoded hex
                         html += `
                             <div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
-                                <div class="group-header-title" style="${titleColorStyle}">${groupData.title || groupId}</div>
+                                <div class="group-header-title${themeClass}"${customStyle}>${groupData.title || groupId}</div>
                                 ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
                             </div>
                             <ul class="article-list-ul">
                         `;
-                        groupArticles.forEach(({art, idx}) => { html += generateLi(art, idx, groupData.highlight, groupColor); });
+                        
+                        groupArticles.forEach(({art, idx}) => { 
+                            let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                            let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
+                            let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                            
+                            let baseIconHtml = art.cover_image 
+                                ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
+                                : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+                            
+                            let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                            let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                            let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                            let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
+                            
+                            // ✨ The Magic: Apply themeClass directly to the <li>
+                            let classList = `article-li ${groupData.highlight ? 'is-highlight' : 'is-normal'}${hiddenClass}${themeClass}`;
+
+                            html += `
+                                <li id="article-item-${idx}" class="${classList.trim()}"${customStyle}>
+                                    <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                        ${iconHtml}
+                                        <div class="article-item-content">
+                                            <div class="article-item-title-row">
+                                                <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                                ${descHtml}
+                                            </div>
+                                            ${dateHtml}
+                                        </div>
+                                    </a>
+                                </li>
+                            `;
+                        });
                         html += `</ul>`;
                         
                         isFirstGroup = false;
@@ -2408,12 +2529,63 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     if (ungrouped.length > 0) {
                         const topMargin = isFirstGroup ? '0rem' : '1.5rem';
                         html += `<ul class="article-list-ul" style="margin-top:${topMargin};">`;
-                        ungrouped.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
+                        
+                        ungrouped.forEach(({art, idx}) => { 
+                             // Inline generic li generation for ungrouped
+                             let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                             let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
+                             let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                             let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+                             let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                             let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                             let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                             let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
+ 
+                             html += `
+                                 <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
+                                     <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                         ${iconHtml}
+                                         <div class="article-item-content">
+                                             <div class="article-item-title-row">
+                                                 <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                                 ${descHtml}
+                                             </div>
+                                             ${dateHtml}
+                                         </div>
+                                     </a>
+                                 </li>
+                             `;
+                        });
                         html += `</ul>`;
                     }
                 } else {
                     html += `<ul class="article-list-ul" style="margin-top:0rem;">`;
-                    finalArray.forEach(({art, idx}) => { html += generateLi(art, idx, false, null); });
+                    finalArray.forEach(({art, idx}) => { 
+                         // Generic li for projects with no groups
+                         let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                         let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
+                         let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                         let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+                         let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                         let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                         let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                         let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
+
+                         html += `
+                             <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
+                                 <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                     ${iconHtml}
+                                     <div class="article-item-content">
+                                         <div class="article-item-title-row">
+                                             <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                             ${descHtml}
+                                         </div>
+                                         ${dateHtml}
+                                     </div>
+                                 </a>
+                             </li>
+                         `;
+                    });
                     html += `</ul>`;
                 }
                 listContainer.innerHTML = html;
@@ -2485,24 +2657,18 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                         jumpToast.onclick = () => {
                             if (!targetArticle) return;
-                            
-                            // ✨ 【關鍵修復 1】：把「當下的目標」鎖定進獨立的常數中！
-                            // 因為接下來開始捲動時，scroll 事件會觸發，把外層的 targetArticle 覆寫成 null。
                             const finalTarget = targetArticle;
                             
-                            // ✨ 【關鍵修復 2】：精準計算絕對高度 (對抗外層群組 position: relative 的干擾)
-                            let absoluteTop = finalTarget.offsetTop;
-                            let currentEl = finalTarget.offsetParent;
-                            while(currentEl && currentEl !== modalContainer) {
-                                absoluteTop += currentEl.offsetTop;
-                                currentEl = currentEl.offsetParent;
-                            }
+                            // ✨ 改用高精度真實座標計算
+                            const topBar = document.querySelector('.modal-top-bar');
+                            const topBarHeight = topBar ? topBar.offsetHeight : 80;
+                            const targetRect = finalTarget.getBoundingClientRect();
+                            const containerRect = modalContainer.getBoundingClientRect();
+                            const scrollOffset = targetRect.top - containerRect.top - topBarHeight - 40;
 
-                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 120;
-                            
                             // 1. 平滑捲動到精準位置
                             modalContainer.scrollTo({
-                                top: Math.max(0, absoluteTop - topBarHeight - 20),
+                                top: modalContainer.scrollTop + scrollOffset,
                                 behavior: 'smooth'
                             });
                             
@@ -2512,8 +2678,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             // 3. 等待捲動結束後，為「鎖定的目標」精準加上高光！
                             setTimeout(() => {
                                 finalTarget.classList.add('simulate-hover');
-                                
-                                // 4. 700 毫秒後移除高光
                                 setTimeout(() => {
                                     finalTarget.classList.remove('simulate-hover');
                                 }, 700);
@@ -2567,12 +2731,55 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 requestAnimationFrame(() => {
                     // 如果是返回操作，並且存有最後一次閱讀的 index
                     if (restoreScroll && window.lastReadArticleIndex !== undefined) {
+                        
+                        // ✨ 1. 先無縫還原「剛進入文章前」的原始目錄捲軸位置
+                        if (window._indexScrollTopCache !== undefined) {
+                            modalContainer.scrollTop = window._indexScrollTopCache;
+                        }
+
                         const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
                         if (targetItem) {
-                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 120;
-                            modalContainer.scrollTop = Math.max(0, targetItem.offsetTop - topBarHeight - 20);
+                            const topBar = document.querySelector('.modal-top-bar');
+                            const topBarHeight = topBar ? topBar.offsetHeight : 80;
                             
-                            // ✨ 觸發 simulate-hover 提示特效
+                            // ✨ 2. 捨棄受動畫縮放影響的 getBoundingClientRect，改用絕對物理座標 offsetTop
+                            let itemTop = targetItem.offsetTop;
+                            let currentEl = targetItem.offsetParent;
+                            // 遍歷往上加總，直到抵達 modalContainer，取得最真實的相對高度
+                            while(currentEl && currentEl !== modalContainer) {
+                                itemTop += currentEl.offsetTop;
+                                currentEl = currentEl.offsetParent;
+                            }
+                            const itemBottom = itemTop + targetItem.offsetHeight;
+
+                            // ✨ 3. 計算容器的安全可視範圍 (相對座標)
+                            const containerHeight = modalContainer.clientHeight;
+                            const visibleTop = modalContainer.scrollTop + topBarHeight;
+                            const visibleBottom = modalContainer.scrollTop + containerHeight;
+
+                            // 判斷是否「完整」在可視範圍內
+                            const isVisible = (itemTop >= visibleTop) && (itemBottom <= visibleBottom);
+
+                            // ✨ 4. 智慧就近跳轉 (Scroll to Nearest)：免疫所有 CSS 動畫干擾
+                            if (!isVisible) {
+                                if (itemTop < visibleTop) {
+                                    // 情況 A：卡片偏上被遮住 -> 往上拉，對齊頂部並留 20px 呼吸空間
+                                    modalContainer.scrollTop = itemTop - topBarHeight - 20;
+                                    
+                                } else if (itemBottom > visibleBottom) {
+                                    // 情況 B：卡片偏下掉出畫面 -> 往下拉，讓底部剛好進來並留 20px 安全距離
+                                    let newScrollTop = itemBottom + 20 - containerHeight;
+                                    
+                                    // 🛡️ 防呆：如果這張卡片特別長，往下拉會導致頭部被導覽列蓋住，則退回「對齊頂部」
+                                    if (itemTop < newScrollTop + topBarHeight) {
+                                        newScrollTop = itemTop - topBarHeight - 40;
+                                    }
+                                    
+                                    modalContainer.scrollTop = newScrollTop;
+                                }
+                            }
+                            
+                            // ✨ 5. 無論有沒有跳轉，都給予該文章高光提示
                             targetItem.classList.add('simulate-hover');
                             setTimeout(() => {
                                 targetItem.classList.remove('simulate-hover');
@@ -2590,20 +2797,25 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 // ==========================================
 // 打開具體的「文章內文」
 // ==========================================
-// ✨ 修正：將 targetHash 加回來，並把 restoreInnerScrolls 放在最後面 (第 6 個參數)
 window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0, targetHash = null, restoreInnerScrolls = []) {
     const jumpToast = document.getElementById('new-jump-toast');
     if (jumpToast) jumpToast.classList.remove('is-visible');
 
     if (!isFromHistory) {
+        const modalContainer = document.querySelector('.modal-content');
         if (!window.historyStack) window.historyStack = [];
+        
+        // ✨ 1. 新增：當從「目錄頁」進入文章時 (此時 historyStack 是空的)，紀錄目錄的原始捲軸位置
+        if (window.historyStack.length === 0 && modalContainer) {
+            window._indexScrollTopCache = modalContainer.scrollTop;
+        }
+
         if (window.historyStack.length > 0) {
-            const modalContainer = document.querySelector('.modal-content');
             if (modalContainer) {
                 // 儲存主畫面的捲軸
                 window.historyStack[window.historyStack.length - 1].scrollTop = modalContainer.scrollTop;
                 
-                // ✨ 2. 新增：抓取當下所有的 vertical-wrapper 捲軸位置並存入歷史紀錄
+                // 抓取當下所有的 vertical-wrapper 捲軸位置並存入歷史紀錄
                 const wrappers = document.querySelectorAll('#modal-body .vertical-wrapper');
                 window.historyStack[window.historyStack.length - 1].innerScrolls = Array.from(wrappers).map(w => ({
                     scrollTop: w.scrollTop,
@@ -2611,7 +2823,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 }));
             }
         }
-        // ✨ 3. 新增 innerScrolls 初始陣列
+        // 新增 innerScrolls 初始陣列
         window.historyStack.push({ projectId, articleIndex, scrollTop: 0, innerScrolls: [] });
     }
 
@@ -2639,7 +2851,31 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         markdownContent = data.content; 
     } catch (error) {
         console.error("無法載入文章內容:", error);
-        markdownContent = "# 404 Not Found\n無法載入文章內容，請檢察網路連線與路徑是否正確。";
+        
+        // 動態判斷是網路斷線還是檔案遺失
+        const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
+        const errTitle = isOffline ? 'ERR_INTERNET_DISCONNECTED' : '404 NOT_FOUND';
+        const errMsg = isOffline ? '網路連線中斷，請檢查您的網路狀態。' : '無法載入文章內容，請檢查路徑是否正確。';
+        
+        // ✨ 核心魔法：第一行給予真實的文章標題 (article.title)，讓系統抽出並渲染完美的 Header！
+        // 接下來的內容則替換為置中的終端機風格錯誤提示。
+        markdownContent = `
+# ${article.title}
+
+<div style="text-align: center; padding: 4rem 1rem; color: var(--muted);">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5;">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+    <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; color: var(--error-color); margin-bottom: 0.5rem; letter-spacing: 0.05em;">
+        ${errTitle}
+    </div>
+    <div style="font-size: 0.95rem;">
+        ${errMsg}
+    </div>
+</div>
+        `.trim();
     } finally {
         document.body.style.cursor = '';
     }
@@ -3585,7 +3821,6 @@ function show404Modal(title, message) {
 // ==========================================
 window._hasAgreedSensitiveContent = false;
 
-// ✨ 1. 加入第二個參數 onDeclineCallback
 window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback) {
     if (window._hasAgreedSensitiveContent === true) {
         if (onAgreeCallback) onAgreeCallback();
@@ -3597,8 +3832,39 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     overlay.className = 'modal-overlay active'; 
     overlay.style.zIndex = '1100'; 
     
+    // ✨ 移除原本的 title，保留游標暗示即可
+    overlay.style.cursor = 'pointer';
+    
+    // 將拒絕/關閉的邏輯抽出來
+    const declineAction = () => {
+        document.removeEventListener('keydown', escListener);
+        overlay.remove();
+        window.unlockScroll();
+        if (onDeclineCallback) {
+            onDeclineCallback();
+        } else {
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+    };
+
+    // 建立 ESC 鍵盤監聽器
+    const escListener = (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            declineAction();
+        }
+    };
+    document.addEventListener('keydown', escListener);
+
+    // ✨ 移除內層與按鈕的 title
     overlay.innerHTML = `
-        <div class="modal-content" style="max-width: 500px; text-align: center; padding: 3rem 2rem; opacity: 1;">
+        <div class="modal-content" style="cursor: auto; max-width: 500px; text-align: center; padding: 3rem 2rem; opacity: 1; position: relative;">
+            
+            <!-- ✨ 右上角 X 關閉按鈕：保留 Toast 的旋轉動畫 -->
+            <button id="sensitive-close-x" style="position: absolute; top: 1.2rem; right: 1.2rem; background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 0.5rem; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; opacity: 0.7;" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)'; this.style.transform='rotate(90deg) scale(1.1)';" onmouseout="this.style.opacity='0.7'; this.style.color='var(--muted)'; this.style.transform='rotate(0deg) scale(1)';">
+                <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
             <svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                 <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -3619,19 +3885,17 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     document.body.appendChild(overlay);
     window.lockScroll();
 
-    document.getElementById('sensitive-decline-btn').onclick = () => {
-        overlay.remove();
-        window.unlockScroll();
-        // ✨ 2. 如果有設定退回行為，就執行它
-        if (onDeclineCallback) {
-            onDeclineCallback();
-        } else {
-            // 防呆 fallback
-            window.history.replaceState(null, '', window.location.pathname);
-        }
+    // 綁定三個能觸發「拒絕/關閉」的元素
+    document.getElementById('sensitive-decline-btn').onclick = declineAction;
+    document.getElementById('sensitive-close-x').onclick = declineAction;
+    
+    // 點擊背景遮罩關閉
+    overlay.onclick = (e) => {
+        if (e.target === overlay) declineAction();
     };
 
     document.getElementById('sensitive-agree-btn').onclick = () => {
+        document.removeEventListener('keydown', escListener); 
         window._hasAgreedSensitiveContent = true;
         overlay.remove();
         if (onAgreeCallback) onAgreeCallback();
@@ -3848,16 +4112,16 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                     let listHTML = '<ul class="article-list-ul">';
                     window.cachedChangelogs.forEach(log => {
                         
-                        // ✨ 魔法發生地：推導狀態，並向 CSS 請求色彩！
                         let activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
-                        let tabColor = window.getStatusColorFromCSS(activeStatus);
                         let badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
 
+                        // 1. 在 li 加上 data-status 屬性，並移除寫死的 style
                         listHTML += `
-                            <li class="article-li is-highlight" style="--tab-color: ${tabColor}; margin-bottom: 1rem;">
+                            <li class="article-li is-highlight" data-status="${activeStatus}" style="margin-bottom: 1rem;">
                                 <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${log.id}')">
                                     <div class="article-item-icon-wrap">
-                                        <div class="article-item-fallback" style="color: ${tabColor};">
+                                        <!-- 2. 圖示顏色直接使用 var() 來繼承 -->
+                                        <div class="article-item-fallback" style="color: var(--tab-color, var(--accent));">
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                                 <polyline points="14 2 14 8 20 8"></polyline>
@@ -4061,50 +4325,73 @@ window.scrollToAnchor = function(event, hash) {
 };
 
 // ==========================================
-// ✨ 獨立打包：終極精準捲動引擎 (拔除擾人的強制鎖定)
+// ✨ 獨立打包：終極精準捲動引擎 (動態追蹤定位版)
 // ==========================================
 window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
     const modalContainer = document.querySelector('.modal-content');
     if (!modalContainer) return false;
 
+    const targetEl = window.findAnchorElement(hash);
+    if (!targetEl) return null;
+
+    // 核心捲動邏輯 (抽離出來以便重複呼叫)
     const doScroll = (isSmooth = true) => {
-        const el = window.findAnchorElement(hash);
-        if (!el) return null;
+        const topBar = document.querySelector('.modal-top-bar');
+        const topBarHeight = topBar ? topBar.offsetHeight : 80;
         
-        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 90;
+        const elRect = targetEl.getBoundingClientRect();
+        const containerRect = modalContainer.getBoundingClientRect();
         
-        // 算出絕對高度
-        let absoluteTop = el.offsetTop;
-        let currentEl = el.offsetParent;
-        while(currentEl && currentEl !== modalContainer) {
-            absoluteTop += currentEl.offsetTop;
-            currentEl = currentEl.offsetParent;
+        // 算出還差多少距離
+        const scrollOffset = elRect.top - containerRect.top - topBarHeight - 8; 
+        
+        // 防抖：誤差大於 2px 才執行捲動，避免浮點數差異造成效能浪費
+        if (Math.abs(scrollOffset) > 2) {
+            modalContainer.scrollTo({ 
+                top: modalContainer.scrollTop + scrollOffset, 
+                behavior: isSmooth ? 'smooth' : 'auto' 
+            });
         }
-        
-        const targetTop = absoluteTop - topBarHeight - 20; 
-        modalContainer.scrollTo({ top: Math.max(0, targetTop), behavior: isSmooth ? 'smooth' : 'auto' });
-        return el;
     };
 
-    // 執行第一次跳轉 (決定要瞬間移動還是平滑捲動)
-    const foundEl = doScroll(!forceInstantFirst);
+    // 1. 執行第一次跳轉
+    doScroll(!forceInstantFirst);
 
-    if (foundEl) {
-        // ✨ 核心修復：拔除多重延遲強制拉回，只保留一次輕微延遲確保圖片撐出版面
-        setTimeout(() => doScroll(!forceInstantFirst), 150);
+    // 2. 佈局偏移追蹤引擎 (Layout Shift Chaser)
+    // 專門對付 loading="lazy" 圖片與 Mermaid 非同步渲染導致的高度變化
+    if (!forceInstantFirst) {
+        let trackers = [];
+        
+        // 設立三個時間檢查點，不斷重新瞄準正在移動的目標
+        // 圖片載入撐開畫面時，系統會自動往下修正，完美跟隨！
+        trackers.push(setTimeout(() => doScroll(true), 300));
+        trackers.push(setTimeout(() => doScroll(true), 600));
+        trackers.push(setTimeout(() => doScroll(true), 1200));
 
-        // 智慧尋找發光目標
-        let highlightEl = foundEl;
-        if (highlightEl.textContent.trim() === '') {
-            highlightEl = highlightEl.nextElementSibling || foundEl;
-        }
-
-        // 閃爍動畫
-        highlightEl.classList.add('highlight-flash');
-        setTimeout(() => highlightEl.classList.remove('highlight-flash'), 1000);
-        return true;
+        // ✋ 防呆中斷機制：
+        // 如果使用者在跳轉期間(1.2秒內)覺得不想等了，自己滑動了滾輪或觸控螢幕
+        // 就立刻放棄追蹤，把捲軸控制權還給使用者，避免系統跟使用者搶奪捲軸
+        const cancelTrackers = () => {
+            trackers.forEach(clearTimeout);
+            modalContainer.removeEventListener('wheel', cancelTrackers);
+            modalContainer.removeEventListener('touchstart', cancelTrackers);
+        };
+        
+        modalContainer.addEventListener('wheel', cancelTrackers, { passive: true });
+        modalContainer.addEventListener('touchstart', cancelTrackers, { passive: true });
     }
-    return false;
+
+    // 3. 智慧尋找發光目標
+    let highlightEl = targetEl;
+    if (highlightEl.textContent.trim() === '') {
+        highlightEl = highlightEl.nextElementSibling || targetEl;
+    }
+
+    // 閃爍動畫 (延長發光時間到 1.5s，配合追蹤引擎)
+    highlightEl.classList.add('highlight-flash');
+    setTimeout(() => highlightEl.classList.remove('highlight-flash'), 1500);
+    
+    return true;
 };
 
 // ==========================================
@@ -4187,4 +4474,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (err) {
         console.warn("系統名言載入失敗，維持預設顯示:", err);
     }
+});
+
+// ==========================================
+// ✨ 全域網路狀態監聽引擎 (Network Status Monitor)
+// ==========================================
+window.addEventListener('online', () => {
+    console.log("[SYS_NET] 網路連線已恢復，準備重新載入...");
+    // 網路恢復時，為了確保資料完整性，直接重整頁面
+    window.location.reload(); 
+});
+
+window.addEventListener('offline', () => {
+    console.warn("[SYS_NET] 網路連線已中斷！");
+    
+    // 如果系統有載入畫面的遮罩卡著，強制關閉它
+    if (window.hideSystemRebootScreen) {
+        window.hideSystemRebootScreen(false);
+    }
+
+    // ✨ 呼叫共用引擎：顯示網路斷線提示
+    window.showSystemToast(
+        '>_ SYSTEM_OFFLINE', 
+        '網路連線中斷', 
+        '請檢查您的網路設定，連線恢復後系統將自動重整。', 
+        12000, 
+        'error'
+    );
 });
