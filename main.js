@@ -814,13 +814,17 @@ window.updateLightboxView = function() {
     const lightboxCaption = document.getElementById('lightbox-caption');
     const wrapper = document.querySelector('.lightbox-img-wrapper'); 
     
-    // ✨ 修改後：同步隱藏/顯示前方的分隔線
+    // ✨ 新增：偵測是否為 PWA 環境
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    
+    // ✨ 修改後：PWA 模式或 DOM 模式下皆隱藏新分頁按鈕與分隔線
     const newTabBtn = document.querySelector('.toolbar-btn[onclick*="new-tab"]');
     if (newTabBtn) {
-        newTabBtn.style.display = state.isDomMode ? 'none' : 'flex';
+        const shouldHide = state.isDomMode || isPWA;
+        newTabBtn.style.display = shouldHide ? 'none' : 'flex';
         const prevDivider = newTabBtn.previousElementSibling;
         if (prevDivider && prevDivider.classList.contains('toolbar-divider')) {
-            prevDivider.style.display = state.isDomMode ? 'none' : 'block';
+            prevDivider.style.display = shouldHide ? 'none' : 'block';
         }
     }
 
@@ -918,32 +922,8 @@ window.lightboxAction = function(action, event) {
         state.x = 0; state.y = 0;
     } else if (action === 'new-tab') {
         if (state.isDomMode) return;
-        
-        const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-        if (isPWA) {
-            // ✨ PWA 模式下使用 Blob 開新分頁穿透
-            fetch(target.src)
-                .then(res => res.blob())
-                .then(blob => {
-                    const blobUrl = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = blobUrl;
-                    a.target = '_blank'; // 關鍵：開新分頁穿透，交給系統原生處理
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(blobUrl);
-                    }, 500); // 給外部瀏覽器讀取的時間
-                })
-                .catch(err => {
-                    console.error('Blob 新分頁穿透失敗:', err);
-                    window.open(target.src, '_blank');
-                });
-        } else {
-            window.open(target.src, '_blank');
-        }
+        // ✨ 還原為單純的網頁開新分頁 (PWA 模式下這顆按鈕已經隱藏了)
+        window.open(target.src, '_blank');
         return;
     }
     
