@@ -594,6 +594,71 @@ window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = '
 };
 
 // ==========================================
+// ✨ 全域閱讀進度條引擎 (Unified Progress Bar Engine)
+// ==========================================
+window.initProgressBar = function(mountEl, scrollEl, type, existingBarId = null) {
+    if (!mountEl || !scrollEl) return;
+
+    // 如果已經有這個 ID 的進度條就重複使用，沒有就新建
+    let bar = existingBarId ? document.getElementById(existingBarId) : null;
+    if (!bar) {
+        bar = document.createElement('div');
+        if (existingBarId) bar.id = existingBarId;
+        mountEl.appendChild(bar);
+    }
+    
+    // ✨ 將繁瑣的 style 替換為乾淨的 CSS Class
+    bar.className = `sys-progress-bar ${type === 'vertical' ? 'is-vertical-bar' : 'is-top-bar'}`;
+    bar.style.display = 'block';
+    bar.style.width = '0%';
+    bar.classList.remove('is-complete');
+
+    const updateProgress = () => {
+        if (bar.style.display === 'none') return;
+        
+        let progress = 100;
+        let maxScroll = 0;
+        let currentScroll = 0;
+
+        // 判斷是橫向還是直向滾動
+        if (type === 'vertical') {
+            maxScroll = scrollEl.scrollWidth - scrollEl.clientWidth;
+            currentScroll = Math.abs(scrollEl.scrollLeft);
+        } else {
+            maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+            currentScroll = Math.ceil(scrollEl.scrollTop);
+        }
+
+        // 核心運算與防呆吸附
+        if (maxScroll > 0) {
+            if (maxScroll - currentScroll <= 5) {
+                progress = 100;
+            } else {
+                progress = (currentScroll / maxScroll) * 100;
+            }
+        }
+
+        bar.style.width = `${progress}%`;
+        
+        // ✨ CSS 類別控制變色發光，JS 只負責切換狀態！
+        if (progress === 100) {
+            bar.classList.add('is-complete');
+        } else {
+            bar.classList.remove('is-complete');
+        }
+    };
+
+    // 清理舊的監聽器避免重複觸發，並綁定新監聽
+    if (bar._scrollHandler) scrollEl.removeEventListener('scroll', bar._scrollHandler);
+    bar._scrollHandler = updateProgress;
+    scrollEl.addEventListener('scroll', bar._scrollHandler, { passive: true });
+    
+    // 延遲初始化呼叫
+    setTimeout(updateProgress, 100);
+    return bar;
+};
+
+// ==========================================
 // ✨ 全域大圖預覽 (Lightbox 2.0) 控制引擎
 // ==========================================
 
@@ -1209,18 +1274,30 @@ renderer.code = function(token_or_code, language, isEscaped) {
         </div>`;
     }
 
-    // ✨ 非 Mermaid 的普通程式碼區塊：加上複製按鈕與語言標籤
-    const cleanLang = lang ? lang.split('[')[0].trim() : 'text'; // 容錯處理，預設為 text
-    // 進行基礎的 HTML 跳脫，防止 XSS 與破版
+    // ✨ 非 Mermaid 的普通程式碼區塊：加上複製按鈕、語言標籤與「檔案名稱」
+    const fullLang = typeof token_or_code === 'object' ? (token_or_code.lang || language) : (language || '');
+    
+    // 解析自訂檔案名稱，例如 `javascript [main.js]`
+    let fileName = '';
+    const titleMatch = fullLang.match(/\[(.*?)\]/);
+    if (titleMatch && titleMatch[1]) {
+        fileName = titleMatch[1].trim();
+    }
+    
+    const cleanLang = fullLang ? fullLang.split('[')[0].trim() : 'text'; // 容錯處理，預設為 text
     const escapedText = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    // 複製圖示 SVG
     const copyIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
 
+    // ✨ 核心修復：將語言與檔案名稱合併，中間加個分隔線，徹底解決重疊！
+    const labelContent = fileName 
+        ? `${cleanLang} <span style="opacity: 0.3; margin: 0 6px;">|</span> <span style="text-transform: none; color: var(--accent-2);">${fileName}</span>` 
+        : cleanLang;
+
     return `
-    <div class="code-block-wrapper">
-        <div class="code-lang-label">${cleanLang}</div>
-        <!-- ✨ 拔除了 data-tooltip 屬性 -->
+    <div class="code-block-wrapper" style="position: relative;">
+        <!-- 設定 max-width 避免檔名太長蓋到複製按鈕，過長會自動變成 ... -->
+        <div class="code-lang-label" style="max-width: calc(100% - 100px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${fileName || cleanLang}">${labelContent}</div>
         <button class="code-copy-btn" onclick="window.copyCodeBlock(this)">
             ${copyIcon} <span class="copy-text">Copy</span>
         </button>
@@ -1464,9 +1541,54 @@ const rubyExtension = {
     }
 };
 
-// ⚠️ 記得把 rubyExtension 加進 marked.use 的陣列裡！
+// ==========================================
+// ✨ 新增：摺疊區塊 (Collapsible Details / Accordion) 擴充
+// 語法：:::details[標題] 內容 :::
+// ==========================================
+const detailsBlockExtension = {
+    name: 'detailsBlock',
+    level: 'block',
+    start(src) { return src.match(/^:::\s*details/)?.index; },
+    tokenizer(src, tokens) {
+        const rule = /^:::\s*details(?:\[(.*?)\])?\n([\s\S]*?)\n:::/;
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'detailsBlock',
+                raw: match[0],
+                summaryText: match[1] || '點擊展開查看',
+                tokens: this.lexer.blockTokens(match[2])
+            };
+        }
+    },
+    renderer(token) {
+        return `
+        <details class="md-details" style="margin: 1rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; background: var(--glass-bg); overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base);">
+            <summary style="font-weight: 600; cursor: pointer; outline: none; user-select: none; background: var(--bg); display: flex; align-items: center; gap: 0.8rem;">
+                <svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <span style="flex-grow: 1;">${token.summaryText}</span>
+            </summary>
+            <div class="md-details-content" style="padding: 1.2rem; border-top: 1px solid var(--card-border);">
+                ${this.parser.parse(token.tokens)}
+            </div>
+        </details>
+        `;
+    }
+};
+
+// 將 style 自動注入到 <head> 中，隱藏原生三角形並加入動畫
+document.head.insertAdjacentHTML('beforeend', `
+<style>
+    .md-details summary::-webkit-details-marker { display: none; }
+    .md-details summary { list-style: none; }
+    .md-details[open] .details-icon { transform: rotate(90deg); color: var(--accent); }
+    .md-details-content > *:first-child { margin-top: 0; }
+    .md-details-content > *:last-child { margin-bottom: 0; }
+</style>`);
+
+// ⚠️ 記得把 detailsBlockExtension 加進陣列裡！
 marked.use({ 
-    extensions: [spoilerExtension, highlightExtension, highlightBlockExtension, rubyExtension], 
+    extensions: [spoilerExtension, highlightExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
     renderer: renderer,
     breaks: false, 
     gfm: true      
@@ -2105,8 +2227,8 @@ async function loadProjects() {
         if (window.hideSystemRebootScreen) window.hideSystemRebootScreen(false);
 
         if (marquee) { 
-            const marqueeMsg = isOffline ? "NETWORK OFFLINE • PLEASE CHECK CONNECTION • " : "SYSTEM OFFLINE • CONNECTION REFUSED • ";
-            marquee.innerHTML = `<span>${marqueeMsg}</span>`.repeat(4); 
+            const marqueeMsg = isOffline ? "NETWORK OFFLINE • PLEASE CHECK CONNECTION • " : "SYSTEM OFFLINE • ERROR • ";
+            marquee.innerHTML = `<span>${marqueeMsg}</span>`.repeat(6); 
             marquee.style.color = "var(--error-color)"; 
         }
     }
@@ -2417,6 +2539,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             modalBody.innerHTML = `
                 <div id="article-list-container" style="transition: opacity 0.2s ease;"></div>
             `;
+            
+            // ✨ 目錄模式：隱藏閱讀進度條
+            const progressBar = document.getElementById('reading-progress-bar');
+            if (progressBar) progressBar.style.display = 'none';
 
             const shareBtn = document.getElementById('index-share-btn');
             if (shareBtn) {
@@ -2900,19 +3026,32 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             
             modalBody.innerHTML = marked.parse(markdownContent);
 
+            // ==========================================
+            // ✨ 啟動進度條引擎 (主進度條 & 直書獨立進度條)
+            // ==========================================
+            const modalContainer = document.querySelector('.modal-content');
+            const topBar = document.querySelector('.modal-top-bar');
+            
+            // 1. 綁定頂部主進度條
+            if (modalContainer && topBar) {
+                window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
+            }
+
+            // 2. 綁定直書模式 (Vertical Wrapper) 專屬獨立進度條
             const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
-            // ✨ 加上 idx 參數來對應陣列
-            verticalWrappers.forEach((wrapper, idx) => {
-                window.applyIndentToVerticalWrapper(wrapper);
+            verticalWrappers.forEach(wrapper => {
+                const container = document.createElement('div');
+                container.style.position = 'relative';
+                container.style.margin = '1rem 0';
+                container.style.borderRadius = '12px';
+                container.style.overflow = 'hidden'; // 防突出
                 
-                // ✨ 新增：如果是從歷史紀錄返回，且有對應的捲軸數值，就執行還原
-                if (isFromHistory && restoreInnerScrolls[idx]) {
-                    // 延遲 50 毫秒，確保 DOM 內容與文字縮排已經撐開高度
-                    setTimeout(() => {
-                        wrapper.scrollTop = restoreInnerScrolls[idx].scrollTop || 0;
-                        wrapper.scrollLeft = restoreInnerScrolls[idx].scrollLeft || 0;
-                    }, 50);
-                }
+                wrapper.parentNode.insertBefore(container, wrapper);
+                wrapper.style.margin = '0';
+                container.appendChild(wrapper);
+
+                // ✨ 直接呼叫引擎，一行搞定所有特效與事件綁定！
+                window.initProgressBar(container, wrapper, 'vertical');
             });
 
             const flatSequence = window.getArticleSequence(projectId);

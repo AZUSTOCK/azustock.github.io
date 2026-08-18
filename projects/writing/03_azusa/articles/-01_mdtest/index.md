@@ -46,6 +46,16 @@
 * ||區塊內也可以放撕開貼紙！||
 :::
 
+### 3.3 摺疊區塊
+可以收合與打開
+
+:::details[查看隱藏的錯誤 Log 紀錄]
+這裡可以寫任何 Markdown！
+* 支援清單
+* 支援 **粗體**
+* 甚至可以放圖片！
+:::
+
 ---
 
 ## 4. 表格與清單 (Tables & Lists)
@@ -68,6 +78,10 @@
 ## 5. 程式碼與圖表引擎 (Code & Mermaid)
 
 ### 程式碼區塊
+```javascript [main.js]
+console.log("檔案名稱會在左上角顯示！");
+```
+
 ```javascript
 const universalTest = () => {
     console.log("System initialized successfully.");

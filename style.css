@@ -2,6 +2,18 @@
 /* 🔖 第一層：系統核心與變數 (System & Variables)                               */
 /* ========================================================================== */
 
+/* 階層 */
+:root {
+    --z-progress: 1;
+    --z-pin: 10;
+    --z-tooltip: 50;
+    --z-nav: 999;
+    --z-modal-overlay: 1050;
+    --z-lightbox: 9999;
+    --z-toast: 10000;
+    --z-system-override: 99999;
+}
+
 /* 1-1. 深色模式 (Dark Mode) */
 [data-theme="dark"] {
     color-scheme: dark; /* ✨ 核心魔法：強制原生 UI 啟用深色模式 */
@@ -126,6 +138,21 @@
     --svg-watermark-profile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'%3E%3C/path%3E%3Ccircle cx='12' cy='7' r='4'%3E%3C/circle%3E%3C/svg%3E");
     --svg-arrow-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'/%3E%3Cpolyline points='12 5 19 12 12 19'/%3E%3C/svg%3E");
     --svg-arrow-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='19' y1='12' x2='5' y2='12'/%3E%3Cpolyline points='12 19 5 12 12 5'/%3E%3C/svg%3E");
+}
+
+:root {
+    /* ✨ 基礎過渡時間 */
+    --t-fast: 0.2s;
+    --t-base: 0.3s;
+    --t-slow: 0.4s;
+    
+    /* ✨ 動畫曲線 */
+    --ease-smooth: cubic-bezier(0.25, 0.8, 0.25, 1);
+    --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    
+    /* 直接定義組合包，以後寫 transition: var(--trans-smooth); 就搞定！ */
+    --trans-smooth: all var(--t-base) var(--ease-smooth);
+    --trans-bounce: transform var(--t-slow) var(--ease-bounce);
 }
 
 /* 👇 請補上這兩行，動畫引擎才會真正啟動！ */
@@ -678,6 +705,12 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================================================================== */
 /* ✨ 全域共用 Tooltip 氣泡 (乾淨俐落的屬性選擇器版) */
 /* ========================================================================== */
+
+/* ✨ 新增這段：只要滑鼠摸到帶有 Tooltip 的按鈕，就瞬間把它的圖層拉到最前面！ */
+[data-tooltip]:hover {
+    z-index: 50; 
+}
+
 [data-tooltip]::after { 
     content: attr(data-tooltip); position: absolute; top: -38px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--card); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; 
 }
@@ -823,7 +856,14 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 
 /* 5-2. 頂部控制列 */
 .modal-top-bar { position: sticky; top: 0; margin: 0 -3rem 1.5rem -3rem; padding: 1.5rem 1.5rem 1.2rem 3rem; box-shadow: 0 -2px 0 0 var(--glass-bg); border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; background: var(--glass-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); z-index: 1060; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s ease, border-color 0.3s ease; }
-#modal-top-left, #modal-top-right { display: flex; align-items: center; margin: 0 !important; padding: 0 !important; }
+#modal-top-left, #modal-top-right { 
+    display: flex; 
+    align-items: center; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    position: relative; 
+    z-index: 10; /* ✨ 核心修復：確保頂部按鈕與氣泡永遠蓋在進度條之上 */
+}
 #modal-top-left { gap: 0.5rem; }
 #modal-top-right { gap: 0rem; align-self: flex-start; }
 #modal-top-right:has(.toc-wrapper) { gap: 1rem; }
@@ -1268,7 +1308,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     z-index: 20; 
     padding: 0 0.4rem; 
     margin: 0 0.1rem; 
-    border-radius: 4px;
+    /* border-radius: 4px; */
 }
 
 /* 1. 底層：解密後的文字 */
@@ -1285,7 +1325,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     position: absolute;
     inset: 0;
     background-color: var(--text);
-    border-radius: 4px;
+    /* border-radius: 4px; */
     z-index: 2;
     
     /* Base: 完整的矩形 */
@@ -1373,11 +1413,11 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     position: relative;
     display: inline-block;
     vertical-align: baseline; 
-    border-radius: 6px;
+    /* border-radius: 6px; */
     color: var(--text);
     background: color-mix(in srgb, var(--dynamic-glow) 15%, transparent);
     box-shadow: 0 0 2px color-mix(in srgb, var(--dynamic-glow) 30%, transparent);
-    clip-path: inset(0 round 6px); 
+    clip-path: inset(0); 
     cursor: pointer; 
     user-select: none; 
 }
@@ -1427,8 +1467,6 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 /* ==========================================
    ✨ X光透視互動 (純點擊切換，防干擾 + 全幽靈化)
    ========================================== */
-
-/* ✨ 移除了所有的 :hover 觸發，現在只有被點擊加上 .is-xray-active 時才會啟動 X光！ */
 
 /* 1. 主文字變透明 (移除 Hover 限制，永遠保持幽靈化) */
 .markdown-body .md-highlight-text.is-xray-active .text-content {
@@ -1506,8 +1544,6 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
    ========================================== */
 .markdown-body .md-highlight-text.is-block {
     display: block;       
-    margin: 1.5rem 0;     
-    padding: 1.5rem;      
 }
 
 .markdown-body .md-highlight-text.is-block .text-content {
@@ -1830,6 +1866,51 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 .lightbox-caption { position: absolute; bottom: max(60px, calc(env(safe-area-inset-bottom) + 30px)); left: 50%; transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 999px; padding: 8px 24px; color: var(--text); font-size: 1rem; font-weight: 500; pointer-events: none; z-index: 50; max-width: 90%; box-shadow: 0 4px 20px var(--shadow-base); display: none; }
 .toolbox-group { display: flex; align-items: center; gap: 8px; }
 .toolbox-toggle-btn { display: none; }
+
+/* ========================================================================== */
+/* ✨ 閱讀進度條系統 (Reading Progress Bar Engine)                             */
+/* ========================================================================== */
+
+/* 共用基底樣式 */
+.sys-progress-bar {
+    position: absolute;
+    width: 0%;
+    pointer-events: none;
+    z-index: 1; /* ✨ 核心修復：從 100 降為 1 */
+    transition: width 0.15s ease-out, background-color 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease;
+    background: var(--accent);
+}
+
+/* 1. 頂部主進度條 */
+.sys-progress-bar.is-top-bar {
+    bottom: -2px;
+    left: 0;
+    height: 2px;
+    box-shadow: 0 0 8px var(--accent);
+}
+
+/* 頂部主進度條：100% 滿版狀態 */
+.sys-progress-bar.is-top-bar.is-complete {
+    background: var(--accent-2);
+    box-shadow: 0 0 15px var(--accent-2);
+}
+
+/* 2. 直書專屬進度條 */
+.sys-progress-bar.is-vertical-bar {
+    top: 0;
+    right: 0;
+    height: 3px;
+    border-top-right-radius: 12px; /* 貼合外框右上角 */
+    border-top-left-radius: 2px;   /* 預設無圓角 */
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+/* 直書專屬進度條：100% 滿版狀態 */
+.sys-progress-bar.is-vertical-bar.is-complete {
+    background: var(--accent-2);
+    box-shadow: 0 2px 15px var(--accent-2);
+    border-top-left-radius: 12px; /* 100% 時完美貼合左側圓角 */
+}
 
 /* ========================================================================== */
 /* 📱 第八層：行動版與觸控優化 (Mobile & Touch)                                 */
