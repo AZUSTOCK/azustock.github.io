@@ -82,7 +82,21 @@
   </button>
 
   <nav id="fullscreen-menu" class="fullscreen-nav">
-    <ul class="nav-links" id="dynamic-nav"></ul>
+    <div style="width: 100%; display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; min-height: 100dvh; box-sizing: border-box; padding: 3rem 0;">
+        <ul class="nav-links" id="dynamic-nav" style="margin: auto 0;"></ul>
+        
+        <!-- ✨ 方案 A：低調的終端機風格重整按鈕 -->
+        <div style="text-align: center; padding-bottom: 2rem;">
+            <button onclick="window.location.reload();" style="
+                background: transparent; border: 1px solid var(--card-border); 
+                color: var(--muted); font-family: 'Courier New', monospace;
+                font-size: 0.8rem; padding: 0.4rem 1.2rem; cursor: pointer;
+                transition: all 0.3s ease;
+            " onmouseover="this.style.color='var(--accent-2)'; this.style.borderColor='var(--accent-2)';" onmouseout="this.style.color='var(--muted)'; this.style.borderColor='var(--card-border)';">
+                >_ RELOAD_SYSTEM
+            </button>
+        </div>
+    </div>
   </nav>
 
   <button id="back-to-top" class="btt-btn" aria-label="返回頂部">

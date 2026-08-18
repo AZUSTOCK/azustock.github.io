@@ -1151,6 +1151,15 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body blockquote { border-left: 4px solid var(--accent); margin: 1.5rem 0; padding-left: 1rem; color: var(--muted); background: rgba(255,255,255,0.02); }
 
 /* ==========================================
+   ✨ 摺疊區塊 (Details / Accordion) 排版
+   ========================================== */
+.md-details summary::-webkit-details-marker { display: none; }
+.md-details summary { list-style: none; }
+.md-details[open] .details-icon { transform: rotate(90deg); color: var(--accent); }
+.md-details-content > *:first-child { margin-top: 0; }
+.md-details-content > *:last-child { margin-bottom: 0; }
+
+/* ==========================================
    ✨ 程式碼區塊 (Code Block) 視覺與按鈕優化
    ========================================== */
 .markdown-body .code-block-wrapper {
@@ -1601,8 +1610,9 @@ figure.standalone-figure:has(img:hover) .zoom-btn {
     transform: translateZ(0) scale(1.15); 
 }
 
-/* 2. 無圖說獨立圖片：滑鼠移到圖片上時，懸浮放大鏡跟著填滿顏色並發光 */
-figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating { 
+/* 2. 無圖說獨立圖片/影片：滑鼠移到媒體上時，懸浮放大鏡跟著填滿顏色並發光 */
+figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
+.video-wrapper:has(video:hover) .zoom-btn.floating { 
     background: var(--accent); 
     color: #fff; 
     opacity: 1; 
@@ -1989,32 +1999,29 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 /* 調整觸控狀態的游標 */
 body.is-touch-device #lightbox-img { cursor: default; }
 
-/* 8-4. PDF 觸控裝置防禦機制 (手機+平板) */
-@media (hover: none) and (pointer: coarse), (max-width: 768px) {
-    .pdf-container iframe { display: none !important; }
-    .pdf-container { position: relative; }
-    /* .pdf-container::after { content: '行動裝置與平板不支援內嵌 PDF 預覽\A請點擊右上角「新分頁開啟」以系統原生閱讀器瀏覽。'; white-space: pre-wrap; display: flex; align-items: center; justify-content: center; text-align: center; height: 180px; background: var(--bg); color: var(--muted); font-size: 0.95rem; line-height: 1.8; padding: 1.5rem; } */
-    .pdf-container { 
-        cursor: pointer; 
-        -webkit-tap-highlight-color: transparent; /* 移除手機點擊預設的灰底 */
-    }
-    
-    /* ✨ 點擊時微縮，給予物理反饋 */
-    .pdf-container:active { 
-        transform: scale(0.98); 
-    } 
-    
-    .pdf-iframe { 
-        display: none !important; 
-    }
-    
-    .pdf-mobile-placeholder { 
-        display: flex !important; 
-    }
+/* ==========================================
+   ✨ 8-4. PDF 觸控裝置防禦機制 (全面交由 JS 的 .is-touch-device 統籌)
+   ========================================== */
+body.is-touch-device .pdf-container { 
+    cursor: pointer; 
+    -webkit-tap-highlight-color: transparent; /* 移除手機點擊預設的灰底 */
+    transition: transform 0.2s ease;
+}
 
-    .pdf-ext-btn {
-        display: none !important;
-    }
+/* 點擊時微縮，給予物理反饋 */
+body.is-touch-device .pdf-container:active { 
+    transform: scale(0.98); 
+} 
+
+/* 在觸控裝置下，強制隱藏 iframe 閱讀器與新分頁按鈕 */
+body.is-touch-device .pdf-iframe,
+body.is-touch-device .pdf-ext-btn { 
+    display: none !important; 
+}
+
+/* 在觸控裝置下，強制顯示安全的點擊提示佔位區塊 */
+body.is-touch-device .pdf-mobile-placeholder { 
+    display: flex !important; 
 }
 
 /* ========================================================================== */
@@ -2216,4 +2223,109 @@ body.system-override-active .sys-hidden-tag {
 /* 只要隱形壓抑器一解除，機密標籤就會以爆發動畫現身！ */
 body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-ticker {
     animation: inject-flash 0.6s var(--ease-smooth) forwards;
+}
+
+/* ==========================================
+   ✨ 自製網頁全螢幕 (Web Fullscreen) - 破解 PWA 限制
+   ========================================== */
+.md-video.is-web-fullscreen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important; /* 支援手機動態視窗高度 */
+    max-width: none !important;
+    max-height: none !important;
+    z-index: 99999 !important; /* 蓋過所有東西包含導覽列 */
+    background: #000 !important;
+    object-fit: contain !important; /* 確保影片比例正確，上下或左右留黑邊 */
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+.media-container-wrapper {
+    position: relative;
+    margin: 2rem 0; 
+    border: 1px solid var(--card-border); 
+    border-radius: 0.8rem; 
+    /* ✨ 關鍵修復 1：改為 visible，允許影片在全螢幕時安全逃脫容器限制！ */
+    overflow: visible !important; 
+    box-shadow: 0 4px 15px var(--shadow-base); 
+    background: var(--glass-bg);
+}
+
+/* 確保內部的標題列保有圓角與高圖層 */
+.media-container-header {
+    padding: 0.5rem 1rem; 
+    border-bottom: 1px solid var(--card-border); 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between;
+    border-top-left-radius: 0.8rem;
+    border-top-right-radius: 0.8rem;
+    background: var(--glass-bg);
+    
+    /* ✨ 核心修復：強制建立相對定位並把圖層拉高，確保氣泡絕對不會被下方的原生 <video> 蓋住！ */
+    position: relative;
+    z-index: 10;
+}
+
+/* ==========================================
+   ✨ 影片全螢幕的關閉按鈕 (高質感毛玻璃版)
+   ========================================== */
+.video-exit-fullscreen-btn {
+    position: fixed;
+    top: max(20px, env(safe-area-inset-top));
+    right: 20px;
+    z-index: 100000;
+    
+    /* 🍏 蘋果級黑透毛玻璃設計 */
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: none; /* 預設隱藏 */
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    
+    /* 滑順的過渡動畫與硬體加速 */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transform: translateZ(0); 
+}
+
+/* 顯示時的進場彈出動畫 */
+.md-video.is-web-fullscreen ~ .video-exit-fullscreen-btn {
+    display: flex;
+    animation: video-btn-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Hover 狀態：放大、發紅光、圖示旋轉 */
+.video-exit-fullscreen-btn:hover { 
+    background: var(--error-color); 
+    color: #fff; 
+    border-color: var(--error-color); 
+    box-shadow: 0 4px 20px var(--error-shadow);
+    transform: scale(1.1) translateZ(0);
+}
+
+.video-exit-fullscreen-btn svg {
+    display: block;
+    transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.video-exit-fullscreen-btn:hover svg {
+    transform: rotate(90deg);
+}
+
+@keyframes video-btn-pop {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
 }

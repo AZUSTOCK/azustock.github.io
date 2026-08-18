@@ -1,6 +1,6 @@
 {
   "version": "U1.5.5",
   "date": "2026-08-18",
-  "status": "HOTFIX",
-  "description": "改進捲動、提示，新增監測、下載與問題修正"
+  "status": "FEATURE",
+  "description": "多處改進與問題修正"
 }
