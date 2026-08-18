@@ -1,8 +1,10 @@
 import os
 import json
 import re
+import time
+import hashlib
 from PIL import Image
-from datetime import datetime, timedelta # ✨ 新增：用於計算過期時間
+from datetime import datetime, timedelta
 from tools.convert_webp import convert_to_webp_with_protection, generate_cover_thumbnail
 from tools.update_paths import update_extensions_to_webp
 
@@ -93,12 +95,37 @@ def load_detail_json(json_path):
             print(f"⚠️ Error reading {json_path}: {e}")
     return {}
 
-def get_mtime_url(local_path, base_url):
-    """獲取帶有最後修改時間戳的網址 (精準 Cache Busting)"""
+def get_hash_url(local_path, base_url):
+    """獲取帶有檔案內容 Hash 的網址 (取代容易在 CI 失效的 mtime)"""
     if os.path.exists(local_path):
-        mtime = int(os.path.getmtime(local_path))
-        return f"{base_url}?t={mtime}"
+        try:
+            # 讀取檔案內容計算 MD5 前 8 碼
+            with open(local_path, 'rb') as f:
+                file_hash = hashlib.md5(f.read()).hexdigest()[:8]
+            return f"{base_url}?v={file_hash}"
+        except Exception:
+            pass
     return base_url
+
+def generate_version_json():
+    """自動從 main.js 提取 CONFIG.VERSION 並產生 version.json"""
+    print(f"\n==========================================")
+    print(f"⚙️ [系統設定] 開始同步版本號...")
+    print(f"==========================================")
+    try:
+        if os.path.exists('main.js'):
+            with open('main.js', 'r', encoding='utf-8') as f:
+                content = f.read()
+            match = re.search(r'VERSION:\s*"([^"]+)"', content)
+            if match:
+                version = match.group(1)
+                with open('version.json', 'w', encoding='utf-8') as f:
+                    json.dump({"version": version}, f, indent=2)
+                print(f"✅ 成功從 main.js 提取版本號 ({version}) 並寫入 version.json")
+            else:
+                print("⚠️ 在 main.js 找不到 CONFIG.VERSION 設定！")
+    except Exception as e:
+        print(f"⚠️ 生成 version.json 失敗: {e}")
 
 # ==========================================
 # ⏰ 時間戳過期偵測引擎 (Expiration Checker)
@@ -135,6 +162,74 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path):
                         expiration_l.append(f"\033[93m  ⏰ [狀態過期] {item_type} '{item_title}' 的 '{key}: {val}' 已過 14 天，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
             except Exception:
                 pass
+
+# ==========================================
+# 🧠 Hash 快取與版本控制引擎 (State Cache Engine)
+# ==========================================
+CACHE_FILE = '.build_cache.json'
+
+def get_global_content_hash(output_data_dict):
+    """計算全域內容的唯一 Hash 值 (包含 Markdown 內文)"""
+    hasher = hashlib.md5()
+    
+    # 1. 加入 all_projects.json 的結構資料
+    hasher.update(json.dumps(output_data_dict, sort_keys=True).encode('utf-8'))
+    
+    # 2. 遍歷 projects 資料夾，加入所有 .md 與 .json 的真實內容
+    if os.path.exists('projects'):
+        for root, dirs, files in os.walk('projects'):
+            for file in sorted(files): # 排序確保每次讀取順序一致
+                if file.endswith('.md') or file.endswith('.json'):
+                    file_path = os.path.join(root, file)
+                    with open(file_path, 'rb') as f:
+                        hasher.update(f.read())
+                    
+    # 3. 加入會影響前端的其他靜態檔案
+    for ext_file in ['kotoba.md', 'quotes.md', 'COPYRIGHT.md', 'credits.md', 'changelogs.json']:
+        if os.path.exists(ext_file):
+            with open(ext_file, 'rb') as f:
+                hasher.update(f.read())
+                
+    return hasher.hexdigest()
+
+def should_update_data(current_hash):
+    """比對 Hash 決定是否需要更新"""
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, 'r', encoding='utf-8') as f:
+                cache = json.load(f)
+                if cache.get('content_hash') == current_hash:
+                    return False
+        except Exception:
+            pass
+    return True
+
+def save_build_cache(current_hash):
+    """儲存最新的 Hash 狀態"""
+    with open(CACHE_FILE, 'w', encoding='utf-8') as f:
+        json.dump({'content_hash': current_hash}, f)
+
+def generate_version_json():
+    """自動從 main.js 提取系統版本並產生 version.json"""
+    print(f"\n==========================================")
+    print(f"⚙️ [系統設定] 開始同步系統版本號...")
+    print(f"==========================================")
+    try:
+        # 尋找可能命名的 main.js (相容 main_*.js)
+        js_file = next((f for f in os.listdir('.') if f.startswith('main') and f.endswith('.js')), None)
+        if js_file:
+            with open(js_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            match = re.search(r'VERSION:\s*"([^"]+)"', content)
+            if match:
+                version = match.group(1)
+                with open('version.json', 'w', encoding='utf-8') as f:
+                    json.dump({"version": version}, f, indent=2)
+                print(f"✅ 成功提取系統版本號 ({version}) 並寫入 version.json")
+            else:
+                print(f"⚠️ 在 {js_file} 找不到 CONFIG.VERSION 設定！")
+    except Exception as e:
+        print(f"⚠️ 生成 version.json 失敗: {e}")
 
 # ==========================================
 # 📝 升級版系統日誌生成器 (Changelog Generator)
@@ -249,7 +344,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
         cat_cover_url = None
         if cat_cover:
             cat_cover_path = os.path.join(cat_path, cat_cover)
-            cat_cover_url = get_mtime_url(cat_cover_path, f"{base_dir}/{cat_folder}/{cat_cover}")
+            cat_cover_url = get_hash_url(cat_cover_path, f"{base_dir}/{cat_folder}/{cat_cover}")
 
         output_data["categories"].append({
             "order": cat_data.get('order', default_order),
@@ -350,12 +445,12 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     if generate_cover_thumbnail(local_proj_cover, proj_thumb_local_path, max_width=180, quality=90):
                         print_conversion("🖼️ [專案縮圖]", local_proj_cover, proj_thumb_local_path)
                         # ✨ 加上時間戳
-                        proj_data['cover_image'] = get_mtime_url(proj_thumb_local_path, f"./api/{proj_id}/{proj_thumb_filename}")
+                        proj_data['cover_image'] = get_hash_url(proj_thumb_local_path, f"./api/{proj_id}/{proj_thumb_filename}")
                         if thumb_status == 'NEW': stats["thumb_new"] += 1
                         else: stats["thumb_updated"] += 1
                 else:
                     # ✨ 加上時間戳
-                    proj_data['cover_image'] = get_mtime_url(proj_thumb_local_path, f"./api/{proj_id}/{proj_thumb_filename}")
+                    proj_data['cover_image'] = get_hash_url(proj_thumb_local_path, f"./api/{proj_id}/{proj_thumb_filename}")
                     stats["thumb_skipped"] += 1
                     
                 valid_api_files.add(os.path.abspath(proj_thumb_local_path))
@@ -464,12 +559,12 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     for p in parts:
                                         if p.startswith('poster='):
                                             p_path = p[7:]
-                                            stamped_parts.append(f"poster={get_mtime_url(os.path.normpath(p_path), p_path)}")
+                                            stamped_parts.append(f"poster={get_hash_url(os.path.normpath(p_path), p_path)}")
                                         elif p.startswith('full='):
                                             p_path = p[5:]
-                                            stamped_parts.append(f"full={get_mtime_url(os.path.normpath(p_path), p_path)}")
+                                            stamped_parts.append(f"full={get_hash_url(os.path.normpath(p_path), p_path)}")
                                         else:
-                                            stamped_parts.append(get_mtime_url(os.path.normpath(p), p))
+                                            stamped_parts.append(get_hash_url(os.path.normpath(p), p))
                                             
                                     final_stamped_url = '#'.join(stamped_parts)
                                     
@@ -498,8 +593,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             
                                         valid_api_files.add(os.path.abspath(thumb_local_path))
                                         
-                                        thumb_url = get_mtime_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
-                                        orig_url_t = get_mtime_url(local_main_path, main_url)
+                                        thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
+                                        orig_url_t = get_hash_url(local_main_path, main_url)
                                         
                                         # 組合帶有原圖連結的縮圖網址
                                         if '#full=' in final_stamped_url:
@@ -549,8 +644,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             
                                         valid_api_files.add(os.path.abspath(thumb_local_path))
                                         # ✨ 幫原圖與縮圖都加上時間戳
-                                        thumb_url = get_mtime_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
-                                        orig_url_t = get_mtime_url(local_img_path, orig_url)
+                                        thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
+                                        orig_url_t = get_hash_url(local_img_path, orig_url)
                                         return f'{prefix}{thumb_url}" data-full="{orig_url_t}"{suffix[1:]}'
                                         
                                 return f"{prefix}{url}{suffix}"
@@ -603,15 +698,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     if generate_cover_thumbnail(local_cover_path, art_thumb_local_path, max_width=160, quality=90):
                                         print_conversion("🖼️ [文章縮圖]", local_cover_path, art_thumb_local_path)
                                         # ✨ 加上時間戳
-                                        meta_cover_url = get_mtime_url(art_thumb_local_path, f"./api/{proj_id}/{art_id}/{art_thumb_filename}")
+                                        meta_cover_url = get_hash_url(art_thumb_local_path, f"./api/{proj_id}/{art_id}/{art_thumb_filename}")
                                         if art_thumb_status == 'NEW': stats["thumb_new"] += 1
                                         else: stats["thumb_updated"] += 1 
                                     else:
                                         # ✨ 退回原圖也要加時間戳
-                                        meta_cover_url = get_mtime_url(local_cover_path, f"{rel_base}/{meta_cover}") 
+                                        meta_cover_url = get_hash_url(local_cover_path, f"{rel_base}/{meta_cover}") 
                                 else:
                                     # ✨ 加上時間戳
-                                    meta_cover_url = get_mtime_url(art_thumb_local_path, f"./api/{proj_id}/{art_id}/{art_thumb_filename}")
+                                    meta_cover_url = get_hash_url(art_thumb_local_path, f"./api/{proj_id}/{art_id}/{art_thumb_filename}")
                                     stats["thumb_skipped"] += 1
                                     
                                 valid_api_files.add(os.path.abspath(art_thumb_local_path))
@@ -706,10 +801,27 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
     output_data["projects"].sort(key=proj_sort)
 
-    print(f"✅ JSON 打包完成，包含 {len(output_data['projects'])} 個專案。")
+    print(f"✅ JSON 結構掃描完成，包含 {len(output_data['projects'])} 個專案。")
 
+    # --- ✨ 導入 Hash 狀態快取機制 ---
+    current_hash = get_global_content_hash(output_data)
+
+    # 判斷是否需要覆寫 (如果使用者選擇了強制覆寫 overwrite_json，則無視快取)
     with open('all_projects.json', 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
+
+    if not should_update_data(current_hash) and not overwrite_json:
+        print("⏭️  內容無任何變更，跳過更新data_version.json。")
+    else:
+        print("🔄 偵測到內容變更，正在更新資料庫與內容版本號...")
+
+        # 生成 data_version.json (供前端比對)
+        new_data_version = str(int(time.time()))
+        with open('data_version.json', 'w', encoding='utf-8') as f:
+            json.dump({"data_timestamp": new_data_version}, f)
+
+        save_build_cache(current_hash)
+        print("✅ 成功更新 data_version.json！")
 
 # ==========================================
 # 🧹 清理廢棄 API 資料夾
@@ -745,6 +857,9 @@ def cleanup_old_api_files(api_dir="api"):
 
 
 if __name__ == "__main__":
+    # ✨ 在最一開始就先從 main.js 提取與寫入版本號
+    generate_version_json()
+    
     is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
     
     overwrite_webp = False

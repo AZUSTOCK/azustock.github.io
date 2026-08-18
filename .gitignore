@@ -10,3 +10,5 @@ private/
 api/
 all_projects.json
 changelogs.json
+data_version.json
+version.json

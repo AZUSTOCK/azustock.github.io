@@ -143,7 +143,7 @@ flowchart LR
 </figure>
 
 ![float-right](./architecture.webp)
-文字
+一些文字
 
 <div class="md-clear"></div>
 

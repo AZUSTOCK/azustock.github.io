@@ -466,7 +466,7 @@ window.getMermaidStyles = async function() {
     if (window.cachedMermaidStyles !== null) return window.cachedMermaidStyles;
     
     try {
-        const res = await fetch(`./mermaid_styles.txt?t=${new Date().getTime()}`);
+        const res = await fetch(`./mermaid_styles.txt?v=${CONFIG.VERSION}`);
         if (res.ok) {
             window.cachedMermaidStyles = await res.text();
         } else {
@@ -814,17 +814,13 @@ window.updateLightboxView = function() {
     const lightboxCaption = document.getElementById('lightbox-caption');
     const wrapper = document.querySelector('.lightbox-img-wrapper'); 
     
-    // ✨ 新增：偵測是否為 PWA 環境
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    
-    // ✨ 修改後：PWA 模式或 DOM 模式下皆隱藏新分頁按鈕與分隔線
+    // ✨ 修改後：同步隱藏/顯示前方的分隔線
     const newTabBtn = document.querySelector('.toolbar-btn[onclick*="new-tab"]');
     if (newTabBtn) {
-        const shouldHide = state.isDomMode || isPWA;
-        newTabBtn.style.display = shouldHide ? 'none' : 'flex';
+        newTabBtn.style.display = state.isDomMode ? 'none' : 'flex';
         const prevDivider = newTabBtn.previousElementSibling;
         if (prevDivider && prevDivider.classList.contains('toolbar-divider')) {
-            prevDivider.style.display = shouldHide ? 'none' : 'block';
+            prevDivider.style.display = state.isDomMode ? 'none' : 'block';
         }
     }
 
@@ -891,6 +887,7 @@ window.updateLightboxView = function() {
         if (navCapsule) navCapsule.style.display = 'none';
     }
 };
+
 // 相簿前後切換邏輯
 window.navigateLightbox = function(direction, event) {
     if (event) event.stopPropagation();
@@ -2083,8 +2080,10 @@ async function loadProjects() {
     const marquee = document.getElementById('marquee-text');
 
     try {
-        // ✨ 加入時間戳防護，徹底破壞 JSON 快取，保證資料 100% 最新！
-        const response = await fetch(`${CONFIG.DATA_SOURCE}?t=${new Date().getTime()}`);
+        // ✨ 核心資料載入策略分離：使用本地存儲的資料版本號，完美命中 CDN 與瀏覽器快取！
+        // (如果有發布新文章，背景的 checkSystemVersionAndBoot 會負責對答案與強制熱更新)
+        const localDataVersion = localStorage.getItem('sys_data_version') || 'init';
+        const response = await fetch(`${CONFIG.DATA_SOURCE}?v=${localDataVersion}`);
         const db = await response.json();
         
         const categories = db.categories;
@@ -2555,8 +2554,6 @@ function hideSystemRebootScreen(isSuccess = true) {
 async function checkSystemVersionAndBoot() {
     const isRebooting = sessionStorage.getItem('sys_is_rebooting') === 'true';
     const expectedVersion = sessionStorage.getItem('sys_expected_version') || 'UNKNOWN';
-    
-    // ✨ 1. 取出使用者的操作意圖
     const sysIntent = sessionStorage.getItem('sys_intent');
 
     if (isRebooting) {
@@ -2564,82 +2561,82 @@ async function checkSystemVersionAndBoot() {
     }
 
     try {
-        const res = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
-        const logs = await res.json();
-        
-        if (logs && logs.length > 0) {
-            const remoteVersion = logs[0].version; 
-            
-            if (remoteVersion !== CONFIG.VERSION) {
-                console.warn(`[SYS_UPDATE] 偵測到版本差異 (本機: ${CONFIG.VERSION}, 遠端: ${remoteVersion})`);
-                
-                const rebootCount = parseInt(sessionStorage.getItem('sys_reboot_count') || '0');
-                if (rebootCount >= 2) {
-                    console.error("[SYS_UPDATE] 自動更新失敗，可能因為 CDN 伺服器快取延遲。已強制啟動舊版系統。");
-                    
-                    sessionStorage.removeItem('sys_reboot_count'); 
-                    sessionStorage.removeItem('sys_is_rebooting');
-                    sessionStorage.removeItem('sys_expected_version');
-                    sessionStorage.removeItem('sys_intent'); // ✨ 清除意圖
-                    
-                    hideSystemRebootScreen(false); 
-                    loadProjects(); 
-                    
-                    // ✨ 2. 判斷：只有當初是為了看版本紀錄，才在失敗後強制打開日誌
-                    if (sysIntent === 'changelog') {
-                        setTimeout(() => {
-                            if (window.showChangelogModal) window.showChangelogModal(true);
-                        }, 600); 
-                    }
-                    
-                    // ✨ 呼叫共用引擎：顯示更新失敗提示
-                    setTimeout(() => {
-                        window.showSystemToast(
-                            '>_ UPDATE_FAILED', 
-                            'CDN_CACHE_DELAY_DETECTED', 
-                            `已暫時還原為安全版本 (v${CONFIG.VERSION})`, 
-                            12000, 
-                            'error'
-                        );
-                    }, 1000);
-                    
-                    return;
-                }
-                
-                sessionStorage.setItem('sys_reboot_count', (rebootCount + 1).toString());
-                sessionStorage.setItem('sys_is_rebooting', 'true');
-                sessionStorage.setItem('sys_expected_version', remoteVersion);
+        // ✨ 微型化版本檢查：同時核對極輕量的「系統版本 (version.json)」與「內容版本 (data_version.json)」
+        const [sysRes, dataRes] = await Promise.all([
+            fetch(`./version.json?t=${new Date().getTime()}`).catch(() => null),
+            fetch(`./data_version.json?t=${new Date().getTime()}`).catch(() => null)
+        ]);
 
-                showSystemRebootScreen('SYSTEM_VERSION_MISMATCH', CONFIG.VERSION, remoteVersion, 'SYS_UPDATING', isRebooting);
-                
-                setTimeout(() => {
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('v', new Date().getTime());
-                    window.location.replace(newUrl.toString());
-                }, 1800);
-                
-                return; 
-            } else {
-                sessionStorage.removeItem('sys_reboot_count');
+        const sysData = sysRes && sysRes.ok ? await sysRes.json() : null;
+        const contentData = dataRes && dataRes.ok ? await dataRes.json() : null;
+
+        let needReboot = false;
+        let rebootReason = '';
+        let remoteVersion = CONFIG.VERSION;
+
+        // 1. 檢查系統層級更新 (優先級最高)
+        if (sysData && sysData.version && sysData.version !== CONFIG.VERSION) {
+            needReboot = true;
+            rebootReason = 'SYS_UPDATING';
+            remoteVersion = sysData.version;
+            console.warn(`[SYS_UPDATE] 發現系統新版本 ${remoteVersion}，準備強制更新...`);
+        }
+        // 2. 檢查內容層級更新 (若系統無需更新，才檢查文章內容是否變動)
+        else if (contentData && contentData.data_timestamp) {
+            const localDataVersion = localStorage.getItem('sys_data_version');
+            // 如果本地存儲有舊的快取，且遠端時間戳更新了，就觸發同步
+            if (localDataVersion && localDataVersion !== 'init' && localDataVersion !== contentData.data_timestamp) {
+                needReboot = true;
+                rebootReason = 'SYNCING_NEW_DATA';
+                console.info(`[DATA_UPDATE] 發現新文章或內容修改，準備同步資料庫...`);
+            }
+            // 寫入最新的資料版本號到本機，供下一次 loadProjects 讀取 CDN 快取用
+            localStorage.setItem('sys_data_version', contentData.data_timestamp);
+        }
+
+        if (needReboot) {
+            const rebootCount = parseInt(sessionStorage.getItem('sys_reboot_count') || '0');
+            if (rebootCount >= 2) {
+                console.error("[SYS_UPDATE] 自動更新/同步失敗，已強制啟動緩存版本。");
+                sessionStorage.removeItem('sys_reboot_count'); 
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
-                
-                // ✨ 3. 判斷：如果更新成功，且當初是為了看版本紀錄，幫他打開！
-                if (sysIntent === 'changelog') {
-                    setTimeout(() => {
-                        if (window.showChangelogModal) window.showChangelogModal(true);
-                    }, 600);
-                }
-                sessionStorage.removeItem('sys_intent'); // ✨ 清除意圖
+                sessionStorage.removeItem('sys_intent'); 
+                hideSystemRebootScreen(false); 
+                loadProjects(); 
+                if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600); 
+                setTimeout(() => { window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `已還原為安全狀態`, 12000, 'error'); }, 1000);
+                return;
             }
+            
+            sessionStorage.setItem('sys_reboot_count', (rebootCount + 1).toString());
+            sessionStorage.setItem('sys_is_rebooting', 'true');
+            sessionStorage.setItem('sys_expected_version', remoteVersion);
+
+            // 根據不同更新原因，顯示不同的終端機過場文字
+            const screenTitle = rebootReason === 'SYS_UPDATING' ? 'SYSTEM_VERSION_MISMATCH' : 'CONTENT_SYNC_REQUIRED';
+            showSystemRebootScreen(screenTitle, CONFIG.VERSION, remoteVersion, rebootReason, isRebooting);
+            
+            setTimeout(() => {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('v', new Date().getTime());
+                window.location.replace(newUrl.toString());
+            }, 1800);
+            
+            return; 
+        } else {
+            sessionStorage.removeItem('sys_reboot_count');
+            sessionStorage.removeItem('sys_is_rebooting');
+            sessionStorage.removeItem('sys_expected_version');
+            if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600);
+            sessionStorage.removeItem('sys_intent'); 
         }
     } catch (err) {
-        console.warn("版本檢查程序跳過:", err);
+        console.warn("系統檢查程序中斷:", err);
         sessionStorage.removeItem('sys_is_rebooting');
-        sessionStorage.removeItem('sys_intent'); // 防呆清除
+        sessionStorage.removeItem('sys_intent'); 
     }
     
-    // ✨ 傳入 true 顯示成功狀態，並渲染新網站
     hideSystemRebootScreen(true);
     loadProjects();
 }
@@ -4443,21 +4440,26 @@ window.applyIndentToVerticalWrapper = function(container) {
 // ==========================================
 // ✨ 隱藏彩蛋：動態讀取 credits.md (整合平滑動畫版)
 // ==========================================
+window.cachedCreditsText = null;
 window.showCreditsModal = async function() {
-    document.body.style.cursor = 'wait'; // 先讓游標顯示讀取中
-    let mdText = "載入失敗";
-    let isError = false;
+    document.body.style.cursor = 'wait'; 
+    let mdText = "載入失敗"; let isError = false;
     
-    // 1. 先在背景抓取資料
     try {
-        const response = await fetch(`./credits.md?t=${new Date().getTime()}`);
-        if (!response.ok) throw new Error('找不到 credits.md 檔案');
-        mdText = await response.text();
+        // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
+        if (window.cachedCreditsText !== null) {
+            mdText = window.cachedCreditsText;
+        } else {
+            const response = await fetch(`./credits.md?v=${CONFIG.VERSION}`);
+            if (!response.ok) throw new Error('找不到 credits.md 檔案');
+            mdText = await response.text();
+            window.cachedCreditsText = mdText;
+        }
     } catch (error) {
         console.error("Credits 讀取失敗:", error);
         isError = true;
     } finally {
-        document.body.style.cursor = ''; // 恢復游標
+        document.body.style.cursor = ''; 
     }
 
     // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
@@ -4519,49 +4521,47 @@ window.showCreditsModal = async function() {
 // ==========================================
 window.cachedChangelogs = null; 
 
-// 修改函數定義，加入 isSystemFallback 參數，預設為 false (約 1888 行)
 window.showChangelogModal = async function(isSystemFallback = false) {
     document.body.style.cursor = 'wait';
     let fetchError = false;
 
-    // ✨ 移除 !window.cachedChangelogs 的限制，讓「每一次點擊按鈕」都強制向伺服器對答案！
     try {
-        const response = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
-        if (!response.ok) throw new Error('找不到 changelogs.json');
-        const latestLogs = await response.json();
-        
-        // 大約在 1898 行，showChangelogModal 函數的強制更新檢查中
-        // ✨ 手動更新偵測魔法：比對版本號
-        if (!isSystemFallback && latestLogs && latestLogs.length > 0 && latestLogs[0].version !== CONFIG.VERSION) {
-            console.warn(`[MANUAL_UPDATE] 發現新版本 ${latestLogs[0].version}，準備強制更新...`);
-            
-            // ✨ 4. 記錄使用者意圖：他是點擊按鈕想看版本紀錄的
-            sessionStorage.setItem('sys_intent', 'changelog');
-            
-            // 解除無限重啟鎖定，因為這是使用者手動按下的更新要求！
-            sessionStorage.removeItem('sys_reboot_count');
+        // ✨ 微型化版本檢查：獨立抓取極小的 version.json 來判定是否需要強制手動更新，保護大檔頻寬
+        if (!isSystemFallback) {
+            const vRes = await fetch(`./version.json?t=${new Date().getTime()}`).catch(() => null);
+            if (vRes && vRes.ok) {
+                const vData = await vRes.json();
+                if (vData.version && vData.version !== CONFIG.VERSION) {
+                    console.warn(`[MANUAL_UPDATE] 發現新版本 ${vData.version}，準備強制更新...`);
+                    sessionStorage.setItem('sys_intent', 'changelog');
+                    sessionStorage.removeItem('sys_reboot_count');
 
-            // 顯示專屬的手動更新終端機畫面
-            document.body.insertAdjacentHTML('beforeend', `
-            <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
-                <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${latestLogs[0].version}</div>
-                    <div class="loading-text" style="font-size: 1.1rem;">FETCHING_NEW_DATA_AND_REBOOTING</div>
-                </div>
-            `);
-            
-            // 強制加上時戳破壞快取並重新整理
-            setTimeout(() => {
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('v', new Date().getTime());
-                window.location.replace(newUrl.toString());
-            }, 1800);
-            
-            return; // 🛑 直接中斷，不顯示日誌視窗，進入重開機程序
+                    document.body.insertAdjacentHTML('beforeend', `
+                    <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
+                        <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
+                            <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${vData.version}</div>
+                            <div class="loading-text" style="font-size: 1.1rem;">FETCHING_NEW_DATA_AND_REBOOTING</div>
+                        </div>
+                    `);
+                    
+                    setTimeout(() => {
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.set('v', new Date().getTime());
+                        window.location.replace(newUrl.toString());
+                    }, 1800);
+                    return; 
+                }
+            }
         }
 
-        // 如果版本一樣，就把最新資料寫入快取，給後面的 Modal 渲染用
-        window.cachedChangelogs = latestLogs;
+        // ✨ 記憶體快取補全：若系統版本一致，則使用 CDN 緩存或記憶體快取讀取日誌內容
+        if (window.cachedChangelogs !== null) {
+            // 已有快取，不需重抓
+        } else {
+            const response = await fetch(`./changelogs.json?v=${CONFIG.VERSION}`);
+            if (!response.ok) throw new Error('找不到 changelogs.json');
+            window.cachedChangelogs = await response.json();
+        }
 
     } catch (error) {
         console.error("日誌讀取或更新檢查失敗:", error);
@@ -4724,22 +4724,26 @@ window.switchBilingualTab = function(lang, btn) {
 // ==========================================
 // ⚖️ 版權與授權條款 Modal 引擎
 // ==========================================
+window.cachedLicenseText = null;
 window.showLicenseModal = async function() {
-    document.body.style.cursor = 'wait'; // 先讓游標顯示讀取中
-    let mdText = "載入失敗";
-    let isError = false;
+    document.body.style.cursor = 'wait'; 
+    let mdText = "載入失敗"; let isError = false;
 
-    // 1. 先在背景抓取資料
     try {
-        // 加上時間戳防止瀏覽器快取舊的檔案
-        const response = await fetch(`./COPYRIGHT.md?t=${new Date().getTime()}`);
-        if (!response.ok) throw new Error("找不到版權檔案");
-        mdText = await response.text();
+        // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
+        if (window.cachedLicenseText !== null) {
+            mdText = window.cachedLicenseText;
+        } else {
+            const response = await fetch(`./COPYRIGHT.md?v=${CONFIG.VERSION}`);
+            if (!response.ok) throw new Error("找不到版權檔案");
+            mdText = await response.text();
+            window.cachedLicenseText = mdText;
+        }
     } catch (error) {
         console.error("版權檔案載入失敗:", error);
         isError = true;
     } finally {
-        document.body.style.cursor = ''; // 恢復游標
+        document.body.style.cursor = ''; 
     }
 
     // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
