@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.5",          // 目前系統版本號
+    VERSION: "U1.5.6",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -172,14 +172,21 @@ document.documentElement.style.setProperty('--marquee-speed', `${CONFIG.MARQUEE_
 // === 全域變數 (系統內部使用) ===
 window.siteProjects = [];
 
+// ✨ 取得細項檔案的專屬 Cache Hash
+window.getResVersion = function(key) {
+    try {
+        const versions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
+        return versions[key] || CONFIG.VERSION;
+    } catch (e) {
+        return CONFIG.VERSION;
+    }
+};
+
 // ==========================================
 // ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
 window.lockScroll = function() {
-    // 防呆：如果已經鎖定，就直接返回，防止重複執行導致閃爍 (解決問題 1)
     if (document.body.style.overflow === 'hidden') return;
-    
-    // 只做鎖定，不做 Padding 補償，因為 CSS 已經處理好了
     document.body.style.overflow = 'hidden';
 };
 
@@ -207,10 +214,8 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
         return;
     }
 
-    // ✨ 安全防護 1 (專案攔截)：如果該專案是隱藏的，但系統尚未解鎖 (body 沒有 system-override-active)
     if (project.is_hidden && !document.body.classList.contains('system-override-active')) {
         show404Modal('403 ACCESS_DENIED', '拒絕存取。<br/><span style="opacity: 0.8; font-size: 0.85em; font-family: monospace;">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style="cursor: pointer; position: relative;" class="secret-admin-trigger">風川梓</span>.</span>');
-        // 刪除 replaceState，讓網址列保留目標參數，以便解鎖後跳轉！
         return;
     }
 
@@ -220,14 +225,10 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
         
         if (aIndex !== -1 && aIndex < project.articles.length) {
             const article = project.articles[aIndex];
-            
-            // ✨ 安全防護 2 (文章攔截)：如果該文章是隱藏的，但系統尚未解鎖
             if (article.is_hidden && !document.body.classList.contains('system-override-active')) {
                 show404Modal('403 ACCESS_DENIED', '拒絕存取。<br/><span style="opacity: 0.8; font-size: 0.85em; font-family: monospace;">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style="cursor: pointer; position: relative;" class="secret-admin-trigger">風川梓</span>.</span>');
-                // 刪除 replaceState，讓網址列保留目標參數，以便解鎖後跳轉！
                 return;
             }
-
             window.openArticle(project.id, aIndex, false, 0, hashParam);
         } else {
             show404Modal('404 Article Not Found', `在專案「${project.title}」中找不到此文章。<br/>可能不存在或已被移除。`);
@@ -238,30 +239,23 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     }
 };
 
-// ✨ 統一清單產生器 (根據排序與群組，計算絕對視覺順序)
 window.getArticleSequence = function(projectId) {
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !proj.articles) return [];
     
-    // ✨ 新增：判斷系統是否已經解鎖 (System Override 狀態)
     const isUnlocked = document.body.classList.contains('system-override-active');
-    
-    // 讀取專案獨立排序
     let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
     
-    // ✨ 核心修復：直接從源頭剔除沒有權限查看的隱藏文章！
     let displayArticles = proj.articles
         .map((art, idx) => ({ art, idx }))
         .filter(item => isUnlocked || !item.art.is_hidden);
     
     const pinned = displayArticles.filter(item => item.art.pinned);
     const unpinned = displayArticles.filter(item => !item.art.pinned);
-    
     const renderUnpinned = currentSort === 'asc' ? [...unpinned] : [...unpinned].reverse();
     const finalArray = [...pinned, ...renderUnpinned];
     
     let flatSequence = [];
-    // 核心邏輯：群組本身的順序「不反轉」，只依照 Object.keys 的原生順序迭代
     if (proj.groups && Object.keys(proj.groups).length > 0) {
         for (const groupId of Object.keys(proj.groups)) {
             flatSequence.push(...finalArray.filter(item => item.art.group === groupId));
@@ -274,7 +268,6 @@ window.getArticleSequence = function(projectId) {
     return flatSequence;
 };
 
-// ✨ 共用複製連結功能 (還原純淨版，依靠 CSS 鎖定尺寸)
 window.handleCopy = function(element, shareUrl) {
     if (element.classList.contains('copied') || window.isCopying) return;
     window.isCopying = true;
@@ -285,7 +278,6 @@ window.handleCopy = function(element, shareUrl) {
     navigator.clipboard.writeText(shareUrl).then(() => {
         element.classList.add('copied');
         element.innerHTML = `${checkSvg} <span style="margin-left: 4px;">已複製</span>`;
-        
         setTimeout(() => {
             element.classList.remove('copied');
             element.innerHTML = originalContent;
@@ -296,7 +288,6 @@ window.handleCopy = function(element, shareUrl) {
     });
 };
 
-// ✨ 新增：共用卡片聚焦與跳躍引擎
 window.focusAndBumpCard = function(targetCard) {
     const cardRect = targetCard.getBoundingClientRect();
     const isVisible = (
@@ -328,7 +319,6 @@ window.focusAndBumpCard = function(targetCard) {
 window.refreshUIAfterOverrideToggle = function() {
     const isUnlocked = document.body.classList.contains('system-override-active');
 
-    // ✨ 提煉重複邏輯：僅更新專案卡片上的數字
     const updateCardCounts = () => {
         window.siteProjects.forEach(proj => {
             const grid = document.getElementById(`${proj.category}-grid`);
@@ -350,7 +340,6 @@ window.refreshUIAfterOverrideToggle = function() {
         });
     };
 
-    // ✨ 智慧防護：如果系統已經是解鎖狀態，且網頁一開始載入時已經跑過跑馬燈了，直接維持現狀並更新卡片即可！
     if (isUnlocked && window._hasAlreadyUnlockedOnce) {
         updateCardCounts();
         return; 
@@ -360,7 +349,6 @@ window.refreshUIAfterOverrideToggle = function() {
 
     const marquees = document.querySelectorAll('.marquee-content');
 
-    // 1. 凍結跑馬燈當前座標
     marquees.forEach(m => {
         if (isUnlocked) m.classList.add('suppress-secrets');
         const matrix = new DOMMatrix(window.getComputedStyle(m).transform);
@@ -382,7 +370,6 @@ window.refreshUIAfterOverrideToggle = function() {
 
     void document.body.offsetWidth;
 
-    // 記錄最終真實寬度
     marquees.forEach(m => {
         m.dataset.targetWidth = m.offsetWidth;
         m.classList.remove('force-show-secrets');
@@ -402,7 +389,6 @@ window.refreshUIAfterOverrideToggle = function() {
             document.querySelectorAll('.active-tag').forEach(t => t.classList.remove('active-tag'));
         }
 
-        // 2. 啟動光速引擎
         marquees.forEach((m, index) => {
             const targetWidth = parseFloat(m.dataset.targetWidth) || m.offsetWidth;
             let startX = parseFloat(m.dataset.startX) || 0;
@@ -437,67 +423,49 @@ window.refreshUIAfterOverrideToggle = function() {
 };
 
 // ==========================================
-// ✨ 言の箱題庫快取系統 (Singleton Pattern)
+// ✨ 獨立檔案快取系統 (Singleton Pattern + Hash)
 // ==========================================
 window.cachedKotobaList = null;
 window.getKotobaList = async function() {
     if (window.cachedKotobaList !== null) return window.cachedKotobaList;
-    
     try {
-        const res = await fetch('./kotoba.md');
+        const res = await fetch(`./kotoba.md?v=${window.getResVersion('kotoba.md')}`);
         if (res.ok) {
             const text = await res.text();
             window.cachedKotobaList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
         } else {
             window.cachedKotobaList = [];
         }
-    } catch (err) {
-        console.warn("言の箱載入失敗:", err);
-        window.cachedKotobaList = [];
-    }
+    } catch (err) { window.cachedKotobaList = []; }
     return window.cachedKotobaList;
 };
 
-// ==========================================
-// ✨ Mermaid 全域樣式快取系統 (Singleton Pattern)
-// ==========================================
 window.cachedMermaidStyles = null;
 window.getMermaidStyles = async function() {
     if (window.cachedMermaidStyles !== null) return window.cachedMermaidStyles;
-    
     try {
-        const res = await fetch(`./mermaid_styles.txt?t=${new Date().getTime()}`);
+        const res = await fetch(`./mermaid_styles.txt?v=${CONFIG.VERSION}`);
         if (res.ok) {
             window.cachedMermaidStyles = await res.text();
         } else {
             window.cachedMermaidStyles = '';
         }
-    } catch (err) {
-        console.warn("Mermaid 全域樣式載入失敗:", err);
-        window.cachedMermaidStyles = '';
-    }
+    } catch (err) { window.cachedMermaidStyles = ''; }
     return window.cachedMermaidStyles;
 };
 
-// ==========================================
-// ✨ 系統名言題庫快取系統 (Singleton Pattern)
-// ==========================================
 window.cachedQuotesList = null;
 window.getQuotesList = async function() {
     if (window.cachedQuotesList !== null) return window.cachedQuotesList;
-    
     try {
-        const res = await fetch('./quotes.md');
+        const res = await fetch(`./quotes.md?v=${window.getResVersion('quotes.md')}`);
         if (res.ok) {
             const text = await res.text();
             window.cachedQuotesList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
         } else {
             window.cachedQuotesList = [];
         }
-    } catch (err) {
-        console.warn("Quotes 載入失敗:", err);
-        window.cachedQuotesList = [];
-    }
+    } catch (err) { window.cachedQuotesList = []; }
     return window.cachedQuotesList;
 };
 
@@ -814,17 +782,13 @@ window.updateLightboxView = function() {
     const lightboxCaption = document.getElementById('lightbox-caption');
     const wrapper = document.querySelector('.lightbox-img-wrapper'); 
     
-    // ✨ 新增：偵測是否為 PWA 環境
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    
-    // ✨ 修改後：PWA 模式或 DOM 模式下皆隱藏新分頁按鈕與分隔線
+    // ✨ 修改後：同步隱藏/顯示前方的分隔線
     const newTabBtn = document.querySelector('.toolbar-btn[onclick*="new-tab"]');
     if (newTabBtn) {
-        const shouldHide = state.isDomMode || isPWA;
-        newTabBtn.style.display = shouldHide ? 'none' : 'flex';
+        newTabBtn.style.display = state.isDomMode ? 'none' : 'flex';
         const prevDivider = newTabBtn.previousElementSibling;
         if (prevDivider && prevDivider.classList.contains('toolbar-divider')) {
-            prevDivider.style.display = shouldHide ? 'none' : 'block';
+            prevDivider.style.display = state.isDomMode ? 'none' : 'block';
         }
     }
 
@@ -843,6 +807,10 @@ window.updateLightboxView = function() {
             lightboxImg.style.display = 'block';
             state.zoom = 1; state.x = 0; state.y = 0; 
             lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
+            
+            // ✨ 核心修復 1：徹底清除上一張圖片的殘留狀態 (不管上一張是成功還是破圖)
+            lightboxImg.classList.remove('is-broken');
+            delete lightboxImg.dataset.isBroken;
             
             lightboxImg.style.opacity = '0';
             if (wrapper) wrapper.classList.add('is-fetching');
@@ -867,7 +835,12 @@ window.updateLightboxView = function() {
             };
             
             lightboxImg.src = currentItem.src;
-            if (lightboxImg.complete && lightboxImg.naturalHeight > 0) lightboxImg.onload();
+            
+            // ✨ 嚴格判定：只在圖片確實從快取載入，且高度正常時，才手動觸發 onload。
+            // 移除了錯誤的 synchronous onerror 觸發，將真正的破圖判定交還給瀏覽器底層事件。
+            if (lightboxImg.complete && lightboxImg.naturalHeight > 0) {
+                lightboxImg.onload();
+            }
         }
         if (lightboxBackdrop) lightboxBackdrop.src = currentItem.src;
     }
@@ -891,6 +864,7 @@ window.updateLightboxView = function() {
         if (navCapsule) navCapsule.style.display = 'none';
     }
 };
+
 // 相簿前後切換邏輯
 window.navigateLightbox = function(direction, event) {
     if (event) event.stopPropagation();
@@ -969,9 +943,16 @@ window.closeLightbox = function() {
 
         setTimeout(() => {
             const lightboxImg = document.getElementById('lightbox-img');
-            if (lightboxImg) lightboxImg.src = "";
+            if (lightboxImg) {
+                // ✨ 核心修復 2：關閉前先拔掉 onerror 監聽，並使用 removeAttribute
+                // 避免單純把 src 設為 "" 時，引發瀏覽器底層的誤判報錯！
+                lightboxImg.onerror = null;
+                lightboxImg.removeAttribute('src');
+                lightboxImg.classList.remove('is-broken');
+                delete lightboxImg.dataset.isBroken;
+            }
             const backdrop = document.getElementById('lightbox-backdrop');
-            if (backdrop) backdrop.src = "";
+            if (backdrop) backdrop.removeAttribute('src');
             const caption = document.getElementById('lightbox-caption');
             if (caption) caption.innerText = "";
             
@@ -2083,8 +2064,9 @@ async function loadProjects() {
     const marquee = document.getElementById('marquee-text');
 
     try {
-        // ✨ 加入時間戳防護，徹底破壞 JSON 快取，保證資料 100% 最新！
-        const response = await fetch(`${CONFIG.DATA_SOURCE}?t=${new Date().getTime()}`);
+        // ✨ 核心資料載入：向 localStorage 取得 projects 的專屬 Hash 版號
+        const projVersion = window.getResVersion('projects');
+        const response = await fetch(`${CONFIG.DATA_SOURCE}?v=${projVersion}`);
         const db = await response.json();
         
         const categories = db.categories;
@@ -2555,8 +2537,6 @@ function hideSystemRebootScreen(isSuccess = true) {
 async function checkSystemVersionAndBoot() {
     const isRebooting = sessionStorage.getItem('sys_is_rebooting') === 'true';
     const expectedVersion = sessionStorage.getItem('sys_expected_version') || 'UNKNOWN';
-    
-    // ✨ 1. 取出使用者的操作意圖
     const sysIntent = sessionStorage.getItem('sys_intent');
 
     if (isRebooting) {
@@ -2564,82 +2544,85 @@ async function checkSystemVersionAndBoot() {
     }
 
     try {
-        const res = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
-        const logs = await res.json();
-        
-        if (logs && logs.length > 0) {
-            const remoteVersion = logs[0].version; 
-            
-            if (remoteVersion !== CONFIG.VERSION) {
-                console.warn(`[SYS_UPDATE] 偵測到版本差異 (本機: ${CONFIG.VERSION}, 遠端: ${remoteVersion})`);
-                
-                const rebootCount = parseInt(sessionStorage.getItem('sys_reboot_count') || '0');
-                if (rebootCount >= 2) {
-                    console.error("[SYS_UPDATE] 自動更新失敗，可能因為 CDN 伺服器快取延遲。已強制啟動舊版系統。");
-                    
-                    sessionStorage.removeItem('sys_reboot_count'); 
-                    sessionStorage.removeItem('sys_is_rebooting');
-                    sessionStorage.removeItem('sys_expected_version');
-                    sessionStorage.removeItem('sys_intent'); // ✨ 清除意圖
-                    
-                    hideSystemRebootScreen(false); 
-                    loadProjects(); 
-                    
-                    // ✨ 2. 判斷：只有當初是為了看版本紀錄，才在失敗後強制打開日誌
-                    if (sysIntent === 'changelog') {
-                        setTimeout(() => {
-                            if (window.showChangelogModal) window.showChangelogModal(true);
-                        }, 600); 
-                    }
-                    
-                    // ✨ 呼叫共用引擎：顯示更新失敗提示
-                    setTimeout(() => {
-                        window.showSystemToast(
-                            '>_ UPDATE_FAILED', 
-                            'CDN_CACHE_DELAY_DETECTED', 
-                            `已暫時還原為安全版本 (v${CONFIG.VERSION})`, 
-                            12000, 
-                            'error'
-                        );
-                    }, 1000);
-                    
-                    return;
-                }
-                
-                sessionStorage.setItem('sys_reboot_count', (rebootCount + 1).toString());
-                sessionStorage.setItem('sys_is_rebooting', 'true');
-                sessionStorage.setItem('sys_expected_version', remoteVersion);
+        // ✨ 微型化版本檢查：同時核對「系統版號 (version.json)」與「細項內容 Hash (data_version.json)」
+        const [sysRes, dataRes] = await Promise.all([
+            fetch(`./version.json?t=${new Date().getTime()}`).catch(() => null),
+            fetch(`./data_version.json?t=${new Date().getTime()}`).catch(() => null)
+        ]);
 
-                showSystemRebootScreen('SYSTEM_VERSION_MISMATCH', CONFIG.VERSION, remoteVersion, 'SYS_UPDATING', isRebooting);
-                
-                setTimeout(() => {
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('v', new Date().getTime());
-                    window.location.replace(newUrl.toString());
-                }, 1800);
-                
-                return; 
-            } else {
-                sessionStorage.removeItem('sys_reboot_count');
+        const sysData = sysRes && sysRes.ok ? await sysRes.json() : null;
+        const contentData = dataRes && dataRes.ok ? await dataRes.json() : null;
+
+        let needReboot = false;
+        let rebootReason = '';
+        let remoteVersion = CONFIG.VERSION;
+
+        // 1. 檢查系統層級更新 (優先級最高)
+        if (sysData && sysData.version && sysData.version !== CONFIG.VERSION) {
+            needReboot = true;
+            rebootReason = 'SYS_UPDATING';
+            remoteVersion = sysData.version;
+            console.warn(`[SYS_UPDATE] 發現系統新版本 ${remoteVersion}，準備強制更新...`);
+        }
+        // 2. 檢查內容層級更新 (如果系統無需更新，才檢查 projects 目錄的 Hash 是否改變)
+        else if (contentData && contentData.projects) {
+            const localDataVersions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
+            
+            // ✨ 如果本地有舊紀錄，且專案 (projects) 的 Hash 發生改變，才需要強制重開機刷新首頁
+            if (localDataVersions.projects && localDataVersions.projects !== contentData.projects) {
+                needReboot = true;
+                rebootReason = 'SYNCING_NEW_DATA';
+                console.info(`[DATA_UPDATE] 發現文章內容修改，準備同步資料庫...`);
+            }
+            
+            // ✨ 寫入最新的細項 Hash 字典到本機
+            // (如果是 kotoba.md 等獨立細項改變，下次點擊時會自己抓最新 Hash，不需重啟畫面！)
+            localStorage.setItem('sys_data_versions', JSON.stringify(contentData));
+        }
+
+        if (needReboot) {
+            const rebootCount = parseInt(sessionStorage.getItem('sys_reboot_count') || '0');
+            if (rebootCount >= 2) {
+                console.error("[SYS_UPDATE] 自動更新/同步失敗，已強制啟動緩存版本。");
+                sessionStorage.removeItem('sys_reboot_count'); 
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
-                
-                // ✨ 3. 判斷：如果更新成功，且當初是為了看版本紀錄，幫他打開！
-                if (sysIntent === 'changelog') {
-                    setTimeout(() => {
-                        if (window.showChangelogModal) window.showChangelogModal(true);
-                    }, 600);
-                }
-                sessionStorage.removeItem('sys_intent'); // ✨ 清除意圖
+                sessionStorage.removeItem('sys_intent'); 
+                hideSystemRebootScreen(false); 
+                loadProjects(); 
+                if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600); 
+                setTimeout(() => { window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `已還原為安全狀態`, 12000, 'error'); }, 1000);
+                return;
             }
+            
+            sessionStorage.setItem('sys_reboot_count', (rebootCount + 1).toString());
+            sessionStorage.setItem('sys_is_rebooting', 'true');
+            sessionStorage.setItem('sys_expected_version', remoteVersion);
+
+            // 根據不同更新原因，顯示不同的終端機過場文字
+            const screenTitle = rebootReason === 'SYS_UPDATING' ? 'SYSTEM_VERSION_MISMATCH' : 'CONTENT_SYNC_REQUIRED';
+            showSystemRebootScreen(screenTitle, CONFIG.VERSION, remoteVersion, rebootReason, isRebooting);
+            
+            setTimeout(() => {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('v', new Date().getTime());
+                window.location.replace(newUrl.toString());
+            }, 1800);
+            
+            return; 
+        } else {
+            sessionStorage.removeItem('sys_reboot_count');
+            sessionStorage.removeItem('sys_is_rebooting');
+            sessionStorage.removeItem('sys_expected_version');
+            if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600);
+            sessionStorage.removeItem('sys_intent'); 
         }
     } catch (err) {
-        console.warn("版本檢查程序跳過:", err);
+        console.warn("系統檢查程序中斷:", err);
         sessionStorage.removeItem('sys_is_rebooting');
-        sessionStorage.removeItem('sys_intent'); // 防呆清除
+        sessionStorage.removeItem('sys_intent'); 
     }
     
-    // ✨ 傳入 true 顯示成功狀態，並渲染新網站
     hideSystemRebootScreen(true);
     loadProjects();
 }
@@ -4443,21 +4426,26 @@ window.applyIndentToVerticalWrapper = function(container) {
 // ==========================================
 // ✨ 隱藏彩蛋：動態讀取 credits.md (整合平滑動畫版)
 // ==========================================
+window.cachedCreditsText = null;
 window.showCreditsModal = async function() {
-    document.body.style.cursor = 'wait'; // 先讓游標顯示讀取中
-    let mdText = "載入失敗";
-    let isError = false;
+    document.body.style.cursor = 'wait'; 
+    let mdText = "載入失敗"; let isError = false;
     
-    // 1. 先在背景抓取資料
     try {
-        const response = await fetch(`./credits.md?t=${new Date().getTime()}`);
-        if (!response.ok) throw new Error('找不到 credits.md 檔案');
-        mdText = await response.text();
+        // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
+        if (window.cachedCreditsText !== null) {
+            mdText = window.cachedCreditsText;
+        } else {
+            const response = await fetch(`./credits.md?v=${window.getResVersion('credits.md')}`);
+            if (!response.ok) throw new Error('找不到 credits.md 檔案');
+            mdText = await response.text();
+            window.cachedCreditsText = mdText;
+        }
     } catch (error) {
         console.error("Credits 讀取失敗:", error);
         isError = true;
     } finally {
-        document.body.style.cursor = ''; // 恢復游標
+        document.body.style.cursor = ''; 
     }
 
     // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
@@ -4519,49 +4507,47 @@ window.showCreditsModal = async function() {
 // ==========================================
 window.cachedChangelogs = null; 
 
-// 修改函數定義，加入 isSystemFallback 參數，預設為 false (約 1888 行)
 window.showChangelogModal = async function(isSystemFallback = false) {
     document.body.style.cursor = 'wait';
     let fetchError = false;
 
-    // ✨ 移除 !window.cachedChangelogs 的限制，讓「每一次點擊按鈕」都強制向伺服器對答案！
     try {
-        const response = await fetch(`./changelogs.json?t=${new Date().getTime()}`);
-        if (!response.ok) throw new Error('找不到 changelogs.json');
-        const latestLogs = await response.json();
-        
-        // 大約在 1898 行，showChangelogModal 函數的強制更新檢查中
-        // ✨ 手動更新偵測魔法：比對版本號
-        if (!isSystemFallback && latestLogs && latestLogs.length > 0 && latestLogs[0].version !== CONFIG.VERSION) {
-            console.warn(`[MANUAL_UPDATE] 發現新版本 ${latestLogs[0].version}，準備強制更新...`);
-            
-            // ✨ 4. 記錄使用者意圖：他是點擊按鈕想看版本紀錄的
-            sessionStorage.setItem('sys_intent', 'changelog');
-            
-            // 解除無限重啟鎖定，因為這是使用者手動按下的更新要求！
-            sessionStorage.removeItem('sys_reboot_count');
+        // ✨ 微型化版本檢查：獨立抓取極小的 version.json 來判定是否需要強制手動更新，保護大檔頻寬
+        if (!isSystemFallback) {
+            const vRes = await fetch(`./version.json?t=${new Date().getTime()}`).catch(() => null);
+            if (vRes && vRes.ok) {
+                const vData = await vRes.json();
+                if (vData.version && vData.version !== CONFIG.VERSION) {
+                    console.warn(`[MANUAL_UPDATE] 發現新版本 ${vData.version}，準備強制更新...`);
+                    sessionStorage.setItem('sys_intent', 'changelog');
+                    sessionStorage.removeItem('sys_reboot_count');
 
-            // 顯示專屬的手動更新終端機畫面
-            document.body.insertAdjacentHTML('beforeend', `
-            <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
-                <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
-                    <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${latestLogs[0].version}</div>
-                    <div class="loading-text" style="font-size: 1.1rem;">FETCHING_NEW_DATA_AND_REBOOTING</div>
-                </div>
-            `);
-            
-            // 強制加上時戳破壞快取並重新整理
-            setTimeout(() => {
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('v', new Date().getTime());
-                window.location.replace(newUrl.toString());
-            }, 1800);
-            
-            return; // 🛑 直接中斷，不顯示日誌視窗，進入重開機程序
+                    document.body.insertAdjacentHTML('beforeend', `
+                    <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
+                        <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
+                            <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${vData.version}</div>
+                            <div class="loading-text" style="font-size: 1.1rem;">FETCHING_NEW_DATA_AND_REBOOTING</div>
+                        </div>
+                    `);
+                    
+                    setTimeout(() => {
+                        const newUrl = new URL(window.location.href);
+                        newUrl.searchParams.set('v', new Date().getTime());
+                        window.location.replace(newUrl.toString());
+                    }, 1800);
+                    return; 
+                }
+            }
         }
 
-        // 如果版本一樣，就把最新資料寫入快取，給後面的 Modal 渲染用
-        window.cachedChangelogs = latestLogs;
+        // ✨ 記憶體快取補全：若系統版本一致，則使用 CDN 緩存或記憶體快取讀取日誌內容
+        if (window.cachedChangelogs !== null) {
+            // 已有快取，不需重抓
+        } else {
+            const response = await fetch(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`);
+            if (!response.ok) throw new Error('找不到 changelogs.json');
+            window.cachedChangelogs = await response.json();
+        }
 
     } catch (error) {
         console.error("日誌讀取或更新檢查失敗:", error);
@@ -4724,22 +4710,26 @@ window.switchBilingualTab = function(lang, btn) {
 // ==========================================
 // ⚖️ 版權與授權條款 Modal 引擎
 // ==========================================
+window.cachedLicenseText = null;
 window.showLicenseModal = async function() {
-    document.body.style.cursor = 'wait'; // 先讓游標顯示讀取中
-    let mdText = "載入失敗";
-    let isError = false;
+    document.body.style.cursor = 'wait'; 
+    let mdText = "載入失敗"; let isError = false;
 
-    // 1. 先在背景抓取資料
     try {
-        // 加上時間戳防止瀏覽器快取舊的檔案
-        const response = await fetch(`./COPYRIGHT.md?t=${new Date().getTime()}`);
-        if (!response.ok) throw new Error("找不到版權檔案");
-        mdText = await response.text();
+        // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
+        if (window.cachedLicenseText !== null) {
+            mdText = window.cachedLicenseText;
+        } else {
+            const response = await fetch(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`);
+            if (!response.ok) throw new Error("找不到版權檔案");
+            mdText = await response.text();
+            window.cachedLicenseText = mdText;
+        }
     } catch (error) {
         console.error("版權檔案載入失敗:", error);
         isError = true;
     } finally {
-        document.body.style.cursor = ''; // 恢復游標
+        document.body.style.cursor = ''; 
     }
 
     // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
