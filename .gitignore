@@ -12,3 +12,4 @@ all_projects.json
 changelogs.json
 data_version.json
 version.json
+.build_cache.json

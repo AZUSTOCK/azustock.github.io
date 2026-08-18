@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.5",          // 目前系統版本號
+    VERSION: "U1.5.6",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -808,6 +808,10 @@ window.updateLightboxView = function() {
             state.zoom = 1; state.x = 0; state.y = 0; 
             lightboxImg.style.transform = `translate(0px, 0px) scale(1)`; 
             
+            // ✨ 核心修復 1：徹底清除上一張圖片的殘留狀態 (不管上一張是成功還是破圖)
+            lightboxImg.classList.remove('is-broken');
+            delete lightboxImg.dataset.isBroken;
+            
             lightboxImg.style.opacity = '0';
             if (wrapper) wrapper.classList.add('is-fetching');
 
@@ -831,7 +835,12 @@ window.updateLightboxView = function() {
             };
             
             lightboxImg.src = currentItem.src;
-            if (lightboxImg.complete && lightboxImg.naturalHeight > 0) lightboxImg.onload();
+            
+            // ✨ 嚴格判定：只在圖片確實從快取載入，且高度正常時，才手動觸發 onload。
+            // 移除了錯誤的 synchronous onerror 觸發，將真正的破圖判定交還給瀏覽器底層事件。
+            if (lightboxImg.complete && lightboxImg.naturalHeight > 0) {
+                lightboxImg.onload();
+            }
         }
         if (lightboxBackdrop) lightboxBackdrop.src = currentItem.src;
     }
@@ -934,9 +943,16 @@ window.closeLightbox = function() {
 
         setTimeout(() => {
             const lightboxImg = document.getElementById('lightbox-img');
-            if (lightboxImg) lightboxImg.src = "";
+            if (lightboxImg) {
+                // ✨ 核心修復 2：關閉前先拔掉 onerror 監聽，並使用 removeAttribute
+                // 避免單純把 src 設為 "" 時，引發瀏覽器底層的誤判報錯！
+                lightboxImg.onerror = null;
+                lightboxImg.removeAttribute('src');
+                lightboxImg.classList.remove('is-broken');
+                delete lightboxImg.dataset.isBroken;
+            }
             const backdrop = document.getElementById('lightbox-backdrop');
-            if (backdrop) backdrop.src = "";
+            if (backdrop) backdrop.removeAttribute('src');
             const caption = document.getElementById('lightbox-caption');
             if (caption) caption.innerText = "";
             
