@@ -164,70 +164,89 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path):
                 pass
 
 # ==========================================
-# 🧠 Hash 快取與版本控制引擎 (State Cache Engine)
+# 🧠 細項 Hash 快取與版本控制引擎 (Fine-Grained State Cache)
 # ==========================================
 CACHE_FILE = '.build_cache.json'
 
-def get_global_content_hash(output_data_dict):
-    """計算全域內容的唯一 Hash 值 (包含 Markdown 內文)"""
+def get_file_hash(filepath):
+    """計算單一檔案的 MD5 Hash"""
+    if not os.path.exists(filepath): return ""
     hasher = hashlib.md5()
-    
-    # 1. 加入 all_projects.json 的結構資料
-    hasher.update(json.dumps(output_data_dict, sort_keys=True).encode('utf-8'))
-    
-    # 2. 遍歷 projects 資料夾，加入所有 .md 與 .json 的真實內容
-    if os.path.exists('projects'):
-        for root, dirs, files in os.walk('projects'):
-            for file in sorted(files): # 排序確保每次讀取順序一致
-                if file.endswith('.md') or file.endswith('.json'):
-                    file_path = os.path.join(root, file)
-                    with open(file_path, 'rb') as f:
-                        hasher.update(f.read())
-                    
-    # 3. 加入會影響前端的其他靜態檔案
-    for ext_file in ['kotoba.md', 'quotes.md', 'COPYRIGHT.md', 'credits.md', 'changelogs.json']:
-        if os.path.exists(ext_file):
-            with open(ext_file, 'rb') as f:
-                hasher.update(f.read())
-                
-    return hasher.hexdigest()
+    with open(filepath, 'rb') as f:
+        hasher.update(f.read())
+    return hasher.hexdigest()[:8]
 
-def should_update_data(current_hash):
-    """比對 Hash 決定是否需要更新"""
+def get_dir_hash(dirpath):
+    """計算資料夾內所有 Markdown 與 JSON 的聯合 MD5 Hash"""
+    if not os.path.exists(dirpath): return ""
+    hasher = hashlib.md5()
+    for root, dirs, files in os.walk(dirpath):
+        for file in sorted(files):
+            if file.endswith('.md') or file.endswith('.json'):
+                with open(os.path.join(root, file), 'rb') as f:
+                    hasher.update(f.read())
+    return hasher.hexdigest()[:8]
+
+def update_data_version():
+    """計算各獨立項目的 Hash，並寫入 data_version.json 與狀態快取"""
+    print(f"\n==========================================")
+    print(f"🧠 [快取引擎] 開始計算細項 Hash 值...")
+    print(f"==========================================")
+    
+    items = {
+        "projects": get_dir_hash("projects"),
+        "kotoba.md": get_file_hash("kotoba.md"),
+        "quotes.md": get_file_hash("quotes.md"),
+        "COPYRIGHT.md": get_file_hash("COPYRIGHT.md"),
+        "credits.md": get_file_hash("credits.md"),
+        "changelogs.json": get_file_hash("changelogs.json")
+    }
+    
+    changed_items = []
     if os.path.exists(CACHE_FILE):
         try:
             with open(CACHE_FILE, 'r', encoding='utf-8') as f:
-                cache = json.load(f)
-                if cache.get('content_hash') == current_hash:
-                    return False
+                old_cache = json.load(f)
+                for k, v in items.items():
+                    if old_cache.get(k) != v:
+                        changed_items.append(k)
         except Exception:
-            pass
-    return True
+            changed_items = list(items.keys())
+    else:
+        changed_items = list(items.keys())
 
-def save_build_cache(current_hash):
-    """儲存最新的 Hash 狀態"""
+    if changed_items:
+        print(f"🔄 偵測到以下項目內容變更: {', '.join(changed_items)}")
+    else:
+        print(f"⏭️ 內容無任何變更，維持現有快取。")
+
+    # 強制寫入 data_version.json，供前端獲取各項目的最新 Hash
+    with open('data_version.json', 'w', encoding='utf-8') as f:
+        json.dump(items, f, indent=2)
+        
+    # 儲存狀態快取
     with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-        json.dump({'content_hash': current_hash}, f)
+        json.dump(items, f, indent=2)
+        
+    return changed_items
 
 def generate_version_json():
-    """自動從 main.js 提取系統版本並產生 version.json"""
+    """自動從 main.js 提取 CONFIG.VERSION 並產生 version.json"""
     print(f"\n==========================================")
-    print(f"⚙️ [系統設定] 開始同步系統版本號...")
+    print(f"⚙️ [系統設定] 開始同步版本號...")
     print(f"==========================================")
     try:
-        # 尋找可能命名的 main.js (相容 main_*.js)
-        js_file = next((f for f in os.listdir('.') if f.startswith('main') and f.endswith('.js')), None)
-        if js_file:
-            with open(js_file, 'r', encoding='utf-8') as f:
+        if os.path.exists('main.js'):
+            with open('main.js', 'r', encoding='utf-8') as f:
                 content = f.read()
             match = re.search(r'VERSION:\s*"([^"]+)"', content)
             if match:
                 version = match.group(1)
                 with open('version.json', 'w', encoding='utf-8') as f:
                     json.dump({"version": version}, f, indent=2)
-                print(f"✅ 成功提取系統版本號 ({version}) 並寫入 version.json")
+                print(f"✅ 成功從 main.js 提取版本號 ({version}) 並寫入 version.json")
             else:
-                print(f"⚠️ 在 {js_file} 找不到 CONFIG.VERSION 設定！")
+                print("⚠️ 在 main.js 找不到 CONFIG.VERSION 設定！")
     except Exception as e:
         print(f"⚠️ 生成 version.json 失敗: {e}")
 
@@ -803,25 +822,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
     print(f"✅ JSON 結構掃描完成，包含 {len(output_data['projects'])} 個專案。")
 
-    # --- ✨ 導入 Hash 狀態快取機制 ---
-    current_hash = get_global_content_hash(output_data)
-
-    # 判斷是否需要覆寫 (如果使用者選擇了強制覆寫 overwrite_json，則無視快取)
+    # 強制寫入 all_projects.json (依據需求，即使未更新也強制生成確保檔案存在)
     with open('all_projects.json', 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
-
-    if not should_update_data(current_hash) and not overwrite_json:
-        print("⏭️  內容無任何變更，跳過更新data_version.json。")
-    else:
-        print("🔄 偵測到內容變更，正在更新資料庫與內容版本號...")
-
-        # 生成 data_version.json (供前端比對)
-        new_data_version = str(int(time.time()))
-        with open('data_version.json', 'w', encoding='utf-8') as f:
-            json.dump({"data_timestamp": new_data_version}, f)
-
-        save_build_cache(current_hash)
-        print("✅ 成功更新 data_version.json！")
 
 # ==========================================
 # 🧹 清理廢棄 API 資料夾
@@ -920,6 +923,9 @@ if __name__ == "__main__":
     print(f"📦 [最後階段] 開始修改路徑...")
     print(f"==========================================")
     update_extensions_to_webp()
+
+    # ✨ 執行細項 Hash 快取引擎，統整並輸出 data_version.json
+    update_data_version()
 
     print(f"\n==========================================")
     print(f"過期tag提示 ({len(expiration_l)})")

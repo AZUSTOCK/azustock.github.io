@@ -172,14 +172,21 @@ document.documentElement.style.setProperty('--marquee-speed', `${CONFIG.MARQUEE_
 // === 全域變數 (系統內部使用) ===
 window.siteProjects = [];
 
+// ✨ 取得細項檔案的專屬 Cache Hash
+window.getResVersion = function(key) {
+    try {
+        const versions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
+        return versions[key] || CONFIG.VERSION;
+    } catch (e) {
+        return CONFIG.VERSION;
+    }
+};
+
 // ==========================================
 // ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
 window.lockScroll = function() {
-    // 防呆：如果已經鎖定，就直接返回，防止重複執行導致閃爍 (解決問題 1)
     if (document.body.style.overflow === 'hidden') return;
-    
-    // 只做鎖定，不做 Padding 補償，因為 CSS 已經處理好了
     document.body.style.overflow = 'hidden';
 };
 
@@ -207,10 +214,8 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
         return;
     }
 
-    // ✨ 安全防護 1 (專案攔截)：如果該專案是隱藏的，但系統尚未解鎖 (body 沒有 system-override-active)
     if (project.is_hidden && !document.body.classList.contains('system-override-active')) {
         show404Modal('403 ACCESS_DENIED', '拒絕存取。<br/><span style="opacity: 0.8; font-size: 0.85em; font-family: monospace;">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style="cursor: pointer; position: relative;" class="secret-admin-trigger">風川梓</span>.</span>');
-        // 刪除 replaceState，讓網址列保留目標參數，以便解鎖後跳轉！
         return;
     }
 
@@ -220,14 +225,10 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
         
         if (aIndex !== -1 && aIndex < project.articles.length) {
             const article = project.articles[aIndex];
-            
-            // ✨ 安全防護 2 (文章攔截)：如果該文章是隱藏的，但系統尚未解鎖
             if (article.is_hidden && !document.body.classList.contains('system-override-active')) {
                 show404Modal('403 ACCESS_DENIED', '拒絕存取。<br/><span style="opacity: 0.8; font-size: 0.85em; font-family: monospace;">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style="cursor: pointer; position: relative;" class="secret-admin-trigger">風川梓</span>.</span>');
-                // 刪除 replaceState，讓網址列保留目標參數，以便解鎖後跳轉！
                 return;
             }
-
             window.openArticle(project.id, aIndex, false, 0, hashParam);
         } else {
             show404Modal('404 Article Not Found', `在專案「${project.title}」中找不到此文章。<br/>可能不存在或已被移除。`);
@@ -238,30 +239,23 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     }
 };
 
-// ✨ 統一清單產生器 (根據排序與群組，計算絕對視覺順序)
 window.getArticleSequence = function(projectId) {
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !proj.articles) return [];
     
-    // ✨ 新增：判斷系統是否已經解鎖 (System Override 狀態)
     const isUnlocked = document.body.classList.contains('system-override-active');
-    
-    // 讀取專案獨立排序
     let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
     
-    // ✨ 核心修復：直接從源頭剔除沒有權限查看的隱藏文章！
     let displayArticles = proj.articles
         .map((art, idx) => ({ art, idx }))
         .filter(item => isUnlocked || !item.art.is_hidden);
     
     const pinned = displayArticles.filter(item => item.art.pinned);
     const unpinned = displayArticles.filter(item => !item.art.pinned);
-    
     const renderUnpinned = currentSort === 'asc' ? [...unpinned] : [...unpinned].reverse();
     const finalArray = [...pinned, ...renderUnpinned];
     
     let flatSequence = [];
-    // 核心邏輯：群組本身的順序「不反轉」，只依照 Object.keys 的原生順序迭代
     if (proj.groups && Object.keys(proj.groups).length > 0) {
         for (const groupId of Object.keys(proj.groups)) {
             flatSequence.push(...finalArray.filter(item => item.art.group === groupId));
@@ -274,7 +268,6 @@ window.getArticleSequence = function(projectId) {
     return flatSequence;
 };
 
-// ✨ 共用複製連結功能 (還原純淨版，依靠 CSS 鎖定尺寸)
 window.handleCopy = function(element, shareUrl) {
     if (element.classList.contains('copied') || window.isCopying) return;
     window.isCopying = true;
@@ -285,7 +278,6 @@ window.handleCopy = function(element, shareUrl) {
     navigator.clipboard.writeText(shareUrl).then(() => {
         element.classList.add('copied');
         element.innerHTML = `${checkSvg} <span style="margin-left: 4px;">已複製</span>`;
-        
         setTimeout(() => {
             element.classList.remove('copied');
             element.innerHTML = originalContent;
@@ -296,7 +288,6 @@ window.handleCopy = function(element, shareUrl) {
     });
 };
 
-// ✨ 新增：共用卡片聚焦與跳躍引擎
 window.focusAndBumpCard = function(targetCard) {
     const cardRect = targetCard.getBoundingClientRect();
     const isVisible = (
@@ -328,7 +319,6 @@ window.focusAndBumpCard = function(targetCard) {
 window.refreshUIAfterOverrideToggle = function() {
     const isUnlocked = document.body.classList.contains('system-override-active');
 
-    // ✨ 提煉重複邏輯：僅更新專案卡片上的數字
     const updateCardCounts = () => {
         window.siteProjects.forEach(proj => {
             const grid = document.getElementById(`${proj.category}-grid`);
@@ -350,7 +340,6 @@ window.refreshUIAfterOverrideToggle = function() {
         });
     };
 
-    // ✨ 智慧防護：如果系統已經是解鎖狀態，且網頁一開始載入時已經跑過跑馬燈了，直接維持現狀並更新卡片即可！
     if (isUnlocked && window._hasAlreadyUnlockedOnce) {
         updateCardCounts();
         return; 
@@ -360,7 +349,6 @@ window.refreshUIAfterOverrideToggle = function() {
 
     const marquees = document.querySelectorAll('.marquee-content');
 
-    // 1. 凍結跑馬燈當前座標
     marquees.forEach(m => {
         if (isUnlocked) m.classList.add('suppress-secrets');
         const matrix = new DOMMatrix(window.getComputedStyle(m).transform);
@@ -382,7 +370,6 @@ window.refreshUIAfterOverrideToggle = function() {
 
     void document.body.offsetWidth;
 
-    // 記錄最終真實寬度
     marquees.forEach(m => {
         m.dataset.targetWidth = m.offsetWidth;
         m.classList.remove('force-show-secrets');
@@ -402,7 +389,6 @@ window.refreshUIAfterOverrideToggle = function() {
             document.querySelectorAll('.active-tag').forEach(t => t.classList.remove('active-tag'));
         }
 
-        // 2. 啟動光速引擎
         marquees.forEach((m, index) => {
             const targetWidth = parseFloat(m.dataset.targetWidth) || m.offsetWidth;
             let startX = parseFloat(m.dataset.startX) || 0;
@@ -437,34 +423,26 @@ window.refreshUIAfterOverrideToggle = function() {
 };
 
 // ==========================================
-// ✨ 言の箱題庫快取系統 (Singleton Pattern)
+// ✨ 獨立檔案快取系統 (Singleton Pattern + Hash)
 // ==========================================
 window.cachedKotobaList = null;
 window.getKotobaList = async function() {
     if (window.cachedKotobaList !== null) return window.cachedKotobaList;
-    
     try {
-        const res = await fetch('./kotoba.md');
+        const res = await fetch(`./kotoba.md?v=${window.getResVersion('kotoba.md')}`);
         if (res.ok) {
             const text = await res.text();
             window.cachedKotobaList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
         } else {
             window.cachedKotobaList = [];
         }
-    } catch (err) {
-        console.warn("言の箱載入失敗:", err);
-        window.cachedKotobaList = [];
-    }
+    } catch (err) { window.cachedKotobaList = []; }
     return window.cachedKotobaList;
 };
 
-// ==========================================
-// ✨ Mermaid 全域樣式快取系統 (Singleton Pattern)
-// ==========================================
 window.cachedMermaidStyles = null;
 window.getMermaidStyles = async function() {
     if (window.cachedMermaidStyles !== null) return window.cachedMermaidStyles;
-    
     try {
         const res = await fetch(`./mermaid_styles.txt?v=${CONFIG.VERSION}`);
         if (res.ok) {
@@ -472,32 +450,22 @@ window.getMermaidStyles = async function() {
         } else {
             window.cachedMermaidStyles = '';
         }
-    } catch (err) {
-        console.warn("Mermaid 全域樣式載入失敗:", err);
-        window.cachedMermaidStyles = '';
-    }
+    } catch (err) { window.cachedMermaidStyles = ''; }
     return window.cachedMermaidStyles;
 };
 
-// ==========================================
-// ✨ 系統名言題庫快取系統 (Singleton Pattern)
-// ==========================================
 window.cachedQuotesList = null;
 window.getQuotesList = async function() {
     if (window.cachedQuotesList !== null) return window.cachedQuotesList;
-    
     try {
-        const res = await fetch('./quotes.md');
+        const res = await fetch(`./quotes.md?v=${window.getResVersion('quotes.md')}`);
         if (res.ok) {
             const text = await res.text();
             window.cachedQuotesList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
         } else {
             window.cachedQuotesList = [];
         }
-    } catch (err) {
-        console.warn("Quotes 載入失敗:", err);
-        window.cachedQuotesList = [];
-    }
+    } catch (err) { window.cachedQuotesList = []; }
     return window.cachedQuotesList;
 };
 
@@ -2080,10 +2048,9 @@ async function loadProjects() {
     const marquee = document.getElementById('marquee-text');
 
     try {
-        // ✨ 核心資料載入策略分離：使用本地存儲的資料版本號，完美命中 CDN 與瀏覽器快取！
-        // (如果有發布新文章，背景的 checkSystemVersionAndBoot 會負責對答案與強制熱更新)
-        const localDataVersion = localStorage.getItem('sys_data_version') || 'init';
-        const response = await fetch(`${CONFIG.DATA_SOURCE}?v=${localDataVersion}`);
+        // ✨ 核心資料載入：向 localStorage 取得 projects 的專屬 Hash 版號
+        const projVersion = window.getResVersion('projects');
+        const response = await fetch(`${CONFIG.DATA_SOURCE}?v=${projVersion}`);
         const db = await response.json();
         
         const categories = db.categories;
@@ -2561,7 +2528,7 @@ async function checkSystemVersionAndBoot() {
     }
 
     try {
-        // ✨ 微型化版本檢查：同時核對極輕量的「系統版本 (version.json)」與「內容版本 (data_version.json)」
+        // ✨ 微型化版本檢查：同時核對「系統版號 (version.json)」與「細項內容 Hash (data_version.json)」
         const [sysRes, dataRes] = await Promise.all([
             fetch(`./version.json?t=${new Date().getTime()}`).catch(() => null),
             fetch(`./data_version.json?t=${new Date().getTime()}`).catch(() => null)
@@ -2581,17 +2548,20 @@ async function checkSystemVersionAndBoot() {
             remoteVersion = sysData.version;
             console.warn(`[SYS_UPDATE] 發現系統新版本 ${remoteVersion}，準備強制更新...`);
         }
-        // 2. 檢查內容層級更新 (若系統無需更新，才檢查文章內容是否變動)
-        else if (contentData && contentData.data_timestamp) {
-            const localDataVersion = localStorage.getItem('sys_data_version');
-            // 如果本地存儲有舊的快取，且遠端時間戳更新了，就觸發同步
-            if (localDataVersion && localDataVersion !== 'init' && localDataVersion !== contentData.data_timestamp) {
+        // 2. 檢查內容層級更新 (如果系統無需更新，才檢查 projects 目錄的 Hash 是否改變)
+        else if (contentData && contentData.projects) {
+            const localDataVersions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
+            
+            // ✨ 如果本地有舊紀錄，且專案 (projects) 的 Hash 發生改變，才需要強制重開機刷新首頁
+            if (localDataVersions.projects && localDataVersions.projects !== contentData.projects) {
                 needReboot = true;
                 rebootReason = 'SYNCING_NEW_DATA';
-                console.info(`[DATA_UPDATE] 發現新文章或內容修改，準備同步資料庫...`);
+                console.info(`[DATA_UPDATE] 發現文章內容修改，準備同步資料庫...`);
             }
-            // 寫入最新的資料版本號到本機，供下一次 loadProjects 讀取 CDN 快取用
-            localStorage.setItem('sys_data_version', contentData.data_timestamp);
+            
+            // ✨ 寫入最新的細項 Hash 字典到本機
+            // (如果是 kotoba.md 等獨立細項改變，下次點擊時會自己抓最新 Hash，不需重啟畫面！)
+            localStorage.setItem('sys_data_versions', JSON.stringify(contentData));
         }
 
         if (needReboot) {
@@ -4450,7 +4420,7 @@ window.showCreditsModal = async function() {
         if (window.cachedCreditsText !== null) {
             mdText = window.cachedCreditsText;
         } else {
-            const response = await fetch(`./credits.md?v=${CONFIG.VERSION}`);
+            const response = await fetch(`./credits.md?v=${window.getResVersion('credits.md')}`);
             if (!response.ok) throw new Error('找不到 credits.md 檔案');
             mdText = await response.text();
             window.cachedCreditsText = mdText;
@@ -4558,7 +4528,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
         if (window.cachedChangelogs !== null) {
             // 已有快取，不需重抓
         } else {
-            const response = await fetch(`./changelogs.json?v=${CONFIG.VERSION}`);
+            const response = await fetch(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`);
             if (!response.ok) throw new Error('找不到 changelogs.json');
             window.cachedChangelogs = await response.json();
         }
@@ -4734,7 +4704,7 @@ window.showLicenseModal = async function() {
         if (window.cachedLicenseText !== null) {
             mdText = window.cachedLicenseText;
         } else {
-            const response = await fetch(`./COPYRIGHT.md?v=${CONFIG.VERSION}`);
+            const response = await fetch(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`);
             if (!response.ok) throw new Error("找不到版權檔案");
             mdText = await response.text();
             window.cachedLicenseText = mdText;
