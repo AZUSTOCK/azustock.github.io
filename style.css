@@ -2254,7 +2254,7 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
     position: relative;
     margin: 2rem 0; 
     border: 1px solid var(--card-border); 
-    border-radius: 0.8rem; 
+    border-radius: 0.8rem 0.8rem 0 0; 
     /* ✨ 關鍵修復 1：改為 visible，允許影片在全螢幕時安全逃脫容器限制！ */
     overflow: visible !important; 
     box-shadow: 0 4px 15px var(--shadow-base); 

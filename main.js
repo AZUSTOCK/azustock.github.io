@@ -536,10 +536,51 @@ window.initScrollHints = function(container, hintLeft, hintRight) {
 // ✨ 全域圖片破圖處理器 (終極解決 Safari/iOS 限制)
 // ==========================================
 window.handleImageError = function(img) {
+    // ✨ 防呆機制：避免無窮迴圈
+    if (img.dataset.isBroken) return;
+    img.dataset.isBroken = "true";
+    
     img.onerror = null; 
+    
+    // ✨ 核心殺手鐧：徹底消滅瀏覽器原生的破圖干擾
+    img.removeAttribute('srcset'); // 拔除 srcset，防止瀏覽器繼續掙扎嘗試高畫質版
+    img.alt = "";                  // 清空 alt，封殺 Safari 強制附加的原生外框與問號
+    
     img.classList.remove('is-loading');
     img.classList.add('is-broken');
-    img.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+    
+    // ✨ 替換為極簡透明 SVG (比 base64 GIF 更安全)，把畫布完美讓給 CSS 背景
+    img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
+};
+
+// ==========================================
+// ✨ 全域影音破圖處理器 (Media Fallback Engine)
+// ==========================================
+window.handleMediaError = function(sourceEl) {
+    const wrapper = sourceEl.closest('.media-container-wrapper');
+    if (!wrapper || wrapper.dataset.isBroken) return;
+    wrapper.dataset.isBroken = "true";
+
+    const isVideo = wrapper.querySelector('video') !== null;
+    const mediaTag = wrapper.querySelector('.md-video, .md-audio');
+    
+    // ✨ 根據是影片還是音訊，動態調整佔位框的高度
+    const aspectStyle = isVideo ? "aspect-ratio: 16/9; min-height: 200px;" : "padding: 1rem 0;";
+    
+    // 拔除原本的媒體播放器，換成我們的終端機風格破圖警告
+    if (mediaTag) {
+        mediaTag.outerHTML = `
+            <div class="media-error-fallback" style="width: 100%; ${aspectStyle} display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); color: var(--muted); text-align: center;">
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1rem;">
+                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                    <line x1="2" y1="2" x2="22" y2="22"></line>
+                </svg>
+                <div style="font-family: 'Courier New', monospace; font-size: 1rem; font-weight: bold; letter-spacing: 0.05em; color: var(--error-color);">MEDIA_NOT_FOUND</div>
+                <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.5rem;">無法載入此${isVideo ? '影片' : '音訊'}，可能已被移除</div>
+            </div>
+        `;
+    }
 };
 
 // ==========================================
@@ -813,6 +854,14 @@ window.updateLightboxView = function() {
                     window.lightboxState.maxZoom = 2; 
                 }
             };
+
+            // ✨ 新增這段：為大圖預覽也接上破圖處理引擎
+            lightboxImg.onerror = () => {
+                if (wrapper) wrapper.classList.remove('is-fetching');
+                lightboxImg.style.opacity = '1';
+                window.handleImageError(lightboxImg);
+            };
+            
             lightboxImg.src = currentItem.src;
             if (lightboxImg.complete && lightboxImg.naturalHeight > 0) lightboxImg.onload();
         }
@@ -1295,7 +1344,7 @@ function renderPDFIframe(href, altText) {
     `;
 
     return `
-    <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
+    <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
         onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }"
         onpointerdown="if(document.body.classList.contains('is-touch-device')) this.style.transform='scale(0.98)';"
         onpointerup="this.style.transform='none';"
@@ -1330,8 +1379,8 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
     const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block; border-bottom-left-radius: 0.8rem; border-bottom-right-radius: 0.8rem;";
 
     const mediaTag = isVideo 
-        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}">您的瀏覽器不支援影片標籤。</video>`
-        : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}">您的瀏覽器不支援音樂標籤。</audio>`;
+        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
+        : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
 
     const actionBtn = isVideo 
         ? `<button class="mermaid-btn" data-tooltip="全螢幕檢視" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>` 
