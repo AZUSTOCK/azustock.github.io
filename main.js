@@ -4950,17 +4950,28 @@ window.showPdfActionModal = function(href, title) {
         opacity: 0; transition: opacity 0.3s ease;
     `;
 
-    // 關閉 Modal 的輔助函式
+    // 關閉 Modal 的輔助函式 (✨ 加入捲軸狀態防呆)
     const closeModal = () => {
         overlay.style.opacity = '0';
         overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(100%)';
         setTimeout(() => {
             overlay.remove();
-            window.unlockScroll();
+            // ✨ 核心修復：檢查背後的文章 Modal 是否還開著，如果開著就保持鎖定狀態
+            const mdModal = document.getElementById('md-modal');
+            if (!mdModal || !mdModal.classList.contains('active')) {
+                window.unlockScroll();
+            }
         }, 300);
     };
 
-    // 將按鈕改為 <button> 並綁定 JS 行為
+    // ✨ 判斷是否為 PWA (Standalone) 模式
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    
+    // 為了完美的 UX：如果是 PWA，我們直接把藍色主按鈕變成「下載」，並隱藏下方的第二顆按鈕
+    const viewBtnText = isPWA ? '下載 PDF 檔案' : '於瀏覽器中檢視 PDF';
+    const viewBtnIcon = isPWA ? GLOBAL_SVGS.download : GLOBAL_SVGS.newTab;
+    const downloadBtnDisplay = isPWA ? 'none' : 'flex';
+
     overlay.innerHTML = `
         <div class="pdf-action-sheet" style="
             background: var(--card); width: 100%; max-width: 500px; 
@@ -4974,19 +4985,19 @@ window.showPdfActionModal = function(href, title) {
             <div style="font-size: 0.85rem; color: var(--muted); text-align: center; margin-bottom: 1.5rem; font-family: monospace;">PDF DOCUMENT</div>
             
             <div style="display: flex; flex-direction: column; gap: 0.8rem;">
-                <!-- ✨ 檢視按鈕：改用 JS window.open 觸發系統內建的 Safari/Chrome 視窗 -->
+                <!-- ✨ 主按鈕 (根據 PWA 狀態自動切換功能與圖示) -->
                 <button id="pdf-view-btn" style="
                     display: flex; align-items: center; justify-content: center; gap: 8px;
                     background: var(--accent); color: var(--card); font-weight: 600; 
                     padding: 0.8rem; border-radius: 12px; border: none; cursor: pointer; font-size: 1rem; font-family: inherit;
                 ">
-                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.newTab}</span>
-                    於瀏覽器中檢視 PDF
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${viewBtnIcon}</span>
+                    ${viewBtnText}
                 </button>
                 
-                <!-- ✨ 下載按鈕：綁定專屬 Fetch 引擎 -->
+                <!-- ✨ 副按鈕：下載 (PWA模式下會完全消失) -->
                 <button id="pdf-download-btn" style="
-                    display: flex; align-items: center; justify-content: center; gap: 8px;
+                    display: ${downloadBtnDisplay}; align-items: center; justify-content: center; gap: 8px;
                     background: var(--glass-bg); color: var(--text); font-weight: 600; 
                     padding: 0.8rem; border-radius: 12px; border: 1px solid var(--card-border); cursor: pointer; font-size: 1rem; font-family: inherit;
                 ">
@@ -5014,14 +5025,21 @@ window.showPdfActionModal = function(href, title) {
 
     // 綁定事件
     overlay.querySelector('#pdf-view-btn').onclick = () => {
-        window.open(href, '_blank');
+        // ✨ 如果是 PWA，主按鈕的行為就是強制下載；反之才是開新分頁
+        if (isPWA) {
+            window.downloadPdfDirectly(href, title);
+        } else {
+            window.open(href, '_blank');
+        }
         closeModal();
     };
 
-    overlay.querySelector('#pdf-download-btn').onclick = () => {
-        window.downloadPdfDirectly(href, title);
-        closeModal();
-    };
+    if (!isPWA) {
+        overlay.querySelector('#pdf-download-btn').onclick = () => {
+            window.downloadPdfDirectly(href, title);
+            closeModal();
+        };
+    }
 
     overlay.querySelector('#pdf-modal-close').onclick = closeModal;
     overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
@@ -5033,7 +5051,10 @@ window.showPdfActionModal = function(href, title) {
 window.downloadPdfDirectly = async function(url, filename) {
     window.triggerHaptic('light');
     if (window.showSystemToast) {
-        window.showSystemToast('📥 下載中', '正在取得檔案，請稍候...', filename, 2000, 'success');
+        // ✨ 使用 Flex 排版與 SVG 替換原本的 Emoji，並掛上系統內建的向下彈跳動畫
+        const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>下載中</span>`;
+        
+        window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', filename, 2000, 'success');
     }
     
     try {
