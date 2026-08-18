@@ -57,7 +57,19 @@ const GLOBAL_SVGS = {
     mermaidZoomIn: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
     mermaidZoomOut: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
     mermaidReset: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
-    mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`
+    mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`,
+
+    // 🔔 系統提示與狀態圖示 (新增收斂)
+    check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+    copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+    closeX: `<svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+    jumpDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`,
+    jumpUp: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-up 1.5s infinite ease-in-out;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`,
+    errorLock: `<svg class="error-lock-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5; overflow: visible; transition: all 0.3s ease;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path class="error-lock-shackle" d="M7 11V7a5 5 0 0 1 10 0v4" style="transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center;"></path></svg>`,
+    errorAlert: `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
+    retry: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
+    warning: `<svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+    detailsArrow: `<svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>`
 };
 
 // ==========================================
@@ -594,12 +606,11 @@ window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = '
 };
 
 // ==========================================
-// ✨ 全域閱讀進度條引擎 (Unified Progress Bar Engine)
+// ✨ 全域閱讀進度條引擎 (rAF 效能優化版)
 // ==========================================
 window.initProgressBar = function(mountEl, scrollEl, type, existingBarId = null) {
     if (!mountEl || !scrollEl) return;
 
-    // 如果已經有這個 ID 的進度條就重複使用，沒有就新建
     let bar = existingBarId ? document.getElementById(existingBarId) : null;
     if (!bar) {
         bar = document.createElement('div');
@@ -607,20 +618,21 @@ window.initProgressBar = function(mountEl, scrollEl, type, existingBarId = null)
         mountEl.appendChild(bar);
     }
     
-    // ✨ 將繁瑣的 style 替換為乾淨的 CSS Class
     bar.className = `sys-progress-bar ${type === 'vertical' ? 'is-vertical-bar' : 'is-top-bar'}`;
     bar.style.display = 'block';
     bar.style.width = '0%';
     bar.classList.remove('is-complete');
 
-    const updateProgress = () => {
-        if (bar.style.display === 'none') return;
-        
-        let progress = 100;
-        let maxScroll = 0;
-        let currentScroll = 0;
+    let ticking = false; // ✨ 防抖鎖
 
-        // 判斷是橫向還是直向滾動
+    const updateProgress = () => {
+        if (bar.style.display === 'none') {
+            ticking = false;
+            return;
+        }
+        
+        let progress = 100, maxScroll = 0, currentScroll = 0;
+
         if (type === 'vertical') {
             maxScroll = scrollEl.scrollWidth - scrollEl.clientWidth;
             currentScroll = Math.abs(scrollEl.scrollLeft);
@@ -629,31 +641,28 @@ window.initProgressBar = function(mountEl, scrollEl, type, existingBarId = null)
             currentScroll = Math.ceil(scrollEl.scrollTop);
         }
 
-        // 核心運算與防呆吸附
         if (maxScroll > 0) {
-            if (maxScroll - currentScroll <= 5) {
-                progress = 100;
-            } else {
-                progress = (currentScroll / maxScroll) * 100;
-            }
+            progress = (maxScroll - currentScroll <= 5) ? 100 : (currentScroll / maxScroll) * 100;
         }
 
         bar.style.width = `${progress}%`;
-        
-        // ✨ CSS 類別控制變色發光，JS 只負責切換狀態！
-        if (progress === 100) {
-            bar.classList.add('is-complete');
-        } else {
-            bar.classList.remove('is-complete');
-        }
+        if (progress === 100) bar.classList.add('is-complete');
+        else bar.classList.remove('is-complete');
+
+        ticking = false; // ✨ 畫完一次畫面，解開防抖鎖
     };
 
-    // 清理舊的監聽器避免重複觸發，並綁定新監聽
     if (bar._scrollHandler) scrollEl.removeEventListener('scroll', bar._scrollHandler);
-    bar._scrollHandler = updateProgress;
-    scrollEl.addEventListener('scroll', bar._scrollHandler, { passive: true });
     
-    // 延遲初始化呼叫
+    // ✨ 只有在沒被鎖住時，才發送繪製請求給 GPU
+    bar._scrollHandler = () => {
+        if (!ticking) {
+            window.requestAnimationFrame(updateProgress);
+            ticking = true;
+        }
+    };
+    
+    scrollEl.addEventListener('scroll', bar._scrollHandler, { passive: true });
     setTimeout(updateProgress, 100);
     return bar;
 };
@@ -1094,7 +1103,63 @@ window.processMermaidCssVars = function(text) {
     return processed;
 };
 
-// 1. ✨ 修復與升級：攔截圖片，支援影音，並自動轉換 Figure 圖片說明與高質感 Tooltip！
+// ==========================================
+// ✨ 輔助函數：渲染 PDF 嵌入框架
+// ==========================================
+function renderPDFIframe(href, altText) {
+    let customHeight = "600px";
+    const hMatch = href.match(/[?&]h=(\d+)/i);
+    if (hMatch) customHeight = hMatch[1] + "px";
+    
+    return `
+    <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
+        onclick="if(window.innerWidth <= 768 || document.body.classList.contains('is-touch-device')) window.open('${href}', '_blank');"
+        onpointerdown="if(window.innerWidth <= 768 || document.body.classList.contains('is-touch-device')) this.style.transform='scale(0.98)';"
+        onpointerup="this.style.transform='none';"
+        onpointerleave="this.style.transform='none';">
+        <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
+                ${GLOBAL_SVGS.docIcon}
+                <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
+            </div>
+            <a href="${href}" target="_blank" class="pdf-ext-btn" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" onclick="event.stopPropagation();">
+                ${GLOBAL_SVGS.newTab}
+                新分頁開啟
+            </a>
+        </div>
+        <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+        <div class="pdf-mobile-placeholder" style="display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); flex-direction: column; align-items: center; gap: 1.2rem;">
+            <span style="font-size: 1.05rem; letter-spacing: 0.05em;">行動裝置或視窗過小不支援內嵌 PDF 預覽</span>
+            <span style="color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; background: var(--tag-bg); padding: 0.6rem 1.2rem; border-radius: 2rem;">
+                ${GLOBAL_SVGS.newTab} 點擊此處使用系統閱讀器開啟
+            </span>
+        </div>
+    </div>`;
+}
+
+// ==========================================
+// ✨ 輔助函數：渲染影音標籤 (Video / Audio)
+// ==========================================
+function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle) {
+    const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
+    const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
+    const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
+    const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block;";
+
+    const mediaTag = isVideo 
+        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}">您的瀏覽器不支援影片標籤。</video>`
+        : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}">您的瀏覽器不支援音樂標籤。</audio>`;
+
+    return `
+    <div style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--glass-bg);">
+        <div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">${iconSvg}<span>${displayTitle}</span></div>
+        ${mediaTag}
+    </div>`;
+}
+
+// ==========================================
+// 1. ✨ 核心主圖片渲染器 (經過重構，極度乾淨！)
+// ==========================================
 renderer.image = function(token_or_href, title, text) {
     const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
     const altText = typeof token_or_href === 'object' ? token_or_href.text : text;
@@ -1102,107 +1167,36 @@ renderer.image = function(token_or_href, title, text) {
     
     if (!href) return '';
 
-    // 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
-    // 透過 split 排除 ? 和 # 後面的參數，精準判斷是否為 pdf
+    // 1. 攔截 PDF
     const cleanUrlForCheck = href.split('?')[0].split('#')[0];
-    
-    if (cleanUrlForCheck.match(/\.pdf$/i)) {
-        let customHeight = "600px";
-        const hMatch = href.match(/[?&]h=(\d+)/i);
-        if (hMatch) {
-            customHeight = hMatch[1] + "px";
-        }
-        
-       // ✨ 替換 PDF 圖示與新分頁開啟按鈕 (加入純 JS 物理按壓回饋)
-        return `
-        <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
-            onclick="if(window.innerWidth <= 768 || document.body.classList.contains('is-touch-device')) window.open('${href}', '_blank');"
-            onpointerdown="if(window.innerWidth <= 768 || document.body.classList.contains('is-touch-device')) this.style.transform='scale(0.98)';"
-            onpointerup="this.style.transform='none';"
-            onpointerleave="this.style.transform='none';">
-            <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
-                    ${GLOBAL_SVGS.docIcon}
-                    <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
-                </div>
-                <a href="${href}" target="_blank" class="pdf-ext-btn" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" onclick="event.stopPropagation();">
-                    ${GLOBAL_SVGS.newTab}
-                    新分頁開啟
-                </a>
-            </div>
-            
-            <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
-            
-            <div class="pdf-mobile-placeholder" style="display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); flex-direction: column; align-items: center; gap: 1.2rem;">
-                <span style="font-size: 1.05rem; letter-spacing: 0.05em;">行動裝置或視窗過小不支援內嵌 PDF 預覽</span>
-                <span style="color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; background: var(--tag-bg); padding: 0.6rem 1.2rem; border-radius: 2rem;">
-                    ${GLOBAL_SVGS.newTab} 點擊此處使用系統閱讀器開啟
-                </span>
-            </div>
-        </div>`;
-    }
+    if (cleanUrlForCheck.match(/\.pdf$/i)) return renderPDFIframe(href, altText);
 
-    // ==========================================
-    // ✨ 影音解析器：支援自訂縮圖 (#poster=) (終極防呆版)
-    // ==========================================
-    
-    // ✨ 防呆 1：Marked.js 有時會把 URL 裡的 # 偷偷轉碼成 %23，我們先把它還原！
+    // 2. 攔截影音
     const decodedHref = href.replace(/%23/g, '#');
-    
     let cleanMediaUrl = decodedHref;
     let posterUrl = '';
-    
     if (decodedHref.includes('#poster=')) {
         const parts = decodedHref.split('#poster=');
-        cleanMediaUrl = parts[0];
-        posterUrl = parts[1];
+        cleanMediaUrl = parts[0]; posterUrl = parts[1];
     }
-
-    // ✨ 防呆 2：切掉網址後面的 ?t=123 時間戳，產生專門用來判斷副檔名的字串
+    
     const pureUrlForExt = cleanMediaUrl.split('?')[0];
-
-    // 改用 pureUrlForExt 來判斷結尾，這樣就不會被時間戳干擾了！
     const isVideo = pureUrlForExt.match(/\.(mp4|webm|ogg)$/i);
     const isAudio = pureUrlForExt.match(/\.(mp3|wav)$/i);
     
     if (isVideo || isAudio) {
-        const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
-        const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
-        
-        const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
-        const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block;";
-
-        // ✨ 防呆 3：確保 <source type="..."> 也是吃到乾淨的副檔名
         const ext = pureUrlForExt.split('.').pop().toLowerCase();
-        
-        const mediaTag = isVideo 
-            ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}">您的瀏覽器不支援影片標籤。</video>`
-            : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}">您的瀏覽器不支援音樂標籤。</audio>`;
-
-        const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">${iconSvg}<span>${displayTitle}</span></div>`;
-        
-        return `
-        <div style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--glass-bg);">
-            ${titleHtml}
-            ${mediaTag}
-        </div>`;
+        return renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle);
     }
 
-    // ==========================================
-    // ✨ 原本的圖片解析器 (支援 #full=)
-    // ==========================================
-    // 解析縮圖與原圖 (透過 Python 塞入的 #full= 傳遞)
-    let srcUrl = href;
-    let fullUrl = href;
+    // 3. 一般圖片
+    let srcUrl = href, fullUrl = href;
     if (href.includes('#full=')) {
         const parts = href.split('#full=');
-        srcUrl = parts[0];
-        fullUrl = parts[1];
+        srcUrl = parts[0]; fullUrl = parts[1];
     }
 
-    // ✨ 恢復純淨版 imgTag (移除內聯的 onclick 與 style，交給下方統一處理)
     const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
-
     const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
     const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
