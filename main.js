@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.4",          // 目前系統版本號
+    VERSION: "U1.5.5",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -43,7 +43,8 @@ const GLOBAL_SVGS = {
     docIconLg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
     videoIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`,
     audioIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`,
-    
+    download: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
+
     // 🗂️ 首頁專案卡片
     folderClosed: `<svg class="icon-book-closed" style="position: absolute; transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>`,
     folderOpen: `<svg class="icon-book-open" style="position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
@@ -57,7 +58,19 @@ const GLOBAL_SVGS = {
     mermaidZoomIn: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
     mermaidZoomOut: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
     mermaidReset: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
-    mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`
+    mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`,
+
+    // 🔔 系統提示與狀態圖示 (新增收斂)
+    check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+    copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+    closeX: `<svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
+    jumpDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`,
+    jumpUp: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-up 1.5s infinite ease-in-out;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`,
+    errorLock: `<svg class="error-lock-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5; overflow: visible; transition: all 0.3s ease;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path class="error-lock-shackle" d="M7 11V7a5 5 0 0 1 10 0v4" style="transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center;"></path></svg>`,
+    errorAlert: `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
+    retry: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
+    warning: `<svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+    detailsArrow: `<svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>`
 };
 
 // ==========================================
@@ -95,6 +108,18 @@ window.getStatusColorFromCSS = function(status) {
     // 如果 CSS 沒寫，預設給主題高光色
     window._statusColorCache[status] = color || 'var(--accent)';
     return window._statusColorCache[status];
+};
+
+// ==========================================
+// ✨ 全域觸覺回饋引擎 (Haptic Feedback Engine) [研議中]
+// ==========================================
+window.triggerHaptic = function(type = 'light') {
+    if (!navigator.vibrate) return;
+    try {
+        if (type === 'light') navigator.vibrate(40); // 輕微點擊 (如：切換主題)
+        else if (type === 'success') navigator.vibrate([30, 60, 40]); // 成功回饋 (如：複製成功)
+        else if (type === 'error') navigator.vibrate([50, 50, 50, 50]); // 錯誤回饋
+    } catch (e) { /* 忽略不支援的裝置 */ }
 };
 
 // ==========================================
@@ -594,6 +619,68 @@ window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = '
 };
 
 // ==========================================
+// ✨ 全域閱讀進度條引擎 (rAF 效能優化版)
+// ==========================================
+window.initProgressBar = function(mountEl, scrollEl, type, existingBarId = null) {
+    if (!mountEl || !scrollEl) return;
+
+    let bar = existingBarId ? document.getElementById(existingBarId) : null;
+    if (!bar) {
+        bar = document.createElement('div');
+        if (existingBarId) bar.id = existingBarId;
+        mountEl.appendChild(bar);
+    }
+    
+    bar.className = `sys-progress-bar ${type === 'vertical' ? 'is-vertical-bar' : 'is-top-bar'}`;
+    bar.style.display = 'block';
+    bar.style.width = '0%';
+    bar.classList.remove('is-complete');
+
+    let ticking = false; // ✨ 防抖鎖
+
+    const updateProgress = () => {
+        if (bar.style.display === 'none') {
+            ticking = false;
+            return;
+        }
+        
+        let progress = 100, maxScroll = 0, currentScroll = 0;
+
+        if (type === 'vertical') {
+            maxScroll = scrollEl.scrollWidth - scrollEl.clientWidth;
+            currentScroll = Math.abs(scrollEl.scrollLeft);
+        } else {
+            maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+            currentScroll = Math.ceil(scrollEl.scrollTop);
+        }
+
+        if (maxScroll > 0) {
+            progress = (maxScroll - currentScroll <= 5) ? 100 : (currentScroll / maxScroll) * 100;
+        }
+
+        bar.style.width = `${progress}%`;
+        if (progress === 100) bar.classList.add('is-complete');
+        else bar.classList.remove('is-complete');
+
+        ticking = false; // ✨ 畫完一次畫面，解開防抖鎖
+    };
+
+    if (bar._scrollHandler) scrollEl.removeEventListener('scroll', bar._scrollHandler);
+    
+    // ✨ 只有在沒被鎖住時，才發送繪製請求給 GPU
+    bar._scrollHandler = () => {
+        if (!ticking) {
+            window.requestAnimationFrame(updateProgress);
+            ticking = true;
+        }
+    };
+    
+    scrollEl.addEventListener('scroll', bar._scrollHandler, { passive: true });
+    setTimeout(updateProgress, 100);
+    return bar;
+};
+
+// ==========================================
 // ✨ 全域大圖預覽 (Lightbox 2.0) 控制引擎
 // ==========================================
 
@@ -825,6 +912,145 @@ window.closeLightbox = function() {
 };
 
 // ==========================================
+// ✨ 大圖預覽：一鍵下載引擎
+// ==========================================
+window.downloadLightboxImage = function() {
+    const img = document.getElementById('lightbox-img');
+    if (!img || !img.src) return;
+    
+    // 取得真實檔名 (包含副檔名)
+    const url = img.src;
+    const fileName = url.substring(url.lastIndexOf('/') + 1).split('?')[0] || 'download_image.jpg';
+
+    // 建立隱形按鈕觸發下載
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName; // 強制觸發下載並賦予檔名
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // ✨ 呼叫你剛寫好的蘋果級震動回饋，並顯示成功提示！
+    window.triggerHaptic('success');
+    if (window.AppUI && AppUI.showToast) {
+         window.AppUI.showToast('SUCCESS', '圖片已開始下載', fileName, 3000, 'success');
+    }
+};
+
+// ==========================================
+// ✨ 智慧分流下載器 (自動判斷當前是圖片還是 Mermaid 圖表)
+// ==========================================
+window.handleLightboxDownload = function(btn) {
+    const state = window.lightboxState;
+    
+    if (state && state.isDomMode) {
+        // 如果目前在 Lightbox 裡看的是 Mermaid 圖表，呼叫 PNG 下載引擎
+        window.downloadMermaidPNG(btn);
+    } else {
+        // 如果看的是一般圖片，呼叫原本的圖片下載引擎
+        window.downloadLightboxImage();
+    }
+};
+
+// ==========================================
+// ✨ Mermaid 圖表：一鍵下載高清 PNG 引擎 (相容文章內頁與 Lightbox 全螢幕模式)
+// ==========================================
+window.downloadMermaidPNG = function(btn) {
+    let svgEl = null;
+    let fileName = 'diagram.png';
+
+    // ✨ 智慧判斷：檢查這個按鈕是在 Lightbox 裡面，還是文章一般的工具列裡
+    const lightboxModal = document.getElementById('lightbox-modal');
+    const isInsideLightbox = lightboxModal && lightboxModal.contains(btn);
+
+    if (isInsideLightbox) {
+        // 模式 A：在 Lightbox 全螢幕檢視中點擊下載
+        const customDom = document.getElementById('lightbox-custom-dom');
+        if (customDom) {
+            svgEl = customDom.querySelector('svg');
+        }
+        const captionEl = document.getElementById('lightbox-caption');
+        if (captionEl && captionEl.innerText) {
+            fileName = `${captionEl.innerText.trim()}.png`;
+        }
+    } else {
+        // 模式 B：在文章內頁的工具列點擊下載
+        const container = btn.closest('.mermaid-container');
+        if (container) {
+            svgEl = container.querySelector('.mermaid svg');
+            const titleEl = container.querySelector('.mermaid-title');
+            if (titleEl) {
+                fileName = `${titleEl.innerText.trim()}.png`;
+            }
+        }
+    }
+
+    if (!svgEl) return;
+
+    // 1. 複製一份 SVG 進行處理
+    const clonedSvg = svgEl.cloneNode(true);
+    if (!clonedSvg.getAttribute('xmlns')) clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    
+    // 取得 SVG 的真實寬高 (用來設定畫布尺寸)
+    const viewBox = clonedSvg.getAttribute('viewBox');
+    let width = parseInt(clonedSvg.getAttribute('width')) || svgEl.getBoundingClientRect().width || 800;
+    let height = parseInt(clonedSvg.getAttribute('height')) || svgEl.getBoundingClientRect().height || 600;
+    
+    if (viewBox) {
+        const [, , w, h] = viewBox.split(' ').map(Number);
+        width = w || width;
+        height = h || height;
+    }
+
+    // 2. 序列化 SVG 並轉為 Data URL
+    const serializer = new XMLSerializer();
+    let svgString = serializer.serializeToString(clonedSvg);
+    const encodedData = encodeURIComponent(svgString)
+        .replace(/'/g, '%27')
+        .replace(/"/g, '%22');
+    const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodedData;
+
+    // 3. 利用 Image 物件將 SVG 畫到 Canvas 上
+    const img = new Image();
+    img.onload = () => {
+        // ✨ 設定放大倍率為 3 倍，輸出超高清 Retina 解析度
+        const scale = 3; 
+        const canvas = document.createElement('canvas');
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // ✨ 智慧背景色補全：根據當下深淺色主題填上背景，防止 PNG 變透明導致字看不見！
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        ctx.fillStyle = currentTheme === 'dark' ? '#020617' : '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // 4. 輸出為 PNG 檔案並下載
+        canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // 觸發成功震動與 Toast 提示
+            window.triggerHaptic('success');
+            if (window.AppUI && AppUI.showToast) {
+                 window.AppUI.showToast('SUCCESS', '圖表已下載', fileName, 3000, 'success');
+            }
+        }, 'image/png', 1.0);
+    };
+    img.src = svgUrl;
+};
+
+// ==========================================
 // ✨ Lightbox 滾輪縮放、拖曳與多點觸控 (Pinch Zoom) 引擎
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -1029,7 +1255,78 @@ window.processMermaidCssVars = function(text) {
     return processed;
 };
 
-// 1. ✨ 修復與升級：攔截圖片，支援影音，並自動轉換 Figure 圖片說明與高質感 Tooltip！
+// ==========================================
+// ✨ 輔助函數：渲染 PDF 嵌入框架 (改進版：全面以觸控裝置為判斷依據)
+// ==========================================
+function renderPDFIframe(href, altText) {
+    let customHeight = "600px";
+    const hMatch = href.match(/[?&]h=(\d+)/i);
+    if (hMatch) customHeight = hMatch[1] + "px";
+    
+    // ✨ 只要是觸控裝置 (手機/平板/PWA)，點擊就彈出安全操作面板
+    const mobileClickHandler = `
+        event.stopPropagation();
+        window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');
+    `;
+
+    return `
+    <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
+        onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }"
+        onpointerdown="if(document.body.classList.contains('is-touch-device')) this.style.transform='scale(0.98)';"
+        onpointerup="this.style.transform='none';"
+        onpointerleave="this.style.transform='none';">
+        <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
+                ${GLOBAL_SVGS.docIcon}
+                <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
+            </div>
+            <a href="${href}" target="_blank" class="pdf-ext-btn" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" onclick="event.stopPropagation();">
+                ${GLOBAL_SVGS.newTab}
+                新分頁開啟
+            </a>
+        </div>
+        <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+        <div class="pdf-mobile-placeholder" style="display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); flex-direction: column; align-items: center; gap: 1.2rem;">
+            <span style="font-size: 1.05rem; letter-spacing: 0.05em;">點擊下方按鈕以檢視或下載 PDF 檔案</span>
+            <span style="color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; background: var(--tag-bg); padding: 0.6rem 1.2rem; border-radius: 2rem; cursor: pointer;">
+                ${GLOBAL_SVGS.newTab} 點擊開啟 PDF 操作選單
+            </span>
+        </div>
+    </div>`;
+}
+
+// ==========================================
+// ✨ 輔助函數：渲染影音標籤 (Video / Audio)
+// ==========================================
+function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle) {
+    const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
+    const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
+    const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
+    const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block; border-bottom-left-radius: 0.8rem; border-bottom-right-radius: 0.8rem;";
+
+    const mediaTag = isVideo 
+        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}">您的瀏覽器不支援影片標籤。</video>`
+        : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}">您的瀏覽器不支援音樂標籤。</audio>`;
+
+    const actionBtn = isVideo 
+        ? `<button class="mermaid-btn" data-tooltip="全螢幕檢視" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>` 
+        : '';
+
+    return `
+    <div class="media-container-wrapper">
+        <div class="media-container-header">
+            <div style="font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+                ${iconSvg}<span style="transform: translateY(1px);">${displayTitle}</span>
+            </div>
+            ${actionBtn}
+        </div>
+        ${mediaTag}
+    </div>`;
+}
+
+// ==========================================
+// 1. ✨ 核心主圖片渲染器 (經過重構，極度乾淨！)
+// ==========================================
 renderer.image = function(token_or_href, title, text) {
     const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
     const altText = typeof token_or_href === 'object' ? token_or_href.text : text;
@@ -1037,107 +1334,36 @@ renderer.image = function(token_or_href, title, text) {
     
     if (!href) return '';
 
-    // 👇 1. 新增 PDF 攔截器 (替換為系統原生 SVG 圖示)
-    // 透過 split 排除 ? 和 # 後面的參數，精準判斷是否為 pdf
+    // 1. 攔截 PDF
     const cleanUrlForCheck = href.split('?')[0].split('#')[0];
-    
-    if (cleanUrlForCheck.match(/\.pdf$/i)) {
-        let customHeight = "600px";
-        const hMatch = href.match(/[?&]h=(\d+)/i);
-        if (hMatch) {
-            customHeight = hMatch[1] + "px";
-        }
-        
-       // ✨ 替換 PDF 圖示與新分頁開啟按鈕 (加入純 JS 物理按壓回饋)
-        return `
-        <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
-            onclick="if(window.innerWidth <= 768 || document.body.classList.contains('is-touch-device')) window.open('${href}', '_blank');"
-            onpointerdown="if(window.innerWidth <= 768 || document.body.classList.contains('is-touch-device')) this.style.transform='scale(0.98)';"
-            onpointerup="this.style.transform='none';"
-            onpointerleave="this.style.transform='none';">
-            <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
-                    ${GLOBAL_SVGS.docIcon}
-                    <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
-                </div>
-                <a href="${href}" target="_blank" class="pdf-ext-btn" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" onclick="event.stopPropagation();">
-                    ${GLOBAL_SVGS.newTab}
-                    新分頁開啟
-                </a>
-            </div>
-            
-            <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
-            
-            <div class="pdf-mobile-placeholder" style="display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); flex-direction: column; align-items: center; gap: 1.2rem;">
-                <span style="font-size: 1.05rem; letter-spacing: 0.05em;">行動裝置或視窗過小不支援內嵌 PDF 預覽</span>
-                <span style="color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; background: var(--tag-bg); padding: 0.6rem 1.2rem; border-radius: 2rem;">
-                    ${GLOBAL_SVGS.newTab} 點擊此處使用系統閱讀器開啟
-                </span>
-            </div>
-        </div>`;
-    }
+    if (cleanUrlForCheck.match(/\.pdf$/i)) return renderPDFIframe(href, altText);
 
-    // ==========================================
-    // ✨ 影音解析器：支援自訂縮圖 (#poster=) (終極防呆版)
-    // ==========================================
-    
-    // ✨ 防呆 1：Marked.js 有時會把 URL 裡的 # 偷偷轉碼成 %23，我們先把它還原！
+    // 2. 攔截影音
     const decodedHref = href.replace(/%23/g, '#');
-    
     let cleanMediaUrl = decodedHref;
     let posterUrl = '';
-    
     if (decodedHref.includes('#poster=')) {
         const parts = decodedHref.split('#poster=');
-        cleanMediaUrl = parts[0];
-        posterUrl = parts[1];
+        cleanMediaUrl = parts[0]; posterUrl = parts[1];
     }
-
-    // ✨ 防呆 2：切掉網址後面的 ?t=123 時間戳，產生專門用來判斷副檔名的字串
+    
     const pureUrlForExt = cleanMediaUrl.split('?')[0];
-
-    // 改用 pureUrlForExt 來判斷結尾，這樣就不會被時間戳干擾了！
     const isVideo = pureUrlForExt.match(/\.(mp4|webm|ogg)$/i);
     const isAudio = pureUrlForExt.match(/\.(mp3|wav)$/i);
     
     if (isVideo || isAudio) {
-        const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
-        const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
-        
-        const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
-        const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block;";
-
-        // ✨ 防呆 3：確保 <source type="..."> 也是吃到乾淨的副檔名
         const ext = pureUrlForExt.split('.').pop().toLowerCase();
-        
-        const mediaTag = isVideo 
-            ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}">您的瀏覽器不支援影片標籤。</video>`
-            : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}">您的瀏覽器不支援音樂標籤。</audio>`;
-
-        const titleHtml = `<div style="padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">${iconSvg}<span>${displayTitle}</span></div>`;
-        
-        return `
-        <div style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--glass-bg);">
-            ${titleHtml}
-            ${mediaTag}
-        </div>`;
+        return renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle);
     }
 
-    // ==========================================
-    // ✨ 原本的圖片解析器 (支援 #full=)
-    // ==========================================
-    // 解析縮圖與原圖 (透過 Python 塞入的 #full= 傳遞)
-    let srcUrl = href;
-    let fullUrl = href;
+    // 3. 一般圖片
+    let srcUrl = href, fullUrl = href;
     if (href.includes('#full=')) {
         const parts = href.split('#full=');
-        srcUrl = parts[0];
-        fullUrl = parts[1];
+        srcUrl = parts[0]; fullUrl = parts[1];
     }
 
-    // ✨ 恢復純淨版 imgTag (移除內聯的 onclick 與 style，交給下方統一處理)
     const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
-
     const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
     const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
@@ -1200,6 +1426,8 @@ renderer.code = function(token_or_code, language, isEscaped) {
                     </button>
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
+                    <button class="mermaid-btn" data-tooltip="下載" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
+                    <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
                     <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
@@ -1209,18 +1437,30 @@ renderer.code = function(token_or_code, language, isEscaped) {
         </div>`;
     }
 
-    // ✨ 非 Mermaid 的普通程式碼區塊：加上複製按鈕與語言標籤
-    const cleanLang = lang ? lang.split('[')[0].trim() : 'text'; // 容錯處理，預設為 text
-    // 進行基礎的 HTML 跳脫，防止 XSS 與破版
+    // ✨ 非 Mermaid 的普通程式碼區塊：加上複製按鈕、語言標籤與「檔案名稱」
+    const fullLang = typeof token_or_code === 'object' ? (token_or_code.lang || language) : (language || '');
+    
+    // 解析自訂檔案名稱，例如 `javascript [main.js]`
+    let fileName = '';
+    const titleMatch = fullLang.match(/\[(.*?)\]/);
+    if (titleMatch && titleMatch[1]) {
+        fileName = titleMatch[1].trim();
+    }
+    
+    const cleanLang = fullLang ? fullLang.split('[')[0].trim() : 'text'; // 容錯處理，預設為 text
     const escapedText = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    // 複製圖示 SVG
     const copyIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
 
+    // ✨ 核心修復：將語言與檔案名稱合併，中間加個分隔線，徹底解決重疊！
+    const labelContent = fileName 
+        ? `${cleanLang} <span style="opacity: 0.3; margin: 0 6px;">|</span> <span style="text-transform: none; color: var(--accent-2);">${fileName}</span>` 
+        : cleanLang;
+
     return `
-    <div class="code-block-wrapper">
-        <div class="code-lang-label">${cleanLang}</div>
-        <!-- ✨ 拔除了 data-tooltip 屬性 -->
+    <div class="code-block-wrapper" style="position: relative;">
+        <!-- 設定 max-width 避免檔名太長蓋到複製按鈕，過長會自動變成 ... -->
+        <div class="code-lang-label" style="max-width: calc(100% - 100px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${fileName || cleanLang}">${labelContent}</div>
         <button class="code-copy-btn" onclick="window.copyCodeBlock(this)">
             ${copyIcon} <span class="copy-text">Copy</span>
         </button>
@@ -1464,9 +1704,44 @@ const rubyExtension = {
     }
 };
 
-// ⚠️ 記得把 rubyExtension 加進 marked.use 的陣列裡！
+// ==========================================
+// ✨ 新增：摺疊區塊 (Collapsible Details / Accordion) 擴充
+// 語法：:::details[標題] 內容 :::
+// ==========================================
+const detailsBlockExtension = {
+    name: 'detailsBlock',
+    level: 'block',
+    start(src) { return src.match(/^:::\s*details/)?.index; },
+    tokenizer(src, tokens) {
+        const rule = /^:::\s*details(?:\[(.*?)\])?\n([\s\S]*?)\n:::/;
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'detailsBlock',
+                raw: match[0],
+                summaryText: match[1] || '點擊展開查看',
+                tokens: this.lexer.blockTokens(match[2])
+            };
+        }
+    },
+    renderer(token) {
+        return `
+        <details class="md-details" style="margin: 1rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; background: var(--glass-bg); overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base);">
+            <summary style="font-weight: 600; cursor: pointer; outline: none; user-select: none; background: var(--bg); display: flex; align-items: center; gap: 0.8rem;">
+                <svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <span style="flex-grow: 1;">${token.summaryText}</span>
+            </summary>
+            <div class="md-details-content" style="padding: 1.2rem; border-top: 1px solid var(--card-border);">
+                ${this.parser.parse(token.tokens)}
+            </div>
+        </details>
+        `;
+    }
+};
+
+// ⚠️ 記得把 detailsBlockExtension 加進陣列裡！
 marked.use({ 
-    extensions: [spoilerExtension, highlightExtension, highlightBlockExtension, rubyExtension], 
+    extensions: [spoilerExtension, highlightExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
     renderer: renderer,
     breaks: false, 
     gfm: true      
@@ -2105,8 +2380,8 @@ async function loadProjects() {
         if (window.hideSystemRebootScreen) window.hideSystemRebootScreen(false);
 
         if (marquee) { 
-            const marqueeMsg = isOffline ? "NETWORK OFFLINE • PLEASE CHECK CONNECTION • " : "SYSTEM OFFLINE • CONNECTION REFUSED • ";
-            marquee.innerHTML = `<span>${marqueeMsg}</span>`.repeat(4); 
+            const marqueeMsg = isOffline ? "NETWORK OFFLINE • PLEASE CHECK CONNECTION • " : "SYSTEM OFFLINE • ERROR • ";
+            marquee.innerHTML = `<span>${marqueeMsg}</span>`.repeat(6); 
             marquee.style.color = "var(--error-color)"; 
         }
     }
@@ -2300,7 +2575,8 @@ if (!window.modalBodyObserver) {
     window.modalBodyObserver.observe(modalBody);
 }
 
-function switchModalContent(updateDOMCallback, afterUpdateCallback = null) {
+// ✨ 新增 animateTopBar 參數（預設為 true，兼容其他原本呼叫它的彈窗）
+function switchModalContent(updateDOMCallback, afterUpdateCallback = null, animateTopBar = true) {
     const isModalOpen = modalOverlay.classList.contains('active');
     const topLeft = document.getElementById('modal-top-left');
     const tocMount = document.getElementById('toc-mount-point');
@@ -2320,8 +2596,12 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null) {
         modalContainer.style.height = currentHeight + 'px';
 
         modalBody.classList.add('content-fade-out');
-        if (topLeft) topLeft.classList.add('content-fade-out');
-        if (tocMount) tocMount.classList.add('content-fade-out');
+        
+        // ✨ 如果判斷需要動畫，才為頂端目錄列加上 fade-out 效果
+        if (animateTopBar) {
+            if (topLeft) topLeft.classList.add('content-fade-out');
+            if (tocMount) tocMount.classList.add('content-fade-out');
+        }
         
         setTimeout(() => {
             modalContainer.style.transition = 'none'; 
@@ -2341,8 +2621,12 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null) {
                 if (afterUpdateCallback) afterUpdateCallback();
 
                 modalBody.classList.remove('content-fade-out'); 
-                if (topLeft) topLeft.classList.remove('content-fade-out');
-                if (tocMount) tocMount.classList.remove('content-fade-out');
+                
+                // ✨ 同步判斷移除
+                if (animateTopBar) {
+                    if (topLeft) topLeft.classList.remove('content-fade-out');
+                    if (tocMount) tocMount.classList.remove('content-fade-out');
+                }
 
                 setTimeout(() => { modalContainer.style.height = ''; }, 320); 
             });
@@ -2417,6 +2701,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             modalBody.innerHTML = `
                 <div id="article-list-container" style="transition: opacity 0.2s ease;"></div>
             `;
+            
+            // ✨ 目錄模式：隱藏閱讀進度條
+            const progressBar = document.getElementById('reading-progress-bar');
+            if (progressBar) progressBar.style.display = 'none';
 
             const shareBtn = document.getElementById('index-share-btn');
             if (shareBtn) {
@@ -2891,6 +3179,11 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         document.body.style.cursor = '';
     }
 
+    // ✨ 智慧判斷：如果彈窗是開著的，而且左上角已經是「文章膠囊模式 (.unified-nav-capsule)」，
+    // 代表這是「文章切換文章」，我們就把頂部列的動畫關掉！
+    const isCurrentlyArticle = document.querySelector('#modal-top-left .unified-nav-capsule') !== null;
+    const animateTopBar = !(modalOverlay.classList.contains('active') && isCurrentlyArticle);
+
     switchModalContent(
         () => {
             document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
@@ -2900,19 +3193,32 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             
             modalBody.innerHTML = marked.parse(markdownContent);
 
+            // ==========================================
+            // ✨ 啟動進度條引擎 (主進度條 & 直書獨立進度條)
+            // ==========================================
+            const modalContainer = document.querySelector('.modal-content');
+            const topBar = document.querySelector('.modal-top-bar');
+            
+            // 1. 綁定頂部主進度條
+            if (modalContainer && topBar) {
+                window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
+            }
+
+            // 2. 綁定直書模式 (Vertical Wrapper) 專屬獨立進度條
             const verticalWrappers = modalBody.querySelectorAll('.vertical-wrapper');
-            // ✨ 加上 idx 參數來對應陣列
-            verticalWrappers.forEach((wrapper, idx) => {
-                window.applyIndentToVerticalWrapper(wrapper);
+            verticalWrappers.forEach(wrapper => {
+                const container = document.createElement('div');
+                container.style.position = 'relative';
+                container.style.margin = '1rem 0';
+                container.style.borderRadius = '12px';
+                container.style.overflow = 'hidden'; // 防突出
                 
-                // ✨ 新增：如果是從歷史紀錄返回，且有對應的捲軸數值，就執行還原
-                if (isFromHistory && restoreInnerScrolls[idx]) {
-                    // 延遲 50 毫秒，確保 DOM 內容與文字縮排已經撐開高度
-                    setTimeout(() => {
-                        wrapper.scrollTop = restoreInnerScrolls[idx].scrollTop || 0;
-                        wrapper.scrollLeft = restoreInnerScrolls[idx].scrollLeft || 0;
-                    }, 50);
-                }
+                wrapper.parentNode.insertBefore(container, wrapper);
+                wrapper.style.margin = '0';
+                container.appendChild(wrapper);
+
+                // ✨ 直接呼叫引擎，一行搞定所有特效與事件綁定！
+                window.initProgressBar(container, wrapper, 'vertical');
             });
 
             const flatSequence = window.getArticleSequence(projectId);
@@ -3265,22 +3571,59 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             });
         },
         () => {
-            // ✨ 完全無延遲的定位邏輯
+            // ✨ 完全無延遲的定位邏輯 (搭載佈局偏移追蹤引擎)
             const modalContainer = document.querySelector('.modal-content');
-            if (modalContainer) {
-                requestAnimationFrame(() => {
-                    if (targetHash) {
-                        // 呼叫共用引擎 (跨文章剛打開，強制第一次瞬間移動 auto 以打破動畫干擾)
-                        const success = window.executeAnchorScroll(targetHash, true);
-                        if (!success) {
-                            modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
+            if (!modalContainer) return;
+            
+            requestAnimationFrame(() => {
+                if (targetHash) {
+                    // 如果有錨點，交給共用引擎處理 (它本身已有追蹤機制)
+                    const success = window.executeAnchorScroll(targetHash, true);
+                    if (success) return; // 如果跳轉錨點成功，就不執行歷史紀錄復原
+                } 
+
+                if (isFromHistory) {
+                    // ✨ 歷史復原：導入「佈局偏移追蹤引擎 (Layout Shift Chaser)」
+                    const doRestoreScroll = () => {
+                        modalContainer.scrollTop = restoreScrollTop;
+                        
+                        // 同步復原直書模式的內部捲軸
+                        if (restoreInnerScrolls && restoreInnerScrolls.length > 0) {
+                            const wrappers = modalBody.querySelectorAll('.vertical-wrapper');
+                            wrappers.forEach((w, i) => {
+                                if (restoreInnerScrolls[i]) {
+                                    w.scrollTop = restoreInnerScrolls[i].scrollTop;
+                                    w.scrollLeft = restoreInnerScrolls[i].scrollLeft;
+                                }
+                            });
                         }
-                    } else {
-                        modalContainer.scrollTop = isFromHistory ? restoreScrollTop : 0;
-                    }
-                });
-            }
-        }
+                    };
+
+                    doRestoreScroll(); // 1. 第一次強制瞬間復原
+
+                    // 2. 建立追蹤器：對抗 Mermaid、影片、大圖片異步載入導致的高度變化
+                    let trackers = [];
+                    trackers.push(setTimeout(doRestoreScroll, 300));
+                    trackers.push(setTimeout(doRestoreScroll, 600));
+                    trackers.push(setTimeout(doRestoreScroll, 1200));
+
+                    // ✋ 防呆機制：如果使用者在載入期間 (1.2秒內) 已經開始自己滑動，立刻放棄系統追蹤
+                    const cancelTrackers = () => {
+                        trackers.forEach(clearTimeout);
+                        modalContainer.removeEventListener('wheel', cancelTrackers);
+                        modalContainer.removeEventListener('touchstart', cancelTrackers);
+                    };
+                    
+                    modalContainer.addEventListener('wheel', cancelTrackers, { passive: true });
+                    modalContainer.addEventListener('touchstart', cancelTrackers, { passive: true });
+
+                } else {
+                    // 全新開啟的文章，一律置頂
+                    modalContainer.scrollTop = 0;
+                }
+            });
+        },
+        animateTopBar
     ); 
 };
 
@@ -3539,41 +3882,53 @@ document.addEventListener('keydown', (e) => {
     const modalOverlay = document.getElementById('md-modal');
     const isArticleOpen = modalOverlay && modalOverlay.classList.contains('active');
 
-    // --- 🥊 第一層：Lightbox 大圖預覽 (最高優先權) ---
+    // --- 🎬 第 0 層：自製影片全螢幕 (最最高優先權) ---
+    const fullscreenVideo = document.querySelector('video.is-web-fullscreen');
+    if (fullscreenVideo) {
+        if (e.key === 'Escape') {
+            window.toggleWebFullscreen(fullscreenVideo); // 退出影片全螢幕
+            e.preventDefault();
+        }
+        // ✨ 直接 return 終止事件！這樣你在全螢幕看影片按左右鍵時，
+        // 只會觸發影片原生控制列的「快轉/倒退」，而不會誤觸切換文章！
+        return; 
+    }
+
+    // --- 🥊 第一層：Lightbox 大圖預覽 ---
     if (isLightboxOpen) {
         if (e.key === 'Escape') {
             const toolbox = document.getElementById('lightbox-toolbox');
             const state = window.lightboxState;
-            
-            // 💡 聰明的 3 段式退回邏輯：
             if (toolbox && toolbox.classList.contains('is-open')) {
-                toolbox.classList.remove('is-open'); // 1. 如果工具箱開著，先收起工具箱
+                toolbox.classList.remove('is-open'); 
             } else if (state.zoom > 1) {
-                window.lightboxAction('reset');      // 2. 如果圖片有放大，先恢復 1:1 比例
+                window.lightboxAction('reset');      
             } else {
-                window.closeLightbox();              // 3. 都沒有，才真正關閉 Lightbox
+                window.closeLightbox();              
             }
             e.preventDefault();
         }
-        
-        // 左右鍵切換相簿圖片
         if (e.key === 'ArrowLeft') { window.navigateLightbox(-1); e.preventDefault(); }
         if (e.key === 'ArrowRight') { window.navigateLightbox(1); e.preventDefault(); }
-        
-        // 鎖定上下鍵，防止背景文章在背後偷偷滾動
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
-        
         return; // 終止事件，絕不把按鍵傳給底下的文章 Modal
     }
 
     // --- 📖 第二層：文章 Modal 閱讀模式 ---
     if (isArticleOpen) {
+        const tocDropdown = document.querySelector('.toc-dropdown');
+        const tocBtn = document.querySelector('.toc-toggle-btn');
+
         if (e.key === 'Escape') {
-            closeModal();
+            // ✨ 智慧關閉：如果目錄開著就先關目錄，否則才關閉整篇文章
+            if (tocDropdown && tocDropdown.classList.contains('active') && tocBtn) {
+                tocBtn.click(); 
+            } else {
+                closeModal();
+            }
             e.preventDefault();
         }
         
-        // ✨ 新增：左右鍵自動切換「上一篇 / 下一篇」文章
         if (e.key === 'ArrowLeft') {
             const prevBtn = document.querySelector('.nav-card.prev');
             if (prevBtn) { prevBtn.click(); e.preventDefault(); }
@@ -3582,7 +3937,25 @@ document.addEventListener('keydown', (e) => {
             const nextBtn = document.querySelector('.nav-card.next');
             if (nextBtn) { nextBtn.click(); e.preventDefault(); }
         }
-        return;
+    } else {
+        // --- 🏠 第三層：首頁全螢幕選單 ---
+        if (e.key === 'Escape') {
+            const fullscreenMenu = document.getElementById('fullscreen-menu');
+            const menuToggle = document.getElementById('menu-toggle');
+            if (fullscreenMenu && fullscreenMenu.classList.contains('active') && menuToggle) {
+                menuToggle.click();
+                e.preventDefault();
+            }
+        }
+    }
+
+    // ==========================================
+    // ✨ 全域通用快捷鍵 (Global Shortcuts)
+    // ==========================================
+    // 按 [M] 鍵：一鍵切換深淺色主題 (確保沒有在輸入文字時觸發)
+    if (e.key.toLowerCase() === 'm' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        const themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn) themeBtn.click();
     }
 });
 
@@ -4535,3 +4908,151 @@ window.addEventListener('offline', () => {
         'error'
     );
 });
+
+// ==========================================
+// ✨ 手機/PWA 專屬 PDF 安全互動選單 (平衡美化版)
+// ==========================================
+window.showPdfActionModal = function(href, title) {
+    const existing = document.getElementById('pdf-action-modal');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'pdf-action-modal';
+    overlay.style.cssText = `
+        position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); 
+        backdrop-filter: blur(4px); z-index: 99999; 
+        display: flex; align-items: flex-end; justify-content: center; 
+        opacity: 0; transition: opacity 0.3s ease;
+    `;
+
+    // ✨ 修正重點：把原本巨大的下載區塊改為精緻的橫向排版，並將 SVG 尺寸鎖定在 20px
+    overlay.innerHTML = `
+        <div class="pdf-action-sheet" style="
+            background: var(--card); width: 100%; max-width: 500px; 
+            border-top-left-radius: 20px; border-top-right-radius: 20px; 
+            padding: 1.5rem 1.5rem 2.5rem 1.5rem; box-sizing: border-box;
+            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
+            border-top: 1px solid var(--card-border); box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+        ">
+            <div style="width: 40px; height: 4px; background: var(--muted); opacity: 0.4; border-radius: 2px; margin: 0 auto 1.2rem auto;"></div>
+            <div style="font-weight: 700; font-size: 1.1rem; color: var(--text); margin-bottom: 0.4rem; text-align: center; word-break: break-all;">${title}</div>
+            <div style="font-size: 0.85rem; color: var(--muted); text-align: center; margin-bottom: 1.5rem; font-family: monospace;">PDF DOCUMENT</div>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                <!-- 檢視按鈕 -->
+                <a href="${href}" target="_blank" style="
+                    display: flex; align-items: center; justify-content: center; gap: 8px;
+                    background: var(--accent); color: var(--card); font-weight: 600; 
+                    padding: 0.8rem; border-radius: 12px; text-decoration: none;
+                ">
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.newTab}</span>
+                    於瀏覽器中檢視 PDF
+                </a>
+                
+                <!-- 下載按鈕 (✨ 修正了原本巨大無比的圖示，改為等高橫向對齊) -->
+                <a href="${href}" download style="
+                    display: flex; align-items: center; justify-content: center; gap: 8px;
+                    background: var(--glass-bg); color: var(--text); font-weight: 600; 
+                    padding: 0.8rem; border-radius: 12px; text-decoration: none; border: 1px solid var(--card-border);
+                ">
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.download}</span>
+                    下載 PDF 檔案
+                </a>
+                
+                <!-- 取消按鈕 -->
+                <button id="pdf-modal-close" style="
+                    background: transparent; color: var(--muted); border: none; 
+                    font-weight: 600; padding: 0.8rem; margin-top: 0.3rem; cursor: pointer;
+                ">
+                    取消
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+    window.lockScroll();
+
+    setTimeout(() => {
+        overlay.style.opacity = '1';
+        overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(0)';
+    }, 10);
+
+    const closeModal = () => {
+        overlay.style.opacity = '0';
+        overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(100%)';
+        setTimeout(() => {
+            overlay.remove();
+            window.unlockScroll();
+        }, 300);
+    };
+
+    overlay.querySelector('#pdf-modal-close').onclick = closeModal;
+    overlay.onclick = (e) => {
+        if (e.target === overlay) closeModal();
+    };
+};
+
+// ==========================================
+// ✨ 自製影片網頁全螢幕引擎 (Web Fullscreen) - 破解 PWA 原生限制與 Modal 封印
+// ==========================================
+window.toggleWebFullscreen = function(videoEl) {
+    if (!videoEl) return;
+    
+    if (videoEl.classList.contains('is-web-fullscreen')) {
+        // 退出全螢幕
+        videoEl.classList.remove('is-web-fullscreen');
+        window.unlockScroll(); // 恢復背景捲動
+        
+        // ✨ 核心修復：把影片從 body 搬回 Modal 裡的原本位置！
+        const placeholder = videoEl._fsPlaceholder;
+        if (placeholder && placeholder.parentNode) {
+            placeholder.parentNode.insertBefore(videoEl, placeholder);
+            placeholder.remove();
+        }
+        
+        // 移除 body 下的關閉按鈕
+        const exitBtn = videoEl._fsExitBtn;
+        if (exitBtn) exitBtn.remove();
+        
+    } else {
+        // 進入全螢幕
+        // 記錄目前的播放狀態，以免搬家後暫停
+        const isPaused = videoEl.paused;
+        
+        // ✨ 核心修復：因為 modal 的 transform 會困住 fixed 定位
+        // 所以我們必須建立一個黑色的「佔位符」，並把影片實體拉出 modal，直接放到 body 根目錄下！
+        const placeholder = document.createElement('div');
+        placeholder.className = 'video-fs-placeholder';
+        placeholder.style.width = '100%';
+        placeholder.style.aspectRatio = '16/9';
+        placeholder.style.background = '#000';
+        placeholder.style.borderBottomLeftRadius = '0.8rem';
+        placeholder.style.borderBottomRightRadius = '0.8rem';
+        
+        videoEl._fsPlaceholder = placeholder;
+        videoEl.parentNode.insertBefore(placeholder, videoEl);
+        document.body.appendChild(videoEl); // ✨ 瞬間搬家到最高層級
+        
+        videoEl.classList.add('is-web-fullscreen');
+        window.lockScroll(); // 鎖定背景捲動
+        
+        // 確保搬家後影片繼續播放
+        if (!isPaused) videoEl.play().catch(e => console.warn("自動播放被系統阻擋", e));
+        
+        // 建立並顯示專屬的關閉按鈕 (一樣放在 body 下)
+        if (!videoEl._fsExitBtn) {
+            const exitBtn = document.createElement('button');
+            exitBtn.className = 'video-exit-fullscreen-btn';
+            exitBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+            exitBtn.onclick = (e) => {
+                e.stopPropagation();
+                window.toggleWebFullscreen(videoEl);
+            };
+            document.body.appendChild(exitBtn);
+            videoEl._fsExitBtn = exitBtn;
+        } else {
+            document.body.appendChild(videoEl._fsExitBtn);
+        }
+    }
+};
