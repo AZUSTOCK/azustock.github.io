@@ -909,7 +909,6 @@ window.navigateLightbox = function(direction, event) {
 window.lightboxAction = function(action, event) {
     if (event) event.stopPropagation();
     const state = window.lightboxState;
-    // ✨ 動態抓取操作目標
     const target = state.isDomMode ? document.getElementById('lightbox-active-mermaid') : document.getElementById('lightbox-img');
     if (!target) return;
 
@@ -922,8 +921,32 @@ window.lightboxAction = function(action, event) {
         state.x = 0; state.y = 0;
     } else if (action === 'new-tab') {
         if (state.isDomMode) return;
-        // ✨ 還原為單純的網頁開新分頁 (PWA 模式下這顆按鈕已經隱藏了)
-        window.open(target.src, '_blank');
+        
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        if (isPWA) {
+            // ✨ PWA 模式下使用與 PDF 相同的 Fetch Blob 機制開啟
+            fetch(target.src)
+                .then(res => res.blob())
+                .then(blob => {
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = blobUrl;
+                    a.target = '_blank';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(blobUrl);
+                    }, 500);
+                })
+                .catch(err => {
+                    console.error('Blob 新分頁穿透失敗:', err);
+                    window.open(target.src, '_blank');
+                });
+        } else {
+            window.open(target.src, '_blank');
+        }
         return;
     }
     
