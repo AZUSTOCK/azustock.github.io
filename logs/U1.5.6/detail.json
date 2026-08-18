@@ -1,6 +1,6 @@
 {
   "version": "U1.5.6",
-  "date": "2026-08-18",
+  "date": "2026-08-19",
   "status": "REFACTOR",
   "description": "PWA應用問題、快取重構與其他修正"
 }
