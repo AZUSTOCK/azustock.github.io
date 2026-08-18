@@ -116,26 +116,6 @@ def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwr
         return 'UPDATED', current_hash
     return 'SKIPPED', current_hash
 
-def generate_version_json():
-    """自動從 main.js 提取 CONFIG.VERSION 並產生 version.json"""
-    print(f"\n==========================================")
-    print(f"⚙️ [系統設定] 開始同步版本號...")
-    print(f"==========================================")
-    try:
-        if os.path.exists('main.js'):
-            with open('main.js', 'r', encoding='utf-8') as f:
-                content = f.read()
-            match = re.search(r'VERSION:\s*"([^"]+)"', content)
-            if match:
-                version = match.group(1)
-                with open('version.json', 'w', encoding='utf-8') as f:
-                    json.dump({"version": version}, f, indent=2)
-                print(f"✅ 成功從 main.js 提取版本號 ({version}) 並寫入 version.json")
-            else:
-                print("⚠️ 在 main.js 找不到 CONFIG.VERSION 設定！")
-    except Exception as e:
-        print(f"⚠️ 生成 version.json 失敗: {e}")
-
 # ==========================================
 # ⏰ 時間戳過期偵測引擎 (Expiration Checker)
 # ==========================================
@@ -955,7 +935,6 @@ def cleanup_old_api_files(api_dir="api"):
 
 
 if __name__ == "__main__":
-    
     is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
     
     overwrite_webp = False
@@ -1000,7 +979,10 @@ if __name__ == "__main__":
     print(f"==========================================")
     generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb)
     
+    # 1. 先產生最新的 changelogs.json
     generate_changelogs_json()
+
+    # 2. ✨ 核心修正：有了日誌之後，再讀取它來生成 version.json 並同步版號！
     generate_version_json()
 
     print(f"\n📊 [處理統計]")
@@ -1018,7 +1000,7 @@ if __name__ == "__main__":
     print(f"==========================================")
     update_extensions_to_webp()
 
-    # ✨ 執行細項 Hash 快取引擎，統整並輸出 data_version.json
+    # 3. 執行細項 Hash 快取引擎，統整並輸出 data_version.json
     update_data_version()
 
     print(f"\n==========================================")
