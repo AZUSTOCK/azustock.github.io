@@ -10,6 +10,24 @@
   <title>風川梓 | Azustock</title>
 
   <!-- ========================================== -->
+  <!-- ✨ PWA 沉浸式 App 體驗設定 -->
+  <!-- ========================================== -->
+  <!-- 允許 iOS 與 Android 將網站加入主畫面並隱藏網址列 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  
+  <!-- 設定 iOS 頂部時間/電量狀態列的風格 (透明黑底，完美融入星空背景) -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- 設定安裝在桌面時的 App 顯示名稱 -->
+  <meta name="apple-mobile-web-app-title" content="AzuSatellite">
+  <meta name="application-name" content="AzuSatellite">
+  
+  <!-- PWA 主題色 (會改變 Android Chrome 與部分瀏覽器網址列顏色，跟隨你的深淺色主題) -->
+  <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F1F5F9" media="(prefers-color-scheme: light)">
+
+  <!-- ========================================== -->
   <!-- ✨ 0 毫秒無縫接軌引擎：防止重整時舊畫面與遮罩閃爍 -->
   <!-- ========================================== -->
   <style>
@@ -135,6 +153,9 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
           </button>
           <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" onclick="window.handleLightboxDownload(this)" data-tooltip="下載">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </button>
           <button class="toolbar-btn" onclick="window.lightboxAction('new-tab', event)" data-tooltip="新分頁開啟">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
           </button>

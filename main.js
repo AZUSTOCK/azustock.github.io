@@ -43,7 +43,8 @@ const GLOBAL_SVGS = {
     docIconLg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
     videoIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`,
     audioIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`,
-    
+    download: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
+
     // 🗂️ 首頁專案卡片
     folderClosed: `<svg class="icon-book-closed" style="position: absolute; transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>`,
     folderOpen: `<svg class="icon-book-open" style="position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
@@ -107,6 +108,18 @@ window.getStatusColorFromCSS = function(status) {
     // 如果 CSS 沒寫，預設給主題高光色
     window._statusColorCache[status] = color || 'var(--accent)';
     return window._statusColorCache[status];
+};
+
+// ==========================================
+// ✨ 全域觸覺回饋引擎 (Haptic Feedback Engine) [研議中]
+// ==========================================
+window.triggerHaptic = function(type = 'light') {
+    if (!navigator.vibrate) return;
+    try {
+        if (type === 'light') navigator.vibrate(40); // 輕微點擊 (如：切換主題)
+        else if (type === 'success') navigator.vibrate([30, 60, 40]); // 成功回饋 (如：複製成功)
+        else if (type === 'error') navigator.vibrate([50, 50, 50, 50]); // 錯誤回饋
+    } catch (e) { /* 忽略不支援的裝置 */ }
 };
 
 // ==========================================
@@ -899,6 +912,145 @@ window.closeLightbox = function() {
 };
 
 // ==========================================
+// ✨ 大圖預覽：一鍵下載引擎
+// ==========================================
+window.downloadLightboxImage = function() {
+    const img = document.getElementById('lightbox-img');
+    if (!img || !img.src) return;
+    
+    // 取得真實檔名 (包含副檔名)
+    const url = img.src;
+    const fileName = url.substring(url.lastIndexOf('/') + 1).split('?')[0] || 'download_image.jpg';
+
+    // 建立隱形按鈕觸發下載
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName; // 強制觸發下載並賦予檔名
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // ✨ 呼叫你剛寫好的蘋果級震動回饋，並顯示成功提示！
+    window.triggerHaptic('success');
+    if (window.AppUI && AppUI.showToast) {
+         window.AppUI.showToast('SUCCESS', '圖片已開始下載', fileName, 3000, 'success');
+    }
+};
+
+// ==========================================
+// ✨ 智慧分流下載器 (自動判斷當前是圖片還是 Mermaid 圖表)
+// ==========================================
+window.handleLightboxDownload = function(btn) {
+    const state = window.lightboxState;
+    
+    if (state && state.isDomMode) {
+        // 如果目前在 Lightbox 裡看的是 Mermaid 圖表，呼叫 PNG 下載引擎
+        window.downloadMermaidPNG(btn);
+    } else {
+        // 如果看的是一般圖片，呼叫原本的圖片下載引擎
+        window.downloadLightboxImage();
+    }
+};
+
+// ==========================================
+// ✨ Mermaid 圖表：一鍵下載高清 PNG 引擎 (相容文章內頁與 Lightbox 全螢幕模式)
+// ==========================================
+window.downloadMermaidPNG = function(btn) {
+    let svgEl = null;
+    let fileName = 'diagram.png';
+
+    // ✨ 智慧判斷：檢查這個按鈕是在 Lightbox 裡面，還是文章一般的工具列裡
+    const lightboxModal = document.getElementById('lightbox-modal');
+    const isInsideLightbox = lightboxModal && lightboxModal.contains(btn);
+
+    if (isInsideLightbox) {
+        // 模式 A：在 Lightbox 全螢幕檢視中點擊下載
+        const customDom = document.getElementById('lightbox-custom-dom');
+        if (customDom) {
+            svgEl = customDom.querySelector('svg');
+        }
+        const captionEl = document.getElementById('lightbox-caption');
+        if (captionEl && captionEl.innerText) {
+            fileName = `${captionEl.innerText.trim()}.png`;
+        }
+    } else {
+        // 模式 B：在文章內頁的工具列點擊下載
+        const container = btn.closest('.mermaid-container');
+        if (container) {
+            svgEl = container.querySelector('.mermaid svg');
+            const titleEl = container.querySelector('.mermaid-title');
+            if (titleEl) {
+                fileName = `${titleEl.innerText.trim()}.png`;
+            }
+        }
+    }
+
+    if (!svgEl) return;
+
+    // 1. 複製一份 SVG 進行處理
+    const clonedSvg = svgEl.cloneNode(true);
+    if (!clonedSvg.getAttribute('xmlns')) clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    
+    // 取得 SVG 的真實寬高 (用來設定畫布尺寸)
+    const viewBox = clonedSvg.getAttribute('viewBox');
+    let width = parseInt(clonedSvg.getAttribute('width')) || svgEl.getBoundingClientRect().width || 800;
+    let height = parseInt(clonedSvg.getAttribute('height')) || svgEl.getBoundingClientRect().height || 600;
+    
+    if (viewBox) {
+        const [, , w, h] = viewBox.split(' ').map(Number);
+        width = w || width;
+        height = h || height;
+    }
+
+    // 2. 序列化 SVG 並轉為 Data URL
+    const serializer = new XMLSerializer();
+    let svgString = serializer.serializeToString(clonedSvg);
+    const encodedData = encodeURIComponent(svgString)
+        .replace(/'/g, '%27')
+        .replace(/"/g, '%22');
+    const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodedData;
+
+    // 3. 利用 Image 物件將 SVG 畫到 Canvas 上
+    const img = new Image();
+    img.onload = () => {
+        // ✨ 設定放大倍率為 3 倍，輸出超高清 Retina 解析度
+        const scale = 3; 
+        const canvas = document.createElement('canvas');
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // ✨ 智慧背景色補全：根據當下深淺色主題填上背景，防止 PNG 變透明導致字看不見！
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        ctx.fillStyle = currentTheme === 'dark' ? '#020617' : '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // 4. 輸出為 PNG 檔案並下載
+        canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            // 觸發成功震動與 Toast 提示
+            window.triggerHaptic('success');
+            if (window.AppUI && AppUI.showToast) {
+                 window.AppUI.showToast('SUCCESS', '圖表已下載', fileName, 3000, 'success');
+            }
+        }, 'image/png', 1.0);
+    };
+    img.src = svgUrl;
+};
+
+// ==========================================
 // ✨ Lightbox 滾輪縮放、拖曳與多點觸控 (Pinch Zoom) 引擎
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -1258,6 +1410,8 @@ renderer.code = function(token_or_code, language, isEscaped) {
                         </svg>
                     </button>
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
+                    <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
+                    <button class="mermaid-btn" data-tooltip="下載" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
                     <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
@@ -2416,7 +2570,8 @@ if (!window.modalBodyObserver) {
     window.modalBodyObserver.observe(modalBody);
 }
 
-function switchModalContent(updateDOMCallback, afterUpdateCallback = null) {
+// ✨ 新增 animateTopBar 參數（預設為 true，兼容其他原本呼叫它的彈窗）
+function switchModalContent(updateDOMCallback, afterUpdateCallback = null, animateTopBar = true) {
     const isModalOpen = modalOverlay.classList.contains('active');
     const topLeft = document.getElementById('modal-top-left');
     const tocMount = document.getElementById('toc-mount-point');
@@ -2436,8 +2591,12 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null) {
         modalContainer.style.height = currentHeight + 'px';
 
         modalBody.classList.add('content-fade-out');
-        if (topLeft) topLeft.classList.add('content-fade-out');
-        if (tocMount) tocMount.classList.add('content-fade-out');
+        
+        // ✨ 如果判斷需要動畫，才為頂端目錄列加上 fade-out 效果
+        if (animateTopBar) {
+            if (topLeft) topLeft.classList.add('content-fade-out');
+            if (tocMount) tocMount.classList.add('content-fade-out');
+        }
         
         setTimeout(() => {
             modalContainer.style.transition = 'none'; 
@@ -2457,8 +2616,12 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null) {
                 if (afterUpdateCallback) afterUpdateCallback();
 
                 modalBody.classList.remove('content-fade-out'); 
-                if (topLeft) topLeft.classList.remove('content-fade-out');
-                if (tocMount) tocMount.classList.remove('content-fade-out');
+                
+                // ✨ 同步判斷移除
+                if (animateTopBar) {
+                    if (topLeft) topLeft.classList.remove('content-fade-out');
+                    if (tocMount) tocMount.classList.remove('content-fade-out');
+                }
 
                 setTimeout(() => { modalContainer.style.height = ''; }, 320); 
             });
@@ -3011,6 +3174,11 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         document.body.style.cursor = '';
     }
 
+    // ✨ 智慧判斷：如果彈窗是開著的，而且左上角已經是「文章膠囊模式 (.unified-nav-capsule)」，
+    // 代表這是「文章切換文章」，我們就把頂部列的動畫關掉！
+    const isCurrentlyArticle = document.querySelector('#modal-top-left .unified-nav-capsule') !== null;
+    const animateTopBar = !(modalOverlay.classList.contains('active') && isCurrentlyArticle);
+
     switchModalContent(
         () => {
             document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
@@ -3413,7 +3581,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     }
                 });
             }
-        }
+        },
+        animateTopBar
     ); 
 };
 
@@ -3677,36 +3846,36 @@ document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             const toolbox = document.getElementById('lightbox-toolbox');
             const state = window.lightboxState;
-            
-            // 💡 聰明的 3 段式退回邏輯：
             if (toolbox && toolbox.classList.contains('is-open')) {
-                toolbox.classList.remove('is-open'); // 1. 如果工具箱開著，先收起工具箱
+                toolbox.classList.remove('is-open'); 
             } else if (state.zoom > 1) {
-                window.lightboxAction('reset');      // 2. 如果圖片有放大，先恢復 1:1 比例
+                window.lightboxAction('reset');      
             } else {
-                window.closeLightbox();              // 3. 都沒有，才真正關閉 Lightbox
+                window.closeLightbox();              
             }
             e.preventDefault();
         }
-        
-        // 左右鍵切換相簿圖片
         if (e.key === 'ArrowLeft') { window.navigateLightbox(-1); e.preventDefault(); }
         if (e.key === 'ArrowRight') { window.navigateLightbox(1); e.preventDefault(); }
-        
-        // 鎖定上下鍵，防止背景文章在背後偷偷滾動
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
-        
         return; // 終止事件，絕不把按鍵傳給底下的文章 Modal
     }
 
     // --- 📖 第二層：文章 Modal 閱讀模式 ---
     if (isArticleOpen) {
+        const tocDropdown = document.querySelector('.toc-dropdown');
+        const tocBtn = document.querySelector('.toc-toggle-btn');
+
         if (e.key === 'Escape') {
-            closeModal();
+            // ✨ 智慧關閉：如果目錄開著就先關目錄，否則才關閉整篇文章
+            if (tocDropdown && tocDropdown.classList.contains('active') && tocBtn) {
+                tocBtn.click(); 
+            } else {
+                closeModal();
+            }
             e.preventDefault();
         }
         
-        // ✨ 新增：左右鍵自動切換「上一篇 / 下一篇」文章
         if (e.key === 'ArrowLeft') {
             const prevBtn = document.querySelector('.nav-card.prev');
             if (prevBtn) { prevBtn.click(); e.preventDefault(); }
@@ -3715,7 +3884,25 @@ document.addEventListener('keydown', (e) => {
             const nextBtn = document.querySelector('.nav-card.next');
             if (nextBtn) { nextBtn.click(); e.preventDefault(); }
         }
-        return;
+    } else {
+        // --- 🏠 第三層：首頁全螢幕選單 ---
+        if (e.key === 'Escape') {
+            const fullscreenMenu = document.getElementById('fullscreen-menu');
+            const menuToggle = document.getElementById('menu-toggle');
+            if (fullscreenMenu && fullscreenMenu.classList.contains('active') && menuToggle) {
+                menuToggle.click();
+                e.preventDefault();
+            }
+        }
+    }
+
+    // ==========================================
+    // ✨ 全域通用快捷鍵 (Global Shortcuts)
+    // ==========================================
+    // 按 [M] 鍵：一鍵切換深淺色主題 (確保沒有在輸入文字時觸發)
+    if (e.key.toLowerCase() === 'm' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        const themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn) themeBtn.click();
     }
 });
 

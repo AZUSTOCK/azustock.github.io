@@ -807,7 +807,10 @@ if __name__ == "__main__":
     update_extensions_to_webp()
 
     print(f"\n==========================================")
-    print(f"過期tag提示")
+    print(f"過期tag提示 ({len(expiration_l)})")
     print(f"==========================================")
-    for i in expiration_l:
-        print(i)
+    if expiration_l:
+        for i, val in enumerate(expiration_l, 1):
+            print(i, val)
+    else:
+        print('無提示')
