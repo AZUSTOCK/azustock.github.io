@@ -2228,6 +2228,12 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
 /* ==========================================
    ✨ 自製網頁全螢幕 (Web Fullscreen) - 破解 PWA 限制
    ========================================== */
+/* 新增至 CSS */
+.video-fs-placeholder {
+    width: 100%; aspect-ratio: 16/9; background: #000;
+    border-bottom-left-radius: 0.8rem; border-bottom-right-radius: 0.8rem;
+}
+
 .md-video.is-web-fullscreen {
     position: fixed !important;
     top: 0 !important;
@@ -2329,3 +2335,47 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
     0% { transform: scale(0.5); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
 }
+
+
+/* ==========================================
+/* PDF 選單樣式 */
+/* ========================================== */
+
+#pdf-action-modal {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); 
+    backdrop-filter: blur(4px); z-index: 99999; 
+    display: flex; align-items: flex-end; justify-content: center; 
+    opacity: 0; transition: opacity 0.3s ease;
+}
+.pdf-action-sheet {
+    background: var(--card); width: 100%; max-width: 500px; 
+    border-top-left-radius: 20px; border-top-right-radius: 20px; 
+    padding: 1.5rem 1.5rem 2.5rem 1.5rem; box-sizing: border-box;
+    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
+    border-top: 1px solid var(--card-border); box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+}
+.pdf-action-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 600; padding: 0.8rem; border-radius: 12px; border: none; 
+    cursor: pointer; font-size: 1rem; font-family: inherit;
+}
+.pdf-action-btn.primary { background: var(--accent); color: var(--card); }
+.pdf-action-btn.secondary { background: var(--glass-bg); color: var(--text); border: 1px solid var(--card-border); }
+.pdf-action-btn.cancel { background: transparent; color: var(--muted); margin-top: 0.3rem; }
+
+/* ==========================================
+/* 全域提示框樣式 */
+/* ========================================== */
+
+#sys-global-toast {
+    position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); 
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.sys-toast-box {
+    color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; 
+    font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; width: max-content; 
+    max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; position: relative; 
+    transition: box-shadow 0.3s ease;
+}
+.sys-toast-box.error { background: var(--error-color); box-shadow: 0 4px 20px var(--error-shadow); }
+.sys-toast-box.success { background: var(--accent); box-shadow: 0 4px 20px var(--glow-1); }

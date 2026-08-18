@@ -547,7 +547,7 @@ window.handleImageError = function(img) {
 // ==========================================
 window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = 'error') {
     // 1. 決定顏色主題 (未來可擴充 'success' 等)
-    const bgColor = type === 'error' ? 'var(--error-color)' : 'var(--accent)';
+    const themeClass = type === 'error' ? 'error' : 'success';
     const shadowColor = type === 'error' ? 'var(--error-shadow)' : 'var(--glow-1)';
 
     // 2. 移除畫面上舊的提示 (避免重疊堆高)
@@ -563,13 +563,10 @@ window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = '
     toast.style.cssText = "position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);";
     
     toast.innerHTML = `
-        <div style="background: ${bgColor}; color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; box-shadow: 0 4px 20px ${shadowColor}; display: flex; flex-direction: column; gap: 6px; width: max-content; max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; position: relative; transition: box-shadow 0.3s ease;">
-            
-            <!-- 將寬高加大到 32px (手指最好點擊的尺寸)，並利用負的 top/right 把它推回原位 -->
-            <div class="toast-x-icon" style="position: absolute; top: 5px; right: 7px; width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; cursor: pointer;">
-                <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <div class="sys-toast-box ${themeClass}">
+            <div class="toast-x-icon" style="position: absolute; top: 5px; right: 7px; width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </div>
-
             <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2); padding-right: 1.5rem;">${title}</strong>
             <span style="opacity: 0.95; font-weight: 600;">${msg}</span>
             <span style="opacity: 0.85; font-size: 0.8rem;">${subMsg}</span>
@@ -1726,12 +1723,12 @@ const detailsBlockExtension = {
     },
     renderer(token) {
         return `
-        <details class="md-details" style="margin: 1rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; background: var(--glass-bg); overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base);">
-            <summary style="font-weight: 600; cursor: pointer; outline: none; user-select: none; background: var(--bg); display: flex; align-items: center; gap: 0.8rem;">
-                <svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        <details class="md-details">
+            <summary>
+                <svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 <span style="flex-grow: 1;">${token.summaryText}</span>
             </summary>
-            <div class="md-details-content" style="padding: 1.2rem; border-top: 1px solid var(--card-border);">
+            <div class="md-details-content">
                 ${this.parser.parse(token.tokens)}
             </div>
         </details>
@@ -2034,6 +2031,7 @@ async function loadProjects() {
         };
 
        // 智慧狀態推導與全域標籤冒泡
+        const flatStatusList = window.STATUS_LIST.flat(); 
         projects.forEach(p => {
             ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
                 if (p[k] !== undefined) p[k] = evaluateStatus(p[k]);
@@ -2068,7 +2066,6 @@ async function loadProjects() {
 
             let allActiveStates = new Set();
             let publicActiveStates = new Set();
-            const flatStatusList = window.STATUS_LIST.flat(); 
 
             flatStatusList.forEach(status => {
                 const boolKey = `is_${status.toLowerCase()}`;
@@ -3258,6 +3255,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 }
             });
 
+            let mermaidRetryCount = 0;
             const renderMermaid = () => {
                 if (window.mermaid) {
                     // ✨ 核心修復 1：每次渲染圖表前，強制擷取當下的深淺色主題並重新設定
@@ -3273,8 +3271,11 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     window.mermaid.run({ querySelector: '.mermaid' })
                     .catch(e => console.warn('Mermaid 語法錯誤:', e))
                     .finally(() => window.initMermaidDrag());
-                } else {
+                } else if (mermaidRetryCount < 10) {
+                    mermaidRetryCount++;
                     setTimeout(renderMermaid, 300);
+                } else {
+                    console.warn("Mermaid 引擎載入超時，放棄渲染。");
                 }
             };
             renderMermaid();
@@ -4943,12 +4944,7 @@ window.showPdfActionModal = function(href, title) {
 
     const overlay = document.createElement('div');
     overlay.id = 'pdf-action-modal';
-    overlay.style.cssText = `
-        position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); 
-        backdrop-filter: blur(4px); z-index: 99999; 
-        display: flex; align-items: flex-end; justify-content: center; 
-        opacity: 0; transition: opacity 0.3s ease;
-    `;
+
 
     // 關閉 Modal 的輔助函式 (✨ 加入捲軸狀態防呆)
     const closeModal = () => {
@@ -4968,49 +4964,23 @@ window.showPdfActionModal = function(href, title) {
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     
     // 為了完美的 UX：如果是 PWA，我們直接把藍色主按鈕變成「下載」，並隱藏下方的第二顆按鈕
-    const viewBtnText = isPWA ? '下載 PDF 檔案' : '於瀏覽器中檢視 PDF';
+    const viewBtnText = isPWA ? '檢視 PDF 檔案' : '於瀏覽器中檢視 PDF';
     const viewBtnIcon = isPWA ? GLOBAL_SVGS.download : GLOBAL_SVGS.newTab;
     const downloadBtnDisplay = isPWA ? 'none' : 'flex';
 
     overlay.innerHTML = `
-        <div class="pdf-action-sheet" style="
-            background: var(--card); width: 100%; max-width: 500px; 
-            border-top-left-radius: 20px; border-top-right-radius: 20px; 
-            padding: 1.5rem 1.5rem 2.5rem 1.5rem; box-sizing: border-box;
-            transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
-            border-top: 1px solid var(--card-border); box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
-        ">
+        <div class="pdf-action-sheet">
             <div style="width: 40px; height: 4px; background: var(--muted); opacity: 0.4; border-radius: 2px; margin: 0 auto 1.2rem auto;"></div>
             <div style="font-weight: 700; font-size: 1.1rem; color: var(--text); margin-bottom: 0.4rem; text-align: center; word-break: break-all;">${title}</div>
             <div style="font-size: 0.85rem; color: var(--muted); text-align: center; margin-bottom: 1.5rem; font-family: monospace;">PDF DOCUMENT</div>
-            
             <div style="display: flex; flex-direction: column; gap: 0.8rem;">
-                <!-- ✨ 主按鈕 (根據 PWA 狀態自動切換功能與圖示) -->
-                <button id="pdf-view-btn" style="
-                    display: flex; align-items: center; justify-content: center; gap: 8px;
-                    background: var(--accent); color: var(--card); font-weight: 600; 
-                    padding: 0.8rem; border-radius: 12px; border: none; cursor: pointer; font-size: 1rem; font-family: inherit;
-                ">
-                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${viewBtnIcon}</span>
-                    ${viewBtnText}
+                <button id="pdf-view-btn" class="pdf-action-btn primary">
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${viewBtnIcon}</span>${viewBtnText}
                 </button>
-                
-                <!-- ✨ 副按鈕：下載 (PWA模式下會完全消失) -->
-                <button id="pdf-download-btn" style="
-                    display: ${downloadBtnDisplay}; align-items: center; justify-content: center; gap: 8px;
-                    background: var(--glass-bg); color: var(--text); font-weight: 600; 
-                    padding: 0.8rem; border-radius: 12px; border: 1px solid var(--card-border); cursor: pointer; font-size: 1rem; font-family: inherit;
-                ">
-                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.download}</span>
-                    下載 PDF 檔案
+                <button id="pdf-download-btn" class="pdf-action-btn secondary" style="display: ${downloadBtnDisplay};">
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.download}</span>下載 PDF 檔案
                 </button>
-                
-                <button id="pdf-modal-close" style="
-                    background: transparent; color: var(--muted); border: none; 
-                    font-weight: 600; padding: 0.8rem; margin-top: 0.3rem; cursor: pointer; font-size: 1rem; font-family: inherit;
-                ">
-                    取消
-                </button>
+                <button id="pdf-modal-close" class="pdf-action-btn cancel">取消</button>
             </div>
         </div>
     `;
@@ -5045,23 +5015,22 @@ window.showPdfActionModal = function(href, title) {
     overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
 };
 
-// ==========================================
-// ✨ 強制 PDF 下載引擎 (Fetch Blob API)
-// ==========================================
 window.downloadPdfDirectly = async function(url, filename) {
-    window.triggerHaptic('light');
-    if (window.showSystemToast) {
-        // ✨ 使用 Flex 排版與 SVG 替換原本的 Emoji，並掛上系統內建的向下彈跳動畫
-        const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>下載中</span>`;
-        
-        window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', filename, 2000, 'success');
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+    // ✨ 非 PWA 才觸發震動與 Toast
+    if (!isPWA) {
+        window.triggerHaptic('light');
+        if (window.showSystemToast) {
+            const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>下載中</span>`;
+            window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', filename, 2000, 'success');
+        }
     }
     
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error("網路連線失敗");
         
-        // 透過 Blob 轉換為內部物件，強制觸發原生下載機制
         const blob = await response.blob();
         const blobUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -5072,16 +5041,15 @@ window.downloadPdfDirectly = async function(url, filename) {
         document.body.appendChild(a);
         a.click();
         
-        // 清理記憶體
         setTimeout(() => {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(blobUrl);
         }, 100);
         
-        window.triggerHaptic('success');
+        if (!isPWA) window.triggerHaptic('success');
     } catch (error) {
         console.error("底層下載失敗，改用新分頁開啟:", error);
-        window.open(url, '_blank'); // 若網路失敗的備案
+        window.open(url, '_blank'); 
     }
 };
 
@@ -5112,15 +5080,8 @@ window.toggleWebFullscreen = function(videoEl) {
         // 記錄目前的播放狀態，以免搬家後暫停
         const isPaused = videoEl.paused;
         
-        // ✨ 核心修復：因為 modal 的 transform 會困住 fixed 定位
-        // 所以我們必須建立一個黑色的「佔位符」，並把影片實體拉出 modal，直接放到 body 根目錄下！
         const placeholder = document.createElement('div');
         placeholder.className = 'video-fs-placeholder';
-        placeholder.style.width = '100%';
-        placeholder.style.aspectRatio = '16/9';
-        placeholder.style.background = '#000';
-        placeholder.style.borderBottomLeftRadius = '0.8rem';
-        placeholder.style.borderBottomRightRadius = '0.8rem';
         
         videoEl._fsPlaceholder = placeholder;
         videoEl.parentNode.insertBefore(placeholder, videoEl);
