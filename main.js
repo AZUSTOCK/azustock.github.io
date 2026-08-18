@@ -43,8 +43,8 @@ const GLOBAL_SVGS = {
     docIconLg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
     videoIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>`,
     audioIcon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>`,
-    download: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
-
+    download: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
+    
     // 🗂️ 首頁專案卡片
     folderClosed: `<svg class="icon-book-closed" style="position: absolute; transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>`,
     folderOpen: `<svg class="icon-book-open" style="position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
@@ -4389,6 +4389,14 @@ window.showCreditsModal = async function() {
                 `;
             }
             
+            // 👇 新增：啟動頂部進度條
+            const modalContainer = document.querySelector('.modal-content');
+            const topBar = document.querySelector('.modal-top-bar');
+            if (modalContainer && topBar) {
+                window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
+            }
+            // 👆 新增結束
+
             // 開啟 Modal 並鎖定捲軸
             modalOverlay.classList.add('active');
             window.lockScroll();
@@ -4503,6 +4511,11 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 const tocMountPoint = document.getElementById('toc-mount-point');
                 
                 if (tocMountPoint) tocMountPoint.innerHTML = '';
+                
+                // ✨ 加上這兩行：隱藏閱讀進度條
+                const progressBar = document.getElementById('reading-progress-bar');
+                if (progressBar) progressBar.style.display = 'none';
+
                 renderChangelogHeader(false);
 
                 if (fetchError || !window.cachedChangelogs) {
@@ -4570,6 +4583,12 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                         ${marked.parse(targetLog.content)}
                     </div>
                 `;
+
+                const modalContainer = document.querySelector('.modal-content');
+                const topBar = document.querySelector('.modal-top-bar');
+                if (modalContainer && topBar) {
+                    window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
+                }
             },
             () => document.querySelector('.modal-content').scrollTop = 0
         );
@@ -4665,6 +4684,12 @@ window.showLicenseModal = async function() {
                         <button class="lang-btn" onclick="window.switchBilingualTab('ja', this)">日本語</button>
                     </div>
                 `;
+            }
+
+            const modalContainer = document.querySelector('.modal-content');
+            const topBar = document.querySelector('.modal-top-bar');
+            if (modalContainer && topBar) {
+                window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
             }
 
             // 開啟 Modal 並鎖定背景捲軸
@@ -4910,7 +4935,7 @@ window.addEventListener('offline', () => {
 });
 
 // ==========================================
-// ✨ 手機/PWA 專屬 PDF 安全互動選單 (平衡美化版)
+// ✨ 手機/PWA 專屬 PDF 安全互動選單 (強制下載與瀏覽器穿透版)
 // ==========================================
 window.showPdfActionModal = function(href, title) {
     const existing = document.getElementById('pdf-action-modal');
@@ -4925,7 +4950,17 @@ window.showPdfActionModal = function(href, title) {
         opacity: 0; transition: opacity 0.3s ease;
     `;
 
-    // ✨ 修正重點：把原本巨大的下載區塊改為精緻的橫向排版，並將 SVG 尺寸鎖定在 20px
+    // 關閉 Modal 的輔助函式
+    const closeModal = () => {
+        overlay.style.opacity = '0';
+        overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(100%)';
+        setTimeout(() => {
+            overlay.remove();
+            window.unlockScroll();
+        }, 300);
+    };
+
+    // 將按鈕改為 <button> 並綁定 JS 行為
     overlay.innerHTML = `
         <div class="pdf-action-sheet" style="
             background: var(--card); width: 100%; max-width: 500px; 
@@ -4939,30 +4974,29 @@ window.showPdfActionModal = function(href, title) {
             <div style="font-size: 0.85rem; color: var(--muted); text-align: center; margin-bottom: 1.5rem; font-family: monospace;">PDF DOCUMENT</div>
             
             <div style="display: flex; flex-direction: column; gap: 0.8rem;">
-                <!-- 檢視按鈕 -->
-                <a href="${href}" target="_blank" style="
+                <!-- ✨ 檢視按鈕：改用 JS window.open 觸發系統內建的 Safari/Chrome 視窗 -->
+                <button id="pdf-view-btn" style="
                     display: flex; align-items: center; justify-content: center; gap: 8px;
                     background: var(--accent); color: var(--card); font-weight: 600; 
-                    padding: 0.8rem; border-radius: 12px; text-decoration: none;
+                    padding: 0.8rem; border-radius: 12px; border: none; cursor: pointer; font-size: 1rem; font-family: inherit;
                 ">
                     <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.newTab}</span>
                     於瀏覽器中檢視 PDF
-                </a>
+                </button>
                 
-                <!-- 下載按鈕 (✨ 修正了原本巨大無比的圖示，改為等高橫向對齊) -->
-                <a href="${href}" download style="
+                <!-- ✨ 下載按鈕：綁定專屬 Fetch 引擎 -->
+                <button id="pdf-download-btn" style="
                     display: flex; align-items: center; justify-content: center; gap: 8px;
                     background: var(--glass-bg); color: var(--text); font-weight: 600; 
-                    padding: 0.8rem; border-radius: 12px; text-decoration: none; border: 1px solid var(--card-border);
+                    padding: 0.8rem; border-radius: 12px; border: 1px solid var(--card-border); cursor: pointer; font-size: 1rem; font-family: inherit;
                 ">
                     <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.download}</span>
                     下載 PDF 檔案
-                </a>
+                </button>
                 
-                <!-- 取消按鈕 -->
                 <button id="pdf-modal-close" style="
                     background: transparent; color: var(--muted); border: none; 
-                    font-weight: 600; padding: 0.8rem; margin-top: 0.3rem; cursor: pointer;
+                    font-weight: 600; padding: 0.8rem; margin-top: 0.3rem; cursor: pointer; font-size: 1rem; font-family: inherit;
                 ">
                     取消
                 </button>
@@ -4978,19 +5012,56 @@ window.showPdfActionModal = function(href, title) {
         overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(0)';
     }, 10);
 
-    const closeModal = () => {
-        overlay.style.opacity = '0';
-        overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(100%)';
-        setTimeout(() => {
-            overlay.remove();
-            window.unlockScroll();
-        }, 300);
+    // 綁定事件
+    overlay.querySelector('#pdf-view-btn').onclick = () => {
+        window.open(href, '_blank');
+        closeModal();
+    };
+
+    overlay.querySelector('#pdf-download-btn').onclick = () => {
+        window.downloadPdfDirectly(href, title);
+        closeModal();
     };
 
     overlay.querySelector('#pdf-modal-close').onclick = closeModal;
-    overlay.onclick = (e) => {
-        if (e.target === overlay) closeModal();
-    };
+    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
+};
+
+// ==========================================
+// ✨ 強制 PDF 下載引擎 (Fetch Blob API)
+// ==========================================
+window.downloadPdfDirectly = async function(url, filename) {
+    window.triggerHaptic('light');
+    if (window.showSystemToast) {
+        window.showSystemToast('📥 下載中', '正在取得檔案，請稍候...', filename, 2000, 'success');
+    }
+    
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("網路連線失敗");
+        
+        // 透過 Blob 轉換為內部物件，強制觸發原生下載機制
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        // 清理記憶體
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        }, 100);
+        
+        window.triggerHaptic('success');
+    } catch (error) {
+        console.error("底層下載失敗，改用新分頁開啟:", error);
+        window.open(url, '_blank'); // 若網路失敗的備案
+    }
 };
 
 // ==========================================
