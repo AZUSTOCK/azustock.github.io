@@ -907,36 +907,49 @@ window.closeLightbox = function() {
     if (document.activeElement) document.activeElement.blur();
 };
 
-// ==========================================
-// ✨ 大圖預覽：一鍵下載引擎
-// ==========================================
-window.downloadLightboxImage = function() {
+window.downloadLightboxImage = async function() {
     const img = document.getElementById('lightbox-img');
     if (!img || !img.src) return;
     
-    // 取得真實檔名 (包含副檔名)
+    // 取得真實檔名
     const url = img.src;
     const fileName = url.substring(url.lastIndexOf('/') + 1).split('?')[0] || 'download_image.jpg';
 
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
-    if (isPWA) {
-        // ✨ PWA 模式：直接新分頁開啟 (瀏覽器穿透)，讓使用者在 Safari/Chrome 長按存圖
-        window.open(url, '_blank');
-        return;
+    // ✨ 非 PWA 才觸發震動與 Toast
+    if (!isPWA) {
+        window.triggerHaptic('light');
+        if (window.showSystemToast) {
+            const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>下載中</span>`;
+            window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', fileName, 2000, 'success');
+        }
     }
 
-    // 一般網頁模式
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName; 
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    
-    window.triggerHaptic('success');
-    if (window.showSystemToast) {
-         window.showSystemToast('SUCCESS', '圖片已下載', fileName, 3000, 'success');
+    try {
+        // ✨ 改用與 PDF 相同的 Fetch Blob 引擎，破解 PWA 原生限制
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("網路連線失敗");
+        
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = fileName;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        }, 100);
+        
+        if (!isPWA) window.triggerHaptic('success');
+    } catch (error) {
+        console.error("底層下載失敗，改用新分頁開啟:", error);
+        window.open(url, '_blank'); 
     }
 };
 
@@ -1035,27 +1048,28 @@ window.downloadMermaidPNG = function(btn) {
         // 4. 輸出為 PNG 檔案並下載
         canvas.toBlob((blob) => {
             const url = URL.createObjectURL(blob);
-            const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-            if (isPWA) {
-                // ✨ PWA 模式：新分頁開啟 Blob (瀏覽器穿透)
-                window.open(url, '_blank');
-            } else {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
+            
+            // ✨ 統一使用創建 a 標籤來點擊 Blob 網址，絕對不要使用 window.open
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
                 document.body.removeChild(a);
-                
+                URL.revokeObjectURL(url);
+            }, 100);
+            
+            // ✨ 非 PWA 才觸發震動與成功 Toast
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            if (!isPWA) {
                 window.triggerHaptic('success');
                 if (window.showSystemToast) {
                      window.showSystemToast('SUCCESS', '圖表已下載', fileName, 3000, 'success');
                 }
             }
-            
-            // 延遲釋放，避免新分頁來不及讀取 Blob
-            setTimeout(() => URL.revokeObjectURL(url), 10000); 
         }, 'image/png', 1.0);
     };
     img.src = svgUrl;
@@ -5032,16 +5046,13 @@ window.showPdfActionModal = function(href, title) {
 window.downloadPdfDirectly = async function(url, filename) {
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
-    if (isPWA) {
-        // ✨ PWA 模式：捨棄 Blob 下載，直接瀏覽器穿透
-        window.open(url, '_blank');
-        return;
-    }
-
-    window.triggerHaptic('light');
-    if (window.showSystemToast) {
-        const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>下載中</span>`;
-        window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', filename, 2000, 'success');
+    // ✨ 非 PWA 才觸發震動與 Toast
+    if (!isPWA) {
+        window.triggerHaptic('light');
+        if (window.showSystemToast) {
+            const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>下載中</span>`;
+            window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', filename, 2000, 'success');
+        }
     }
     
     try {
@@ -5063,12 +5074,13 @@ window.downloadPdfDirectly = async function(url, filename) {
             window.URL.revokeObjectURL(blobUrl);
         }, 100);
         
-        window.triggerHaptic('success');
+        if (!isPWA) window.triggerHaptic('success');
     } catch (error) {
         console.error("底層下載失敗，改用新分頁開啟:", error);
         window.open(url, '_blank'); 
     }
 };
+
 
 // ==========================================
 // ✨ 自製影片網頁全螢幕引擎 (Web Fullscreen) - 破解 PWA 原生限制與 Modal 封印
