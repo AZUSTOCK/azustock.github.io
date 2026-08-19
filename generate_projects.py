@@ -220,30 +220,49 @@ def update_data_version():
     return changed_items
 
 def generate_version_json():
-    """自動從 changelogs.json 提取最新版本號，並同步寫入 version.json 與 main.js"""
+    """從 logs 資料夾提取最新版本號 (支援以 detail.json 為主的滾動版號)，並同步寫入前端"""
     print(f"\n==========================================")
-    print(f"⚙️ [系統設定] 開始同步版本號...")
+    print(f"⚙️ [系統設定] 開始同步全站版號...")
     print(f"==========================================")
     try:
-        if not os.path.exists('changelogs.json'):
-            print("⚠️ 找不到 changelogs.json 檔案，無法同步版本號！")
+        base_dir = 'logs'
+        if not os.path.exists(base_dir) or not os.listdir(base_dir):
+            print("⚠️ 找不到 logs 資料夾，無法同步版本號！")
             return
 
-        with open('changelogs.json', 'r', encoding='utf-8') as f:
-            logs = json.load(f)
-        
-        if not logs or not isinstance(logs, list) or 'version' not in logs[0]:
-            print("⚠️ changelogs.json 內容為空或格式錯誤，找不到版本號！")
-            return
+        def parse_version(v_str):
+            return [int(x) for x in re.findall(r'\d+', v_str)]
             
-        latest_version = logs[0]['version']
+        versions_found = []
+        for folder in os.listdir(base_dir):
+            folder_path = os.path.join(base_dir, folder)
+            if not os.path.isdir(folder_path): continue
+
+            actual_version = folder
+            detail_path = os.path.join(folder_path, 'detail.json')
+            if os.path.exists(detail_path):
+                try:
+                    with open(detail_path, 'r', encoding='utf-8') as f:
+                        detail = json.load(f)
+                        if 'version' in detail:
+                            actual_version = detail['version']
+                except Exception:
+                    pass
+            versions_found.append(actual_version)
+
+        if not versions_found:
+            print("⚠️ 找不到任何有效的版號！")
+            return
+
+        # ✨ 取得真正的最新版號 (蒐集所有 detail.json 覆寫過的版號後，進行最高版本排序)
+        latest_version = sorted(versions_found, key=parse_version, reverse=True)[0]
         
-        # 1. 寫入 version.json 供前端比對
+        # 1. 寫入 version.json 供前端強制對答案
         with open('version.json', 'w', encoding='utf-8') as f:
             json.dump({"version": latest_version}, f, indent=2)
-        print(f"✅ 成功從 changelogs.json 提取最新版號 ({latest_version}) 並寫入 version.json")
+        print(f"✅ 成功提取最新系統版號 ({latest_version}) 並寫入 version.json")
         
-        # 2. 反向同步更新 main.js (防止前端版本不符導致無限重啟迴圈)
+        # 2. 反向同步更新 main.js
         js_file = next((f for f in os.listdir('.') if f.startswith('main') and f.endswith('.js')), None)
         if js_file:
             with open(js_file, 'r', encoding='utf-8') as f:
@@ -266,9 +285,9 @@ def generate_version_json():
             with open('index.html', 'r', encoding='utf-8') as f:
                 html_content = f.read()
             
-            # 替換 CSS 與 JS 的快取後綴 (例如 ./style.css?u=U1.5.6)
+            # 替換 CSS 與 JS 的快取後綴 (例如 ./style.css?u=U1.5.6.1)
             new_html = re.sub(r'(\.(?:css|js)\?u=)[^"]+(")', rf'\g<1>{latest_version}\g<2>', html_content)
-            # 替換 Footer 裡的靜態文字 (例如 <span id="sys-version">U1.5.4</span>)
+            # 替換 Footer 裡的靜態文字 (例如 <span id="sys-version">U1.5.6.1</span>)
             new_html = re.sub(r'(<span id="sys-version"[^>]*>)[^<]+(</span>)', rf'\g<1>{latest_version}\g<2>', new_html)
             
             if html_content != new_html:
@@ -283,7 +302,7 @@ def generate_version_json():
     except Exception as e:
         print(f"⚠️ 系統版本號同步失敗: {e}")
 
-# ==========================================
+## ==========================================
 # 📝 升級版系統日誌生成器 (Changelog Generator)
 # ==========================================
 def generate_changelogs_json():
@@ -295,7 +314,10 @@ def generate_changelogs_json():
         print(f"📁 已自動建立 '{base_dir}' 資料夾。")
         return
 
-    for version_folder in sorted(os.listdir(base_dir), reverse=True):
+    def parse_version(v_str):
+        return [int(x) for x in re.findall(r'\d+', v_str)]
+
+    for version_folder in sorted(os.listdir(base_dir), key=parse_version, reverse=True):
         folder_path = os.path.join(base_dir, version_folder)
         if not os.path.isdir(folder_path): continue
 
@@ -311,12 +333,17 @@ def generate_changelogs_json():
             detail = load_detail_json(detail_path)
             date = detail.get('date', date)
             status = detail.get('status', status)
+            
+            # ✨ 新增：判斷目錄名稱與內部版號是否一致的警告引擎
+            if 'version' in detail and detail['version'] != version_folder:
+                print(f"\033[93m  📌 [版本覆寫提示] 日誌目錄 '{version_folder}' 與內部版號 (同對外版號) '{detail['version']}' 不一致。\033[0m")
+            
             version = detail.get('version', version)
             description = detail.get('description', description)
             is_hidden = detail.get('hidden', False)
 
         if str(version).count('.') >= 3 or str(version_folder).count('.') >= 3 or is_hidden:
-            print(f"  ⏭️ 隱藏內部測試紀錄: {version_folder} (不會顯示於前端)")
+            print(f"  ⏭️ 隱藏內部滾動紀錄: 目錄 {version_folder} (對外版號: {version})")
             continue
 
         for file in os.listdir(folder_path):
