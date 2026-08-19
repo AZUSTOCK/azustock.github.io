@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.6.2",          // 目前系統版本號
+    VERSION: "U1.5.6.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -501,28 +501,84 @@ window.initScrollHints = function(container, hintLeft, hintRight) {
 };
 
 // ==========================================
-// ✨ 全域圖片破圖處理器 (終極解決 Safari/iOS 限制)
+// ✨ 全域圖片破圖處理器 (終極解決 Safari/iOS 限制 + 點擊重試引擎)
 // ==========================================
 window.handleImageError = function(img) {
-    // ✨ 防呆機制：避免無窮迴圈
     if (img.dataset.isBroken) return;
     img.dataset.isBroken = "true";
     
-    img.onerror = null; 
+    if (!img.dataset.retrySrc) img.dataset.retrySrc = img.src;
     
-    // ✨ 核心殺手鐧：徹底消滅瀏覽器原生的破圖干擾
-    img.removeAttribute('srcset'); // 拔除 srcset，防止瀏覽器繼續掙扎嘗試高畫質版
-    img.alt = "";                  // 清空 alt，封殺 Safari 強制附加的原生外框與問號
+    img.onerror = null; 
+    img.removeAttribute('srcset'); 
     
     img.classList.remove('is-loading');
     img.classList.add('is-broken');
     
-    // ✨ 替換為極簡透明 SVG (比 base64 GIF 更安全)，把畫布完美讓給 CSS 背景
+    // ✨ 移除原生 tooltip，改由 JS 動態生成懸浮膠囊
+    img.removeAttribute('title'); 
+    img.style.cursor = 'pointer';
+    
     img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
+
+    // ✨ 動態插入高質感的重試懸浮提示膠囊
+    let retryHint = img.parentNode.querySelector('.img-retry-hint');
+    if (!retryHint) {
+        retryHint = document.createElement('div');
+        retryHint.className = 'img-retry-hint';
+        // 使用我們預設的重新載入 SVG 圖標
+        retryHint.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg> 點擊重試`;
+        
+        // 確保父容器有定位能力，讓 absolute 能精準置中
+        if (window.getComputedStyle(img.parentNode).position === 'static') {
+            img.parentNode.style.position = 'relative';
+        }
+        
+        // 插入到圖片正後方，使其疊加在畫面上
+        img.parentNode.insertBefore(retryHint, img.nextSibling);
+    }
+
+    // ✨ 建立捕獲階段的點擊攔截器 (阻斷 Lightbox 開啟，優先執行重試)
+    const retryHandler = function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        
+        img.removeEventListener('click', retryHandler, true);
+        
+        // ✨ 動畫回饋：讓膠囊 Q 彈縮小並淡出
+        if (retryHint) {
+            retryHint.style.transition = 'transform 0.15s var(--ease-bounce), opacity 0.15s ease';
+            retryHint.style.transform = 'translate(-50%, -50%) scale(0.85)';
+            retryHint.style.opacity = '0';
+        }
+        
+        // 延遲 150ms 等動畫演完，再拔除節點並重新載入
+        setTimeout(() => {
+            // 恢復 Loading 狀態
+            delete img.dataset.isBroken;
+            img.classList.remove('is-broken');
+            img.classList.add('is-loading');
+            img.style.cursor = '';
+            
+            // 移除 DOM 中的提示膠囊
+            if (retryHint) retryHint.remove();
+            
+            // 重新綁定 onerror
+            img.onerror = function() { window.handleImageError(this); };
+            
+            // 強制加上時間戳重新請求 (繞過失敗的瀏覽器快取)
+            const origSrc = img.dataset.retrySrc;
+            const sep = origSrc.includes('?') ? '&' : '?';
+            img.src = origSrc + sep + 'retry=' + new Date().getTime();
+        }, 150);
+    };
+    
+    // 使用 capture = true，確保它比任何外層的點擊事件 (如 Lightbox) 更早觸發！
+    img.addEventListener('click', retryHandler, true);
 };
 
 // ==========================================
-// ✨ 全域影音破圖處理器 (Media Fallback Engine)
+// ✨ 全域影音破圖處理器 (Media Fallback & Retry Engine)
 // ==========================================
 window.handleMediaError = function(sourceEl) {
     const wrapper = sourceEl.closest('.media-container-wrapper');
@@ -532,23 +588,57 @@ window.handleMediaError = function(sourceEl) {
     const isVideo = wrapper.querySelector('video') !== null;
     const mediaTag = wrapper.querySelector('.md-video, .md-audio');
     
-    // ✨ 根據是影片還是音訊，動態調整佔位框的高度
+    // 擷取副檔名與原網址
+    const origSrc = sourceEl.src;
+    const ext = sourceEl.type.split('/')[1] || (isVideo ? 'mp4' : 'mp3');
+    
     const aspectStyle = isVideo ? "aspect-ratio: 16/9; min-height: 200px;" : "padding: 1rem 0;";
     
-    // 拔除原本的媒體播放器，換成我們的終端機風格破圖警告
+    // 拔除原本的媒體播放器，換成一顆巨大的互動式重試按鈕
     if (mediaTag) {
         mediaTag.outerHTML = `
-            <div class="media-error-fallback" style="width: 100%; ${aspectStyle} display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); color: var(--muted); text-align: center;">
+            <div class="media-error-fallback" style="width: 100%; ${aspectStyle} display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); color: var(--muted); text-align: center; cursor: pointer; transition: all 0.3s ease;" 
+                 onmouseover="this.style.backgroundColor='var(--box-bg)'; this.querySelector('.retry-text').style.color='var(--accent-2)';" 
+                 onmouseout="this.style.backgroundColor='var(--bg)'; this.querySelector('.retry-text').style.color='var(--muted)';"
+                 onclick="window.retryMedia(this, '${origSrc}', '${ext}', ${isVideo})">
+                 
                 <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1rem;">
                     <polygon points="23 7 16 12 23 17 23 7"></polygon>
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
                     <line x1="2" y1="2" x2="22" y2="22"></line>
                 </svg>
                 <div style="font-family: 'Courier New', monospace; font-size: 1rem; font-weight: bold; letter-spacing: 0.05em; color: var(--error-color);">MEDIA_NOT_FOUND</div>
-                <div style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.5rem;">無法載入此${isVideo ? '影片' : '音訊'}，可能已被移除</div>
+                
+                <!-- ✨ 新增的互動重試文字 -->
+                <div class="retry-text" style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.8rem; display: flex; align-items: center; gap: 6px; transition: color 0.3s ease;">
+                    ${GLOBAL_SVGS.retry} 點擊區塊以重試載入
+                </div>
             </div>
         `;
     }
+};
+
+// ✨ 新增：影音重試執行引擎
+window.retryMedia = function(btnEl, origSrc, ext, isVideo) {
+    const wrapper = btnEl.closest('.media-container-wrapper');
+    if (!wrapper) return;
+    
+    // 清除破圖標記
+    delete wrapper.dataset.isBroken;
+    
+    // 強制加上時間戳重抓 (繞過失敗的快取)
+    const sep = origSrc.includes('?') ? '&' : '?';
+    const retrySrc = origSrc + sep + 'retry=' + new Date().getTime();
+    
+    // 重建原本的 Media Tag
+    const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block; border-bottom-left-radius: 0.8rem; border-bottom-right-radius: 0.8rem;";
+    
+    const mediaTag = isVideo 
+        ? `<video preload="metadata" controls playsinline class="md-video" style="${videoStyle}"><source src="${retrySrc}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
+        : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${retrySrc}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
+        
+    // 替換回去
+    btnEl.outerHTML = mediaTag;
 };
 
 // ==========================================
@@ -815,6 +905,10 @@ window.updateLightboxView = function() {
             lightboxImg.classList.remove('is-broken');
             delete lightboxImg.dataset.isBroken;
             
+            // ✨ 拔除可能遺留的重試膠囊
+            const existingHint = wrapper.querySelector('.img-retry-hint');
+            if (existingHint) existingHint.remove();
+            
             lightboxImg.style.opacity = '0';
             if (wrapper) wrapper.classList.add('is-fetching');
 
@@ -896,6 +990,18 @@ window.lightboxAction = function(action, event) {
     } else if (action === 'reset' || action === 'center') {
         if(action === 'reset') state.zoom = 1;
         state.x = 0; state.y = 0;
+    } else if (action === 'reload') {
+        if (state.isDomMode) return; 
+        
+        // ✨ 1. 更新當下狀態陣列裡的網址，加上時間戳防快取
+        const currentItem = state.images[state.currentIndex];
+        const origSrc = currentItem.src.split('?retry=')[0].split('&retry=')[0];
+        const sep = origSrc.includes('?') ? '&' : '?';
+        currentItem.src = origSrc + sep + 'retry=' + new Date().getTime();
+        
+        // ✨ 2. 直接呼叫 update 引擎！它會幫我們完美處理所有的 CSS 狀態清除、重繪與 onerror 綁定
+        window.updateLightboxView();
+        return;
     } else if (action === 'new-tab') {
         if (state.isDomMode) return;
         
@@ -1140,10 +1246,19 @@ window.downloadMermaidPNG = function(btn) {
 // ✨ 全域視窗安全高度與座標引擎 (解決 iPad/iOS PWA 遮罩漏底與工具列偏移)
 // ==========================================
 window.adjustModalViewports = function() {
-    if (window.visualViewport) {
-        // 只更新高度，放棄容易造成永久位移 Bug 的 offsetTop，把定位權交還給 CSS 安全區
-        document.documentElement.style.setProperty('--vv-height', window.visualViewport.height + 'px');
-    }
+    // ✨ 加入 Fallback 機制，防止極端情況下 visualViewport 異常
+    const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    document.documentElement.style.setProperty('--vv-height', vh + 'px');
+};
+
+// ✨ 專治蘋果 iOS/iPadOS 旋轉延遲的「多段式校正引擎」
+window.handleOrientationChange = function() {
+    // iPad 旋轉時，螢幕高度變化的 UI 動畫大約需要 400~500ms 才會完全穩定
+    // 透過連續多次重新抓取高度，保證不管動畫卡多久，最終必定能抓到完美數值！
+    window.adjustModalViewports();
+    setTimeout(window.adjustModalViewports, 100);
+    setTimeout(window.adjustModalViewports, 300);
+    setTimeout(window.adjustModalViewports, 600); 
 };
 
 // ==========================================
@@ -1153,8 +1268,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.adjustModalViewports();
 
     // 綁定視窗動態追蹤 (支援轉向、調整大小時重新計算)
-    window.addEventListener('resize', window.adjustModalViewports);
-    window.addEventListener('orientationchange', () => setTimeout(window.adjustModalViewports, 150));
+    window.addEventListener('resize', () => {
+        // ✨ 使用 requestAnimationFrame 讓 resize 時的計算更平滑，不卡頓
+        window.requestAnimationFrame(window.adjustModalViewports);
+    });
+    
+    // 綁定全新的多段連發校正引擎
+    window.addEventListener('orientationchange', window.handleOrientationChange);
 
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', window.adjustModalViewports);
@@ -1254,7 +1374,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // 確保點擊點在目標圖表或圖片身上
             if (!target || (!target.contains(e.target) && e.target !== target)) return;
             
-            if (e.target.tagName === 'IMG' || e.target.closest('svg')) {
+            // ✨ 核心修復：如果目標是破圖，直接退出事件！絕對不要啟動拖曳與游標綁架！
+            // 把點擊的權利完整還給破圖的「重試膠囊」！
+            if (e.target.tagName === 'IMG' && e.target.classList.contains('is-broken')) {
+                return;
+            }
+            
+            if ((e.target.tagName === 'IMG' && !e.target.classList.contains('is-broken')) || e.target.closest('svg')) {
                  e.preventDefault(); 
             }
 
@@ -1374,10 +1500,20 @@ function renderPDFIframe(href, altText) {
                 ${GLOBAL_SVGS.docIcon}
                 <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
             </div>
-            <a href="${href}" target="_blank" class="pdf-ext-btn" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" onclick="event.stopPropagation();">
-                ${GLOBAL_SVGS.newTab}
-                新分頁開啟
-            </a>
+            
+            <!-- ✨ 擴充右側工具區，加入重試按鈕 -->
+            <div style="display: flex; gap: 1.2rem; align-items: center;">
+                <a href="javascript:void(0)" class="pdf-ext-btn desktop-only" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" 
+                   onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" 
+                   onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);" title="重新載入 PDF">
+                    ${GLOBAL_SVGS.retry} 重試
+                </a>
+                <a href="${href}" target="_blank" class="pdf-ext-btn" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" 
+                   onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" 
+                   onclick="event.stopPropagation();">
+                    ${GLOBAL_SVGS.newTab} 新分頁開啟
+                </a>
+            </div>
         </div>
         <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
         <div class="pdf-mobile-placeholder" style="display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); flex-direction: column; align-items: center; gap: 1.2rem;">

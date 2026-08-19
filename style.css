@@ -195,6 +195,46 @@ section { margin-top: 3.5rem; }
 /* 統一佔位圖與載入動畫系統 */
 @keyframes loading-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes broken-sweep { 0% { background-position: center, 200% 0, 0 0; } 100% { background-position: center, -200% 0, 0 0; } }
+/* ==========================================
+   ✨ 圖片破圖專屬：重試懸浮膠囊 (Retry Overlay)
+   ========================================== */
+.img-retry-hint {
+    position: absolute;
+    top: 60%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    
+    /* 🍏 高質感的黑底毛玻璃 */
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    
+    /* 點擊事件穿透給底下的 img 本體，才不會阻斷事件 */
+    pointer-events: none; 
+    z-index: 5;
+    
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    
+    /* 剛被 DOM 插入時的 Q 彈進場動畫 */
+    animation: hint-pop-in 0.4s var(--ease-bounce) forwards;
+}
+
+@keyframes hint-pop-in {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
 @keyframes skeleton-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 img { color: transparent !important; font-size: 0; }
 .is-loading { background: linear-gradient(110deg, var(--bg) 25%, var(--card-border) 50%, var(--bg) 75%); background-size: 200% 100%; animation: loading-sweep 1.5s infinite linear, skeleton-breathe 2.5s infinite ease-in-out; transition: background-color 0.4s ease, min-height 0.4s ease; }
@@ -1928,6 +1968,46 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 /* 📱 第八層：行動版與觸控優化 (Mobile & Touch)                                 */
 /* ========================================================================== */
 
+/* ========================================================================== */
+/* ✨ 觸控裝置專屬 (is-touch-device) 全域優化                                     */
+/* ========================================================================== */
+
+/* 1. 隱藏觸控裝置 Tooltip (全面封殺所有氣泡，防止點擊後卡住殘影) */
+body.is-touch-device [data-tooltip]::after, 
+body.is-touch-device [data-tooltip]::before { 
+    display: none !important; 
+}
+
+/* 2. Lightbox 收合工具列 (觸控版彈出選單) */
+body.is-touch-device .toolbox-toggle-btn { display: flex; }
+body.is-touch-device .desktop-only-divider { display: none; }
+body.is-touch-device .toolbar-right { position: relative; }
+
+body.is-touch-device .toolbox-group { 
+    position: absolute; top: 100%; margin-top: 15px; right: 0; 
+    flex-direction: row; align-items: center; justify-content: center; 
+    background: var(--glass-bg); backdrop-filter: blur(15px); padding: 8px; 
+    border-radius: 12px; border: 1px solid var(--glass-border); 
+    box-shadow: 0 10px 30px var(--shadow-base); width: max-content; 
+    will-change: transform, opacity; opacity: 0; visibility: hidden; 
+    transform: translateY(-15px) scale(0.95) translateZ(0); 
+    transform-origin: top right; 
+    transition: transform 0.3s var(--ease-smooth), opacity 0.3s ease, visibility 0.3s ease; 
+}
+body.is-touch-device .toolbox-group.is-open { 
+    opacity: 1; visibility: visible; transform: translateY(0) scale(1) translateZ(0); pointer-events: auto; 
+}
+
+/* 3. Mermaid 觸控版簡化為「預覽模式」 */
+body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]),
+body.is-touch-device .mermaid-btns div[style*="width: 1px"] {
+    display: none !important; /* 隱藏除了放大檢視以外的所有按鈕與分隔線 */
+}
+body.is-touch-device .mermaid-wrapper {
+    touch-action: auto !important; /* 解除觸控鎖定，讓使用者可以順暢上下滑動整篇文章 */
+    cursor: pointer !important;    /* 將游標改為手指，提示可以點擊 */
+}
+
 /* 8-1. 桌機到平板的過渡 (max-width: 600px) */
 @media (max-width: 600px) {
     .desktop-only { display: none; }
@@ -1965,28 +2045,6 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
     .hint-left, .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--bg) 70%, var(--bg) 100%) !important; }
     .modal-content .hint-right { background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
     .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
-
-    /* ✨ 隱藏觸控裝置 Tooltip (全面封殺所有氣泡，防止點擊後卡住殘影) */
-    [data-tooltip]::after, [data-tooltip]::before { display: none !important; }
-
-    /* Lightbox 收合工具列 (手機版彈出選單) */
-    .toolbox-toggle-btn { display: flex; }
-    .desktop-only-divider { display: none; }
-    .toolbar-right { position: relative; }
-    
-    /* ✨ 將 rgba(0,0,0,0.7) 換成 var(--glass-bg) */
-    .toolbox-group { position: absolute; top: 100%; margin-top: 15px; right: 0; flex-direction: row; align-items: center; justify-content: center; background: var(--glass-bg); backdrop-filter: blur(15px); padding: 8px; border-radius: 12px; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px var(--shadow-base); width: max-content; will-change: transform, opacity; opacity: 0; visibility: hidden; transform: translateY(-15px) scale(0.95) translateZ(0); transform-origin: top right; transition: transform 0.3s var(--ease-smooth), opacity 0.3s ease, visibility 0.3s ease; }
-    .toolbox-group.is-open { opacity: 1; visibility: visible; transform: translateY(0) scale(1) translateZ(0); pointer-events: auto; }
-
-    /* ✨ Mermaid 手機版簡化為「預覽模式」 */
-    .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]),
-    .mermaid-btns div[style*="width: 1px"] {
-        display: none !important; /* 隱藏除了放大檢視以外的所有按鈕與分隔線 */
-    }
-    .mermaid-wrapper {
-        touch-action: auto !important; /* 解除觸控鎖定，讓使用者可以順暢上下滑動整篇文章 */
-        cursor: pointer !important;    /* 將游標改為手指，提示可以點擊 */
-    }
 }
 
 /* 8-2. 針對非常小的手機螢幕 (max-width: 500px) */

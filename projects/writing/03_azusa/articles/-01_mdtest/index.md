@@ -131,7 +131,7 @@ flowchart LR
 測試我們為圖片特別客製化的排版與 Lightbox 放大鏡：
 
 **A. 帶有圖說的圖片 (Caption)**
-![測試圖片](./architecture.webp "這是一張帶有說明的圖片，右下角會有放大鏡按鈕")
+![測試圖片](./architecture.webp "帶有說明的圖片")
 
 **B. 小圖示 (Icon) 與 文字內聯**
 這是一段文字，中間夾雜著一個 ![icon](./architecture.webp) 小圖示，它不該被放大且應該與文字完美對齊。

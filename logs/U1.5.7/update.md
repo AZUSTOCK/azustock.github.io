@@ -2,10 +2,11 @@
 1. 
 
 ## add
-1. 
+1. file reload
 
 ## change / update
 1. 4th version number behavior
+2. `handleOrientationChange`
 
 ## adjust
 1. 

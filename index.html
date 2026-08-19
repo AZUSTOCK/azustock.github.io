@@ -67,8 +67,8 @@
   
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="./style.css?u=U1.5.6.2" />
-  <script defer src="./main.js?u=U1.5.6.2"></script>
+  <link rel="stylesheet" href="./style.css?u=U1.5.6.3" />
+  <script defer src="./main.js?u=U1.5.6.3"></script>
 </head>
 <body>
 <button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
@@ -163,10 +163,13 @@
               <path d="M12 2v3M2 12h3M22 12h-3M12 22v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
             </svg>
           </button>
-          <button class="toolbar-btn" onclick="window.lightboxAction('reset', event)" data-tooltip="初始狀態">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+          <button class="toolbar-btn" onclick="window.lightboxAction('reset', event)" data-tooltip="還原初始">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"></path></svg>
           </button>
           <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" onclick="window.lightboxAction('reload', event)" data-tooltip="重新載入">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+          </button>
           <button class="toolbar-btn" onclick="window.handleLightboxDownload(this)" data-tooltip="下載">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -292,7 +295,7 @@
       <p style="text-align: right; margin-top: 0.5rem; margin-bottom: 0;">
         <!-- 版本號按鈕 -->
         <button id="sys-version-btn" class="footer-btn version-btn" onclick="window.showChangelogModal()">
-            <span id="sys-version" class="sys-version">U1.5.6.2</span>
+            <span id="sys-version" class="sys-version">U1.5.6.3</span>
         </button>
       </p>
     </div>
