@@ -26,6 +26,7 @@ const CONFIG = {
 // ==========================================
 const GLOBAL_SVGS = {
     // 🔗 基礎圖示
+    meatballMenu: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle class="dot-1" cx="5" cy="12" r="2.5"/><circle class="dot-2" cx="12" cy="12" r="2.5"/><circle class="dot-3" cx="19" cy="12" r="2.5"/></svg>`,
     link: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     linkLg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     extLinkSm: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
@@ -509,20 +510,26 @@ window.downloadViaBlob = async function(url, filename, isNewTab = false) {
     }
 };
 
-// 3. 整合震動與 Toast 的通用安全下載器
-window.triggerSecureDownload = async function(url, filename) {
-    const isPWA = window.isPWAEnvironment();
-    if (!isPWA) {
-        window.triggerHaptic('light');
-        if (window.showSystemToast) {
-            const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;">${GLOBAL_SVGS.jumpDown} 下載中</span>`;
-            window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', filename, 2000, 'success');
-        }
+// 3. 整合震動與 Toast 的通用安全下載器 / 開新分頁引擎
+window.triggerSecureDownload = async function(url, filename, isNewTab = false) {
+    window.triggerHaptic('light');
+    
+    // ✨ PWA 與手機版都會顯示載入提示，提升網路不穩時的體驗
+    if (window.showSystemToast) {
+        const actionText = isNewTab ? '開啟中' : '下載中';
+        const iconSvg = isNewTab ? GLOBAL_SVGS.newTab : GLOBAL_SVGS.jumpDown;
+        const toastTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;">${iconSvg} ${actionText}</span>`;
+        
+        window.showSystemToast(toastTitle, '正在取得檔案，請稍候...', filename || '處理中...', 3000, 'success');
     }
     
-    const success = await window.downloadViaBlob(url, filename);
-    if (success && !isPWA) window.triggerHaptic('success');
-    if (!success) window.open(url, '_blank'); // 失敗則退回原生開啟
+    const success = await window.downloadViaBlob(url, filename, isNewTab);
+    
+    if (success) {
+        window.triggerHaptic('success');
+    } else {
+        window.open(url, '_blank'); // 失敗則退回原生開啟
+    }
 };
 
 // 4. 卡片定位後的高光閃爍特效器
@@ -1060,9 +1067,8 @@ window.lightboxAction = function(action, event) {
         if (state.isDomMode) return;
         
         if (window.isPWAEnvironment()) {
-            window.downloadViaBlob(target.src, null, true).then(success => {
-                if (!success) window.open(target.src, '_blank');
-            });
+            // ✨ 直接套用統一的安全開啟引擎，自帶 Toast 與震動回饋！
+            window.triggerSecureDownload(target.src, 'image.webp', true);
         } else {
             window.open(target.src, '_blank');
         }
@@ -1076,16 +1082,24 @@ window.lightboxAction = function(action, event) {
 window.toggleLightboxTools = function(event) {
     if (event) event.stopPropagation();
     const toolbox = document.getElementById('lightbox-toolbox');
-    if (toolbox) toolbox.classList.toggle('is-open');
+    const btn = event ? event.currentTarget : null; // ✨ 抓取被點擊的按鈕
+    
+    if (toolbox) {
+        toolbox.classList.toggle('is-open');
+        if (btn) btn.classList.toggle('is-active'); // ✨ 同步切換狀態
+    }
 };
 
 window.closeLightbox = function() {
     const lightboxModal = document.getElementById('lightbox-modal');
     const toolbox = document.getElementById('lightbox-toolbox');
+    const toggleBtn = document.querySelector('.toolbox-toggle-btn'); // ✨ 抓取按鈕
+    
     if (lightboxModal) {
         lightboxModal.classList.remove('is-active');
         if (toolbox) toolbox.classList.remove('is-open');
-
+        if (toggleBtn) toggleBtn.classList.remove('is-active'); // ✨ 關閉時拔除狀態
+        
         setTimeout(() => {
             const lightboxImg = document.getElementById('lightbox-img');
             if (lightboxImg) {
@@ -1288,9 +1302,11 @@ document.addEventListener('DOMContentLoaded', () => {
                            (navigator.msMaxTouchPoints > 0));
     if (isTouchDevice) {
         document.body.classList.add('is-touch-device');
-        
-        // ✨ 終極魔法：掛上一個空的原生觸控監聽器，強制解鎖 iOS Safari 的 CSS :active 觸發機制！
         document.addEventListener('touchstart', function() {}, {passive: true});
+        
+        // ✨ 強制替換手機版工具列開關的圖示，確保結構可被 CSS 動畫精準控制
+        const toggleBtn = document.querySelector('.toolbox-toggle-btn');
+        if (toggleBtn) toggleBtn.innerHTML = GLOBAL_SVGS.meatballMenu;
     }
 
     // 3. ✨ Lightbox 多指觸控與拖曳引擎
@@ -1499,7 +1515,7 @@ function renderPDFIframe(href, altText) {
     <div class="pdf-container" 
         onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }">
         
-        <div class="pdf-container-header">
+        <div class="pdf-container-header" onclick="event.stopPropagation();">
             <div class="pdf-container-title">
                 ${GLOBAL_SVGS.docIcon}
                 <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
@@ -1552,7 +1568,7 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
 
     return `
     <div class="media-container-wrapper">
-        <div class="media-container-header">
+        <div class="media-container-header" onclick="event.stopPropagation();">
             <div class="media-container-title">
                 ${iconSvg}<span style="transform: translateY(1px);">${displayTitle}</span>
             </div>
@@ -1650,7 +1666,7 @@ renderer.code = function(token_or_code, language, isEscaped) {
 
         return `
         <div class="mermaid-container" data-zoom="1" data-x="0" data-y="0">
-            <div class="mermaid-toolbar">
+            <div class="mermaid-toolbar" onclick="event.stopPropagation();">
                 <span class="mermaid-title">${chartTitle}</span>
                 <div class="mermaid-btns">
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">${GLOBAL_SVGS.mermaidZoomIn}</button>
@@ -2673,7 +2689,10 @@ function hideSystemRebootScreen(isSuccess = true) {
     // 如果沒有遮罩 (一般訪客)，直接解除防護並返回
     if (!screen) {
         document.documentElement.classList.remove('sys-rebooting');
-        document.body.style.overflow = '';
+        // ✨ 修正：判斷沒有開啟任何 Modal 時，才恢復背景捲軸
+        if (!document.querySelector('.modal-overlay.active')) {
+            document.body.style.overflow = '';
+        }
         return;
     }
 
@@ -2693,7 +2712,11 @@ function hideSystemRebootScreen(isSuccess = true) {
     setTimeout(() => {
         // 瞬間拔除 HTML 的隱形斗篷，讓底層早就畫好的新版網站準備就緒
         document.documentElement.classList.remove('sys-rebooting');
-        document.body.style.overflow = '';
+        
+        // ✨ 修正：動畫結束後，同樣判斷沒有 Modal 時才恢復捲軸
+        if (!document.querySelector('.modal-overlay.active')) {
+            document.body.style.overflow = '';
+        }
 
         screen.style.transition = 'opacity 0.5s ease';
         screen.style.opacity = '0';
@@ -5257,9 +5280,9 @@ window.showPdfActionModal = function(href, title) {
 
     // 綁定事件
     overlay.querySelector('#pdf-view-btn').onclick = () => {
-        // ✨ 如果是 PWA，主按鈕的行為就是強制下載；反之才是開新分頁
+        // ✨ 如果是 PWA，檢視 (View) 其實是透過 Blob 新分頁開啟，所以傳入 true
         if (isPWA) {
-            window.downloadPdfDirectly(href, title);
+            window.downloadPdfDirectly(href, title, true);
         } else {
             window.open(href, '_blank');
         }
@@ -5268,7 +5291,8 @@ window.showPdfActionModal = function(href, title) {
 
     if (!isPWA) {
         overlay.querySelector('#pdf-download-btn').onclick = () => {
-            window.downloadPdfDirectly(href, title);
+            // ✨ 單純下載 PDF，傳入 false
+            window.downloadPdfDirectly(href, title, false);
             closeModal();
         };
     }
@@ -5277,8 +5301,9 @@ window.showPdfActionModal = function(href, title) {
     overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
 };
 
-window.downloadPdfDirectly = async function(url, filename) {
-    window.triggerSecureDownload(url, filename);
+// 加上 isNewTab 參數傳遞
+window.downloadPdfDirectly = async function(url, filename, isNewTab = false) {
+    window.triggerSecureDownload(url, filename, isNewTab);
 };
 
 

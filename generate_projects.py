@@ -158,22 +158,25 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path):
 CACHE_FILE = '.build_cache.json'
 
 def get_file_hash(filepath):
-    """計算單一檔案的 MD5 Hash"""
+    """計算單一檔案的 MD5 Hash (無視作業系統換行符號差異)"""
     if not os.path.exists(filepath): return ""
     hasher = hashlib.md5()
-    with open(filepath, 'rb') as f:
-        hasher.update(f.read())
+    # ✨ 改以文字模式讀取，統一替換換行符號
+    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+        content = f.read().replace('\r\n', '\n')
+        hasher.update(content.encode('utf-8'))
     return hasher.hexdigest()[:8]
 
 def get_dir_hash(dirpath):
-    """計算資料夾內所有 Markdown 與 JSON 的聯合 MD5 Hash"""
+    """計算資料夾內所有 Markdown 與 JSON 的聯合 MD5 Hash (無視換行差異)"""
     if not os.path.exists(dirpath): return ""
     hasher = hashlib.md5()
     for root, dirs, files in os.walk(dirpath):
         for file in sorted(files):
             if file.endswith('.md') or file.endswith('.json'):
-                with open(os.path.join(root, file), 'rb') as f:
-                    hasher.update(f.read())
+                with open(os.path.join(root, file), 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read().replace('\r\n', '\n')
+                    hasher.update(content.encode('utf-8'))
     return hasher.hexdigest()[:8]
 
 def update_data_version():
