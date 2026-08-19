@@ -462,12 +462,12 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .footer-btn.version-btn span { color: inherit; }
 
 /* 3-3. 返回頂部按鈕 (BTT) */
-.btt-btn { position: fixed; bottom: 2rem; right: 2rem; z-index: 990; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--accent); border-radius: 50%; width: 50px; height: 50px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transform: translateY(20px); transition: opacity 0.3s ease, transform 0.3s var(--ease-smooth), box-shadow 0.3s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease; }
+.btt-btn { position: fixed; bottom: max(2rem, calc(var(--safe-bottom) + 1rem)); right: max(2rem, calc(var(--safe-right) + 1rem)); z-index: 990; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--accent); border-radius: 50%; width: 50px; height: 50px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transform: translateY(20px); transition: opacity 0.3s ease, transform 0.3s var(--ease-smooth), box-shadow 0.3s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease; }
 .btt-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
 .btt-btn:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--card); box-shadow: 0 8px 20px var(--btn-hover-shadow); transform: translateY(-5px); }
 
 /* 3-4. 漢堡選單與導覽列 */
-.menu-btn { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.5s ease, border-color 0.5s ease; }
+.menu-btn { position: fixed; top: max(1.5rem, calc(var(--safe-top) + 0.5rem)); right: max(1.5rem, calc(var(--safe-right) + 1.5rem)); z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 50%; width: 56px; height: 56px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.5s ease, border-color 0.5s ease; }
 .menu-btn .bar { width: 30px; height: 3px; background-color: var(--accent); transition: all 0.3s ease-in-out; }
 .menu-btn.open { border-color: var(--accent-2); }
 .menu-btn.open .bar { background-color: var(--accent-2); }
@@ -497,7 +497,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .nav-item:hover { color: var(--accent-hover); letter-spacing: 0.2em; text-shadow: 0 0 15px var(--nav-text-shadow); }
 
 /* 3-5. 主題切換按鈕 */
-.theme-btn { position: fixed; top: 1.5rem; right: 6.5rem; z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 50%; width: 56px; height: 56px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease; }
+.theme-btn { position: fixed; top: max(1.5rem, calc(var(--safe-top) + 0.5rem)); right: max(6.5rem, calc(var(--safe-right) + 6.5rem)); z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 50%; width: 56px; height: 56px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease; }
 .theme-btn:hover { transform: scale(1.1) rotate(15deg); border-color: var(--accent-2); box-shadow: 0 0 10px var(--accent-2); }
 .theme-img { position: absolute; width: 30px; height: 30px; object-fit: contain; top: 50%; left: 50%; margin-top: -15px; margin-left: -15px; -webkit-backface-visibility: hidden; backface-visibility: hidden; -webkit-font-smoothing: antialiased; transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.6s ease; pointer-events: none; }
 #icon-sun { opacity: 1; transform: rotate(0deg); }
@@ -596,6 +596,12 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 @keyframes marquee-seamless { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 .kotoba-whisper { font-style: italic; font: bold;font-size: 0.95rem; color: var(--accent); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: pointer; }
 .kotoba-whisper:hover { color: var(--accent-2); text-shadow: 0 0 10px var(--glow-1); opacity: 1; }
+/* 點擊觸發的高光狀態 */
+.kotoba-whisper.is-active { 
+    color: var(--accent-2); 
+    text-shadow: 0 0 10px var(--glow-1); 
+    opacity: 1; 
+}
 /* ✨ 加大文字與漲跌數字之間的間距，讓視覺更有呼吸感 */
 .stock-up, .stock-down { 
     margin-left: 2rem; 
@@ -625,7 +631,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 [data-status="ARCHIVED"] { animation: none !important; background-image: none !important; }
 
 /* 3-7. 浮動提示膠囊 (Toasts & Tooltips) */
-.filter-toast { position: fixed; bottom: max(50px, calc(env(safe-area-inset-bottom) + 20px)); left: 0; right: 0; margin: 0 auto; width: max-content; transform: translateY(30px); opacity: 0; pointer-events: none; z-index: 1010; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--glass-border); color: var(--text); padding: 0.4rem 0.4rem 0.4rem 1rem; border-radius: 999px; font-size: 0.95rem; font-weight: bold; box-shadow: 0 10px 25px var(--shadow-base); display: flex; align-items: center; gap: 1rem; transition: all 0.4s var(--ease-smooth); }
+.filter-toast { position: fixed; bottom: max(50px, calc(var(--safe-bottom) + 20px)); left: var(--safe-left); right: var(--safe-right); margin: 0 auto; width: max-content; max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px); transform: translateY(30px); opacity: 0; pointer-events: none; z-index: 1010; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--glass-border); color: var(--text); padding: 0.4rem 0.4rem 0.4rem 1rem; border-radius: 999px; font-size: 0.95rem; font-weight: bold; box-shadow: 0 10px 25px var(--shadow-base); display: flex; align-items: center; gap: 1rem; transition: all 0.4s var(--ease-smooth); }
 .filter-toast.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
 .filter-toast:hover { background: var(--card); box-shadow: 0 10px 25px var(--shadow-hover); }
 .toast-content { display: flex; align-items: center; }
@@ -1644,8 +1650,15 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body img[alt="icon"].is-loading, .markdown-body img[alt="icon"].is-broken { min-height: 48px; aspect-ratio: 1 / 1; }
 .markdown-body figure img { margin: 0 !important; width: 100% !important; }
 .markdown-body figure figcaption { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 0.6rem; line-height: 1.4; }
-.markdown-body .md-video { max-width: 100%; height: auto; display: block; background: #000; }
-.markdown-body .md-audio { display: block; border-radius: 999px; }
+.markdown-body .md-video { 
+    margin: 0; border: none; box-shadow: none; width: 100%; height: auto; 
+    aspect-ratio: 16/9; background: #000; object-fit: contain; display: block;
+    border-bottom-left-radius: 0.8rem; border-bottom-right-radius: 0.8rem;
+}
+.markdown-body .md-audio { 
+    margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none; 
+    display: block; border-radius: 999px;
+}
 
 /* 放大鏡互動按鈕 */
 .zoom-btn { background: transparent; border: none; color: var(--muted); border-radius: 6px; padding: 4px; margin-left: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.25s var(--ease-smooth), color 0.25s ease, background-color 0.25s ease, opacity 0.25s ease; vertical-align: middle; position: relative; top: -2px; transform: translateZ(0) scale(1); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
@@ -1931,7 +1944,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 }
 
 /* 底部圖片說明膠囊 (動態主題適應) */
-.lightbox-caption { position: absolute; bottom: max(60px, calc(env(safe-area-inset-bottom) + 30px)); left: 50%; transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 999px; padding: 8px 24px; color: var(--text); font-size: 1rem; font-weight: 500; pointer-events: none; z-index: 50; max-width: 90%; box-shadow: 0 4px 20px var(--shadow-base); display: none; }
+.lightbox-caption { position: absolute; bottom: max(60px, calc(var(--safe-bottom) + 30px)); left: 50%; max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px); transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 999px; padding: 8px 24px; color: var(--text); font-size: 1rem; font-weight: 500; pointer-events: none; z-index: 50; max-width: 90%; box-shadow: 0 4px 20px var(--shadow-base); display: none; }
 .toolbox-group { display: flex; align-items: center; gap: 8px; }
 .toolbox-toggle-btn { display: none; }
 
@@ -2044,7 +2057,7 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
     .toc-dropdown { right: -0.2rem; width: min(260px, calc(100dvw - 4.5rem)); }
     #article-list-container { transition: opacity 0.2s ease; padding-bottom: 20px; }
     .new-jump-toast {
-        bottom: max(25px, calc(env(safe-area-inset-bottom) + 13px));
+        bottom: max(25px, calc(var(--safe-bottom) + 13px));
     }
 
     /* Markdown 排版優化 */
@@ -2072,34 +2085,44 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
 /* 8-2. 針對非常小的手機螢幕 (max-width: 500px) */
 @media (max-width: 500px) {
     /* 縮小返回頂部按鈕，並避開跳轉膠囊 */
-    .btt-btn { width: 42px; height: 42px; right: 1rem; bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 1rem)); }
-    body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(env(safe-area-inset-bottom) + 80px)); }
+    .btt-btn { width: 42px; height: 42px; right: max(1rem, calc(var(--safe-right) + 1rem)); bottom: max(1.5rem, calc(var(--safe-bottom) + 1rem)); }
+    body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(var(--safe-bottom) + 80px)); }
 }
 
 /* 調整觸控狀態的游標 */
 body.is-touch-device #lightbox-img { cursor: default; }
 
-/* ==========================================
-   ✨ 8-4. PDF 觸控裝置防禦機制 (全面交由 JS 的 .is-touch-device 統籌)
-   ========================================== */
-body.is-touch-device .pdf-container { 
+/* ========================================================================== */
+/* ✨ 8-4. 觸控裝置專屬物理點擊回饋 (Touch Feedback Engine)                         */
+/* ========================================================================== */
+/* 將所有在手機上可以點擊的大型區塊納入管理 */
+body.is-touch-device .pdf-container,
+body.is-touch-device .mermaid-container,
+body.is-touch-device figure.standalone-figure,
+body.is-touch-device .gallery figure { 
     cursor: pointer; 
-    -webkit-tap-highlight-color: transparent; /* 移除手機點擊預設的灰底 */
-    transition: transform 0.2s ease;
+    -webkit-tap-highlight-color: transparent; /* 移除手機點擊預設的醜陋灰底 */
+    
+    /* 賦予 Q 彈的物理過渡曲線 */
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease !important;
 }
 
-/* 點擊時微縮，給予物理反饋 */
-body.is-touch-device .pdf-container:active { 
-    transform: scale(0.98); 
-} 
+/* 點擊瞬間微縮，給予像實體按鈕般的物理反饋 */
+body.is-touch-device .pdf-container:active,
+body.is-touch-device .mermaid-container:active,
+body.is-touch-device figure.standalone-figure:active,
+body.is-touch-device .gallery figure:active { 
+    transform: scale(0.97) !important; 
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important; /* 點擊時陰影變小，增加壓下去的真實感 */
+}
 
-/* 在觸控裝置下，強制隱藏 iframe 閱讀器與新分頁按鈕 */
+/* 在觸控裝置下，強制隱藏 PDF iframe 閱讀器與新分頁按鈕 */
 body.is-touch-device .pdf-iframe,
 body.is-touch-device .pdf-ext-btn { 
     display: none !important; 
 }
 
-/* 在觸控裝置下，強制顯示安全的點擊提示佔位區塊 */
+/* 在觸控裝置下，強制顯示 PDF 安全的點擊提示佔位區塊 */
 body.is-touch-device .pdf-mobile-placeholder { 
     display: flex !important; 
 }
@@ -2362,8 +2385,8 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
    ========================================== */
 .video-exit-fullscreen-btn {
     position: fixed;
-    top: max(20px, env(safe-area-inset-top));
-    right: 20px;
+    top: max(20px, calc(var(--safe-top) + 10px));
+    right: max(20px, calc(var(--safe-right) + 20px));
     z-index: 100000;
     
     /* 🍏 蘋果級黑透毛玻璃設計 */
@@ -2448,7 +2471,7 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
 /* ========================================== */
 
 #sys-global-toast {
-    position: fixed; top: 90px; right: 30px; z-index: 10000; opacity: 0; transform: translateY(-20px); 
+    position: fixed; top: max(90px, calc(var(--safe-top) + 80px)); right: max(30px, calc(var(--safe-right) + 20px)); max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 60px); z-index: 10000; opacity: 0; transform: translateY(-20px); 
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .sys-toast-box {
@@ -2515,65 +2538,326 @@ body {
     }
 }
 
-/* ==========================================
-   ✨ 浮動按鈕與 Toast 的「多維度安全邊界」引擎
-   (防護：橫轉直消失、左右瀏海遮擋、跨螢幕比例溢出)
-   ========================================== */
-
-/* 1. 返回頂部按鈕 (右下角) */
-.btt-btn {
-    right: max(2rem, calc(var(--safe-right) + 1rem)) !important;
-    bottom: max(2rem, calc(var(--safe-bottom) + 1rem)) !important;
-}
-@media (max-width: 500px) {
-    .btt-btn {
-        right: max(1rem, calc(var(--safe-right) + 1rem)) !important;
-        bottom: max(1.5rem, calc(var(--safe-bottom) + 1rem)) !important;
-    }
-    body:has(.filter-toast.active) .btt-btn { 
-        bottom: max(110px, calc(var(--safe-bottom) + 80px)) !important; 
-    }
-}
-
-/* 2. 影片全螢幕退出按鈕 (右上角) */
-.video-exit-fullscreen-btn {
-    top: max(20px, calc(var(--safe-top) + 10px)) !important;
-    right: max(20px, calc(var(--safe-right) + 20px)) !important;
-}
-
-/* 3. 系統狀態 Toast (右上角) */
-#sys-global-toast {
-    top: max(90px, calc(var(--safe-top) + 80px)) !important;
-    right: max(30px, calc(var(--safe-right) + 20px)) !important;
-    max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 60px) !important;
-}
-
-/* 4. 下方跑馬燈過濾 Toast (置中) */
-.filter-toast {
-    bottom: max(50px, calc(var(--safe-bottom) + 20px)) !important;
-    left: var(--safe-left) !important;
-    right: var(--safe-right) !important;
-    max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px) !important;
-}
-
-/* 5. Lightbox 圖片說明膠囊 (置中) */
-#lightbox-caption {
-    bottom: max(60px, calc(var(--safe-bottom) + 30px)) !important;
-    max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px) !important;
-}
-
-/* 6. 右上角主選單與主題切換按鈕 */
-.menu-btn {
-    top: max(1.5rem, calc(var(--safe-top) + 0.5rem)) !important;
-    right: max(1.5rem, calc(var(--safe-right) + 1.5rem)) !important;
-}
-.theme-btn {
-    top: max(1.5rem, calc(var(--safe-top) + 0.5rem)) !important;
-    right: max(6.5rem, calc(var(--safe-right) + 6.5rem)) !important;
-}
 
 /* ========================================================================== */
-/* ✨ PWA 全域狀態列防護盾 (改良版：僅限 PWA 且自動適應橫向/桌面)                 */
+/* ✨ 系統重啟 / 更新畫面 (System Reboot Screen)                              */
+/* ========================================================================== */
+#sys-reboot-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--accent);
+    transition: opacity 0.3s ease;
+    cursor: wait;
+}
+
+#sys-reboot-screen .reboot-title {
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 10px var(--glow-1);
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+#sys-reboot-screen .reboot-version {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+}
+
+#sys-reboot-screen .loading-text {
+    font-size: 1.1rem;
+    transition: color 0.3s ease;
+}
+
+
+/* ========================================================================== */
+/* ✨ 404 / 403 系統錯誤畫面 (System Error Modal)                              */
+/* ========================================================================== */
+.sys-error-layout {
+    text-align: center; 
+    padding: 15vh 2rem 10vh 2rem; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center;
+}
+.sys-error-icon {
+    width: 64px;
+    height: 64px;
+    stroke: var(--muted);
+    margin-bottom: 1.5rem;
+    opacity: 0.5;
+}
+.sys-error-layout h1 {
+    margin: 0 0 1rem 0; 
+    border: none; 
+    font-size: 2rem; 
+    padding: 0;
+}
+.sys-error-desc {
+    color: var(--muted); 
+    font-size: 1.05rem; 
+    max-width: 400px; 
+    line-height: 1.6;
+}
+.sys-error-btn {
+    margin-top: 2.5rem; 
+    padding: 0.6rem 1.5rem; 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 0.5rem;
+}
+
+
+/* ========================================================================== */
+/* ✨ 敏感內容協議畫面 (Sensitive Content Modal)                               */
+/* ========================================================================== */
+.sensitive-modal-content {
+    cursor: auto; 
+    max-width: 500px; 
+    text-align: center; 
+    padding: 3rem 2rem; 
+    opacity: 1; 
+    position: relative;
+}
+.sensitive-close-btn {
+    position: absolute; 
+    top: 1.2rem; 
+    right: 1.2rem; 
+    background: transparent; 
+    border: none; 
+    color: var(--muted); 
+    cursor: pointer; 
+    padding: 0.5rem; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
+    transform-origin: center center; 
+    opacity: 0.7;
+}
+.sensitive-close-btn:hover {
+    opacity: 1; 
+    color: var(--accent); 
+    transform: rotate(90deg) scale(1.1);
+}
+.sensitive-title {
+    margin: 0 0 1rem 0; 
+    color: var(--error-color);
+}
+.sensitive-desc {
+    color: var(--muted); 
+    font-size: 0.95rem; 
+    line-height: 1.6; 
+    margin-bottom: 2rem;
+}
+.sensitive-desc-hint {
+    font-size: 0.8rem; 
+    opacity: 0.7;
+}
+.sensitive-actions {
+    display: flex; 
+    justify-content: center; 
+    gap: 1rem; 
+    flex-wrap: wrap;
+}
+
+
+/* ========================================================================== */
+/* 「PDF PWA 選單內部排版」(showPdfActionModal)                            */
+/* ========================================================================== */
+/* 補充 PDF Modal 內部細節樣式 */
+.pdf-drag-handle {
+    width: 40px; 
+    height: 4px; 
+    background: var(--muted); 
+    opacity: 0.4; 
+    border-radius: 2px; 
+    margin: 0 auto 1.2rem auto;
+}
+.pdf-sheet-title {
+    font-weight: 700; 
+    font-size: 1.1rem; 
+    color: var(--text); 
+    margin-bottom: 0.4rem; 
+    text-align: center; 
+    word-break: break-all;
+}
+.pdf-sheet-subtitle {
+    font-size: 0.85rem; 
+    color: var(--muted); 
+    text-align: center; 
+    margin-bottom: 1.5rem; 
+    font-family: monospace;
+}
+.pdf-btn-group {
+    display: flex; 
+    flex-direction: column; 
+    gap: 0.8rem;
+}
+
+
+/* ========================================================================== */
+/* ✨ 影音破圖/失效提示畫面 (Media Error Fallback)                             */
+/* ========================================================================== */
+.media-error-fallback {
+    width: 100%; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    background: var(--bg); 
+    color: var(--muted); 
+    text-align: center; 
+    cursor: pointer; 
+    transition: all 0.3s ease;
+}
+.media-error-fallback:hover {
+    background-color: var(--box-bg);
+}
+.media-error-fallback:hover .retry-text {
+    color: var(--accent-2);
+}
+.media-error-icon {
+    width: 42px;
+    height: 42px;
+    opacity: 0.5;
+    margin-bottom: 1rem;
+}
+.media-error-title {
+    font-family: 'Courier New', monospace; 
+    font-size: 1rem; 
+    font-weight: bold; 
+    letter-spacing: 0.05em; 
+    color: var(--error-color);
+}
+.media-error-fallback .retry-text {
+    font-size: 0.85rem; 
+    opacity: 0.8; 
+    margin-top: 0.8rem; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+    transition: color 0.3s ease;
+}
+
+
+/* ========================================================================== */
+/* ✨ 系統提示框 (System Toast) 進階樣式提取                                     */
+/* ========================================================================== */
+.toast-x-icon {
+    position: absolute; top: 5px; right: 7px; width: 32px; height: 32px; 
+    display: flex; justify-content: center; align-items: center; 
+    opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer;
+}
+.sys-toast-box:hover .toast-x-icon { transform: rotate(90deg) scale(1.1); }
+
+.toast-title {
+    font-size: 1rem; letter-spacing: 0.05em; 
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2); padding-right: 1.5rem;
+}
+.toast-msg { opacity: 0.95; font-weight: 600; }
+.toast-sub { opacity: 0.85; font-size: 0.8rem; }
+
+/* 原本在 JS 裡的 Hover 發光特效轉移到 CSS */
+.sys-toast-box.error { background: var(--error-color); box-shadow: 0 4px 20px var(--error-shadow); }
+.sys-toast-box.error:hover { box-shadow: 0 0 25px var(--error-shadow), 0 0 10px rgba(255,255,255,0.2); }
+
+.sys-toast-box.success { background: var(--accent); box-shadow: 0 4px 20px var(--glow-1); }
+.sys-toast-box.success:hover { box-shadow: 0 0 25px var(--glow-1), 0 0 10px rgba(255,255,255,0.2); }
+
+
+/* ========================================================================== */
+/* ✨ 媒體與 PDF 容器標題列 (Media & PDF Containers)                           */
+/* ========================================================================== */
+.pdf-container {
+    margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; 
+    overflow: visible; box-shadow: 0 4px 15px var(--shadow-base); 
+    background: var(--bg); transition: transform 0.2s ease;
+}
+.pdf-container-header {
+    position: relative; z-index: 10; background: var(--glass-bg); padding: 0.6rem 1rem; 
+    border-bottom: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; 
+    font-family: monospace; font-size: 0.9rem; color: var(--muted); 
+    display: flex; justify-content: space-between; align-items: center;
+}
+.pdf-container-title, .media-container-title {
+    display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);
+}
+.pdf-mobile-placeholder {
+    display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); 
+    flex-direction: column; align-items: center; gap: 1.2rem;
+}
+.pdf-mobile-btn {
+    color: var(--accent); font-weight: 600; display: flex; align-items: center; 
+    gap: 8px; background: var(--tag-bg); padding: 0.6rem 1.2rem; 
+    border-radius: 2rem; cursor: pointer;
+}
+
+
+/* ========================================================================== */
+/* ✨ 彈窗共用與日誌專屬排版 (Modals & Changelogs)                              */
+/* ========================================================================== */
+/* 1. 工具列專用細分隔線 (取代重複寫死的 1px div) */
+.action-btn-divider { 
+    width: 1px; height: 16px; background: var(--card-border); 
+    margin: 0 2px; align-self: center; 
+}
+
+/* 2. 版本日誌 (Changelog) 專屬排版 */
+.changelog-header-row { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
+.changelog-version { 
+    font-family: monospace; font-weight: 900; color: var(--accent); 
+    font-size: 1.5rem; letter-spacing: 0.05em; line-height: 1; transform: translateY(1px); 
+}
+.changelog-date { 
+    font-family: monospace; color: var(--muted); font-size: 0.9rem; 
+    margin-left: 0.2rem; transform: translateY(2px); 
+}
+.changelog-list-item { margin-bottom: 1rem; }
+.changelog-item-version { font-family: monospace; color: var(--tab-color); font-size: 1.15rem; }
+.changelog-item-icon { color: var(--tab-color, var(--accent)); }
+
+
+/* ========================================================================== */
+/* ✨ 首頁網格與分類卡片排版 (Home Grid & Cards)                               */
+/* ========================================================================== */
+/* 導覽列子標題 */
+.nav-item-desc { display: block; color: var(--muted); font-size: 0.95rem; font-family: sans-serif; text-transform: none; margin-top: 0.5rem; letter-spacing: 0; }
+
+/* 分類區塊 Header */
+.section-header-layout { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.8rem; }
+.section-header-left { flex: 1; }
+.section-header-left h2 { display: flex; align-items: baseline; flex-wrap: wrap; margin-bottom: 0; }
+.section-meta { font-size: 1.1rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem; }
+.section-desc { color: var(--muted); margin-top: 0.2rem; margin-bottom: 0; line-height: 1.6; max-width: 800px; font-size: 0.95rem; }
+.section-icon { width: 72px; height: 72px; border-radius: 16px; object-fit: cover; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); flex-shrink: 0; }
+
+/* 卡片內容 */
+.card-meta-text { font-size: 0.95rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem; }
+.card-desc-text { color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; margin-bottom: 1rem; }
+.card-thumb-img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg); }
+.card-date-badge { position: absolute; top: 0.2rem; left: 1.6rem; font-family: monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); opacity: 0.6; letter-spacing: 0.05em; }
+
+/* 卡片按鈕 */
+.card-action-btn { margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease; }
+.card-action-icon-wrap { position: relative; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+.card-action-arrow { display: flex; align-items: center; transition: transform 0.2s ease; }
+
+
+
+
+/* ========================================================================== */
+/* ✨ PWA 全域狀態列防護盾 (極淨版：統一變數與圖層降級)                           */
 /* ========================================================================== */
 @media (display-mode: standalone) {
     body::after {
@@ -2582,10 +2866,9 @@ body {
         top: 0;
         left: 0;
         width: 100vw;
-        /* 拔除 max() 寫死的高度，完全交給系統。沒有瀏海/狀態列時自動為 0，絕不佔位！ */
-        height: env(safe-area-inset-top); 
+        height: var(--safe-top); /* 統一使用全域變數 */
         background-color: var(--bg);
-        z-index: 999999;
+        z-index: 900; /* ✨ 降為 900：專心擋主頁，不干擾彈窗與 Lightbox 的毛玻璃 */
         pointer-events: none;
     }
 }

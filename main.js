@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.6.7",          // 目前系統版本號
+    VERSION: "U1.5.6.9",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -53,6 +53,8 @@ const GLOBAL_SVGS = {
     // ⬅️ 導覽與操作方向
     arrowLeft: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
     historyBack: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>`,
+    chevronLeft: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`,
+    chevronRight: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`,
     
     // 📊 Mermaid 圖表工具列
     mermaidZoomIn: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
@@ -471,6 +473,77 @@ window.getQuotesList = async function() {
 };
 
 // ==========================================
+// ✨ 全域共用輔助函式 (Global Helpers)
+// ==========================================
+
+// 1. 判斷是否為 PWA (Standalone) 模式
+window.isPWAEnvironment = function() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+};
+
+// 2. 突破 PWA 限制的 Blob 下載/開新分頁引擎
+window.downloadViaBlob = async function(url, filename, isNewTab = false) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Network response was not ok");
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        
+        if (isNewTab) a.target = '_blank';
+        else a.download = filename || 'download';
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        }, 500);
+        return true;
+    } catch (error) {
+        console.error("Blob Fetch Error:", error);
+        return false;
+    }
+};
+
+// 3. 整合震動與 Toast 的通用安全下載器
+window.triggerSecureDownload = async function(url, filename) {
+    const isPWA = window.isPWAEnvironment();
+    if (!isPWA) {
+        window.triggerHaptic('light');
+        if (window.showSystemToast) {
+            const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;">${GLOBAL_SVGS.jumpDown} 下載中</span>`;
+            window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', filename, 2000, 'success');
+        }
+    }
+    
+    const success = await window.downloadViaBlob(url, filename);
+    if (success && !isPWA) window.triggerHaptic('success');
+    if (!success) window.open(url, '_blank'); // 失敗則退回原生開啟
+};
+
+// 4. 卡片定位後的高光閃爍特效器
+window.simulateHoverFlash = function(element, duration = 700) {
+    if (!element) return;
+    element.classList.add('simulate-hover');
+    setTimeout(() => element.classList.remove('simulate-hover'), duration);
+};
+
+// 5. 統一系統錯誤畫面生成器
+window.getSystemErrorHtml = function(title, msg) {
+    return `
+    <div class="sys-error-layout" style="padding: 3rem 0;">
+        ${GLOBAL_SVGS.errorAlert.replace('<svg ', '<svg class="sys-error-icon" ')}
+        <h2 style="margin:0; color:var(--error-color); font-size:1.5rem;">${title}</h2>
+        <p class="sys-error-desc">${msg}</p>
+    </div>`;
+};
+
+
+// ==========================================
 // ✨ 共用捲軸陰影提示系統 (Scroll Hints Engine)
 // ==========================================
 window.initScrollHints = function(container, hintLeft, hintRight) {
@@ -598,20 +671,14 @@ window.handleMediaError = function(sourceEl) {
     // 拔除原本的媒體播放器，換成一顆巨大的互動式重試按鈕
     if (mediaTag) {
         mediaTag.outerHTML = `
-            <div class="media-error-fallback" style="width: 100%; ${aspectStyle} display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg); color: var(--muted); text-align: center; cursor: pointer; transition: all 0.3s ease;" 
-                 onmouseover="this.style.backgroundColor='var(--box-bg)'; this.querySelector('.retry-text').style.color='var(--accent-2)';" 
-                 onmouseout="this.style.backgroundColor='var(--bg)'; this.querySelector('.retry-text').style.color='var(--muted)';"
-                 onclick="window.retryMedia(this, '${origSrc}', '${ext}', ${isVideo})">
-                 
-                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1rem;">
+            <div class="media-error-fallback" style="${aspectStyle}" onclick="window.retryMedia(this, '${origSrc}', '${ext}', ${isVideo})">
+                <svg class="media-error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="23 7 16 12 23 17 23 7"></polygon>
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
                     <line x1="2" y1="2" x2="22" y2="22"></line>
                 </svg>
-                <div style="font-family: 'Courier New', monospace; font-size: 1rem; font-weight: bold; letter-spacing: 0.05em; color: var(--error-color);">MEDIA_NOT_FOUND</div>
-                
-                <!-- ✨ 新增的互動重試文字 -->
-                <div class="retry-text" style="font-size: 0.85rem; opacity: 0.8; margin-top: 0.8rem; display: flex; align-items: center; gap: 6px; transition: color 0.3s ease;">
+                <div class="media-error-title">MEDIA_NOT_FOUND</div>
+                <div class="retry-text">
                     ${GLOBAL_SVGS.retry} 點擊區塊以重試載入
                 </div>
             </div>
@@ -631,12 +698,9 @@ window.retryMedia = function(btnEl, origSrc, ext, isVideo) {
     const sep = origSrc.includes('?') ? '&' : '?';
     const retrySrc = origSrc + sep + 'retry=' + new Date().getTime();
     
-    // 重建原本的 Media Tag
-    const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block; border-bottom-left-radius: 0.8rem; border-bottom-right-radius: 0.8rem;";
-    
     const mediaTag = isVideo 
-        ? `<video preload="metadata" controls playsinline class="md-video" style="${videoStyle}"><source src="${retrySrc}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
-        : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${retrySrc}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
+        ? `<video preload="metadata" controls playsinline class="md-video"><source src="${retrySrc}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
+        : `<audio preload="metadata" controls class="md-audio"><source src="${retrySrc}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
         
     // 替換回去
     btnEl.outerHTML = mediaTag;
@@ -663,12 +727,12 @@ window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = '
     
     toast.innerHTML = `
         <div class="sys-toast-box ${themeClass}">
-            <div class="toast-x-icon" style="position: absolute; top: 5px; right: 7px; width: 32px; height: 32px; display: flex; justify-content: center; align-items: center; opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <div class="toast-x-icon">
+                ${GLOBAL_SVGS.closeX}
             </div>
-            <strong style="font-size: 1rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.2); padding-right: 1.5rem;">${title}</strong>
-            <span style="opacity: 0.95; font-weight: 600;">${msg}</span>
-            <span style="opacity: 0.85; font-size: 0.8rem;">${subMsg}</span>
+            <strong class="toast-title">${title}</strong>
+            <span class="toast-msg">${msg}</span>
+            <span class="toast-sub">${subMsg}</span>
         </div>
     `;
 
@@ -680,18 +744,7 @@ window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = '
         toast.style.transform = 'translateY(0)';
     }, 50);
 
-    const toastBox = toast.firstElementChild;
     const xIcon = toast.querySelector('.toast-x-icon');
-
-    // 5. Hover 發光與 X 旋轉特效
-    toastBox.onmouseenter = () => { 
-        toastBox.style.boxShadow = `0 0 25px ${shadowColor}, 0 0 10px rgba(255,255,255,0.2)`; 
-        if (xIcon) xIcon.style.transform = 'rotate(90deg) scale(1.1)';
-    };
-    toastBox.onmouseleave = () => { 
-        toastBox.style.boxShadow = `0 4px 20px ${shadowColor}`; 
-        if (xIcon) xIcon.style.transform = 'rotate(0deg) scale(1)';
-    };
 
     // 6. 點擊 X 關閉事件
     if (xIcon) {
@@ -1006,28 +1059,10 @@ window.lightboxAction = function(action, event) {
     } else if (action === 'new-tab') {
         if (state.isDomMode) return;
         
-        const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-        if (isPWA) {
-            // ✨ PWA 模式下使用與 PDF 相同的 Fetch Blob 機制開啟
-            fetch(target.src)
-                .then(res => res.blob())
-                .then(blob => {
-                    const blobUrl = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = blobUrl;
-                    a.target = '_blank';
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(blobUrl);
-                    }, 500);
-                })
-                .catch(err => {
-                    console.error('Blob 新分頁穿透失敗:', err);
-                    window.open(target.src, '_blank');
-                });
+        if (window.isPWAEnvironment()) {
+            window.downloadViaBlob(target.src, null, true).then(success => {
+                if (!success) window.open(target.src, '_blank');
+            });
         } else {
             window.open(target.src, '_blank');
         }
@@ -1076,50 +1111,13 @@ window.closeLightbox = function() {
 };
 
 window.downloadLightboxImage = async function() {
-    const img = document.getElementById('lightbox-img');
-    if (!img || !img.src) return;
-    
-    // 取得真實檔名
-    const url = img.src;
-    const fileName = url.substring(url.lastIndexOf('/') + 1).split('?')[0] || 'download_image.jpg';
-
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-    // ✨ 非 PWA 才觸發震動與 Toast
-    if (!isPWA) {
-        window.triggerHaptic('light');
-        if (window.showSystemToast) {
-            const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>下載中</span>`;
-            window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', fileName, 2000, 'success');
-        }
-    }
-
-    try {
-        // ✨ 改用與 PDF 相同的 Fetch Blob 引擎，破解 PWA 原生限制
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("網路連線失敗");
+        const img = document.getElementById('lightbox-img');
+        if (!img || !img.src) return;
+        const url = img.src;
+        const fileName = url.substring(url.lastIndexOf('/') + 1).split('?')[0] || 'download_image.jpg';
         
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = blobUrl;
-        a.download = fileName;
-        
-        document.body.appendChild(a);
-        a.click();
-        
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(blobUrl);
-        }, 100);
-        
-        if (!isPWA) window.triggerHaptic('success');
-    } catch (error) {
-        console.error("底層下載失敗，改用新分頁開啟:", error);
-        window.open(url, '_blank'); 
-    }
-};
+        window.triggerSecureDownload(url, fileName);
+    };
 
 // ==========================================
 // ✨ 智慧分流下載器 (自動判斷當前是圖片還是 Mermaid 圖表)
@@ -1230,8 +1228,7 @@ window.downloadMermaidPNG = function(btn) {
                 URL.revokeObjectURL(url);
             }, 100);
             
-            // ✨ 非 PWA 才觸發震動與成功 Toast
-            const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            const isPWA = window.isPWAEnvironment();
             if (!isPWA) {
                 window.triggerHaptic('success');
                 if (window.showSystemToast) {
@@ -1291,6 +1288,9 @@ document.addEventListener('DOMContentLoaded', () => {
                            (navigator.msMaxTouchPoints > 0));
     if (isTouchDevice) {
         document.body.classList.add('is-touch-device');
+        
+        // ✨ 終極魔法：掛上一個空的原生觸控監聽器，強制解鎖 iOS Safari 的 CSS :active 觸發機制！
+        document.addEventListener('touchstart', function() {}, {passive: true});
     }
 
     // 3. ✨ Lightbox 多指觸控與拖曳引擎
@@ -1495,40 +1495,30 @@ function renderPDFIframe(href, altText) {
     `;
 
     return `
-    <!-- ✨ 修改 1：將 overflow: hidden 改為 visible，允許 Tooltip 突破邊界顯示 -->
-    <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; overflow: visible; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
-        onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }"
-        onpointerdown="if(document.body.classList.contains('is-touch-device')) this.style.transform='scale(0.98)';"
-        onpointerup="this.style.transform='none';"
-        onpointerleave="this.style.transform='none';">
+    <!-- ✨ 全面使用 CSS 類別提取版 -->
+    <div class="pdf-container" 
+        onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }">
         
-        <!-- ✨ 修改 2：加上 position: relative; z-index: 10; 確保 Tooltip 蓋過 iframe，並補上頂部圓角 -->
-        <div style="position: relative; z-index: 10; background: var(--glass-bg); padding: 0.6rem 1rem; border-bottom: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
-            
-            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
+        <div class="pdf-container-header">
+            <div class="pdf-container-title">
                 ${GLOBAL_SVGS.docIcon}
                 <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
             </div>
             
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <!-- ✨ 移除 desktop-only，讓手機/平板都能看見重整按鈕 -->
                 <button class="mermaid-btn" data-tooltip="重新整理" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
                     ${GLOBAL_SVGS.mermaidReload}
                 </button>
-                
-                <!-- 觸控裝置隱藏這條分割線 -->
-                <div class="desktop-only" style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-                
-                <!-- 觸控裝置隱藏「新分頁開啟」按鈕 -->
+                <div class="action-btn-divider desktop-only"></div>
                 <button class="mermaid-btn desktop-only" data-tooltip="新分頁開啟" onclick="event.stopPropagation(); window.open('${href}', '_blank');">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </button>
             </div>
         </div>
         <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
-        <div class="pdf-mobile-placeholder" style="display: none; padding: 4rem 1rem; text-align: center; color: var(--muted); flex-direction: column; align-items: center; gap: 1.2rem;">
+        <div class="pdf-mobile-placeholder">
             <span style="font-size: 1.05rem; letter-spacing: 0.05em;">點擊下方按鈕以檢視或下載 PDF 檔案</span>
-            <span style="color: var(--accent); font-weight: 600; display: flex; align-items: center; gap: 8px; background: var(--tag-bg); padding: 0.6rem 1.2rem; border-radius: 2rem; cursor: pointer;">
+            <span class="pdf-mobile-btn">
                 ${GLOBAL_SVGS.newTab} 點擊開啟 PDF 操作選單
             </span>
         </div>
@@ -1542,11 +1532,9 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
     const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
     const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
     const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
-    const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block;";
-
     const mediaTag = isVideo 
-        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
-        : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
+        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
+        : `<audio preload="metadata" controls class="md-audio"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
 
     // ✨ 影音專屬：重載腳本 (加上時間戳防快取)
     const reloadScript = `event.stopPropagation(); const media = this.closest('.media-container-wrapper').querySelector('.md-video, .md-audio'); const source = media.querySelector('source'); const orig = source.src.split('?retry=')[0].split('&retry=')[0]; const sep = orig.includes('?') ? '&' : '?'; source.src = orig + sep + 'retry=' + new Date().getTime(); media.load();`;
@@ -1565,7 +1553,7 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
     return `
     <div class="media-container-wrapper">
         <div class="media-container-header">
-            <div style="font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+            <div class="media-container-title">
                 ${iconSvg}<span style="transform: translateY(1px);">${displayTitle}</span>
             </div>
             ${actionBtns}
@@ -1677,7 +1665,7 @@ renderer.code = function(token_or_code, language, isEscaped) {
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
                     
                     <!-- ✨ 這條線會被觸控裝置隱藏 (解決圖片中多出來的那條線) -->
-                    <div class="desktop-only" style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
+                    <div class="action-btn-divider desktop-only"></div>
                     
                     <!-- 重新整理按鈕 -->
                     <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="重新整理">${GLOBAL_SVGS.mermaidReload}</button>
@@ -1709,7 +1697,7 @@ renderer.code = function(token_or_code, language, isEscaped) {
     const cleanLang = fullLang ? fullLang.split('[')[0].trim() : 'text'; // 容錯處理，預設為 text
     const escapedText = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-    const copyIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+    const copyIcon = GLOBAL_SVGS.copy;
 
     // ✨ 核心修復：將語言與檔案名稱合併，中間加個分隔線，徹底解決重疊！
     const labelContent = fileName 
@@ -1744,8 +1732,7 @@ window.copyCodeBlock = function(btn) {
 
     // 儲存原本的按鈕內容
     const originalHtml = btn.innerHTML;
-    // 打勾圖示 SVG
-    const checkIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    const checkIcon = GLOBAL_SVGS.check;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
         // 成功時切換狀態與文字
@@ -2445,7 +2432,7 @@ async function loadProjects() {
 
         // 2. 動態生成分類區塊
         categories.forEach(cat => {
-            const menuDescHtml = cat.meta ? `<span style="display:block; color:var(--muted); font-size:0.95rem; font-family:sans-serif; text-transform:none; margin-top:0.5rem; letter-spacing:0;">${cat.meta}</span>` : '';
+            const menuDescHtml = cat.meta ? `<span class="nav-item-desc">${cat.meta}</span>` : '';
             
             dynamicNav.innerHTML += `
             <li style="margin: 2.5rem 0;">
@@ -2453,18 +2440,17 @@ async function loadProjects() {
                 ${menuDescHtml}
             </li>`;
 
-            const sectionMetaHtml = cat.meta ? `<span style="font-size: 1.1rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem;">- ${cat.meta}</span>` : '';
-            const sectionDescHtml = cat.description ? `<p style="color: var(--muted); margin-top: 0.2rem; margin-bottom: 0; line-height: 1.6; max-width: 800px; font-size: 0.95rem;">${cat.description}</p>` : '';
-            const sectionImageHtml = cat.cover_image ? `<img src="${cat.cover_image}" alt="icon" loading="lazy" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="width: 72px; height: 72px; border-radius: 16px; object-fit: cover; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); flex-shrink: 0;">` : '';
+            const sectionMetaHtml = cat.meta ? `<span class="section-meta">- ${cat.meta}</span>` : '';
+            const sectionDescHtml = cat.description ? `<p class="section-desc">${cat.description}</p>` : '';
+            const sectionImageHtml = cat.cover_image ? `<img src="${cat.cover_image}" alt="icon" loading="lazy" class="section-icon is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : '';
 
-            // ✨ 如果 JSON 裡有設定 watermark_url，就轉成 CSS 變數注入到 section 中
             const watermarkStyle = cat.watermark_url ? ` style="--custom-watermark: url('${cat.watermark_url}');"` : '';
 
             portfolioSections.innerHTML += `
             <section id="${cat.id}-section"${watermarkStyle}>
-                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.8rem;">
-                <div style="flex: 1;">
-                    <h2 style="display: flex; align-items: baseline; flex-wrap: wrap; margin-bottom: 0;">${cat.title}${sectionMetaHtml}</h2>
+                <div class="section-header-layout">
+                <div class="section-header-left">
+                    <h2>${cat.title}${sectionMetaHtml}</h2>
                     ${sectionDescHtml}
                 </div>
                 ${sectionImageHtml}
@@ -2504,43 +2490,39 @@ async function loadProjects() {
                     card.style.cursor = 'pointer';
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); openProjectIndex(data.id); };
                     
-                    // ✨ 核心修復：首頁卡片上的數字也同步扣除隱藏文章
                     const visibleCount = data.articles.filter(art => !art.is_hidden).length;
                     
-                    // 1. 如果有子文章 (套用資料夾開關 SVG)
-                    actionText = `<div class="action-btn" style="margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease;">
-                        <div style="position: relative; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;">
+                    actionText = `<div class="card-action-btn">
+                        <div class="card-action-icon-wrap">
                             ${GLOBAL_SVGS.folderClosed}
                             ${GLOBAL_SVGS.folderOpen}
                         </div>展開系列 (${visibleCount})</div>`;
                 } else if (data.link) {
-                    // 2. 如果是外部連結 (套用外部連結與箭頭 SVG)
                     card.style.cursor = 'pointer';
                     card.onclick = () => { 
                         if (window.currentActiveTag) window.clearFilter(); 
-                        window.open(data.link, '_blank'); // 開啟新分頁前往外部專案
+                        window.open(data.link, '_blank'); 
                     };
                     
-                    actionText = `<div class="action-btn" style="margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease;">
+                    actionText = `<div class="card-action-btn">
                         ${GLOBAL_SVGS.linkLg} 
-                        前往外部專案 <span class="action-arrow" data-dir="up-right" style="display: flex; align-items: center; transition: transform 0.2s ease;">
+                        前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">
                         ${GLOBAL_SVGS.arrowUpRight}</span></div>`;
                 } else {
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
                     card.addEventListener('mouseenter', () => { card.style.cursor = window.currentActiveTag ? 'pointer' : 'default'; });
                 }
 
-                const cardMetaHtml = data.meta ? `<span style="font-size: 0.95rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem;">- ${data.meta}</span>` : '';
-                const cardDescHtml = data.description ? `<p style="color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; margin-bottom: 1rem;">${data.description}</p>` : '';
-                const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)" style="width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg);">` : '';                
+                const cardMetaHtml = data.meta ? `<span class="card-meta-text">- ${data.meta}</span>` : '';
+                const cardDescHtml = data.description ? `<p class="card-desc-text">${data.description}</p>` : '';
+                const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="card-thumb-img is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : '';                
                 const absolutePinHtml = data.pinned ? `<div class="card-pin">${GLOBAL_SVGS.pin}</div>` : '';
-                // ✨ 新增：機密圖釘 HTML
                 const absoluteSecretHtml = data.is_hidden ? `<div class="card-secret-pin">${GLOBAL_SVGS.secretPin}</div>` : '';
 
                 let metaParts = [];
                 if (data.date) metaParts.push(data.date);
                 if (data.version) metaParts.push(`v${data.version}`); 
-                const cardDateHtml = metaParts.length > 0 ? `<div style="position: absolute; top: 0.2rem; left: 1.6rem; font-family: monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); opacity: 0.6; letter-spacing: 0.05em;">[${metaParts.join(' • ')}]</div>` : '';
+                const cardDateHtml = metaParts.length > 0 ? `<div class="card-date-badge">[${metaParts.join(' • ')}]</div>` : '';
 
                 card.innerHTML = `
                     ${absolutePinHtml}${absoluteSecretHtml}${cardDateHtml} 
@@ -2634,13 +2616,11 @@ async function loadProjects() {
         const errorTitle = isOffline ? "ERR: NO INTERNET CONNECTION" : "ERR: FAILED TO FETCH DATA";
         const errorDetail = err.message ? err.message.toUpperCase() : "UNKNOWN_SYSTEM_ERROR";
         const errorSub = isOffline ? "請檢查您的網路設定，連線恢復後請重新整理。" : `[SYS_DUMP] ${errorDetail}`;
-
-        const retrySvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`;
         
         portfolioSections.innerHTML = `
             <div class="error-container" style="flex-direction: column; gap: 0.8rem;">
                 <span class="error-text" onclick="this.style.opacity='0.5'; this.innerHTML='>_ REBOOTING...'; window.location.reload();">
-                    ${retrySvg} ${errorTitle}
+                    ${GLOBAL_SVGS.retry} ${errorTitle}
                 </span>
                 <span style="font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--muted); opacity: 0.6; letter-spacing: 0.05em;">
                     ${errorSub}
@@ -2669,7 +2649,7 @@ function showSystemRebootScreen(title, localV, remoteV, msg, immediate = false) 
     if (!screen) {
         screen = document.createElement('div');
         screen.id = 'sys-reboot-screen';
-        screen.style.cssText = `position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); opacity:${immediate ? '1' : '0'}; transition:opacity 0.3s ease; cursor: wait;`;
+        screen.style.opacity = immediate ? '1' : '0';
         document.body.appendChild(screen);
         
         if (!immediate) {
@@ -2677,11 +2657,10 @@ function showSystemRebootScreen(title, localV, remoteV, msg, immediate = false) 
         }
     }
     
-    // ✨ 加上了 reboot-title class，方便消失前更改文字
     screen.innerHTML = `
-        <div class="reboot-title" style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1); transition: color 0.3s ease, text-shadow 0.3s ease;">>_ ${title}</div>
-        <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${localV} | Remote: ${remoteV}</div>
-        <div class="loading-text" style="font-size: 1.1rem; transition: color 0.3s ease;">${msg}</div>
+        <div class="reboot-title">>_ ${title}</div>
+        <div class="reboot-version">Local: ${localV} | Remote: ${remoteV}</div>
+        <div class="loading-text">${msg}</div>
     `;
 }
 
@@ -2788,7 +2767,7 @@ async function checkSystemVersionAndBoot() {
             sessionStorage.setItem('sys_expected_version', remoteVersion);
 
             // 根據不同更新原因，顯示不同的終端機過場文字
-            const screenTitle = rebootReason === 'SYS_UPDATING' ? 'SYSTEM_VERSION_MISMATCH' : 'CONTENT_SYNC_REQUIRED';
+            const screenTitle = rebootReason === 'SYS_UPDATING' ? 'SYS_VERSION_MISMATCH' : 'CONTENT_SYNC_REQUIRED';
             showSystemRebootScreen(screenTitle, CONFIG.VERSION, remoteVersion, rebootReason, isRebooting);
             
             setTimeout(() => {
@@ -3226,12 +3205,12 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             if (countBelow > 0) {
                                 targetArticle = closestBelow;
                                 const prefix = countVisible > 0 ? '下方還有' : '發現';
-                                jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> ${prefix} ${countBelow} 篇新內容`;
+                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpDown} ${prefix} ${countBelow} 篇新內容`;
                                 jumpToast.classList.add('is-visible');
                             } else if (countAbove > 0) {
                                 targetArticle = closestAbove;
                                 const prefix = countVisible > 0 ? '上方還有' : '發現';
-                                jumpToast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-up 1.5s infinite ease-in-out;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg> ${prefix} ${countAbove} 篇新內容`;
+                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpUp} ${prefix} ${countAbove} 篇新內容`;
                                 jumpToast.classList.add('is-visible');
                             } else {
                                 targetArticle = null;
@@ -3264,10 +3243,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             
                             // 3. 等待捲動結束後，為「鎖定的目標」精準加上高光！
                             setTimeout(() => {
-                                finalTarget.classList.add('simulate-hover');
-                                setTimeout(() => {
-                                    finalTarget.classList.remove('simulate-hover');
-                                }, 700);
+                                window.simulateHoverFlash(finalTarget);
                             }, 500);
                         };
                     } else {
@@ -3367,10 +3343,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             }
                             
                             // ✨ 5. 無論有沒有跳轉，都給予該文章高光提示
-                            targetItem.classList.add('simulate-hover');
-                            setTimeout(() => {
-                                targetItem.classList.remove('simulate-hover');
-                            }, 700);
+                            window.simulateHoverFlash(targetItem);
                         }
                     } else {
                         modalContainer.scrollTop = 0;
@@ -3442,23 +3415,21 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         // 動態判斷是網路斷線還是檔案遺失
         const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
         const errTitle = isOffline ? 'ERR_INTERNET_DISCONNECTED' : '404 NOT_FOUND';
-        const errMsg = isOffline ? '網路連線中斷，請檢查您的網路狀態。' : '無法載入文章內容，請檢查路徑是否正確。';
+        const errMsg = isOffline ? '網路連線中斷，請檢查您的網路狀態。' : '無法載入文章內容。';
         
-        // ✨ 核心魔法：第一行給予真實的文章標題 (article.title)，讓系統抽出並渲染完美的 Header！
-        // 接下來的內容則替換為置中的終端機風格錯誤提示。
         markdownContent = `
 # ${article.title}
 
-<div style="text-align: center; padding: 4rem 1rem; color: var(--muted);">
-    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5;">
+<div class="sys-error-layout">
+    <svg class="sys-error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
         <line x1="12" y1="9" x2="12" y2="13"></line>
         <line x1="12" y1="17" x2="12.01" y2="17"></line>
     </svg>
-    <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; color: var(--error-color); margin-bottom: 0.5rem; letter-spacing: 0.05em;">
+    <div class="media-error-title" style="font-size: 1.2rem; margin-bottom: 0.5rem;">
         ${errTitle}
     </div>
-    <div style="font-size: 0.95rem;">
+    <div class="sys-error-desc">
         ${errMsg}
     </div>
 </div>
@@ -3514,15 +3485,15 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
             const generateNavBtn = (item, type) => {
                 const isPrev = type === 'prev';
-                const iconSvg = isPrev ? `<path d="M15 18l-6-6 6-6"/>` : `<path d="M9 18l6-6-6-6"/>`;
+                const iconSvg = isPrev ? GLOBAL_SVGS.chevronLeft : GLOBAL_SVGS.chevronRight;
                 const text = isPrev ? '上一篇' : '下一篇';
                 
                 if (!item) {
-                    return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg></button>` };
+                    return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled>${iconSvg}</button>` };
                 }
                 
-                const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg> ${text}` : `${text} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg>`}</div><div class="nav-title">${item.art.title}</div></a>`;
-                const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${text}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${iconSvg}</svg></button>`;
+                const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `${iconSvg} ${text}` : `${text} ${iconSvg}`}</div><div class="nav-title">${item.art.title}</div></a>`;
+                const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${text}">${iconSvg}</button>`;
                 return { cardHtml, btnHtml };
             };
 
@@ -3798,14 +3769,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                         if (img && !figcaption.querySelector('.zoom-btn')) {
                             const zoomBtn = document.createElement('button');
                             zoomBtn.className = 'zoom-btn';
-                            zoomBtn.innerHTML = `
-                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                    <line x1="11" y1="8" x2="11" y2="14"></line>
-                                    <line x1="8" y1="11" x2="14" y2="11"></line>
-                                </svg>
-                            `;
+                            zoomBtn.innerHTML = GLOBAL_SVGS.zoomIcon;
                             zoomBtn.onclick = (event) => {
                                 event.stopPropagation();
                                 window.openLightbox(zoomBtn, event);
@@ -3833,14 +3797,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                         if (!existingBtn) {
                             const zoomBtn = document.createElement('button');
                             zoomBtn.setAttribute('data-tooltip', '放大檢視');
-                            zoomBtn.innerHTML = `
-                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                    <line x1="11" y1="8" x2="11" y2="14"></line>
-                                    <line x1="8" y1="11" x2="14" y2="11"></line>
-                                </svg>
-                            `;
+                            zoomBtn.innerHTML = GLOBAL_SVGS.zoomIcon;
                             
                             zoomBtn.onclick = (event) => {
                                 event.stopPropagation();
@@ -3946,9 +3903,7 @@ window.centerKotobaTag = function(event) {
     
     if (targetTagEl && firstContent) {
         document.querySelectorAll('.kotoba-whisper').forEach(t => {
-            t.style.color = 'var(--accent-2)';
-            t.style.textShadow = '0 0 10px var(--glow-1)';
-            t.style.opacity = '1';
+            t.classList.add('is-active');
         });
 
         const contentWidth = firstContent.offsetWidth;
@@ -3995,9 +3950,7 @@ window.clearFilter = function(event) {
     
     // ✨ 清除言の箱的專屬高光特效
     document.querySelectorAll('.kotoba-whisper').forEach(t => {
-        t.style.color = '';
-        t.style.textShadow = '';
-        t.style.opacity = '';
+        t.classList.remove('is-active');
     });
 
     const toast = document.getElementById('filter-toast');
@@ -4482,20 +4435,17 @@ function show404Modal(title, message) {
 
     // ✨ 動態判斷：如果是 403 就顯示鎖頭，否則顯示驚嘆號
     const is403 = title.includes('403');
-    const iconSvg = is403
-        ? `<svg class="error-lock-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5; overflow: visible; transition: all 0.3s ease;">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path class="error-lock-shackle" d="M7 11V7a5 5 0 0 1 10 0v4" style="transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center;"></path>
-           </svg>`
-        : `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+    const iconSvg = is403 
+        ? GLOBAL_SVGS.errorLock.replace('<svg ', '<svg class="sys-error-icon" ') 
+        : GLOBAL_SVGS.errorAlert.replace('<svg ', '<svg class="sys-error-icon" ');
 
     modalBody.innerHTML = `
-        <div style="text-align: center; padding: 15vh 2rem 10vh 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div class="sys-error-layout">
             ${iconSvg}
-            <h1 style="margin: 0 0 1rem 0; border: none; font-size: 2rem; padding: 0;">${title}</h1>
-            <p style="color: var(--muted); font-size: 1.05rem; max-width: 400px; line-height: 1.6;">${message}</p>
-            <button class="btn" style="margin-top: 2.5rem; padding: 0.6rem 1.5rem; display: flex; align-items: center; gap: 0.5rem;" onclick="closeModal()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg> 返回首頁
+            <h1>${title}</h1>
+            <p class="sys-error-desc">${message}</p>
+            <button class="btn sys-error-btn" onclick="closeModal()">
+                ${GLOBAL_SVGS.arrowLeft} 返回首頁
             </button>
         </div>`;
 
@@ -4596,24 +4546,17 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
 
     // ✨ 移除內層與按鈕的 title
     overlay.innerHTML = `
-        <div class="modal-content" style="cursor: auto; max-width: 500px; text-align: center; padding: 3rem 2rem; opacity: 1; position: relative;">
-            
-            <!-- ✨ 右上角 X 關閉按鈕：保留 Toast 的旋轉動畫 -->
-            <button id="sensitive-close-x" style="position: absolute; top: 1.2rem; right: 1.2rem; background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 0.5rem; display: flex; align-items: center; justify-content: center; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center center; opacity: 0.7;" onmouseover="this.style.opacity='1'; this.style.color='var(--accent)'; this.style.transform='rotate(90deg) scale(1.1)';" onmouseout="this.style.opacity='0.7'; this.style.color='var(--muted)'; this.style.transform='rotate(0deg) scale(1)';">
-                <svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <div class="modal-content sensitive-modal-content">
+            <button id="sensitive-close-x" class="sensitive-close-btn">
+                ${GLOBAL_SVGS.closeX}
             </button>
-
-            <svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            <h2 style="margin: 0 0 1rem 0; color: var(--error-color);">內容警告 (Content Warning)</h2>
-            <p style="color: var(--muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 2rem;">
+            ${GLOBAL_SVGS.warning}
+            <h2 class="sensitive-title">內容警告 (Content Warning)</h2>
+            <p class="sensitive-desc">
                 此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。<br>
-                <span style="font-size: 0.8rem; opacity: 0.7;">(同意後於本次瀏覽器存續期間將不再提示)</span>
+                <span class="sensitive-desc-hint">(同意後於本次瀏覽器存續期間將不再提示)</span>
             </p>
-            <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+            <div class="sensitive-actions">
                 <button id="sensitive-decline-btn" class="btn">不感興趣</button>
                 <button id="sensitive-agree-btn" class="btn">我已了解並前往</button>
             </div>
@@ -4716,11 +4659,7 @@ window.showCreditsModal = async function() {
             }
 
             if (isError) {
-                modalBody.innerHTML = `
-                    <div style="text-align:center; padding: 3rem 0; color: var(--error-color);">
-                        <p>System Error: 無法載入致謝名單。</p>
-                    </div>
-                `;
+                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入致謝名單。');
             } else {
                 modalBody.innerHTML = `
                     <div class="credits-markdown-wrapper markdown-body" style="margin-top: -0.5rem;">
@@ -4772,7 +4711,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                     <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
                         <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
                             <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${vData.version}</div>
-                            <div class="loading-text" style="font-size: 1.1rem;">FETCHING_NEW_DATA_AND_REBOOTING</div>
+                            <div class="loading-text" style="font-size: 1.1rem;">FETCHING_AND_REBOOTING</div>
                         </div>
                     `);
                     
@@ -4825,15 +4764,14 @@ window.showChangelogModal = async function(isSystemFallback = false) {
             }
 
             modalTopLeft.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;">
+                <div class="changelog-header-row">
                     <button class="modal-back-btn" onclick="window.renderChangelogIndex()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                        返回清單
+                        ${GLOBAL_SVGS.arrowLeft} 返回清單
                     </button>
                     <div style="display: flex; align-items: center; gap: 0.8rem;">
-                        <span style="font-family: monospace; font-weight: 900; color: var(--accent); font-size: 1.5rem; letter-spacing: 0.05em; line-height: 1; transform: translateY(1px);">${logData ? logData.version : ''}</span>
+                        <span class="changelog-version">${logData ? logData.version : ''}</span>
                         ${badgeHTML}
-                        <span style="font-family: monospace; color: var(--muted); font-size: 0.9rem; margin-left: 0.2rem; transform: translateY(2px);">${logData ? logData.date : ''}</span>
+                        <span class="changelog-date">${logData ? logData.date : ''}</span>
                     </div>
                 </div>
             `;
@@ -4857,11 +4795,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 renderChangelogHeader(false);
 
                 if (fetchError || !window.cachedChangelogs) {
-                    modalBody.innerHTML = `
-                        <div style="text-align:center; padding: 3rem 0; color: var(--error-color);">
-                            <p>System Error: 無法載入版本日誌。</p>
-                        </div>
-                    `;
+                    modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版本日誌。');
                 } else {
                     let listHTML = '<ul class="article-list-ul">';
                     window.cachedChangelogs.forEach(log => {
@@ -4871,23 +4805,14 @@ window.showChangelogModal = async function(isSystemFallback = false) {
 
                         // 1. 在 li 加上 data-status 屬性，並移除寫死的 style
                         listHTML += `
-                            <li class="article-li is-highlight" data-status="${activeStatus}" style="margin-bottom: 1rem;">
+                            <li class="article-li is-highlight changelog-list-item" data-status="${activeStatus}">
                                 <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${log.id}')">
                                     <div class="article-item-icon-wrap">
-                                        <!-- 2. 圖示顏色直接使用 var() 來繼承 -->
-                                        <div class="article-item-fallback" style="color: var(--tab-color, var(--accent));">
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                                <polyline points="14 2 14 8 20 8"></polyline>
-                                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                                <line x1="16" y1="17" x2="8" y2="17"></line>
-                                                <polyline points="10 9 9 9 8 9"></polyline>
-                                            </svg>
-                                        </div>
+                                        <div class="article-item-fallback changelog-item-icon">${GLOBAL_SVGS.docIconLg}</div>
                                     </div>
                                     <div class="article-item-content">
                                         <div class="article-item-title-row">
-                                            <span class="article-item-title"><span style="font-family: monospace; color: var(--tab-color); font-size: 1.15rem;">${log.version}</span>${badgeHTML}</span>
+                                            <span class="article-item-title"><span class="changelog-item-version">${log.version}</span>${badgeHTML}</span>
                                             <span class="article-item-desc">- ${log.description}</span>
                                         </div>
                                         <span class="article-item-date">${log.date}</span>
@@ -5003,11 +4928,7 @@ window.showLicenseModal = async function() {
 
             // 處理內容渲染
             if (isError) {
-                modalBody.innerHTML = `
-                    <div style="text-align:center; padding: 3rem 0; color: var(--error-color);">
-                        <p>System Error: 無法載入版權聲明檔案。</p>
-                    </div>
-                `;
+                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版權聲明檔案。');
             } else {
                 modalBody.innerHTML = `
                     <div class="markdown-body" style="margin-top: -0.5rem; padding-bottom: 2rem;">
@@ -5311,10 +5232,10 @@ window.showPdfActionModal = function(href, title) {
 
     overlay.innerHTML = `
         <div class="pdf-action-sheet">
-            <div style="width: 40px; height: 4px; background: var(--muted); opacity: 0.4; border-radius: 2px; margin: 0 auto 1.2rem auto;"></div>
-            <div style="font-weight: 700; font-size: 1.1rem; color: var(--text); margin-bottom: 0.4rem; text-align: center; word-break: break-all;">${title}</div>
-            <div style="font-size: 0.85rem; color: var(--muted); text-align: center; margin-bottom: 1.5rem; font-family: monospace;">PDF DOCUMENT</div>
-            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+            <div class="pdf-drag-handle"></div>
+            <div class="pdf-sheet-title">${title}</div>
+            <div class="pdf-sheet-subtitle">PDF DOCUMENT</div>
+            <div class="pdf-btn-group">
                 <button id="pdf-view-btn" class="pdf-action-btn primary">
                     <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${viewBtnIcon}</span>${viewBtnText}
                 </button>
@@ -5357,41 +5278,7 @@ window.showPdfActionModal = function(href, title) {
 };
 
 window.downloadPdfDirectly = async function(url, filename) {
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-    // ✨ 非 PWA 才觸發震動與 Toast
-    if (!isPWA) {
-        window.triggerHaptic('light');
-        if (window.showSystemToast) {
-            const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>下載中</span>`;
-            window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', filename, 2000, 'success');
-        }
-    }
-    
-    try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("網路連線失敗");
-        
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = blobUrl;
-        a.download = filename;
-        
-        document.body.appendChild(a);
-        a.click();
-        
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(blobUrl);
-        }, 100);
-        
-        if (!isPWA) window.triggerHaptic('success');
-    } catch (error) {
-        console.error("底層下載失敗，改用新分頁開啟:", error);
-        window.open(url, '_blank'); 
-    }
+    window.triggerSecureDownload(url, filename);
 };
 
 
