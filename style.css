@@ -1994,6 +1994,11 @@ body.is-touch-device [data-tooltip]::before {
     display: none !important; 
 }
 
+/* ✨ 新增這段：強制觸控裝置隱藏桌面專屬元素，徹底解決平板穿透問題！ */
+body.is-touch-device .desktop-only {
+    display: none !important;
+}
+
 /* 2. Lightbox 收合工具列 (觸控版彈出選單) */
 body.is-touch-device .toolbox-toggle-btn { display: flex; }
 body.is-touch-device .desktop-only-divider { display: none; }
@@ -2565,4 +2570,39 @@ body {
 .theme-btn {
     top: max(1.5rem, calc(var(--safe-top) + 0.5rem)) !important;
     right: max(6.5rem, calc(var(--safe-right) + 6.5rem)) !important;
+}
+
+/* ========================================================================== */
+/* ✨ 修復 iPad PWA 狀態列透出底層文字 (Modal 頂部防漏底優化)                   */
+/* ========================================================================== */
+
+/* 1. 讓 iPad (平板) 的 Modal 也能像 iPhone 一樣撐滿高度，消除 90vh 造成的縫隙 */
+@media (min-width: 601px) and (max-width: 1024px) {
+    .modal-content {
+        height: 100% !important;
+        max-height: 100% !important;
+        
+        /* 既然觸頂了，就拔除外框圓角，讓視覺完美貼合原生 App 邊緣 */
+        border-top-left-radius: 0 !important;
+        border-top-right-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+    }
+    
+    .modal-top-bar {
+        border-top-left-radius: 0 !important;
+        border-top-right-radius: 0 !important;
+    }
+}
+
+/* 2. 絕對領域防護盾：在 Modal 遮罩的「系統安全區」墊上一層實體色塊，徹底阻絕文字透光 */
+.modal-overlay::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--safe-top);
+    background: var(--bg); /* 使用純色背景完全遮擋底層 */
+    z-index: 2000;
 }

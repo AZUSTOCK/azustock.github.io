@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.6.6",          // 目前系統版本號
+    VERSION: "U1.5.6.7",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1511,12 +1511,15 @@ function renderPDFIframe(href, altText) {
             </div>
             
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <button class="mermaid-btn desktop-only" data-tooltip="重新整理" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
+                <!-- ✨ 移除 desktop-only，讓手機/平板都能看見重整按鈕 -->
+                <button class="mermaid-btn" data-tooltip="重新整理" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
                     ${GLOBAL_SVGS.mermaidReload}
                 </button>
+                
+                <!-- 觸控裝置隱藏這條分割線 -->
                 <div class="desktop-only" style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
                 
-                <!-- ✨ 加上 desktop-only 類別，觸控裝置下不顯示此按鈕 -->
+                <!-- 觸控裝置隱藏「新分頁開啟」按鈕 -->
                 <button class="mermaid-btn desktop-only" data-tooltip="新分頁開啟" onclick="event.stopPropagation(); window.open('${href}', '_blank');">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </button>
@@ -1673,15 +1676,15 @@ renderer.code = function(token_or_code, language, isEscaped) {
                     </button>
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
                     
-                    <!-- ✨ 把原本這條線標上 desktop-only-divider (或者你直接用 css 隱藏) -->
+                    <!-- ✨ 這條線會被觸控裝置隱藏 (解決圖片中多出來的那條線) -->
                     <div class="desktop-only" style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
                     
-                    <!-- 新增的重新整理按鈕 -->
+                    <!-- 重新整理按鈕 -->
                     <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="重新整理">${GLOBAL_SVGS.mermaidReload}</button>
                     
                     <button class="mermaid-btn desktop-only" data-tooltip="下載" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
                     
-                    <!-- ✨ 這條是「重整」和「全螢幕」之間的線，不加上 desktop-only，讓它永遠顯示 -->
+                    <!-- ✨ 這條線沒有 desktop-only，所以在觸控裝置上會完美保留在「重整」與「全螢幕」之間 -->
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
                     
                     <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
