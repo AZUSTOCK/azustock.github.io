@@ -2440,13 +2440,17 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
 .sys-toast-box.error { background: var(--error-color); box-shadow: 0 4px 20px var(--error-shadow); }
 .sys-toast-box.success { background: var(--accent); box-shadow: 0 4px 20px var(--glow-1); }
 
+
 /* ========================================================================== */
 /* 📱 PWA 與安全可視區 (Safe Area & Viewport) 引擎處理                          */
 /* ========================================================================== */
 :root {
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
     --vv-height: 100dvh;
+    --vv-width: 100dvw;
 }
 
 /* 全域限制在頂部工具列下方，完美避開瀏海與 iPad 系統狀態列 */
@@ -2454,26 +2458,94 @@ body {
     padding-top: var(--safe-top) !important;
 }
 
-/* 讓所有滿版遮罩精準對齊安全區，高度隨螢幕動態調整，徹底消滅漏底與穿透 */
+/* ✨ 讓所有滿版遮罩「從頭頂開始」蓋滿，確保毛玻璃與底色涵蓋狀態列 */
 .modal-overlay, 
 #lightbox-modal, 
 #sys-reboot-screen, 
 #pdf-action-modal, 
-#sensitive-modal-overlay {
-    top: var(--safe-top) !important;
-    height: calc(var(--vv-height) - var(--safe-top)) !important;
+#sensitive-modal-overlay,
+.fullscreen-nav {
+    top: 0 !important;
+    left: 0 !important;
+    width: var(--vv-width) !important;
+    height: var(--vv-height) !important;
     position: fixed !important;
 }
 
-/* 確保浮動按鈕在橫向、直向轉向時能找到正確的底部安全位置 */
-.btt-btn, 
-.filter-toast, 
-#sys-global-toast,
-#lightbox-caption {
-    bottom: calc(20px + var(--safe-bottom)) !important;
+/* ✨ 遮罩維持滿版，只將內部的容器往下推，完美避開狀態列 */
+.fullscreen-nav,
+.modal-overlay {
+    padding-top: var(--safe-top) !important;
+    box-sizing: border-box;
 }
 
-/* 影片全螢幕退出按鈕的頂部安全位置 */
+@media (max-width: 600px) {
+    .modal-content {
+        max-height: 100% !important; /* 交由外層 flex 容器限制最大高度 */
+    }
+}
+
+/* Lightbox 工具列漸層補全 */
+#lightbox-toolbar {
+    top: 0 !important;
+    padding-top: calc(15px + var(--safe-top)) !important;
+    height: calc(70px + var(--safe-top)) !important;
+}
+
+/* ==========================================
+   ✨ 浮動按鈕與 Toast 的「多維度安全邊界」引擎
+   (防護：橫轉直消失、左右瀏海遮擋、跨螢幕比例溢出)
+   ========================================== */
+
+/* 1. 返回頂部按鈕 (右下角) */
+.btt-btn {
+    right: max(2rem, calc(var(--safe-right) + 1rem)) !important;
+    bottom: max(2rem, calc(var(--safe-bottom) + 1rem)) !important;
+}
+@media (max-width: 500px) {
+    .btt-btn {
+        right: max(1rem, calc(var(--safe-right) + 1rem)) !important;
+        bottom: max(1.5rem, calc(var(--safe-bottom) + 1rem)) !important;
+    }
+    body:has(.filter-toast.active) .btt-btn { 
+        bottom: max(110px, calc(var(--safe-bottom) + 80px)) !important; 
+    }
+}
+
+/* 2. 影片全螢幕退出按鈕 (右上角) */
 .video-exit-fullscreen-btn {
-    top: calc(20px + var(--safe-top)) !important;
+    top: max(20px, calc(var(--safe-top) + 10px)) !important;
+    right: max(20px, calc(var(--safe-right) + 20px)) !important;
+}
+
+/* 3. 系統狀態 Toast (右上角) */
+#sys-global-toast {
+    top: max(90px, calc(var(--safe-top) + 80px)) !important;
+    right: max(30px, calc(var(--safe-right) + 20px)) !important;
+    /* 加入真實寬度上限，避免轉直向時被撐出畫面外 */
+    max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 60px) !important;
+}
+
+/* 4. 下方跑馬燈過濾 Toast (置中) */
+.filter-toast {
+    bottom: max(50px, calc(var(--safe-bottom) + 20px)) !important;
+    left: var(--safe-left) !important;
+    right: var(--safe-right) !important;
+    max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px) !important;
+}
+
+/* 5. Lightbox 圖片說明膠囊 (置中) */
+#lightbox-caption {
+    bottom: max(60px, calc(var(--safe-bottom) + 30px)) !important;
+    max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px) !important;
+}
+
+/* 6. 右上角主選單與主題切換按鈕 */
+.menu-btn {
+    top: max(1.5rem, calc(var(--safe-top) + 0.5rem)) !important;
+    right: max(1.5rem, calc(var(--safe-right) + 1rem)) !important;
+}
+.theme-btn {
+    top: max(1.5rem, calc(var(--safe-top) + 0.5rem)) !important;
+    right: max(6.5rem, calc(var(--safe-right) + 6rem)) !important;
 }

@@ -1247,9 +1247,13 @@ window.downloadMermaidPNG = function(btn) {
 // ✨ 全域視窗安全高度與座標引擎 (解決 iPad/iOS PWA 遮罩漏底與工具列偏移)
 // ==========================================
 window.adjustModalViewports = function() {
-    // ✨ 加入 Fallback 機制，防止極端情況下 visualViewport 異常
+    // 同時抓取真實的高度與寬度
     const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+    
+    // 即時注入給 CSS 使用
     document.documentElement.style.setProperty('--vv-height', vh + 'px');
+    document.documentElement.style.setProperty('--vv-width', vw + 'px');
 };
 
 // ✨ 專治蘋果 iOS/iPadOS 旋轉延遲的「多段式校正引擎」
@@ -1491,29 +1495,30 @@ function renderPDFIframe(href, altText) {
     `;
 
     return `
-    <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; overflow: hidden; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
+    <!-- ✨ 修改 1：將 overflow: hidden 改為 visible，允許 Tooltip 突破邊界顯示 -->
+    <div class="pdf-container" style="margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; overflow: visible; box-shadow: 0 4px 15px var(--shadow-base); background: var(--bg); transition: transform 0.2s ease;" 
         onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }"
         onpointerdown="if(document.body.classList.contains('is-touch-device')) this.style.transform='scale(0.98)';"
         onpointerup="this.style.transform='none';"
         onpointerleave="this.style.transform='none';">
-        <div style="background: var(--glass-bg); padding: 0.6rem 1.2rem; border-bottom: 1px solid var(--card-border); font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
+        
+        <!-- ✨ 修改 2：加上 position: relative; z-index: 10; 確保 Tooltip 蓋過 iframe，並補上頂部圓角 -->
+        <div style="position: relative; z-index: 10; background: var(--glass-bg); padding: 0.6rem 1rem; border-bottom: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; font-family: monospace; font-size: 0.9rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center;">
+            
             <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);">
                 ${GLOBAL_SVGS.docIcon}
                 <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
             </div>
             
-            <!-- ✨ 擴充右側工具區，加入重試按鈕 -->
-            <div style="display: flex; gap: 1.2rem; align-items: center;">
-                <a href="javascript:void(0)" class="pdf-ext-btn desktop-only" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" 
-                   onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" 
-                   onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);" title="重新載入 PDF">
-                    ${GLOBAL_SVGS.retry} 重試
-                </a>
-                <a href="${href}" target="_blank" class="pdf-ext-btn" style="color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.2s ease;" 
-                   onmouseover="this.style.color='var(--accent-2)'" onmouseout="this.style.color='var(--muted)'" 
-                   onclick="event.stopPropagation();">
-                    ${GLOBAL_SVGS.newTab} 新分頁開啟
-                </a>
+            <!-- ✨ 擴充右側工具區，改為與 Mermaid 同款的方塊按鈕與分隔線 -->
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button class="mermaid-btn desktop-only" data-tooltip="重新整理" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
+                    ${GLOBAL_SVGS.mermaidReload}
+                </button>
+                <div class="desktop-only" style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
+                <button class="mermaid-btn" data-tooltip="新分頁開啟" onclick="event.stopPropagation(); window.open('${href}', '_blank');">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </button>
             </div>
         </div>
         <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
@@ -1542,11 +1547,14 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
     // ✨ 影音專屬：重載腳本 (加上時間戳防快取)
     const reloadScript = `event.stopPropagation(); const media = this.closest('.media-container-wrapper').querySelector('.md-video, .md-audio'); const source = media.querySelector('source'); const orig = source.src.split('?retry=')[0].split('&retry=')[0]; const sep = orig.includes('?') ? '&' : '?'; source.src = orig + sep + 'retry=' + new Date().getTime(); media.load();`;
 
-    // ✨ 注入重新整理按鈕
+    // ✨ 注入重新整理按鈕，並在有全螢幕按鈕時加入分隔線
     const actionBtns = `
         <div style="display: flex; gap: 0.5rem; align-items: center;">
             <button class="mermaid-btn" data-tooltip="重新整理" onclick="${reloadScript}">${GLOBAL_SVGS.mermaidReload}</button>
-            ${isVideo ? `<button class="mermaid-btn" data-tooltip="全螢幕檢視" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>` : ''}
+            ${isVideo ? `
+            <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
+            <button class="mermaid-btn" data-tooltip="全螢幕檢視" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>
+            ` : ''}
         </div>
     `;
 
