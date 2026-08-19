@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.6.3",          // 目前系統版本號
+    VERSION: "U1.5.6.4",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -57,7 +57,8 @@ const GLOBAL_SVGS = {
     // 📊 Mermaid 圖表工具列
     mermaidZoomIn: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
     mermaidZoomOut: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>`,
-    mermaidReset: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
+    mermaidReset: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"></path></svg>`,
+    mermaidReload: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
     mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`,
 
     // 🔔 系統提示與狀態圖示 (新增收斂)
@@ -1538,9 +1539,16 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
         ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
         : `<audio preload="metadata" controls class="md-audio" style="margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none;"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
 
-    const actionBtn = isVideo 
-        ? `<button class="mermaid-btn" data-tooltip="全螢幕檢視" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>` 
-        : '';
+    // ✨ 影音專屬：重載腳本 (加上時間戳防快取)
+    const reloadScript = `event.stopPropagation(); const media = this.closest('.media-container-wrapper').querySelector('.md-video, .md-audio'); const source = media.querySelector('source'); const orig = source.src.split('?retry=')[0].split('&retry=')[0]; const sep = orig.includes('?') ? '&' : '?'; source.src = orig + sep + 'retry=' + new Date().getTime(); media.load();`;
+
+    // ✨ 注入重新整理按鈕
+    const actionBtns = `
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="mermaid-btn" data-tooltip="重新整理" onclick="${reloadScript}">${GLOBAL_SVGS.mermaidReload}</button>
+            ${isVideo ? `<button class="mermaid-btn" data-tooltip="全螢幕檢視" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>` : ''}
+        </div>
+    `;
 
     return `
     <div class="media-container-wrapper">
@@ -1548,7 +1556,7 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
             <div style="font-family: monospace; font-size: 0.9rem; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 8px;">
                 ${iconSvg}<span style="transform: translateY(1px);">${displayTitle}</span>
             </div>
-            ${actionBtn}
+            ${actionBtns}
         </div>
         ${mediaTag}
     </div>`;
@@ -1656,6 +1664,10 @@ renderer.code = function(token_or_code, language, isEscaped) {
                     </button>
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
+                    
+                    <!-- ✨ 新增的重新整理按鈕 -->
+                    <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="重新整理">${GLOBAL_SVGS.mermaidReload}</button>
+                    
                     <button class="mermaid-btn" data-tooltip="下載" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
                     <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
@@ -4227,6 +4239,48 @@ window.zoomMermaid = function(btn, action) {
     mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
 };
 
+// ==========================================
+// ✨ Mermaid 重新整理引擎 (主動重繪)
+// ==========================================
+window.reloadMermaid = function(btn) {
+    const container = btn.closest('.mermaid-container');
+    const mermaidDiv = container.querySelector('.mermaid');
+    if (!mermaidDiv) return;
+
+    // 重置縮放與平移狀態
+    container.dataset.zoom = 1;
+    container.dataset.x = 0;
+    container.dataset.y = 0;
+    
+    // 加上載入中的透明度特效
+    mermaidDiv.style.opacity = '0.3';
+    
+    // 給 UI 緩衝時間，再執行重繪
+    setTimeout(() => {
+        // 從隱藏屬性抓回最乾淨的原始語法
+        const originalText = decodeURIComponent(mermaidDiv.getAttribute('data-original-text') || '');
+        if (originalText) {
+            // 拔除已處理標記，強制讓 Mermaid 把它當成新的
+            mermaidDiv.removeAttribute('data-processed');
+            mermaidDiv.innerHTML = window.processMermaidCssVars(originalText);
+            mermaidDiv.style.transform = 'translate(0px, 0px) scale(1)';
+            
+            // 重新呼叫底層渲染
+            if (window.mermaid) {
+                window.mermaid.run({ querySelector: '.mermaid' })
+                    .catch(e => console.warn('Mermaid reload failed:', e))
+                    .finally(() => {
+                        mermaidDiv.style.opacity = '1';
+                        // 重新綁定拖曳功能
+                        window.initMermaidDrag();
+                    });
+            }
+        } else {
+            mermaidDiv.style.opacity = '1';
+        }
+    }, 150);
+};
+
 // ✨ 全新：完美偽裝成 Lightbox 的 Mermaid 全螢幕引擎
 window.fullscreenMermaid = function(btn) {
     const container = btn.closest('.mermaid-container');
@@ -4291,9 +4345,10 @@ window.initMermaidDrag = function() {
         const mermaidDiv = container.querySelector('.mermaid');
         if (!wrapper || !mermaidDiv) return;
 
-        // ✨ 手機版專屬：點擊直接進入大圖預覽
+        // ✨ 觸控版專屬：點擊直接進入大圖預覽
         wrapper.addEventListener('click', (e) => {
-            if (window.innerWidth <= 600) {
+            // 將原本的寬度判斷改為觸控裝置判斷
+            if (document.body.classList.contains('is-touch-device')) {
                 const btn = container.querySelector('.mermaid-btn[onclick*="fullscreenMermaid"]');
                 if (btn) btn.click();
             }
@@ -4305,7 +4360,7 @@ window.initMermaidDrag = function() {
 
         // 1. 滑鼠與觸控平移 (Pan)
         wrapper.addEventListener('pointerdown', (e) => {
-            if (window.innerWidth <= 600) return; // 手機版不啟用內嵌拖曳
+            if (document.body.classList.contains('is-touch-device')) return;
             if (e.pointerType === 'mouse' && e.button !== 0) return;
             
             isDragging = true;
@@ -4350,7 +4405,7 @@ window.initMermaidDrag = function() {
 
         // 2. 滾輪對準游標中心縮放
         wrapper.addEventListener('wheel', (e) => {
-            if (window.innerWidth <= 600) return; 
+            if (document.body.classList.contains('is-touch-device')) return;
             e.preventDefault();
             let zoom = parseFloat(container.dataset.zoom) || 1;
             let x = parseFloat(container.dataset.x) || 0;

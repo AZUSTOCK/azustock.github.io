@@ -1983,9 +1983,15 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 body.is-touch-device .desktop-only-divider { display: none; }
 body.is-touch-device .toolbar-right { position: relative; }
 
+/* 2. Lightbox 收合工具列 (觸控版彈出選單) */
 body.is-touch-device .toolbox-group { 
     position: absolute; top: 100%; margin-top: 15px; right: 0; 
     flex-direction: row; align-items: center; justify-content: center; 
+    
+    /* ✨ 加入這兩行魔法：允許彈性換行，並設定安全邊界防超出螢幕 */
+    flex-wrap: wrap;
+    max-width: calc(100vw - 32px);
+    
     background: var(--glass-bg); backdrop-filter: blur(15px); padding: 8px; 
     border-radius: 12px; border: 1px solid var(--glass-border); 
     box-shadow: 0 10px 30px var(--shadow-base); width: max-content; 
@@ -1999,13 +2005,9 @@ body.is-touch-device .toolbox-group.is-open {
 }
 
 /* 3. Mermaid 觸控版簡化為「預覽模式」 */
-body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]),
+body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]):not([onclick*="reloadMermaid"]),
 body.is-touch-device .mermaid-btns div[style*="width: 1px"] {
-    display: none !important; /* 隱藏除了放大檢視以外的所有按鈕與分隔線 */
-}
-body.is-touch-device .mermaid-wrapper {
-    touch-action: auto !important; /* 解除觸控鎖定，讓使用者可以順暢上下滑動整篇文章 */
-    cursor: pointer !important;    /* 將游標改為手指，提示可以點擊 */
+    display: none !important; /* 隱藏除了放大檢視與重新整理以外的所有按鈕與分隔線 */
 }
 
 /* 8-1. 桌機到平板的過渡 (max-width: 600px) */
