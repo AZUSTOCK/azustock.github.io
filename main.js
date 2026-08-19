@@ -2515,6 +2515,12 @@ async function loadProjects() {
                         </div>展開系列 (${visibleCount})</div>`;
                 } else if (data.link) {
                     // 2. 如果是外部連結 (套用外部連結與箭頭 SVG)
+                    card.style.cursor = 'pointer';
+                    card.onclick = () => { 
+                        if (window.currentActiveTag) window.clearFilter(); 
+                        window.open(data.link, '_blank'); // 開啟新分頁前往外部專案
+                    };
+                    
                     actionText = `<div class="action-btn" style="margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease;">
                         ${GLOBAL_SVGS.linkLg} 
                         前往外部專案 <span class="action-arrow" data-dir="up-right" style="display: flex; align-items: center; transition: transform 0.2s ease;">
