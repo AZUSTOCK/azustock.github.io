@@ -2379,3 +2379,41 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
 }
 .sys-toast-box.error { background: var(--error-color); box-shadow: 0 4px 20px var(--error-shadow); }
 .sys-toast-box.success { background: var(--accent); box-shadow: 0 4px 20px var(--glow-1); }
+
+/* ========================================================================== */
+/* 📱 PWA 與安全可視區 (Safe Area & Viewport) 引擎處理                          */
+/* ========================================================================== */
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --vv-height: 100dvh;
+}
+
+/* 全域限制在頂部工具列下方，完美避開瀏海與 iPad 系統狀態列 */
+body {
+    padding-top: var(--safe-top) !important;
+}
+
+/* 讓所有滿版遮罩精準對齊安全區，高度隨螢幕動態調整，徹底消滅漏底與穿透 */
+.modal-overlay, 
+#lightbox-modal, 
+#sys-reboot-screen, 
+#pdf-action-modal, 
+#sensitive-modal-overlay {
+    top: var(--safe-top) !important;
+    height: calc(var(--vv-height) - var(--safe-top)) !important;
+    position: fixed !important;
+}
+
+/* 確保浮動按鈕在橫向、直向轉向時能找到正確的底部安全位置 */
+.btt-btn, 
+.filter-toast, 
+#sys-global-toast,
+#lightbox-caption {
+    bottom: calc(20px + var(--safe-bottom)) !important;
+}
+
+/* 影片全螢幕退出按鈕的頂部安全位置 */
+.video-exit-fullscreen-btn {
+    top: calc(20px + var(--safe-top)) !important;
+}

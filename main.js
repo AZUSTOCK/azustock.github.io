@@ -1140,22 +1140,9 @@ window.downloadMermaidPNG = function(btn) {
 // ✨ 全域視窗安全高度與座標引擎 (解決 iPad/iOS PWA 遮罩漏底與工具列偏移)
 // ==========================================
 window.adjustModalViewports = function() {
-    const lightbox = document.getElementById('lightbox-modal');
-    const mdModal = document.getElementById('md-modal');
-    
     if (window.visualViewport) {
-        const vvHeight = window.visualViewport.height + 'px';
-        // ✨ 核心修復：精準抵消 iPadOS 多工工具列、虛擬鍵盤造成的視窗下壓位移
-        const vvTop = window.visualViewport.offsetTop + 'px'; 
-        
-        if (lightbox) {
-            lightbox.style.height = vvHeight;
-            lightbox.style.top = vvTop;
-        }
-        if (mdModal) {
-            mdModal.style.height = vvHeight;
-            mdModal.style.top = vvTop;
-        }
+        // 只更新高度，放棄容易造成永久位移 Bug 的 offsetTop，把定位權交還給 CSS 安全區
+        document.documentElement.style.setProperty('--vv-height', window.visualViewport.height + 'px');
     }
 };
 
@@ -1163,11 +1150,14 @@ window.adjustModalViewports = function() {
 // ✨ Lightbox 滾輪縮放、拖曳與多點觸控 (Pinch Zoom) 引擎
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. 綁定視窗動態追蹤
+    window.adjustModalViewports();
+
+    // 綁定視窗動態追蹤 (支援轉向、調整大小時重新計算)
+    window.addEventListener('resize', window.adjustModalViewports);
+    window.addEventListener('orientationchange', () => setTimeout(window.adjustModalViewports, 150));
+
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', window.adjustModalViewports);
-        window.visualViewport.addEventListener('scroll', window.adjustModalViewports);
-        setTimeout(window.adjustModalViewports, 100);
     }
 
     // 2. 觸控裝置偵測 (用於 CSS 的 is-touch-device 標籤)

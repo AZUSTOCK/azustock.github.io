@@ -11,7 +11,7 @@
 1. 
 
 ## fix
-1. mask in Tablet PWA
+1. PWA `window.adjustModalViewports`
 
 ## deprecate
 1. 
