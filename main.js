@@ -747,6 +747,9 @@ window.openLightbox = function(btn, event) {
         // 2. 顯示 Modal
         lightboxModal.classList.add('is-active');
 
+        // ✨ 彈窗首次開啟時，強制校正視窗座標，防漏底！
+        if (window.adjustModalViewports) window.adjustModalViewports();
+
         // ✨ 統一將圖片設定、載入與計算交給 View 更新器處理
         window.updateLightboxView();
 
@@ -1134,19 +1137,37 @@ window.downloadMermaidPNG = function(btn) {
 };
 
 // ==========================================
+// ✨ 全域視窗安全高度與座標引擎 (解決 iPad/iOS PWA 遮罩漏底與工具列偏移)
+// ==========================================
+window.adjustModalViewports = function() {
+    const lightbox = document.getElementById('lightbox-modal');
+    const mdModal = document.getElementById('md-modal');
+    
+    if (window.visualViewport) {
+        const vvHeight = window.visualViewport.height + 'px';
+        // ✨ 核心修復：精準抵消 iPadOS 多工工具列、虛擬鍵盤造成的視窗下壓位移
+        const vvTop = window.visualViewport.offsetTop + 'px'; 
+        
+        if (lightbox) {
+            lightbox.style.height = vvHeight;
+            lightbox.style.top = vvTop;
+        }
+        if (mdModal) {
+            mdModal.style.height = vvHeight;
+            mdModal.style.top = vvTop;
+        }
+    }
+};
+
+// ==========================================
 // ✨ Lightbox 滾輪縮放、拖曳與多點觸控 (Pinch Zoom) 引擎
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. 視窗安全高度計算 (修正工具列擋住問題)
-    function adjustLightboxHeight() {
-        const modal = document.getElementById('lightbox-modal');
-        if (window.visualViewport && modal) {
-            modal.style.height = window.visualViewport.height + 'px';
-        }
-    }
+    // 1. 綁定視窗動態追蹤
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', adjustLightboxHeight);
-        window.visualViewport.addEventListener('scroll', adjustLightboxHeight);
+        window.visualViewport.addEventListener('resize', window.adjustModalViewports);
+        window.visualViewport.addEventListener('scroll', window.adjustModalViewports);
+        setTimeout(window.adjustModalViewports, 100);
     }
 
     // 2. 觸控裝置偵測 (用於 CSS 的 is-touch-device 標籤)
@@ -2724,6 +2745,9 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
         modalBody.classList.remove('content-fade-out');
         if (topLeft) topLeft.classList.remove('content-fade-out');
         if (tocMount) tocMount.classList.remove('content-fade-out');
+        
+        // ✨ 彈窗首次開啟時，強制校正視窗座標，防漏底！
+        if (window.adjustModalViewports) window.adjustModalViewports();
     }
 }
 
