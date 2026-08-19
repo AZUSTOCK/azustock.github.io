@@ -1193,9 +1193,25 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 /* ==========================================
    ✨ 摺疊區塊 (Details / Accordion) 排版
    ========================================== */
+.md-details {
+    margin: 1.5rem 0;
+    background: var(--bg);
+    transition: all 0.3s var(--ease-smooth);
+}
+.md-details-content {
+    background: var(--glass-bg);
+}
+
+/* Hover 時的高亮互動 */
+.md-details summary:hover {
+    background: var(--tag-bg);
+    color: var(--accent-2);
+}
+
 .md-details summary::-webkit-details-marker { display: none; }
-.md-details summary { list-style: none; }
-.md-details[open] .details-icon { transform: rotate(90deg); color: var(--accent); }
+.md-details summary { list-style: none; border-bottom: 2px solid var(--card-border);}
+.md-details .details-icon { color: var(--accent); }
+.md-details[open] .details-icon { transform: rotate(90deg); color: var(--accent-2); }
 .md-details-content > *:first-child { margin-top: 0; }
 .md-details-content > *:last-child { margin-bottom: 0; }
 
@@ -2005,9 +2021,8 @@ body.is-touch-device .toolbox-group.is-open {
 }
 
 /* 3. Mermaid 觸控版簡化為「預覽模式」 */
-body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]):not([onclick*="reloadMermaid"]),
-body.is-touch-device .mermaid-btns div[style*="width: 1px"] {
-    display: none !important; /* 隱藏除了放大檢視與重新整理以外的所有按鈕與分隔線 */
+body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]):not([onclick*="reloadMermaid"]) {
+    display: none !important; /* 隱藏除了放大檢視與重新整理以外的所有按鈕 */
 }
 
 /* 8-1. 桌機到平板的過渡 (max-width: 600px) */
@@ -2449,7 +2464,9 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
+    --vv-height: 100vh;
     --vv-height: 100dvh;
+    --vv-width: 100vw;
     --vv-width: 100dvw;
 }
 
@@ -2458,7 +2475,7 @@ body {
     padding-top: var(--safe-top) !important;
 }
 
-/* ✨ 讓所有滿版遮罩「從頭頂開始」蓋滿，確保毛玻璃與底色涵蓋狀態列 */
+/* ✨ 讓所有滿版遮罩「從頭頂 0px 開始」蓋滿，確保毛玻璃與底色涵蓋狀態列 */
 .modal-overlay, 
 #lightbox-modal, 
 #sys-reboot-screen, 
@@ -2474,22 +2491,23 @@ body {
 
 /* ✨ 遮罩維持滿版，只將內部的容器往下推，完美避開狀態列 */
 .fullscreen-nav,
-.modal-overlay {
+.modal-overlay,
+#pdf-action-modal {
     padding-top: var(--safe-top) !important;
-    box-sizing: border-box;
+    box-sizing: border-box; 
 }
 
-@media (max-width: 600px) {
-    .modal-content {
-        max-height: 100% !important; /* 交由外層 flex 容器限制最大高度 */
-    }
-}
-
-/* Lightbox 工具列漸層補全 */
+/* ✨ Lightbox 工具列漸層補全 */
 #lightbox-toolbar {
     top: 0 !important;
     padding-top: calc(15px + var(--safe-top)) !important;
     height: calc(70px + var(--safe-top)) !important;
+}
+
+@media (max-width: 600px) {
+    .modal-content {
+        max-height: 100% !important; 
+    }
 }
 
 /* ==========================================
@@ -2522,7 +2540,6 @@ body {
 #sys-global-toast {
     top: max(90px, calc(var(--safe-top) + 80px)) !important;
     right: max(30px, calc(var(--safe-right) + 20px)) !important;
-    /* 加入真實寬度上限，避免轉直向時被撐出畫面外 */
     max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 60px) !important;
 }
 
@@ -2543,9 +2560,9 @@ body {
 /* 6. 右上角主選單與主題切換按鈕 */
 .menu-btn {
     top: max(1.5rem, calc(var(--safe-top) + 0.5rem)) !important;
-    right: max(1.5rem, calc(var(--safe-right) + 1rem)) !important;
+    right: max(1.5rem, calc(var(--safe-right) + 1.5rem)) !important;
 }
 .theme-btn {
     top: max(1.5rem, calc(var(--safe-top) + 0.5rem)) !important;
-    right: max(6.5rem, calc(var(--safe-right) + 6rem)) !important;
+    right: max(6.5rem, calc(var(--safe-right) + 6.5rem)) !important;
 }

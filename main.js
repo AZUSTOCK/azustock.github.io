@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.6.5",          // 目前系統版本號
+    VERSION: "U1.5.6.6",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1510,13 +1510,14 @@ function renderPDFIframe(href, altText) {
                 <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
             </div>
             
-            <!-- ✨ 擴充右側工具區，改為與 Mermaid 同款的方塊按鈕與分隔線 -->
             <div style="display: flex; gap: 0.5rem; align-items: center;">
                 <button class="mermaid-btn desktop-only" data-tooltip="重新整理" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
                     ${GLOBAL_SVGS.mermaidReload}
                 </button>
                 <div class="desktop-only" style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-                <button class="mermaid-btn" data-tooltip="新分頁開啟" onclick="event.stopPropagation(); window.open('${href}', '_blank');">
+                
+                <!-- ✨ 加上 desktop-only 類別，觸控裝置下不顯示此按鈕 -->
+                <button class="mermaid-btn desktop-only" data-tooltip="新分頁開啟" onclick="event.stopPropagation(); window.open('${href}', '_blank');">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </button>
             </div>
@@ -1538,7 +1539,7 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
     const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
     const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
     const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
-    const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block; border-bottom-left-radius: 0.8rem; border-bottom-right-radius: 0.8rem;";
+    const videoStyle = "margin: 0; border: none; box-shadow: none; width: 100%; height: auto; aspect-ratio: 16/9; background: #000; object-fit: contain; display: block;";
 
     const mediaTag = isVideo 
         ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video" style="${videoStyle}"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
@@ -1671,13 +1672,18 @@ renderer.code = function(token_or_code, language, isEscaped) {
                         </svg>
                     </button>
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
-                    <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
                     
-                    <!-- ✨ 新增的重新整理按鈕 -->
+                    <!-- ✨ 把原本這條線標上 desktop-only-divider (或者你直接用 css 隱藏) -->
+                    <div class="desktop-only" style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
+                    
+                    <!-- 新增的重新整理按鈕 -->
                     <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="重新整理">${GLOBAL_SVGS.mermaidReload}</button>
                     
-                    <button class="mermaid-btn" data-tooltip="下載" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
+                    <button class="mermaid-btn desktop-only" data-tooltip="下載" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
+                    
+                    <!-- ✨ 這條是「重整」和「全螢幕」之間的線，不加上 desktop-only，讓它永遠顯示 -->
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
+                    
                     <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
@@ -2218,11 +2224,17 @@ document.addEventListener('DOMContentLoaded', () => {
 // === 2. 返回頂部 (Back to Top) 邏輯 ===
 const bttBtn = document.getElementById('back-to-top');
 window.addEventListener('scroll', () => {
-    bttBtn.classList.toggle('visible', window.scrollY > 300);
+    // 只要往下捲動超過 300px，就加上 visible，讓它浮現！
+    if (bttBtn) {
+        bttBtn.classList.toggle('visible', window.scrollY > 300);
+    }
 });
-bttBtn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-});
+
+if (bttBtn) {
+    bttBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+}
 
 // === 3. JSON 資料載入與卡片動態生成 ===
 async function loadProjects() {
@@ -2822,6 +2834,18 @@ if (!window.modalBodyObserver) {
             } else {
                 modalContainer.style.transition = lockedTransition;
             }
+        }
+        
+        // ✨ 核心升級：只要內文高度改變 (包含摺疊區塊開關、圖片載入撐開版面)
+        // 就主動觸發一個捲動事件，強迫進度條重新計算正確的百分比！
+        if (modalContainer) {
+            modalContainer.dispatchEvent(new Event('scroll'));
+        }
+        
+        // 如果有直書模式的區塊，也一併推動進度條更新
+        const verticalWrappers = document.querySelectorAll('.vertical-wrapper');
+        if (verticalWrappers.length > 0) {
+            verticalWrappers.forEach(w => w.dispatchEvent(new Event('scroll')));
         }
     });
     window.modalBodyObserver.observe(modalBody);

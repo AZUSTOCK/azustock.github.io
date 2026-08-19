@@ -9,7 +9,7 @@
 2. `handleOrientationChange`
 
 ## adjust
-1. 
+1. detail block css
 
 ## fix
 1. PWA `window.adjustModalViewports`
