@@ -7,7 +7,7 @@
 * **風川梓** - System Architect
 
 ### Data
-* **Python** - Build Automation
+* **Python** - Core Automation Pipeline
 * **Pillow** - Image Processing
 
 ### Audio & Synthesizers
