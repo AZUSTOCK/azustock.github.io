@@ -594,7 +594,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     item_path = os.path.join(articles_dir, item)
                     if not os.path.isdir(item_path): continue
 
-                    stats["art_total"] += 1
                     art_detail_path = os.path.join(item_path, 'detail.json')
                     sub_data = load_detail_json(art_detail_path)
                     default_art_order, clean_art_title = parse_folder_meta(item)
@@ -619,6 +618,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 
                     if md_file_path:
                         try:
+                            stats["art_total"] += 1
                             art_id = clean_art_title
                             art_dir = os.path.join("api", proj_id, art_id)
                             os.makedirs(art_dir, exist_ok=True)
@@ -857,6 +857,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             if art_needs_update:
                                 with open(content_filepath, 'w', encoding='utf-8') as af:
                                     json.dump({"content": content, "hashes": current_hashes}, af, ensure_ascii=False)
+                                
+                                # ✨ 補上缺漏的 JSON 統計邏輯！
+                                if json_status == 'NEW': 
+                                    stats["json_new"] += 1
+                                else: 
+                                    stats["json_updated"] += 1
+                            else:
+                                stats["json_skipped"] += 1
+                                
                             valid_api_files.add(os.path.abspath(content_filepath))
 
                             article_obj = {
