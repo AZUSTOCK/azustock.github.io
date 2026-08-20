@@ -1,12 +1,14 @@
-
 ### Core Infrastructure
 * **GitHub Pages** - Hosting & System Deployment
+* **GitHub Actions** - CI/CD Automation Pipeline
 * **Marked.js** - Markdown Rendering Engine
+* **Mermaid.js** - Diagram & Visualization Engine
 * **AI** - Code Implementation
 * **風川梓** - System Architect
 
-### Data & Algorithms
-* **Python & Pandas** - Data Analysis Pipeline
+### Data
+* **Python** - Core Automation Pipeline
+* **Pillow** - Image Processing
 
 ### Audio & Synthesizers
 * **OpenUtau** - Vocal Synthesis Core
@@ -15,7 +17,6 @@
 
 ### Sprcial Thanks
 * **はんごうすいはん** - Inspiration
-<br/>
 
 ---
 <div style="text-align: center; margin-top: 2rem; line-height: 1.8;">

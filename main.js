@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.6.9",          // 目前系統版本號
+    VERSION: "U1.5.7",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -26,6 +26,7 @@ const CONFIG = {
 // ==========================================
 const GLOBAL_SVGS = {
     // 🔗 基礎圖示
+    meatballMenu: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle class="dot-1" cx="5" cy="12" r="2.5"/><circle class="dot-2" cx="12" cy="12" r="2.5"/><circle class="dot-3" cx="19" cy="12" r="2.5"/></svg>`,
     link: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     linkLg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     extLinkSm: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
@@ -84,7 +85,7 @@ const GLOBAL_SVGS = {
 // 2. 外層陣列代表「全域排序」，排越前面的 Tag 會顯示在卡片越左邊
 // 將 MAJOR 與 HOTFIX 放在最前面，確保它們不會被其他標籤蓋掉
 window.STATUS_LIST = [
-    ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED'], 
+    ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED'], 
     ['WIP'], 
     ['OC'],
     ['DEV']
@@ -509,20 +510,26 @@ window.downloadViaBlob = async function(url, filename, isNewTab = false) {
     }
 };
 
-// 3. 整合震動與 Toast 的通用安全下載器
-window.triggerSecureDownload = async function(url, filename) {
-    const isPWA = window.isPWAEnvironment();
-    if (!isPWA) {
-        window.triggerHaptic('light');
-        if (window.showSystemToast) {
-            const downloadTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;">${GLOBAL_SVGS.jumpDown} 下載中</span>`;
-            window.showSystemToast(downloadTitle, '正在取得檔案，請稍候...', filename, 2000, 'success');
-        }
+// 3. 整合震動與 Toast 的通用安全下載器 / 開新分頁引擎
+window.triggerSecureDownload = async function(url, filename, isNewTab = false) {
+    window.triggerHaptic('light');
+    
+    // ✨ PWA 與手機版都會顯示載入提示，提升網路不穩時的體驗
+    if (window.showSystemToast) {
+        const actionText = isNewTab ? '開啟中' : '下載中';
+        const iconSvg = isNewTab ? GLOBAL_SVGS.newTab : GLOBAL_SVGS.jumpDown;
+        const toastTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;">${iconSvg} ${actionText}</span>`;
+        
+        window.showSystemToast(toastTitle, '正在取得檔案，請稍候...', filename || '處理中...', 3000, 'success');
     }
     
-    const success = await window.downloadViaBlob(url, filename);
-    if (success && !isPWA) window.triggerHaptic('success');
-    if (!success) window.open(url, '_blank'); // 失敗則退回原生開啟
+    const success = await window.downloadViaBlob(url, filename, isNewTab);
+    
+    if (success) {
+        window.triggerHaptic('success');
+    } else {
+        window.open(url, '_blank'); // 失敗則退回原生開啟
+    }
 };
 
 // 4. 卡片定位後的高光閃爍特效器
@@ -589,13 +596,22 @@ window.handleImageError = function(img) {
     img.classList.remove('is-loading');
     img.classList.add('is-broken');
     
+    // 換上透明 SVG 讓 CSS 破圖背景透出來
+    img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
+
+    // ✨ 核心判定：排除目錄頁縮圖 (.article-item-cover) 與其他非內文圖片
+    // 只有當圖片位於內文 (.markdown-body) 或是 Lightbox，且「絕對不是」目錄清單縮圖時才允許重試
+    const isContentImage = (img.closest('.markdown-body') !== null || img.id === 'lightbox-img') && !img.classList.contains('article-item-cover') && !img.classList.contains('card-image');
+    if (!isContentImage) {
+        img.style.cursor = 'default';
+        return; // 提早結束，不綁定重試事件！
+    }
+
     // ✨ 移除原生 tooltip，改由 JS 動態生成懸浮膠囊
     img.removeAttribute('title'); 
     img.style.cursor = 'pointer';
-    
-    img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
 
-    // ✨ 動態插入高質感的重試懸浮提示膠囊
+    // 動態插入高質感的重試懸浮提示膠囊
     let retryHint = img.parentNode.querySelector('.img-retry-hint');
     if (!retryHint) {
         retryHint = document.createElement('div');
@@ -612,14 +628,14 @@ window.handleImageError = function(img) {
         img.parentNode.insertBefore(retryHint, img.nextSibling);
     }
 
-    // ✨ 建立捕獲階段的點擊攔截器 (阻斷 Lightbox 開啟，優先執行重試)
+    // 建立捕獲階段的點擊攔截器 (阻斷 Lightbox 開啟，優先執行重試)
     const retryHandler = function(e) {
         e.preventDefault();
         e.stopImmediatePropagation();
         
         img.removeEventListener('click', retryHandler, true);
         
-        // ✨ 動畫回饋：讓膠囊 Q 彈縮小並淡出
+        // 動畫回饋：讓膠囊 Q 彈縮小並淡出
         if (retryHint) {
             retryHint.style.transition = 'transform 0.15s var(--ease-bounce), opacity 0.15s ease';
             retryHint.style.transform = 'translate(-50%, -50%) scale(0.85)';
@@ -1045,24 +1061,52 @@ window.lightboxAction = function(action, event) {
         if(action === 'reset') state.zoom = 1;
         state.x = 0; state.y = 0;
     } else if (action === 'reload') {
-        if (state.isDomMode) return; 
+        if (state.isDomMode) {
+            // ✨ Mermaid 圖表重整邏輯
+            const activeMermaid = document.getElementById('lightbox-active-mermaid');
+            if (activeMermaid && window.mermaid) {
+                // 1. 核心修復：重整瞬間，先將座標歸零，防止 Mermaid 在縮放狀態下重繪算錯邊界！
+                state.zoom = 1;
+                state.x = 0;
+                state.y = 0;
+                activeMermaid.style.transform = 'translate(0px, 0px) scale(1)';
+                
+                // 2. 加上載入中特效並執行重繪
+                activeMermaid.style.opacity = '0.3'; 
+                setTimeout(() => {
+                    const originalText = decodeURIComponent(activeMermaid.getAttribute('data-original-text') || '');
+                    if (originalText) {
+                        activeMermaid.removeAttribute('data-processed');
+                        activeMermaid.innerHTML = window.processMermaidCssVars(originalText);
+                        window.mermaid.run({ querySelector: '#lightbox-active-mermaid' })
+                            .catch(e => console.warn('Mermaid reload failed:', e))
+                            .finally(() => {
+                                activeMermaid.style.opacity = '1';
+                            });
+                    } else {
+                        activeMermaid.style.opacity = '1';
+                    }
+                }, 150);
+            }
+            return;
+        }
         
-        // ✨ 1. 更新當下狀態陣列裡的網址，加上時間戳防快取
+        // ✨ 一般圖片重整邏輯
+        // 1. 先更新圖片網址，加上時間戳強制繞過瀏覽器快取
         const currentItem = state.images[state.currentIndex];
         const origSrc = currentItem.src.split('?retry=')[0].split('&retry=')[0];
         const sep = origSrc.includes('?') ? '&' : '?';
         currentItem.src = origSrc + sep + 'retry=' + new Date().getTime();
         
-        // ✨ 2. 直接呼叫 update 引擎！它會幫我們完美處理所有的 CSS 狀態清除、重繪與 onerror 綁定
+        // 2. 再呼叫 update 引擎，讓它用「帶有新時間戳的網址」去重置畫面與座標並載入
         window.updateLightboxView();
         return;
     } else if (action === 'new-tab') {
         if (state.isDomMode) return;
         
         if (window.isPWAEnvironment()) {
-            window.downloadViaBlob(target.src, null, true).then(success => {
-                if (!success) window.open(target.src, '_blank');
-            });
+            // ✨ 直接套用統一的安全開啟引擎，自帶 Toast 與震動回饋！
+            window.triggerSecureDownload(target.src, 'image.webp', true);
         } else {
             window.open(target.src, '_blank');
         }
@@ -1076,16 +1120,24 @@ window.lightboxAction = function(action, event) {
 window.toggleLightboxTools = function(event) {
     if (event) event.stopPropagation();
     const toolbox = document.getElementById('lightbox-toolbox');
-    if (toolbox) toolbox.classList.toggle('is-open');
+    const btn = event ? event.currentTarget : null; // ✨ 抓取被點擊的按鈕
+    
+    if (toolbox) {
+        toolbox.classList.toggle('is-open');
+        if (btn) btn.classList.toggle('is-active'); // ✨ 同步切換狀態
+    }
 };
 
 window.closeLightbox = function() {
     const lightboxModal = document.getElementById('lightbox-modal');
     const toolbox = document.getElementById('lightbox-toolbox');
+    const toggleBtn = document.querySelector('.toolbox-toggle-btn'); // ✨ 抓取按鈕
+    
     if (lightboxModal) {
         lightboxModal.classList.remove('is-active');
         if (toolbox) toolbox.classList.remove('is-open');
-
+        if (toggleBtn) toggleBtn.classList.remove('is-active'); // ✨ 關閉時拔除狀態
+        
         setTimeout(() => {
             const lightboxImg = document.getElementById('lightbox-img');
             if (lightboxImg) {
@@ -1288,9 +1340,11 @@ document.addEventListener('DOMContentLoaded', () => {
                            (navigator.msMaxTouchPoints > 0));
     if (isTouchDevice) {
         document.body.classList.add('is-touch-device');
-        
-        // ✨ 終極魔法：掛上一個空的原生觸控監聽器，強制解鎖 iOS Safari 的 CSS :active 觸發機制！
         document.addEventListener('touchstart', function() {}, {passive: true});
+        
+        // ✨ 強制替換手機版工具列開關的圖示，確保結構可被 CSS 動畫精準控制
+        const toggleBtn = document.querySelector('.toolbox-toggle-btn');
+        if (toggleBtn) toggleBtn.innerHTML = GLOBAL_SVGS.meatballMenu;
     }
 
     // 3. ✨ Lightbox 多指觸控與拖曳引擎
@@ -1499,7 +1553,7 @@ function renderPDFIframe(href, altText) {
     <div class="pdf-container" 
         onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }">
         
-        <div class="pdf-container-header">
+        <div class="pdf-container-header" onclick="event.stopPropagation();">
             <div class="pdf-container-title">
                 ${GLOBAL_SVGS.docIcon}
                 <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
@@ -1552,7 +1606,7 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
 
     return `
     <div class="media-container-wrapper">
-        <div class="media-container-header">
+        <div class="media-container-header" onclick="event.stopPropagation();">
             <div class="media-container-title">
                 ${iconSvg}<span style="transform: translateY(1px);">${displayTitle}</span>
             </div>
@@ -1650,7 +1704,7 @@ renderer.code = function(token_or_code, language, isEscaped) {
 
         return `
         <div class="mermaid-container" data-zoom="1" data-x="0" data-y="0">
-            <div class="mermaid-toolbar">
+            <div class="mermaid-toolbar" onclick="event.stopPropagation();">
                 <span class="mermaid-title">${chartTitle}</span>
                 <div class="mermaid-btns">
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">${GLOBAL_SVGS.mermaidZoomIn}</button>
@@ -2673,7 +2727,10 @@ function hideSystemRebootScreen(isSuccess = true) {
     // 如果沒有遮罩 (一般訪客)，直接解除防護並返回
     if (!screen) {
         document.documentElement.classList.remove('sys-rebooting');
-        document.body.style.overflow = '';
+        // ✨ 修正：判斷沒有開啟任何 Modal 時，才恢復背景捲軸
+        if (!document.querySelector('.modal-overlay.active')) {
+            document.body.style.overflow = '';
+        }
         return;
     }
 
@@ -2693,7 +2750,11 @@ function hideSystemRebootScreen(isSuccess = true) {
     setTimeout(() => {
         // 瞬間拔除 HTML 的隱形斗篷，讓底層早就畫好的新版網站準備就緒
         document.documentElement.classList.remove('sys-rebooting');
-        document.body.style.overflow = '';
+        
+        // ✨ 修正：動畫結束後，同樣判斷沒有 Modal 時才恢復捲軸
+        if (!document.querySelector('.modal-overlay.active')) {
+            document.body.style.overflow = '';
+        }
 
         screen.style.transition = 'opacity 0.5s ease';
         screen.style.opacity = '0';
@@ -5257,9 +5318,9 @@ window.showPdfActionModal = function(href, title) {
 
     // 綁定事件
     overlay.querySelector('#pdf-view-btn').onclick = () => {
-        // ✨ 如果是 PWA，主按鈕的行為就是強制下載；反之才是開新分頁
+        // ✨ 如果是 PWA，檢視 (View) 其實是透過 Blob 新分頁開啟，所以傳入 true
         if (isPWA) {
-            window.downloadPdfDirectly(href, title);
+            window.downloadPdfDirectly(href, title, true);
         } else {
             window.open(href, '_blank');
         }
@@ -5268,7 +5329,8 @@ window.showPdfActionModal = function(href, title) {
 
     if (!isPWA) {
         overlay.querySelector('#pdf-download-btn').onclick = () => {
-            window.downloadPdfDirectly(href, title);
+            // ✨ 單純下載 PDF，傳入 false
+            window.downloadPdfDirectly(href, title, false);
             closeModal();
         };
     }
@@ -5277,8 +5339,9 @@ window.showPdfActionModal = function(href, title) {
     overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
 };
 
-window.downloadPdfDirectly = async function(url, filename) {
-    window.triggerSecureDownload(url, filename);
+// 加上 isNewTab 參數傳遞
+window.downloadPdfDirectly = async function(url, filename, isNewTab = false) {
+    window.triggerSecureDownload(url, filename, isNewTab);
 };
 
 

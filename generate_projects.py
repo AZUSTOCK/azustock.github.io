@@ -23,6 +23,8 @@ stats = {
     "inline_thumb_total": 0, "inline_thumb_new": 0, "inline_thumb_updated": 0, "inline_thumb_skipped": 0 
 }
 
+SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED', 'WIP', 'OC'}
+
 # ==========================================
 # 🛠️ 輔助系統 (Helper Functions)
 # ==========================================
@@ -38,12 +40,14 @@ def get_file_status(source_paths, target_path, force_overwrite=False):
                 return 'UPDATED'
     return 'SKIPPED'
 
-def print_conversion(tag, src_path, dest_path):
-    """輔助函式：印出圖片轉換前後的檔案大小"""
+def print_conversion(tag, src_path, dest_path, context=""):
+    """輔助函式：印出圖片轉換前後的檔案大小與所屬專案/文章"""
     if os.path.exists(src_path) and os.path.exists(dest_path):
         s_size = os.path.getsize(src_path) / 1024
         d_size = os.path.getsize(dest_path) / 1024
-        print(f"  └─ {tag} {os.path.basename(dest_path)} ({s_size:.1f} KB -> {d_size:.1f} KB)")
+        # ✨ 若有傳入 context，就把它用中括號包起來顯示
+        ctx_str = f" [{context}]" if context else ""
+        print(f"  └─ {tag}{ctx_str} {os.path.basename(dest_path)} ({s_size:.1f} KB -> {d_size:.1f} KB)")
 
 def create_og_image(original_path, output_path, bg_path=None):
     """將任意尺寸的圖片疊加到 1200x630 的背景圖中央，生成完美的 OG 分享圖"""
@@ -158,22 +162,25 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path):
 CACHE_FILE = '.build_cache.json'
 
 def get_file_hash(filepath):
-    """計算單一檔案的 MD5 Hash"""
+    """計算單一檔案的 MD5 Hash (無視作業系統換行符號差異)"""
     if not os.path.exists(filepath): return ""
     hasher = hashlib.md5()
-    with open(filepath, 'rb') as f:
-        hasher.update(f.read())
+    # ✨ 改以文字模式讀取，統一替換換行符號
+    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+        content = f.read().replace('\r\n', '\n')
+        hasher.update(content.encode('utf-8'))
     return hasher.hexdigest()[:8]
 
 def get_dir_hash(dirpath):
-    """計算資料夾內所有 Markdown 與 JSON 的聯合 MD5 Hash"""
+    """計算資料夾內所有 Markdown 與 JSON 的聯合 MD5 Hash (無視換行差異)"""
     if not os.path.exists(dirpath): return ""
     hasher = hashlib.md5()
     for root, dirs, files in os.walk(dirpath):
         for file in sorted(files):
             if file.endswith('.md') or file.endswith('.json'):
-                with open(os.path.join(root, file), 'rb') as f:
-                    hasher.update(f.read())
+                with open(os.path.join(root, file), 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read().replace('\r\n', '\n')
+                    hasher.update(content.encode('utf-8'))
     return hasher.hexdigest()[:8]
 
 def update_data_version():
@@ -343,7 +350,7 @@ def generate_changelogs_json():
             is_hidden = detail.get('hidden', False)
 
         if str(version).count('.') >= 3 or str(version_folder).count('.') >= 3 or is_hidden:
-            print(f"  ⏭️ 隱藏內部滾動紀錄: 目錄 {version_folder} (對外版號: {version})")
+            print(f"  ⏭️ 隱藏內部紀錄: 目錄 {version_folder} (對外版號: {version})")
             continue
 
         for file in os.listdir(folder_path):
@@ -460,11 +467,10 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             if proj_data.get('date'): clean_proj_data['date'] = proj_data.get('date')
             if proj_data.get('version'): clean_proj_data['version'] = str(proj_data.get('version'))
             if proj_data.get('tags'):
-                sys_tags = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED', 'WIP', 'OC'}
                 clean_tags = []
                 for t in proj_data.get('tags'):
                     base = str(t).split(':')[0].upper()
-                    if base in sys_tags:
+                    if base in SYS_TAGS:
                         clean_tags.append(str(t).upper())
                     else:
                         clean_tags.append(t)
@@ -517,7 +523,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 if og_status in ('NEW', 'UPDATED'):
                     proj_needs_update = True
                     if create_og_image(local_proj_cover, proj_og_local_path, bg_image_path):
-                        print_conversion("🖼️ [專案OG圖]", local_proj_cover, proj_og_local_path)
+                        print_conversion("🖼️ [專案OG圖]", local_proj_cover, proj_og_local_path, context=proj_title)
                         proj_img = f"{BASE_URL}/api/{proj_id}/{proj_og_filename}"
                         if og_status == 'NEW': stats["og_new"] += 1
                         else: stats["og_updated"] += 1
@@ -539,7 +545,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 if thumb_status in ('NEW', 'UPDATED'):
                     proj_needs_update = True
                     if generate_cover_thumbnail(local_proj_cover, proj_thumb_local_path, max_width=180, quality=90):
-                        print_conversion("🖼️ [專案縮圖]", local_proj_cover, proj_thumb_local_path)
+                        print_conversion("🖼️ [專案縮圖]", local_proj_cover, proj_thumb_local_path, context=proj_title)
                         proj_data['cover_image'] = get_hash_url(proj_thumb_local_path, f"./api/{proj_id}/{proj_thumb_filename}")
                         if thumb_status == 'NEW': stats["thumb_new"] += 1
                         else: stats["thumb_updated"] += 1
@@ -693,7 +699,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             art_needs_update = True
                                             success = generate_cover_thumbnail(local_main_path, thumb_local_path, max_width=800, quality=85)
                                             if success:
-                                                print_conversion("🖼️ [內文縮圖]", local_main_path, thumb_local_path)
+                                                print_conversion("🖼️ [內文縮圖]", local_main_path, thumb_local_path, context=f"{proj_id} / {art_id}")
                                                 if inline_status == 'NEW': stats["inline_thumb_new"] += 1
                                                 else: stats["inline_thumb_updated"] += 1
                                             else:
@@ -747,7 +753,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             art_needs_update = True
                                             success = generate_cover_thumbnail(local_img_path, thumb_local_path, max_width=800, quality=85)
                                             if success:
-                                                print_conversion("🖼️ [內文縮圖]", local_img_path, thumb_local_path)
+                                                print_conversion("🖼️ [內文縮圖]", local_img_path, thumb_local_path, context=f"{proj_id} / {art_id}")
                                                 if inline_status == 'NEW': stats["inline_thumb_new"] += 1
                                                 else: stats["inline_thumb_updated"] += 1
                                             else:
@@ -789,7 +795,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 if art_og_status in ('NEW', 'UPDATED'):
                                     art_needs_update = True
                                     if create_og_image(local_cover_path, og_local_path, bg_image_path):
-                                        print_conversion("🖼️ [文章OG圖]", local_cover_path, og_local_path)
+                                        print_conversion("🖼️ [文章OG圖]", local_cover_path, og_local_path, context=f"{proj_id} / {art_id}")
                                         art_img = f"{BASE_URL}/api/{proj_id}/{art_id}/og.webp"
                                         if art_og_status == 'NEW': stats["og_new"] += 1
                                         else: stats["og_updated"] += 1
@@ -811,7 +817,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 if art_thumb_status in ('NEW', 'UPDATED'):
                                     art_needs_update = True
                                     if generate_cover_thumbnail(local_cover_path, art_thumb_local_path, max_width=160, quality=90):
-                                        print_conversion("🖼️ [文章縮圖]", local_cover_path, art_thumb_local_path)
+                                        print_conversion("🖼️ [文章縮圖]", local_cover_path, art_thumb_local_path, context=f"{proj_id} / {art_id}")
                                         meta_cover_url = get_hash_url(art_thumb_local_path, f"./api/{proj_id}/{art_id}/{art_thumb_filename}")
                                         if art_thumb_status == 'NEW': stats["thumb_new"] += 1
                                         else: stats["thumb_updated"] += 1 
@@ -864,11 +870,10 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             if meta_cover: article_obj["cover_image"] = meta_cover_url
                             if sub_data.get('date'): article_obj["date"] = sub_data.get('date')
                             if sub_data.get('tags'):
-                                sys_tags = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED', 'WIP', 'OC'}
                                 clean_tags = []
                                 for t in sub_data.get('tags'):
                                     base = str(t).split(':')[0].upper()
-                                    if base in sys_tags:
+                                    if base in SYS_TAGS:
                                         clean_tags.append(str(t).upper())
                                     else:
                                         clean_tags.append(t)

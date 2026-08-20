@@ -126,6 +126,7 @@
 [data-status="DEV"]      { --s-color: #3B82F6;            --s-shadow: rgba(59, 130, 246, 0.5); } /* ✨ DEV 專屬科技藍 */
 [data-status="REFACTOR"] { --s-color: #6366F1;            --s-shadow: rgba(99, 102, 241, 0.5); } 
 [data-status="PATCH"]    { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); }
+[data-status="STABLE"]   { --s-color: #06B6D4;            --s-shadow: rgba(6, 182, 212, 0.5); } /* ✨ STABLE 專屬湖水青 */
 
 /* 1-5. 動畫可擴充模組化引擎 (預設：VisionOS 景深) */
 :root {
@@ -2017,7 +2018,6 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 body.is-touch-device .desktop-only-divider { display: none; }
 body.is-touch-device .toolbar-right { position: relative; }
 
-/* 2. Lightbox 收合工具列 (觸控版彈出選單) */
 body.is-touch-device .toolbox-group { 
     position: absolute; top: 100%; margin-top: 15px; right: 0; 
     flex-direction: row; align-items: center; justify-content: center; 
@@ -2095,9 +2095,10 @@ body.is-touch-device #lightbox-img { cursor: default; }
 /* ========================================================================== */
 /* ✨ 8-4. 觸控裝置專屬物理點擊回饋 (Touch Feedback Engine)                         */
 /* ========================================================================== */
-/* 將所有在手機上可以點擊的大型區塊納入管理 */
+/* 將所有在手機上可以點擊的大型區塊納入管理 (影片/音樂限定「失效破圖」時才套用) */
 body.is-touch-device .pdf-container,
 body.is-touch-device .mermaid-container,
+body.is-touch-device .media-container-wrapper[data-is-broken="true"],
 body.is-touch-device figure.standalone-figure,
 body.is-touch-device .gallery figure { 
     cursor: pointer; 
@@ -2110,10 +2111,20 @@ body.is-touch-device .gallery figure {
 /* 點擊瞬間微縮，給予像實體按鈕般的物理反饋 */
 body.is-touch-device .pdf-container:active,
 body.is-touch-device .mermaid-container:active,
+body.is-touch-device .media-container-wrapper[data-is-broken="true"]:active,
 body.is-touch-device figure.standalone-figure:active,
 body.is-touch-device .gallery figure:active { 
     transform: scale(0.97) !important; 
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important; /* 點擊時陰影變小，增加壓下去的真實感 */
+}
+
+/* ✨ 核心魔法：使用 :has() 阻斷標題列的點擊回饋！ */
+/* 如果使用者按在 .pdf-container-header 等工具列上，強制取消整個容器的縮放特效 */
+body.is-touch-device .pdf-container:has(.pdf-container-header:active):active,
+body.is-touch-device .mermaid-container:has(.mermaid-toolbar:active):active,
+body.is-touch-device .media-container-wrapper[data-is-broken="true"]:has(.media-container-header:active):active {
+    transform: none !important;
+    box-shadow: 0 4px 15px var(--shadow-base) !important; /* 恢復原本預設的陰影 */
 }
 
 /* 在觸控裝置下，強制隱藏 PDF iframe 閱讀器與新分頁按鈕 */
@@ -2853,6 +2864,50 @@ body {
 .card-action-icon-wrap { position: relative; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
 .card-action-arrow { display: flex; align-items: center; transition: transform 0.2s ease; }
 
+
+/* ========================================================================== */
+/* ✨ 觸控裝置專屬：Lightbox 工具列開關 (正三角形變形特效)                        */
+/* ========================================================================== */
+body.is-touch-device .toolbox-toggle-btn { display: flex; }
+
+/* 按鈕亮起的高光狀態 */
+.toolbox-toggle-btn.is-active {
+    background: var(--accent) !important;
+    color: var(--card) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 4px 12px var(--glow-1) !important;
+}
+
+/* 給予 SVG 與三個點點 Q 彈的物理過渡 */
+.toolbox-toggle-btn svg {
+    transition: transform 0.4s var(--ease-bounce);
+}
+.toolbox-toggle-btn svg circle {
+    transition: transform 0.4s var(--ease-bounce);
+    transform-origin: center center;
+}
+
+/* 動作 1：開啟時，整顆 SVG 順時針旋轉 90 度 */
+.toolbox-toggle-btn.is-active svg {
+    transform: rotate(90deg);
+}
+
+/* 動作 2：核心魔法計算，利用平移讓三個點旋轉後剛好構成「完美的正三角形」！ */
+
+/* Dot 1 (原本在左)：原地不動。因為 SVG 轉了 90 度，它會直接被甩到畫面的「正上方」 */
+.toolbox-toggle-btn.is-active svg .dot-1 {
+    transform: translate(0, 0); 
+}
+
+/* Dot 2 (原本在正中)：向右下平移。經過旋轉系疊加後，它會精準落位在畫面的「右下角」 */
+.toolbox-toggle-btn.is-active svg .dot-2 {
+    transform: translate(3px, -6px);
+}
+
+/* Dot 3 (原本在右)：向左下平移。經過旋轉系疊加後，它會精準落位在畫面的「左下角」 */
+.toolbox-toggle-btn.is-active svg .dot-3 {
+    transform: translate(-4px, 6px);
+}
 
 
 

@@ -15,6 +15,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ✨ 加入 Cache 機制，讓 CI/CD 記住上次的打包狀態與快取檔
+      - name: Cache Build Data
+        uses: actions/cache@v3
+        with:
+          path: |
+            .build_cache.json
+            api/
+            all_projects.json
+            data_version.json
+            version.json
+            changelogs.json
+          key: build-cache-${{ github.sha }}
+          restore-keys: |
+            build-cache-
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
