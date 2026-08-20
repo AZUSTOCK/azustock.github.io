@@ -844,16 +844,16 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .modal-content a:hover .modal-pin { transform: scale(1.15) rotate(-8deg) translate(-10%, -10%); }
 
 /* 卡片 Hover 互動指示器 */
-.card:hover .action-btn { color: var(--card-glow) !important; }
-.card:hover .action-arrow[data-dir="up-right"] { transform: translate(4px, -4px) !important; }
-.card:hover .action-arrow[data-dir="right"] { transform: translateX(5px) !important; }
+.card:hover .card-action-btn { color: var(--card-glow) !important; }
+.card:hover .card-action-arrow { transform: translate(4px, -4px) !important; } /* 讓外部連結箭頭也往右上角飛出 */
 .card:hover .icon-book-closed { opacity: 0 !important; transform: scale(0.8) !important; }
 .card:hover .icon-book-open { opacity: 1 !important; transform: scale(1) !important; }
-.card:has(.tag:hover) .action-btn { color: var(--accent) !important; }
-.card:has(.tag:hover) .action-arrow { transform: translate(0, 0) !important; }
+
+/* 有 tag 標籤正在被 Hover 時，按鈕退回原本顏色 */
+.card:has(.tag:hover) .card-action-btn { color: var(--accent) !important; }
+.card:has(.tag:hover) .card-action-arrow { transform: translate(0, 0) !important; }
 .card:has(.tag:hover) .icon-book-closed { opacity: 1 !important; transform: scale(1) !important; }
 .card:has(.tag:hover) .icon-book-open { opacity: 0 !important; transform: scale(0.8) !important; }
-
 
 /* ========================================================================== */
 /* 📖 第五層：文章系統與 Modal (Article & Modal)                                 */
@@ -2096,15 +2096,13 @@ body.is-touch-device #lightbox-img { cursor: default; }
 /* ✨ 8-4. 觸控裝置專屬物理點擊回饋 (Touch Feedback Engine)                         */
 /* ========================================================================== */
 /* 將所有在手機上可以點擊的大型區塊納入管理 (影片/音樂限定「失效破圖」時才套用) */
+/* ✨ 已經將 .gallery figure 移除，不再干擾圖說切換 */
 body.is-touch-device .pdf-container,
 body.is-touch-device .mermaid-container,
 body.is-touch-device .media-container-wrapper[data-is-broken="true"],
-body.is-touch-device figure.standalone-figure,
-body.is-touch-device .gallery figure { 
+body.is-touch-device figure.standalone-figure { 
     cursor: pointer; 
-    -webkit-tap-highlight-color: transparent; /* 移除手機點擊預設的醜陋灰底 */
-    
-    /* 賦予 Q 彈的物理過渡曲線 */
+    -webkit-tap-highlight-color: transparent; 
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease !important;
 }
 
@@ -2112,10 +2110,9 @@ body.is-touch-device .gallery figure {
 body.is-touch-device .pdf-container:active,
 body.is-touch-device .mermaid-container:active,
 body.is-touch-device .media-container-wrapper[data-is-broken="true"]:active,
-body.is-touch-device figure.standalone-figure:active,
-body.is-touch-device .gallery figure:active { 
+body.is-touch-device figure.standalone-figure:active { 
     transform: scale(0.97) !important; 
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important; /* 點擊時陰影變小，增加壓下去的真實感 */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important; 
 }
 
 /* ✨ 核心魔法：使用 :has() 阻斷標題列的點擊回饋！ */
