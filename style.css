@@ -126,6 +126,7 @@
 [data-status="DEV"]      { --s-color: #3B82F6;            --s-shadow: rgba(59, 130, 246, 0.5); } /* ✨ DEV 專屬科技藍 */
 [data-status="REFACTOR"] { --s-color: #6366F1;            --s-shadow: rgba(99, 102, 241, 0.5); } 
 [data-status="PATCH"]    { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); }
+[data-status="STABLE"]   { --s-color: #06B6D4;            --s-shadow: rgba(6, 182, 212, 0.5); } /* ✨ STABLE 專屬湖水青 */
 
 /* 1-5. 動畫可擴充模組化引擎 (預設：VisionOS 景深) */
 :root {

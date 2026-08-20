@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.6.9",          // 目前系統版本號
+    VERSION: "U1.5.7",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -85,7 +85,7 @@ const GLOBAL_SVGS = {
 // 2. 外層陣列代表「全域排序」，排越前面的 Tag 會顯示在卡片越左邊
 // 將 MAJOR 與 HOTFIX 放在最前面，確保它們不會被其他標籤蓋掉
 window.STATUS_LIST = [
-    ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'ARCHIVED'], 
+    ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED'], 
     ['WIP'], 
     ['OC'],
     ['DEV']
@@ -596,13 +596,22 @@ window.handleImageError = function(img) {
     img.classList.remove('is-loading');
     img.classList.add('is-broken');
     
+    // 換上透明 SVG 讓 CSS 破圖背景透出來
+    img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
+
+    // ✨ 核心判定：排除目錄頁縮圖 (.article-item-cover) 與其他非內文圖片
+    // 只有當圖片位於內文 (.markdown-body) 或是 Lightbox，且「絕對不是」目錄清單縮圖時才允許重試
+    const isContentImage = (img.closest('.markdown-body') !== null || img.id === 'lightbox-img') && !img.classList.contains('article-item-cover') && !img.classList.contains('card-image');
+    if (!isContentImage) {
+        img.style.cursor = 'default';
+        return; // 提早結束，不綁定重試事件！
+    }
+
     // ✨ 移除原生 tooltip，改由 JS 動態生成懸浮膠囊
     img.removeAttribute('title'); 
     img.style.cursor = 'pointer';
-    
-    img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
 
-    // ✨ 動態插入高質感的重試懸浮提示膠囊
+    // 動態插入高質感的重試懸浮提示膠囊
     let retryHint = img.parentNode.querySelector('.img-retry-hint');
     if (!retryHint) {
         retryHint = document.createElement('div');
@@ -619,14 +628,14 @@ window.handleImageError = function(img) {
         img.parentNode.insertBefore(retryHint, img.nextSibling);
     }
 
-    // ✨ 建立捕獲階段的點擊攔截器 (阻斷 Lightbox 開啟，優先執行重試)
+    // 建立捕獲階段的點擊攔截器 (阻斷 Lightbox 開啟，優先執行重試)
     const retryHandler = function(e) {
         e.preventDefault();
         e.stopImmediatePropagation();
         
         img.removeEventListener('click', retryHandler, true);
         
-        // ✨ 動畫回饋：讓膠囊 Q 彈縮小並淡出
+        // 動畫回饋：讓膠囊 Q 彈縮小並淡出
         if (retryHint) {
             retryHint.style.transition = 'transform 0.15s var(--ease-bounce), opacity 0.15s ease';
             retryHint.style.transform = 'translate(-50%, -50%) scale(0.85)';
@@ -1052,15 +1061,44 @@ window.lightboxAction = function(action, event) {
         if(action === 'reset') state.zoom = 1;
         state.x = 0; state.y = 0;
     } else if (action === 'reload') {
-        if (state.isDomMode) return; 
+        if (state.isDomMode) {
+            // ✨ Mermaid 圖表重整邏輯
+            const activeMermaid = document.getElementById('lightbox-active-mermaid');
+            if (activeMermaid && window.mermaid) {
+                // 1. 核心修復：重整瞬間，先將座標歸零，防止 Mermaid 在縮放狀態下重繪算錯邊界！
+                state.zoom = 1;
+                state.x = 0;
+                state.y = 0;
+                activeMermaid.style.transform = 'translate(0px, 0px) scale(1)';
+                
+                // 2. 加上載入中特效並執行重繪
+                activeMermaid.style.opacity = '0.3'; 
+                setTimeout(() => {
+                    const originalText = decodeURIComponent(activeMermaid.getAttribute('data-original-text') || '');
+                    if (originalText) {
+                        activeMermaid.removeAttribute('data-processed');
+                        activeMermaid.innerHTML = window.processMermaidCssVars(originalText);
+                        window.mermaid.run({ querySelector: '#lightbox-active-mermaid' })
+                            .catch(e => console.warn('Mermaid reload failed:', e))
+                            .finally(() => {
+                                activeMermaid.style.opacity = '1';
+                            });
+                    } else {
+                        activeMermaid.style.opacity = '1';
+                    }
+                }, 150);
+            }
+            return;
+        }
         
-        // ✨ 1. 更新當下狀態陣列裡的網址，加上時間戳防快取
+        // ✨ 一般圖片重整邏輯
+        // 1. 先更新圖片網址，加上時間戳強制繞過瀏覽器快取
         const currentItem = state.images[state.currentIndex];
         const origSrc = currentItem.src.split('?retry=')[0].split('&retry=')[0];
         const sep = origSrc.includes('?') ? '&' : '?';
         currentItem.src = origSrc + sep + 'retry=' + new Date().getTime();
         
-        // ✨ 2. 直接呼叫 update 引擎！它會幫我們完美處理所有的 CSS 狀態清除、重繪與 onerror 綁定
+        // 2. 再呼叫 update 引擎，讓它用「帶有新時間戳的網址」去重置畫面與座標並載入
         window.updateLightboxView();
         return;
     } else if (action === 'new-tab') {
