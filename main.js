@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.7",          // 目前系統版本號
+    VERSION: "U1.5.7.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -330,12 +330,18 @@ window.refreshUIAfterOverrideToggle = function() {
                 grid.querySelectorAll('.card').forEach(card => {
                     const titleEl = card.querySelector('h3');
                     if (titleEl && titleEl.innerText.includes(proj.title)) {
-                        const actionBtn = card.querySelector('.action-btn');
+                        // ✨ 核心修復：把尋找的 class 改為正確的 .card-action-btn
+                        const actionBtn = card.querySelector('.card-action-btn');
                         if (actionBtn && actionBtn.innerText.includes('展開系列')) {
+                            // 動態計算當前權限下可見的文章數量
                             const count = isUnlocked ? proj.articles.length : proj.articles.filter(art => !art.is_hidden).length;
-                            const iconWrap = actionBtn.querySelector('div');
+                            
+                            // ✨ 精準抓出圖標容器，避免破壞 HTML 結構
+                            const iconWrap = actionBtn.querySelector('.card-action-icon-wrap');
                             actionBtn.innerHTML = '';
                             if (iconWrap) actionBtn.appendChild(iconWrap);
+                            
+                            // 重新植入最新的數字
                             actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
                         }
                     }
@@ -2555,7 +2561,15 @@ async function loadProjects() {
                     card.style.cursor = 'pointer';
                     card.onclick = () => { 
                         if (window.currentActiveTag) window.clearFilter(); 
-                        window.open(data.link, '_blank'); 
+                        
+                        // ✨ 核心修復：改用隱形 <a> 標籤觸發跳轉，完美避開 PWA 的 window.open 幽靈視窗 Bug！
+                        const a = document.createElement('a');
+                        a.href = data.link;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
                     };
                     
                     actionText = `<div class="card-action-btn">
