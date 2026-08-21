@@ -11,9 +11,10 @@
 1. Touch feedback in gallery (remove)
 
 ## fix
-1. PWA card link fetal window error
+1. PWA card link fatal window error
 2. `.card:hover` style error
 3. `.action-btn` to `.card-action-btn` associated error
+4. PWA PDF link jump
 
 ## deprecate
 1. 

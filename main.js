@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.7.1",          // 目前系統版本號
+    VERSION: "U1.5.7.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1110,12 +1110,15 @@ window.lightboxAction = function(action, event) {
     } else if (action === 'new-tab') {
         if (state.isDomMode) return;
         
-        if (window.isPWAEnvironment()) {
-            // ✨ 直接套用統一的安全開啟引擎，自帶 Toast 與震動回饋！
-            window.triggerSecureDownload(target.src, 'image.webp', true);
-        } else {
-            window.open(target.src, '_blank');
-        }
+        // ✨ 核心修復：圖片的新分頁開啟也一律使用隱形 <a> 標籤，確保最穩定的原生新分頁行為
+        const a = document.createElement('a');
+        a.href = new URL(target.src, window.location.href).href;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
         return;
     }
     
@@ -5332,12 +5335,16 @@ window.showPdfActionModal = function(href, title) {
 
     // 綁定事件
     overlay.querySelector('#pdf-view-btn').onclick = () => {
-        // ✨ 如果是 PWA，檢視 (View) 其實是透過 Blob 新分頁開啟，所以傳入 true
-        if (isPWA) {
-            window.downloadPdfDirectly(href, title, true);
-        } else {
-            window.open(href, '_blank');
-        }
+        // ✨ 核心修復：拋棄 Blob 開啟法，改用隱形 <a> 標籤開啟「真實絕對網址」！
+        // 這樣在 PDF 內跳轉網頁再「按上一頁」時，系統就能透過真實網址完美載入回 PDF。
+        const a = document.createElement('a');
+        a.href = new URL(href, window.location.href).href; // 強制轉為絕對網址，確保 PWA 視為外部視窗
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
         closeModal();
     };
 
