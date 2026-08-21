@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.7.2",          // 目前系統版本號
+    VERSION: "U1.5.7.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -488,7 +488,7 @@ window.isPWAEnvironment = function() {
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 };
 
-// 2. 突破 PWA 限制的 Blob 下載/開新分頁引擎
+/// 2. 突破 PWA 限制的 Blob 下載/開新分頁引擎
 window.downloadViaBlob = async function(url, filename, isNewTab = false) {
     try {
         const response = await fetch(url);
@@ -507,7 +507,11 @@ window.downloadViaBlob = async function(url, filename, isNewTab = false) {
         
         setTimeout(() => {
             document.body.removeChild(a);
-            window.URL.revokeObjectURL(blobUrl);
+            // ✨ 核心神修復：如果是「新分頁檢視模式」，絕對不能把 Blob 銷毀！
+            // 讓它保存在記憶體中，這樣按「上一頁」回來時，原生的瀏覽器才讀得到檔案！
+            if (!isNewTab) {
+                window.URL.revokeObjectURL(blobUrl);
+            }
         }, 500);
         return true;
     } catch (error) {
@@ -1110,15 +1114,12 @@ window.lightboxAction = function(action, event) {
     } else if (action === 'new-tab') {
         if (state.isDomMode) return;
         
-        // ✨ 核心修復：圖片的新分頁開啟也一律使用隱形 <a> 標籤，確保最穩定的原生新分頁行為
-        const a = document.createElement('a');
-        a.href = new URL(target.src, window.location.href).href;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
+        // ✨ 還原：PWA 繼續使用最強的 Blob 呼叫原生瀏覽器！
+        if (window.isPWAEnvironment()) {
+            window.triggerSecureDownload(target.src, 'image.webp', true);
+        } else {
+            window.open(target.src, '_blank');
+        }
         return;
     }
     
@@ -5335,16 +5336,12 @@ window.showPdfActionModal = function(href, title) {
 
     // 綁定事件
     overlay.querySelector('#pdf-view-btn').onclick = () => {
-        // ✨ 核心修復：拋棄 Blob 開啟法，改用隱形 <a> 標籤開啟「真實絕對網址」！
-        // 這樣在 PDF 內跳轉網頁再「按上一頁」時，系統就能透過真實網址完美載入回 PDF。
-        const a = document.createElement('a');
-        a.href = new URL(href, window.location.href).href; // 強制轉為絕對網址，確保 PWA 視為外部視窗
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
+        // ✨ 還原：PWA 繼續使用最強的 Blob 呼叫原生瀏覽器！
+        if (isPWA) {
+            window.downloadPdfDirectly(href, title, true);
+        } else {
+            window.open(href, '_blank');
+        }
         closeModal();
     };
 
