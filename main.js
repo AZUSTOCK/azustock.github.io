@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.7.4",          // 目前系統版本號
+    VERSION: "U1.5.7.5",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -488,12 +488,16 @@ window.isPWAEnvironment = function() {
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 };
 
-/// 2. 突破 PWA 限制的 Blob 下載/開新分頁引擎
+// 2. 突破 PWA 限制的 Blob 下載/開新分頁引擎
 window.downloadViaBlob = async function(url, filename, isNewTab = false) {
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error("Network response was not ok");
         const blob = await response.blob();
+        
+        // ✨ 記憶體防護鎖：把 Blob 綁在頂層物件，告訴 iOS「我還在用它，不要清掉！」
+        if (isNewTab) window.__pwa_blob_cache = blob; 
+        
         const blobUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.style.display = 'none';
@@ -507,8 +511,6 @@ window.downloadViaBlob = async function(url, filename, isNewTab = false) {
         
         setTimeout(() => {
             document.body.removeChild(a);
-            // ✨ 核心神修復：如果是「新分頁檢視模式」，絕對不能把 Blob 銷毀！
-            // 讓它保存在記憶體中，這樣按「上一頁」回來時，原生的瀏覽器才讀得到檔案！
             if (!isNewTab) {
                 window.URL.revokeObjectURL(blobUrl);
             }
@@ -5337,25 +5339,8 @@ window.showPdfActionModal = function(href, title) {
     // 綁定事件
     overlay.querySelector('#pdf-view-btn').onclick = () => {
         if (isPWA) {
-            // ✨ 終極 PWA 跳脫術：利用「極小 HTML Blob 重定向」呼叫原生 Safari UI！
-            // 1. 解決 Blob Error 1 (不把整份 PDF 塞進 Blob，省下 99% 記憶體)
-            // 2. 解決「上一頁白屏」(因為跳轉到了實體網址，Safari 有路可退)
-            // 3. 解決 PWA 殭屍視窗 (Blob 屬性會強制 iOS 呼叫出帶有工具列的 Safari)
-            const absUrl = new URL(href, window.location.href).href;
-            const html = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${absUrl}"></head><body style="background:var(--bg, #020617);"></body></html>`;
-            const blob = new Blob([html], { type: 'text/html' });
-            const blobUrl = window.URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = blobUrl;
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1500); // 延遲釋放，確保跳轉完成
+            // ✨ 聽你的！為了原生的 Safari 工具列，我們換回最強的 Blob 大法！
+            window.downloadPdfDirectly(href, title, true);
         } else {
             // 普通瀏覽器直接另開分頁即可
             window.open(href, '_blank');
