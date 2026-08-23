@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.7.3",          // 目前系統版本號
+    VERSION: "U1.5.7.4",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -5336,10 +5336,28 @@ window.showPdfActionModal = function(href, title) {
 
     // 綁定事件
     overlay.querySelector('#pdf-view-btn').onclick = () => {
-        // ✨ 還原：PWA 繼續使用最強的 Blob 呼叫原生瀏覽器！
         if (isPWA) {
-            window.downloadPdfDirectly(href, title, true);
+            // ✨ 終極 PWA 跳脫術：利用「極小 HTML Blob 重定向」呼叫原生 Safari UI！
+            // 1. 解決 Blob Error 1 (不把整份 PDF 塞進 Blob，省下 99% 記憶體)
+            // 2. 解決「上一頁白屏」(因為跳轉到了實體網址，Safari 有路可退)
+            // 3. 解決 PWA 殭屍視窗 (Blob 屬性會強制 iOS 呼叫出帶有工具列的 Safari)
+            const absUrl = new URL(href, window.location.href).href;
+            const html = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${absUrl}"></head><body style="background:var(--bg, #020617);"></body></html>`;
+            const blob = new Blob([html], { type: 'text/html' });
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = blobUrl;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1500); // 延遲釋放，確保跳轉完成
         } else {
+            // 普通瀏覽器直接另開分頁即可
             window.open(href, '_blank');
         }
         closeModal();

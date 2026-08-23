@@ -15,6 +15,7 @@
 2. `.card:hover` style error
 3. `.action-btn` to `.card-action-btn` associated error
 4. PWA PDF link jump
+5. PWA PDF garbage collection
 
 ## deprecate
 1. 
