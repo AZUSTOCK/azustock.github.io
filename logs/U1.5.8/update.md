@@ -9,6 +9,7 @@
 
 ## adjust
 1. Touch feedback in gallery (remove)
+2. progress-bar
 
 ## fix
 1. PWA card link fatal window error

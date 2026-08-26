@@ -808,7 +808,8 @@ window.initProgressBar = function(mountEl, scrollEl, type, existingBarId = null)
         mountEl.appendChild(bar);
     }
     
-    bar.className = `sys-progress-bar ${type === 'vertical' ? 'is-vertical-bar' : 'is-top-bar'}`;
+    // ✨ 核心修改：一出生就自帶 is-start 呼吸燈狀態
+    bar.className = `sys-progress-bar ${type === 'vertical' ? 'is-vertical-bar' : 'is-top-bar'} is-start`;
     bar.style.display = 'block';
     bar.style.width = '0%';
     bar.classList.remove('is-complete');
@@ -836,8 +837,18 @@ window.initProgressBar = function(mountEl, scrollEl, type, existingBarId = null)
         }
 
         bar.style.width = `${progress}%`;
-        if (progress === 100) bar.classList.add('is-complete');
-        else bar.classList.remove('is-complete');
+        
+        // ✨ 核心神修復：動態切換「起點呼吸」、「滑動中」、「終點發光」三種狀態
+        if (progress >= 100) {
+            bar.classList.add('is-complete');
+            bar.classList.remove('is-start');
+        } else if (progress <= 0 || currentScroll <= 0) {
+            bar.classList.add('is-start');
+            bar.classList.remove('is-complete');
+        } else {
+            // 滑動中：拔除所有特效，保持最乾淨流暢的實線
+            bar.classList.remove('is-complete', 'is-start');
+        }
 
         ticking = false; // ✨ 畫完一次畫面，解開防抖鎖
     };
