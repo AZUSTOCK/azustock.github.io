@@ -2220,7 +2220,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (siteTitle && profileSection) {
         siteTitle.style.cursor = 'pointer';
-        // siteTitle.title = "System Override..."; 
         window.isWhispering = false;
 
         siteTitle.addEventListener('click', async () => {
@@ -2233,10 +2232,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.isWhispering = true; 
                 clickCount = 0; 
                 
-                // ✨ 核心魔法：切換系統覆寫狀態，強制顯現/隱藏機密檔案！
-                document.body.classList.toggle('system-override-active');
+                // ✨ 核心修改 1：在解鎖前，先記住當下是否為「剛好被解鎖的瞬間」
+                const isJustUnlocked = !document.body.classList.contains('system-override-active');
                 
-                // ✨ 呼叫全域重刷引擎，統一更新所有卡片數字與版面
+                // 強制保持解鎖狀態
+                document.body.classList.add('system-override-active');
+                
+                // 呼叫全域重刷引擎 (它內部已有防止重複執行的保護機制)
                 window.refreshUIAfterOverrideToggle();
                 
                 const currentHeight = profileSection.offsetHeight;
@@ -2251,10 +2253,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const randomNote = notes[Math.floor(Math.random() * notes.length)];
                     
                     setTimeout(() => {
-                        // 依照解鎖狀態切換日誌標題
-                        const isActive = document.body.classList.contains('system-override-active');
-                        const statusText = isActive ? "[ SYSTEM_OVERRIDE_ENABLED : CLASSIFIED_DATA_UNLOCKED ]" : "[ SYSTEM_LOG : KOTOBA_NO_BOX ]";
-                        const textColor = isActive ? "var(--error-color)" : "var(--accent-2)";
+                        // ✨ 核心修改 2：只有「解鎖的當下」亮紅燈，其餘時候都是黃燈日誌！
+                        const statusText = isJustUnlocked ? "[ SYSTEM_OVERRIDE_ENABLED : CLASSIFIED_DATA_UNLOCKED ]" : "[ SYSTEM_LOG : KOTOBA_NO_BOX ]";
+                        const textColor = isJustUnlocked ? "var(--error-color)" : "var(--accent-2)";
                         
                         const logHeader = `<div style="color: ${textColor}; font-family: 'Courier New', monospace; font-size: 0.85rem; margin-bottom: 0;">${statusText}</div>`;
                         const parsedNote = `<div style="margin-top: -1rem; margin-bottom: 0;">${marked.parse(randomNote)}</div>`;

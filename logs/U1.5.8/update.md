@@ -10,6 +10,7 @@
 ## adjust
 1. Touch feedback in gallery (remove)
 2. progress-bar
+3. unlock logic
 
 ## fix
 1. PWA card link fatal window error
