@@ -463,6 +463,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 'default_sort': proj_data.get('default_sort', 'desc')
             }
             
+            # ✨ 新增這行：抓取專案級別的最低版本要求
+            if proj_data.get('min_sys_version'): clean_proj_data['min_sys_version'] = str(proj_data.get('min_sys_version'))
+            
             if proj_data.get('description'): clean_proj_data['description'] = proj_data.get('description')
             if proj_data.get('date'): clean_proj_data['date'] = proj_data.get('date')
             if proj_data.get('version'): clean_proj_data['version'] = str(proj_data.get('version'))
@@ -874,6 +877,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 "title": meta_title,
                                 "content_path": f"./api/{proj_id}/{art_id}/{content_filename}"
                             }
+                            
+                            # ✨ 新增這行：抓取文章級別的最低版本要求
+                            if sub_data.get('min_sys_version'): article_obj["min_sys_version"] = str(sub_data.get('min_sys_version'))
 
                             if meta_desc: article_obj["description"] = meta_desc
                             if meta_cover: article_obj["cover_image"] = meta_cover_url

@@ -199,6 +199,21 @@ window.unlockScroll = function() {
 };
 
 // ==========================================
+// ✨ 系統版本比對引擎 (SemVer)
+// ==========================================
+window.compareVersions = function(v1, v2) {
+    // 拔除 "U" 等英文字母，純粹比較數字陣列
+    const p1 = String(v1).replace(/[^0-9.]/g, '').split('.').map(Number);
+    const p2 = String(v2).replace(/[^0-9.]/g, '').split('.').map(Number);
+    for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+        const num1 = p1[i] || 0, num2 = p2[i] || 0;
+        if (num1 > num2) return 1;
+        if (num1 < num2) return -1;
+    }
+    return 0;
+};
+
+// ==========================================
 // ✨ 共用路徑與路由處理器 (重構優化)
 // ==========================================
 window.getCleanBasePath = function() {
@@ -2871,6 +2886,28 @@ async function checkSystemVersionAndBoot() {
             
             return; 
         } else {
+            // ✨ 核心神修復：檢查重啟後，系統版本是否真的有達到文章要求的預期？
+            if (isRebooting && expectedVersion !== 'UNKNOWN' && window.compareVersions(CONFIG.VERSION, expectedVersion) < 0) {
+                console.error("[SYS_UPDATE] 強制升級失敗，CDN 仍快取舊版 JS。");
+                
+                // 清除標記，避免卡死
+                sessionStorage.removeItem('sys_reboot_count');
+                sessionStorage.removeItem('sys_is_rebooting');
+                sessionStorage.removeItem('sys_expected_version');
+                
+                // 觸發「紅色退回狀態」的終端機過場動畫
+                hideSystemRebootScreen(false); 
+                loadProjects();
+                
+                // 彈出精美的錯誤提示，告訴使用者 CDN 正在塞車
+                setTimeout(() => { 
+                    window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `無法取得 ${expectedVersion} 核心，請稍後再試。`, 12000, 'error'); 
+                }, 1000);
+                
+                return; // ⛔ 中斷執行，不再往下走！
+            }
+
+            // 如果順利達標，就正常清除標記並啟動
             sessionStorage.removeItem('sys_reboot_count');
             sessionStorage.removeItem('sys_is_rebooting');
             sessionStorage.removeItem('sys_expected_version');
@@ -3006,6 +3043,27 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
 // 打開該專案的「目錄頁面」
 // ==========================================
 window.openProjectIndex = function(projectId, restoreScroll = false) {
+    const proj = window.siteProjects.find(p => p.id === projectId);
+    if (!proj || !proj.articles) return;
+
+    // ✨ 新增：版本相容性防護網 (專案層級)
+    if (proj.min_sys_version && window.compareVersions(CONFIG.VERSION, proj.min_sys_version) < 0) {
+        closeModal(); // 確保關閉舊彈窗
+        // 寫入更新標記，利用現有的更新流程
+        sessionStorage.setItem('sys_reboot_count', '1');
+        sessionStorage.setItem('sys_is_rebooting', 'true');
+        sessionStorage.setItem('sys_expected_version', proj.min_sys_version);
+        // ✨ 顯示極簡版的更新終端機文字
+        showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, proj.min_sys_version, 'UPDATING', true);
+        
+        setTimeout(() => {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('v', new Date().getTime());
+            window.location.replace(newUrl.toString());
+        }, 1200);
+        return; // 中斷後續執行！
+    }
+
     window.isRendering = false; 
     window.historyStack = []; 
 
@@ -3451,8 +3509,29 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 // 打開具體的「文章內文」
 // ==========================================
 window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0, targetHash = null, restoreInnerScrolls = []) {
+    const proj = window.siteProjects.find(p => p.id === projectId);
+    const article = proj.articles[articleIndex];
+
+    // ✨ 新增：版本相容性防護網 (文章層級)
+    if (article && article.min_sys_version && window.compareVersions(CONFIG.VERSION, article.min_sys_version) < 0) {
+        closeModal();
+        sessionStorage.setItem('sys_reboot_count', '1');
+        sessionStorage.setItem('sys_is_rebooting', 'true');
+        sessionStorage.setItem('sys_expected_version', article.min_sys_version);
+        // ✨ 顯示極簡版的更新終端機文字
+        showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, article.min_sys_version, 'UPDATING', true);
+        
+        setTimeout(() => {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('v', new Date().getTime());
+            window.location.replace(newUrl.toString());
+        }, 1200);
+        return; // 中斷後續執行！
+    }
+
     const jumpToast = document.getElementById('new-jump-toast');
     if (jumpToast) jumpToast.classList.remove('is-visible');
+
 
     if (!isFromHistory) {
         const modalContainer = document.querySelector('.modal-content');
@@ -3481,9 +3560,6 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     }
 
     window.lastReadArticleIndex = articleIndex;
-
-    const proj = window.siteProjects.find(p => p.id === projectId);
-    const article = proj.articles[articleIndex];
     
     // ✨ 新增：敏感內容攔截 (改用全域變數檢查)
     if ((proj.is_sensitive || article.is_sensitive) && window._hasAgreedSensitiveContent !== true) {
