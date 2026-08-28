@@ -2632,6 +2632,13 @@ body {
     max-width: 400px; 
     line-height: 1.6;
 }
+.err-sec-protocol {
+    opacity: 0.8;
+    font-size: 0.85em;
+    font-family: monospace;
+    display: block;
+    margin-top: 0.5rem;
+}
 .sys-error-btn {
     margin-top: 2.5rem; 
     padding: 0.6rem 1.5rem; 

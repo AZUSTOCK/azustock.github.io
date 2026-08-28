@@ -2,7 +2,6 @@
 /* 🌍 系統多語系引擎 (i18n Engine)                                       */
 /* ================================================================== */
 
-// 1. 全域語系字典 (Dictionary) - UI 極簡長度優化版
 const I18N_DICT = {
     zh: {
         copy_link: "複製連結", copied: "已複製", download: "下載", refresh: "重新整理",
@@ -24,15 +23,16 @@ const I18N_DICT = {
         next_image: "下一張", next_item: "跳至下一個", remove_filter: "解除過濾", share_site: "分享本站",
         credits: "致謝", copied_exclaim: "已複製!", click_to_retry_block: "點擊區塊以重試載入",
         
-        // ✨ 以下為全新加入的系統底層與警告文案
         cw_title: "內容警告 (Content Warning)",
-        cw_desc: "此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。<br><span class=\"sensitive-desc-hint\">(同意後於本次瀏覽器存續期間將不再提示)</span>",
+        cw_desc: "此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。",
+        cw_desc_hint: "(同意後於本次瀏覽器存續期間將不再提示)",
         cw_decline: "不感興趣",
         cw_agree: "我已了解並前往",
         err_404_proj_title: "404 找不到專案",
         err_404_proj_desc: "無法找到您指定的專案。<br/>可能不存在或已被移除",
         err_403_title: "403 存取遭拒",
-        err_403_desc: "拒絕存取。<br/><span style=\"opacity: 0.8; font-size: 0.85em; font-family: monospace;\">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style=\"cursor: pointer; position: relative;\" class=\"secret-admin-trigger\">風川梓</span>.</span>",
+        err_403_desc: "拒絕存取。",
+        author_name: "風川梓",
         err_404_art_title: "404 找不到文章",
         err_404_art_desc: "在專案「{0}」中找不到此文章。<br/>可能不存在或已被移除。",
         system_error_label: "SYSTEM_ERROR",
@@ -57,7 +57,7 @@ const I18N_DICT = {
         syncing_new_data: "SYNCING_NEW_DATA",
         sys_online: ">_ SYSTEM_ONLINE",
         sys_reverted: ">_ SYSTEM_REVERTED",
-        update_success: "UPDATE_SUCCESSFUL",
+        update_success: "更新成功",
         cdn_delay: "CDN_CACHE_DELAY",
         update_failed: ">_ UPDATE_FAILED",
         cdn_delay_detected: "CDN_CACHE_DELAY_DETECTED",
@@ -71,7 +71,15 @@ const I18N_DICT = {
         marquee_net_offline: "網路斷線 • 請檢查連線狀態 • ",
         marquee_sys_offline: "系統離線 • 發生錯誤 • ",
         core_update: "CORE_UPDATE",
-        updating: "UPDATING"
+        updating: "UPDATING",
+        success: "成功",
+        chart_downloaded: "圖表已下載",
+        no_quotes: "無可用題庫",
+        header_desc: "Software Engineer · Systems Builder<br />程式、金融、像素、音符、字詞",
+        profile_desc: "一個名為「梓」的人的聚集地，<br/>通常都在寫寫字、寫程式、畫圖、音樂和財經及理解中。<br/>此亦為「梓本投資控股偽存公司」的官方網站，主要用於展示旗下梓們的作品。",
+        profile_quote: "「在某個特別的時間點，妳會遇見她。興許過了一段時間後，妳會到達那個，決定閱讀她的時間點。」",
+        aria_theme: "切換深淺色模式",
+        aria_btt: "返回頂部"
     },
     en: {
         copy_link: "Copy Link", copied: "Copied!", download: "Download", refresh: "Refresh",
@@ -92,15 +100,16 @@ const I18N_DICT = {
         next_item: "Next", remove_filter: "Clear Filter", share_site: "Share Site", credits: "Credits",
         copied_exclaim: "Copied!", click_to_retry_block: "Click to retry loading",
 
-        // ✨ 以下為全新加入的系統底層與警告文案
         cw_title: "Content Warning",
-        cw_desc: "This entry may contain negative, impulsive, inexplicable content, or viewfinder shots.<br>Proceeding implies your understanding.<br><span class=\"sensitive-desc-hint\">(Will not prompt again during this session)</span>",
+        cw_desc: "This entry may contain negative, impulsive, inexplicable content, or viewfinder shots.<br>Proceeding implies your understanding.",
+        cw_desc_hint: "(Will not prompt again during this session)",
         cw_decline: "Not Interested",
         cw_agree: "I Understand",
         err_404_proj_title: "404 Project Not Found",
         err_404_proj_desc: "The specified project could not be found.<br/>It may not exist or has been removed.",
         err_403_title: "403 ACCESS DENIED",
-        err_403_desc: "Access Denied.<br/><span style=\"opacity: 0.8; font-size: 0.85em; font-family: monospace;\">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style=\"cursor: pointer; position: relative;\" class=\"secret-admin-trigger\">Azusa Kazekawa</span>.</span>",
+        err_403_desc: "Access Denied.",
+        author_name: "Kazekawa Azusa",
         err_404_art_title: "404 Article Not Found",
         err_404_art_desc: "The article could not be found in project '{0}'.<br/>It may not exist or has been removed.",
         system_error_label: "SYSTEM_ERROR",
@@ -139,7 +148,15 @@ const I18N_DICT = {
         marquee_net_offline: "NETWORK OFFLINE • PLEASE CHECK CONNECTION • ",
         marquee_sys_offline: "SYSTEM OFFLINE • ERROR • ",
         core_update: "CORE_UPDATE",
-        updating: "UPDATING"
+        updating: "UPDATING",
+        success: "SUCCESS",
+        chart_downloaded: "Chart Downloaded",
+        no_quotes: "No quotes available",
+        header_desc: "Software Engineer · Systems Builder<br />Code, Finance, Pixels, Notes, and Words",
+        profile_desc: "A gathering place for a person named 'Azu'.<br/>Usually writing, coding, drawing, making music, and studying finance.<br/>This is also the official website of 'Azustock Holdings Pseudo-Corp'.",
+        profile_quote: "「At a certain special point in time, you will meet her. Perhaps after some time, you will reach the point where you decide to read her.」",
+        aria_theme: "Toggle Theme",
+        aria_btt: "Back to Top"
     },
     ja: {
         copy_link: "リンク複製", copied: "コピー完了", download: "保存", refresh: "更新",
@@ -160,15 +177,16 @@ const I18N_DICT = {
         next_item: "次へ", remove_filter: "フィルター解除", share_site: "サイトを共有", credits: "謝辞",
         copied_exclaim: "コピー完了", click_to_retry_block: "クリックして再試行",
 
-        // ✨ 以下為全新加入的系統底層與警告文案
         cw_title: "コンテンツ警告 (Content Warning)",
-        cw_desc: "このエントリには、ネガティブな内容、突発的なもの、不可解なもの、またはファインダー越しの景色が含まれる場合があります。<br>クリックして進むと、同意したとみなされます。<br><span class=\"sensitive-desc-hint\">(同意後、このセッション中は再表示されません)</span>",
+        cw_desc: "このエントリには、ネガティブな内容、突発的なもの、不可解なもの、またはファインダー越しの景色が含まれる場合があります。<br>クリックして進むと、同意したとみなされます。",
+        cw_desc_hint: "(同意後、このセッション中は再表示されません)",
         cw_decline: "戻る",
         cw_agree: "理解して進む",
         err_404_proj_title: "404 見つかりません",
         err_404_proj_desc: "指定されたプロジェクトが見つかりません。<br/>存在しないか、削除された可能性があります。",
         err_403_title: "403 アクセス拒否",
-        err_403_desc: "アクセス拒否。<br/><span style=\"opacity: 0.8; font-size: 0.85em; font-family: monospace;\">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style=\"cursor: pointer; position: relative;\" class=\"secret-admin-trigger\">風川梓</span>.</span>",
+        err_403_desc: "アクセス拒否。",
+        author_name: "風川梓",
         err_404_art_title: "404 記事が見つかりません",
         err_404_art_desc: "プロジェクト「{0}」にこの記事が見つかりません。<br/>存在しないか、削除された可能性があります。",
         system_error_label: "SYSTEM_ERROR",
@@ -193,10 +211,10 @@ const I18N_DICT = {
         syncing_new_data: "SYNCING_NEW_DATA",
         sys_online: ">_ SYSTEM_ONLINE",
         sys_reverted: ">_ SYSTEM_REVERTED",
-        update_success: "UPDATE_SUCCESSFUL",
-        cdn_delay: "CDN_CACHE_DELAY",
+        update_success: "更新成功",
+        cdn_delay: "CDN キャッシュ遅延",
         update_failed: ">_ UPDATE_FAILED",
-        cdn_delay_detected: "CDN_CACHE_DELAY_DETECTED",
+        cdn_delay_detected: "CDN キャッシュ遅延を検出",
         reload_system: ">_ システム再読み込み",
         fetching_data: "データ取得中...",
         awaiting_data: ">_ システム起動中 : データストリーム待機...",
@@ -207,7 +225,15 @@ const I18N_DICT = {
         marquee_net_offline: "NETWORK OFFLINE • PLEASE CHECK CONNECTION • ",
         marquee_sys_offline: "SYSTEM OFFLINE • ERROR • ",
         core_update: "CORE_UPDATE",
-        updating: "UPDATING"
+        updating: "UPDATING",
+        success: "成功",
+        chart_downloaded: "グラフを保存しました",
+        no_quotes: "利用可能な名言がありません",
+        header_desc: "Software Engineer · Systems Builder<br />コード、金融、ピクセル、音符、言葉",
+        profile_desc: "「梓」という名の人の集まる場所。<br/>普段は文章を書いたり、プログラミング、絵描き、音楽、金融の勉強をしています。<br/>ここは「梓本投資控股偽存会社」の公式サイトでもあり、梓たちの作品を展示しています。",
+        profile_quote: "「ある特別な時期に、あなたは彼女に出会う。そしておそらく、しばらくしてから、あなたは彼女を読むと決めるその時に到達するだろう。」",
+        aria_theme: "テーマ切替",
+        aria_btt: "トップへ戻る"
     }
 };
 

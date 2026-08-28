@@ -227,6 +227,9 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     const cleanProjectId = pParam.replace(/^\d+_/, '');
     const project = window.siteProjects.find(proj => proj.id === cleanProjectId);
     
+    // ✨ 將剛剛從 i18n 剝離的 HTML 結構放在這裡組合
+    const error403Msg = `${t('err_403_desc')}<br/><span class="err-sec-protocol">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span class="secret-admin-trigger">${t('author_name')}</span>.</span>`;
+    
     if (!project) {
         show404Modal(t('err_404_proj_title'), t('err_404_proj_desc'));
         window.history.replaceState(null, '', window.location.pathname);
@@ -234,7 +237,7 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     }
 
     if (project.is_hidden && !document.body.classList.contains('system-override-active')) {
-        show404Modal(t('err_403_title'), t('err_403_desc'));
+        show404Modal(t('err_403_title'), error403Msg);
         return;
     }
 
@@ -245,7 +248,7 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
         if (aIndex !== -1 && aIndex < project.articles.length) {
             const article = project.articles[aIndex];
             if (article.is_hidden && !document.body.classList.contains('system-override-active')) {
-                show404Modal(t('err_403_title'), t('err_403_desc'));
+                show404Modal(t('err_403_title'), error403Msg);
                 return;
             }
             window.openArticle(project.id, aIndex, false, 0, hashParam);
@@ -1320,7 +1323,7 @@ window.downloadMermaidPNG = function(btn) {
             if (!isPWA) {
                 window.triggerHaptic('success');
                 if (window.showSystemToast) {
-                     window.showSystemToast('SUCCESS', '圖表已下載', fileName, 3000, 'success');
+                    window.showSystemToast(t('success'), t('chart_downloaded'), fileName, 3000, 'success');
                 }
             }
         }, 'image/png', 1.0);
@@ -2085,6 +2088,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-i18n-alt]').forEach(el => {
         el.setAttribute('alt', window.t ? window.t(el.getAttribute('data-i18n-alt')) : el.getAttribute('alt'));
     });
+    // ✨ 加上這三行，支援 aria-label 的翻譯！
+    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+        el.setAttribute('aria-label', window.t ? window.t(el.getAttribute('data-i18n-aria')) : el.getAttribute('aria-label'));
+    });
 
     const themeToggle = document.getElementById('theme-toggle');
     const savedTheme = localStorage.getItem('theme');
@@ -2244,7 +2251,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 try {
                     const notes = await window.getKotobaList();
-                    if (notes.length === 0) throw new Error("無可用題庫");
+                    if (notes.length === 0) throw new Error(t('no_quotes'));
                     const randomNote = notes[Math.floor(Math.random() * notes.length)];
                     
                     setTimeout(() => {
@@ -4659,6 +4666,7 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
             <h2 class="sensitive-title">${t('cw_title')}</h2>
             <p class="sensitive-desc">
                 ${t('cw_desc')}
+                <br><span class="sensitive-desc-hint">${t('cw_desc_hint')}</span>
             </p>
             <div class="sensitive-actions">
                 <button id="sensitive-decline-btn" class="btn">${t('cw_decline')}</button>
@@ -4730,7 +4738,7 @@ window.showCreditsModal = async function() {
             mdText = window.cachedCreditsText;
         } else {
             const response = await fetch(`./credits.md?v=${window.getResVersion('credits.md')}`);
-            if (!response.ok) throw new Error('找不到 credits.md 檔案');
+            if (!response.ok) throw new Error(t('credits_not_found'));
             mdText = await response.text();
             window.cachedCreditsText = mdText;
         }
@@ -4756,7 +4764,7 @@ window.showCreditsModal = async function() {
                     <div class="index-header-container">
                         <h1 class="index-header-title">${t('credits')}</h1>
                         <div class="index-header-actions">
-                            <span class="article-count-badge">Acknowledgments</span>
+                            <span class="article-count-badge">${t('acknowledgments_badge')}</span>
                         </div>
                     </div>
                 `;
@@ -4834,7 +4842,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
             // 已有快取，不需重抓
         } else {
             const response = await fetch(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`);
-            if (!response.ok) throw new Error('找不到 changelogs.json');
+            if (!response.ok) throw new Error(t('changelog_not_found'));
             window.cachedChangelogs = await response.json();
         }
 
@@ -4855,7 +4863,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 <div class="index-header-container">
                     <h1 class="index-header-title">${t('changelog_title')}</h1>
                     <div class="index-header-actions">
-                        <span class="article-count-badge">History</span>
+                        <span class="article-count-badge">${t('update_history')}</span>
                     </div>
                 </div>
             `;
@@ -4996,7 +5004,7 @@ window.showLicenseModal = async function() {
             mdText = window.cachedLicenseText;
         } else {
             const response = await fetch(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`);
-            if (!response.ok) throw new Error("找不到版權檔案");
+            if (!response.ok) throw new Error(t('license_not_found'));
             mdText = await response.text();
             window.cachedLicenseText = mdText;
         }
@@ -5024,7 +5032,7 @@ window.showLicenseModal = async function() {
                     <div class="index-header-container">
                         <h1 class="index-header-title">${t('license_title')}</h1>
                         <div class="index-header-actions">
-                            <span class="article-count-badge">important</span>
+                            <span class="article-count-badge">${t('important_badge')}</span>
                         </div>
                     </div>
                 `;
