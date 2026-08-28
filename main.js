@@ -228,13 +228,13 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     const project = window.siteProjects.find(proj => proj.id === cleanProjectId);
     
     if (!project) {
-        show404Modal('404 Project Not Found', '無法找到您指定的專案。<br/>可能不存在或已被移除');
+        show404Modal(t('err_404_proj_title'), t('err_404_proj_desc'));
         window.history.replaceState(null, '', window.location.pathname);
         return;
     }
 
     if (project.is_hidden && !document.body.classList.contains('system-override-active')) {
-        show404Modal('403 ACCESS_DENIED', '拒絕存取。<br/><span style="opacity: 0.8; font-size: 0.85em; font-family: monospace;">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style="cursor: pointer; position: relative;" class="secret-admin-trigger">風川梓</span>.</span>');
+        show404Modal(t('err_403_title'), t('err_403_desc'));
         return;
     }
 
@@ -245,12 +245,12 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
         if (aIndex !== -1 && aIndex < project.articles.length) {
             const article = project.articles[aIndex];
             if (article.is_hidden && !document.body.classList.contains('system-override-active')) {
-                show404Modal('403 ACCESS_DENIED', '拒絕存取。<br/><span style="opacity: 0.8; font-size: 0.85em; font-family: monospace;">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style="cursor: pointer; position: relative;" class="secret-admin-trigger">風川梓</span>.</span>');
+                show404Modal(t('err_403_title'), t('err_403_desc'));
                 return;
             }
             window.openArticle(project.id, aIndex, false, 0, hashParam);
         } else {
-            show404Modal('404 Article Not Found', `在專案「${project.title}」中找不到此文章。<br/>可能不存在或已被移除。`);
+            show404Modal(t('err_404_art_title'), t('err_404_art_desc', [project.title]));
             window.history.replaceState(null, '', window.location.pathname);
         }
     } else {
@@ -296,7 +296,7 @@ window.handleCopy = function(element, shareUrl) {
     
     navigator.clipboard.writeText(shareUrl).then(() => {
         element.classList.add('copied');
-        element.innerHTML = `${checkSvg} <span style="margin-left: 4px;">已複製</span>`;
+        element.innerHTML = `${checkSvg} <span style="margin-left: 4px;">${t('copied')}</span>`; // ✨ 替換這裡
         setTimeout(() => {
             element.classList.remove('copied');
             element.innerHTML = originalContent;
@@ -345,19 +345,18 @@ window.refreshUIAfterOverrideToggle = function() {
                 grid.querySelectorAll('.card').forEach(card => {
                     const titleEl = card.querySelector('h3');
                     if (titleEl && titleEl.innerText.includes(proj.title)) {
-                        // ✨ 核心修復：把尋找的 class 改為正確的 .card-action-btn
                         const actionBtn = card.querySelector('.card-action-btn');
-                        if (actionBtn && actionBtn.innerText.includes('展開系列')) {
-                            // 動態計算當前權限下可見的文章數量
+                        
+                        // ✨ 替換這裡：把 '展開系列' 換成 t('expand_series')
+                        if (actionBtn && actionBtn.innerText.includes(t('expand_series'))) {
                             const count = isUnlocked ? proj.articles.length : proj.articles.filter(art => !art.is_hidden).length;
                             
-                            // ✨ 精準抓出圖標容器，避免破壞 HTML 結構
                             const iconWrap = actionBtn.querySelector('.card-action-icon-wrap');
                             actionBtn.innerHTML = '';
                             if (iconWrap) actionBtn.appendChild(iconWrap);
                             
-                            // 重新植入最新的數字
-                            actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
+                            // ✨ 替換這裡：動態插入翻譯好的文字與數量
+                            actionBtn.insertAdjacentHTML('beforeend', `${t('expand_series')} (${count})`);
                         }
                     }
                 });
@@ -644,7 +643,7 @@ window.handleImageError = function(img) {
         retryHint = document.createElement('div');
         retryHint.className = 'img-retry-hint';
         // 使用我們預設的重新載入 SVG 圖標
-        retryHint.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg> 點擊重試`;
+        retryHint.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg> ${t('click_to_retry')}`;
         
         // 確保父容器有定位能力，讓 absolute 能精準置中
         if (window.getComputedStyle(img.parentNode).position === 'static') {
@@ -720,9 +719,9 @@ window.handleMediaError = function(sourceEl) {
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
                     <line x1="2" y1="2" x2="22" y2="22"></line>
                 </svg>
-                <div class="media-error-title">MEDIA_NOT_FOUND</div>
+                <div class="media-error-title">${t('media_not_found')}</div>
                 <div class="retry-text">
-                    ${GLOBAL_SVGS.retry} 點擊區塊以重試載入
+                    ${GLOBAL_SVGS.retry} ${t('click_to_retry_block')}
                 </div>
             </div>
         `;
@@ -923,9 +922,8 @@ window.openLightbox = function(btn, event) {
         window.lightboxState.images = figures.map(fig => {
             const img = fig.querySelector('img');
             return {
-                // ✨ 優先拿 data-full，沒有才退回 src
                 src: img?.getAttribute('data-full') || img?.src,
-                caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
+                caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').replace(window.t ? window.t('view_image') : '', '').trim()
             }
         }).filter(item => item.src);
         
@@ -933,8 +931,8 @@ window.openLightbox = function(btn, event) {
         window.lightboxState.currentIndex = window.lightboxState.images.findIndex(item => item.src === targetFullSrc);
     } else {
         window.lightboxState.images = [{
-            src: targetImg.getAttribute('data-full') || targetImg.src, // ✨ 優先拿 data-full
-            caption: container.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
+            src: targetImg?.getAttribute('data-full') || targetImg?.src, // ✨ 修正變數
+            caption: container.querySelector('figcaption')?.innerText.replace('查看大圖', '').replace(window.t ? window.t('view_image') : '', '').trim() // ✨ 修正變數
         }];
     }
 
@@ -1580,38 +1578,30 @@ function renderPDFIframe(href, altText) {
     const hMatch = href.match(/[?&]h=(\d+)/i);
     if (hMatch) customHeight = hMatch[1] + "px";
     
-    // ✨ 只要是觸控裝置 (手機/平板/PWA)，點擊就彈出安全操作面板
-    const mobileClickHandler = `
-        event.stopPropagation();
-        window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');
-    `;
+    const mobileClickHandler = `event.stopPropagation(); window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');`;
 
     return `
-    <!-- ✨ 全面使用 CSS 類別提取版 -->
-    <div class="pdf-container" 
-        onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }">
-        
+    <div class="pdf-container" onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }">
         <div class="pdf-container-header" onclick="event.stopPropagation();">
             <div class="pdf-container-title">
                 ${GLOBAL_SVGS.docIcon}
                 <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
             </div>
-            
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <button class="mermaid-btn" data-tooltip="重新整理" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
+                <button class="mermaid-btn" data-tooltip="${t('refresh')}" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
                     ${GLOBAL_SVGS.mermaidReload}
                 </button>
                 <div class="action-btn-divider desktop-only"></div>
-                <button class="mermaid-btn desktop-only" data-tooltip="新分頁開啟" onclick="event.stopPropagation(); window.open('${href}', '_blank');">
+                <button class="mermaid-btn desktop-only" data-tooltip="${t('open_new_tab')}" onclick="event.stopPropagation(); window.open('${href}', '_blank');">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </button>
             </div>
         </div>
-        <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+        <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);"></iframe>
         <div class="pdf-mobile-placeholder">
-            <span style="font-size: 1.05rem; letter-spacing: 0.05em;">點擊下方按鈕以檢視或下載 PDF 檔案</span>
+            <span style="font-size: 1.05rem; letter-spacing: 0.05em;">${t('pdf_hint')}</span>
             <span class="pdf-mobile-btn">
-                ${GLOBAL_SVGS.newTab} 點擊開啟 PDF 操作選單
+                ${GLOBAL_SVGS.newTab} ${t('open_pdf_menu')}
             </span>
         </div>
     </div>`;
@@ -1621,23 +1611,21 @@ function renderPDFIframe(href, altText) {
 // ✨ 輔助函數：渲染影音標籤 (Video / Audio)
 // ==========================================
 function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle) {
-    const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
+    const displayTitle = altText || imgTitle || (isVideo ? t('video_player') : t('audio_player'));
     const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
     const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
     const mediaTag = isVideo 
-        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
-        : `<audio preload="metadata" controls class="md-audio"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
+        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">${t('browser_no_video')}</video>`
+        : `<audio preload="metadata" controls class="md-audio"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">${t('browser_no_audio')}</audio>`;
 
-    // ✨ 影音專屬：重載腳本 (加上時間戳防快取)
     const reloadScript = `event.stopPropagation(); const media = this.closest('.media-container-wrapper').querySelector('.md-video, .md-audio'); const source = media.querySelector('source'); const orig = source.src.split('?retry=')[0].split('&retry=')[0]; const sep = orig.includes('?') ? '&' : '?'; source.src = orig + sep + 'retry=' + new Date().getTime(); media.load();`;
 
-    // ✨ 注入重新整理按鈕，並在有全螢幕按鈕時加入分隔線
     const actionBtns = `
         <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button class="mermaid-btn" data-tooltip="重新整理" onclick="${reloadScript}">${GLOBAL_SVGS.mermaidReload}</button>
+            <button class="mermaid-btn" data-tooltip="${t('refresh')}" onclick="${reloadScript}">${GLOBAL_SVGS.mermaidReload}</button>
             ${isVideo ? `
             <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-            <button class="mermaid-btn" data-tooltip="全螢幕檢視" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>
+            <button class="mermaid-btn" data-tooltip="${t('fullscreen')}" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>
             ` : ''}
         </div>
     `;
@@ -1694,8 +1682,8 @@ renderer.image = function(token_or_href, title, text) {
     }
 
     const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
-    const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
-    const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
+    const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="${t('zoom_in')}" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
+    const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="${t('zoom_in')}" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
     if (imgTitle) {
         let figureClass = (altText === 'float-right' || altText === 'float-left') ? ` class="${altText}"` : '';
@@ -1730,7 +1718,7 @@ renderer.code = function(token_or_code, language, isEscaped) {
         // 使用翻譯蒟蒻，將原文裡的 var() 與 rgba 轉成 Hex 色碼
         const processedText = window.processMermaidCssVars(rawText);
 
-        let chartTitle = "流程圖 (Flowchart)";
+        let chartTitle = t('flowchart');
         const fullLang = typeof token_or_code === 'object' ? (token_or_code.lang || language) : (language || '');
         const titleMatch = fullLang.match(/\[(.*?)\]/);
         
@@ -1745,29 +1733,17 @@ renderer.code = function(token_or_code, language, isEscaped) {
             <div class="mermaid-toolbar" onclick="event.stopPropagation();">
                 <span class="mermaid-title">${chartTitle}</span>
                 <div class="mermaid-btns">
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">${GLOBAL_SVGS.mermaidZoomIn}</button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="縮小">${GLOBAL_SVGS.mermaidZoomOut}</button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'center')" data-tooltip="置中">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                            <circle cx="12" cy="12" r="3" />
-                            <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" />
-                            <path d="M12 2v3M2 12h3M22 12h-3M12 22v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-                        </svg>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="${t('zoom_in')}">${GLOBAL_SVGS.mermaidZoomIn}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="${t('zoom_out')}">${GLOBAL_SVGS.mermaidZoomOut}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'center')" data-tooltip="${t('center_view')}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" /><path d="M12 2v3M2 12h3M22 12h-3M12 22v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
                     </button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
-                    
-                    <!-- ✨ 這條線會被觸控裝置隱藏 (解決圖片中多出來的那條線) -->
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="${t('reset_view')}">${GLOBAL_SVGS.mermaidReset}</button>
                     <div class="action-btn-divider desktop-only"></div>
-                    
-                    <!-- 重新整理按鈕 -->
-                    <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="重新整理">${GLOBAL_SVGS.mermaidReload}</button>
-                    
-                    <button class="mermaid-btn desktop-only" data-tooltip="下載" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
-                    
-                    <!-- ✨ 這條線沒有 desktop-only，所以在觸控裝置上會完美保留在「重整」與「全螢幕」之間 -->
+                    <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="${t('refresh')}">${GLOBAL_SVGS.mermaidReload}</button>
+                    <button class="mermaid-btn desktop-only" data-tooltip="${t('download')}" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-                    
-                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
+                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="${t('zoom_in')}">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
             <div class="mermaid-wrapper">
@@ -1801,7 +1777,7 @@ renderer.code = function(token_or_code, language, isEscaped) {
         <!-- 設定 max-width 避免檔名太長蓋到複製按鈕，過長會自動變成 ... -->
         <div class="code-lang-label" style="max-width: calc(100% - 100px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${fileName || cleanLang}">${labelContent}</div>
         <button class="code-copy-btn" onclick="window.copyCodeBlock(this)">
-            ${copyIcon} <span class="copy-text">Copy</span>
+            ${copyIcon} <span class="copy-text">${t('copy_code')}</span>
         </button>
         <pre><code class="language-${cleanLang}">${escapedText}</code></pre>
     </div>`;
@@ -1814,31 +1790,24 @@ window.copyCodeBlock = function(btn) {
     // 防止重複點擊
     if (btn.classList.contains('copied')) return;
     
-    // 往上找到外層容器，再往下精準抓取 code 裡面的文字
     const wrapper = btn.closest('.code-block-wrapper');
     const codeEl = wrapper.querySelector('code');
     if (!codeEl) return;
 
-    // innerText 會自動處理好換行與跳脫字元，拿來複製最精準
     const textToCopy = codeEl.innerText;
-
-    // 儲存原本的按鈕內容
     const originalHtml = btn.innerHTML;
     const checkIcon = GLOBAL_SVGS.check;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
-        // 成功時切換狀態與文字
         btn.classList.add('copied');
-        btn.innerHTML = `${checkIcon} <span class="copy-text">Copied!</span>`;
-
-        // 2 秒後恢復原狀
+        btn.innerHTML = `${checkIcon} <span class="copy-text">${t('copied_exclaim')}</span>`;
         setTimeout(() => {
             btn.classList.remove('copied');
             btn.innerHTML = originalHtml;
         }, 2000);
     }).catch(err => {
         console.error('程式碼複製失敗:', err);
-        btn.innerHTML = `<span class="copy-text" style="color: var(--error-color);">Error</span>`;
+        btn.innerHTML = `<span class="copy-text" style="color: var(--error-color);">${t('error')}</span>`;
         setTimeout(() => btn.innerHTML = originalHtml, 2000);
     });
 };
@@ -2106,6 +2075,17 @@ window.handleSpaLink = function(event, url) {
 // === 1. 介面與導覽列邏輯 (Theme & Menu) ===
 document.addEventListener('DOMContentLoaded', () => {
     
+    // ✨ 自動翻譯 HTML 中的靜態標籤與 Tooltip (i18n)
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.innerHTML = window.t ? window.t(el.getAttribute('data-i18n')) : el.innerHTML;
+    });
+    document.querySelectorAll('[data-i18n-tooltip]').forEach(el => {
+        el.setAttribute('data-tooltip', window.t ? window.t(el.getAttribute('data-i18n-tooltip')) : el.getAttribute('data-tooltip'));
+    });
+    document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+        el.setAttribute('alt', window.t ? window.t(el.getAttribute('data-i18n-alt')) : el.getAttribute('alt'));
+    });
+
     const themeToggle = document.getElementById('theme-toggle');
     const savedTheme = localStorage.getItem('theme');
     const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
@@ -2589,7 +2569,7 @@ async function loadProjects() {
                         <div class="card-action-icon-wrap">
                             ${GLOBAL_SVGS.folderClosed}
                             ${GLOBAL_SVGS.folderOpen}
-                        </div>展開系列 (${visibleCount})</div>`;
+                        </div>${t('expand_series')} (${visibleCount})</div>`; // ✨ 換成 t('expand_series')
                 } else if (data.link) {
                     card.style.cursor = 'pointer';
                     card.onclick = () => { 
@@ -2607,7 +2587,7 @@ async function loadProjects() {
                     
                     actionText = `<div class="card-action-btn">
                         ${GLOBAL_SVGS.linkLg} 
-                        前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">
+                        ${t('external_project')} <span class="action-arrow card-action-arrow" data-dir="up-right"> <!-- ✨ 換成 t('external_project') -->
                         ${GLOBAL_SVGS.arrowUpRight}</span></div>`;
                 } else {
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
@@ -2714,13 +2694,13 @@ async function loadProjects() {
         
         // ✨ 判斷是否為網路斷線或無法連線
         const isOffline = !navigator.onLine || (err.message && err.message.includes('Failed to fetch'));
-        const errorTitle = isOffline ? "ERR: NO INTERNET CONNECTION" : "ERR: FAILED TO FETCH DATA";
-        const errorDetail = err.message ? err.message.toUpperCase() : "UNKNOWN_SYSTEM_ERROR";
-        const errorSub = isOffline ? "請檢查您的網路設定，連線恢復後請重新整理。" : `[SYS_DUMP] ${errorDetail}`;
+        const errorTitle = isOffline ? t('err_offline_title') : t('err_fetch_title');
+        const errorDetail = err.message ? err.message.toUpperCase() : t('err_unknown');
+        const errorSub = isOffline ? t('err_offline_sub') : `${t('sys_dump')} ${errorDetail}`;
         
         portfolioSections.innerHTML = `
             <div class="error-container" style="flex-direction: column; gap: 0.8rem;">
-                <span class="error-text" onclick="this.style.opacity='0.5'; this.innerHTML='>_ REBOOTING...'; window.location.reload();">
+                <span class="error-text" onclick="this.style.opacity='0.5'; this.innerHTML='${t('rebooting')}'; window.location.reload();">
                     ${GLOBAL_SVGS.retry} ${errorTitle}
                 </span>
                 <span style="font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--muted); opacity: 0.6; letter-spacing: 0.05em;">
@@ -2786,11 +2766,11 @@ function hideSystemRebootScreen(isSuccess = true) {
     const msgEl = screen.querySelector('.loading-text');
     
     if (isSuccess) {
-        if (titleEl) { titleEl.innerText = '>_ SYSTEM_ONLINE'; titleEl.style.color = 'var(--accent-2)'; titleEl.style.textShadow = '0 0 10px var(--accent-2)'; }
-        if (msgEl) { msgEl.innerText = 'UPDATE_SUCCESSFUL'; msgEl.style.color = 'var(--accent-2)'; msgEl.style.animation = 'none'; }
+        if (titleEl) { titleEl.innerText = t('sys_online'); titleEl.style.color = 'var(--accent-2)'; titleEl.style.textShadow = '0 0 10px var(--accent-2)'; }
+        if (msgEl) { msgEl.innerText = t('update_success'); msgEl.style.color = 'var(--accent-2)'; msgEl.style.animation = 'none'; }
     } else {
-        if (titleEl) { titleEl.innerText = '>_ SYSTEM_REVERTED'; titleEl.style.color = 'var(--muted)'; titleEl.style.textShadow = 'none'; }
-        if (msgEl) { msgEl.innerText = 'CDN_CACHE_DELAY'; msgEl.style.color = 'var(--muted)'; msgEl.style.animation = 'none'; }
+        if (titleEl) { titleEl.innerText = t('sys_reverted'); titleEl.style.color = 'var(--muted)'; titleEl.style.textShadow = 'none'; }
+        if (msgEl) { msgEl.innerText = t('cdn_delay'); msgEl.style.color = 'var(--muted)'; msgEl.style.animation = 'none'; }
     }
 
     // ✨ 停頓 0.6 秒讓使用者欣賞成功訊息，再平滑淡出
@@ -2815,7 +2795,7 @@ async function checkSystemVersionAndBoot() {
     const sysIntent = sessionStorage.getItem('sys_intent');
 
     if (isRebooting) {
-        showSystemRebootScreen('SYSTEM_REBOOTING', CONFIG.VERSION, expectedVersion, 'VERIFYING_MODULES', true);
+        showSystemRebootScreen(t('sys_rebooting'), CONFIG.VERSION, expectedVersion, t('verifying_modules'), true);
     }
 
     try {
@@ -2835,7 +2815,7 @@ async function checkSystemVersionAndBoot() {
         // 1. 檢查系統層級更新 (優先級最高)
         if (sysData && sysData.version && sysData.version !== CONFIG.VERSION) {
             needReboot = true;
-            rebootReason = 'SYS_UPDATING';
+            rebootReason = t('sys_updating');
             remoteVersion = sysData.version;
             console.warn(`[SYS_UPDATE] 發現系統新版本 ${remoteVersion}，準備強制更新...`);
         }
@@ -2846,7 +2826,7 @@ async function checkSystemVersionAndBoot() {
             // ✨ 如果本地有舊紀錄，且專案 (projects) 的 Hash 發生改變，才需要強制重開機刷新首頁
             if (localDataVersions.projects && localDataVersions.projects !== contentData.projects) {
                 needReboot = true;
-                rebootReason = 'SYNCING_NEW_DATA';
+                rebootReason = t('syncing_new_data');
                 console.info(`[DATA_UPDATE] 發現文章內容修改，準備同步資料庫...`);
             }
             
@@ -2866,7 +2846,7 @@ async function checkSystemVersionAndBoot() {
                 hideSystemRebootScreen(false); 
                 loadProjects(); 
                 if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600); 
-                setTimeout(() => { window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `已還原為安全狀態`, 12000, 'error'); }, 1000);
+                setTimeout(() => { window.showSystemToast(t('update_failed'), t('cdn_delay_detected'), t('reverted_safe_state'), 12000, 'error'); }, 1000);
                 return;
             }
             
@@ -3101,16 +3081,15 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             // 2. 將目錄標題與功能按鈕直接注入 modal-top-left
             document.getElementById('modal-top-left').innerHTML = `
                 <div class="index-header-container">
-                    <h1 class="index-header-title">${proj.title} - 目錄</h1>
+                    <h1 class="index-header-title">${proj.title} - ${t('index_title')}</h1>
                     <div class="index-header-actions">
-                        <!-- ✨ 使用 visibleCount 替換掉原本的 proj.articles.length -->
-                        <span class="article-count-badge">共 ${visibleCount} 篇</span>
+                        <span class="article-count-badge">${t('total_articles', [visibleCount])}</span>
                         <button id="toggle-sort-btn" class="share-link-btn sm">
                             <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
                             <span id="sort-btn-text" style="margin-left: 4px;"></span>
                         </button>
                         <button class="share-link-btn sm" id="index-share-btn">
-                            ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">複製連結</span>
+                            ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">${t('copy_link')}</span>
                         </button> 
                     </div>
                 </div>
@@ -3355,13 +3334,13 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                             if (countBelow > 0) {
                                 targetArticle = closestBelow;
-                                const prefix = countVisible > 0 ? '下方還有' : '發現';
-                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpDown} ${prefix} ${countBelow} 篇新內容`;
+                                const prefix = countVisible > 0 ? t('more_below') : t('found_new');
+                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpDown} ${prefix} ${countBelow} ${t('new_articles')}`;
                                 jumpToast.classList.add('is-visible');
                             } else if (countAbove > 0) {
                                 targetArticle = closestAbove;
-                                const prefix = countVisible > 0 ? '上方還有' : '發現';
-                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpUp} ${prefix} ${countAbove} 篇新內容`;
+                                const prefix = countVisible > 0 ? t('more_above') : t('found_new');
+                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpUp} ${prefix} ${countAbove} ${t('new_articles')}`;
                                 jumpToast.classList.add('is-visible');
                             } else {
                                 targetArticle = null;
@@ -3409,7 +3388,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 const isAsc = currentSort === 'asc';
                 sortBtn.classList.toggle('is-asc', isAsc);
                 sortBtn.classList.toggle('is-desc', !isAsc);
-                sortBtn.querySelector('#sort-btn-text').innerText = isAsc ? '由舊到新' : '由新到舊';
+                sortBtn.querySelector('#sort-btn-text').innerText = isAsc ? t('sort_asc') : t('sort_desc');
             };
 
             updateSortBtnUI();
@@ -3571,7 +3550,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     }
     
     document.body.style.cursor = 'wait';
-    let markdownContent = "載入失敗";
+    let markdownContent = t('load_failed');
     
     try {
         const response = await fetch(article.content_path);
@@ -3583,8 +3562,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         
         // 動態判斷是網路斷線還是檔案遺失
         const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
-        const errTitle = isOffline ? 'ERR_INTERNET_DISCONNECTED' : '404 NOT_FOUND';
-        const errMsg = isOffline ? '網路連線中斷，請檢查您的網路狀態。' : '無法載入文章內容。';
+        const errTitle = isOffline ? t('err_net_disconnect') : t('err_not_found');
+        const errMsg = isOffline ? t('net_offline_sub') : t('err_not_found'); // 統一用字典的字
         
         markdownContent = `
 # ${article.title}
@@ -3655,7 +3634,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             const generateNavBtn = (item, type) => {
                 const isPrev = type === 'prev';
                 const iconSvg = isPrev ? GLOBAL_SVGS.chevronLeft : GLOBAL_SVGS.chevronRight;
-                const text = isPrev ? '上一篇' : '下一篇';
+                const text = isPrev ? t('prev_article') : t('next_article');
                 
                 if (!item) {
                     return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled>${iconSvg}</button>` };
@@ -3752,7 +3731,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
                 const shareBtn = document.createElement('button');
                 shareBtn.className = 'share-link-btn';
-                shareBtn.innerHTML = `${GLOBAL_SVGS.link} <span>複製連結</span>`;
+                shareBtn.innerHTML = `${GLOBAL_SVGS.link} <span>${t('copy_link')}</span>`;
                 shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
 
                 rightGroup.appendChild(shareBtn);
@@ -3760,10 +3739,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             }
 
             const topLeft = document.getElementById('modal-top-left');
-            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
+            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="${t('history_back')}">${GLOBAL_SVGS.historyBack}</button>` : '';
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
-            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
+            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="${t('back_to_index')}">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">${t('index_title')}</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
 
             const tocMount = document.getElementById('toc-mount-point');
             tocMount.innerHTML = ''; 
@@ -3965,7 +3944,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                         const existingBtn = figure.querySelector('.zoom-btn');
                         if (!existingBtn) {
                             const zoomBtn = document.createElement('button');
-                            zoomBtn.setAttribute('data-tooltip', '放大檢視');
+                            zoomBtn.setAttribute('data-tooltip', t('zoom_in'));
                             zoomBtn.innerHTML = GLOBAL_SVGS.zoomIcon;
                             
                             zoomBtn.onclick = (event) => {
@@ -4483,10 +4462,10 @@ window.fullscreenMermaid = function(btn) {
 
     // 3. 設定 Lightbox 狀態，加上 isDomMode 隱藏屬性
     window.lightboxState = { 
-        images: [{ src: '', caption: titleNode ? titleNode.innerText : "Mermaid 流程圖" }], 
+        images: [{ src: '', caption: titleNode ? titleNode.innerText : t('flowchart') }], // ✨ 替換為 t('flowchart')
         currentIndex: 0, 
         zoom: 1, 
-        x: 0, 
+        x: 0,
         y: 0,
         maxZoom: 5, // 圖表允許放得更大
         isDomMode: true
@@ -4599,7 +4578,7 @@ function show404Modal(title, message) {
     const modalTopLeft = document.getElementById('modal-top-left');
     const tocMountPoint = document.getElementById('toc-mount-point');
 
-    if (modalTopLeft) modalTopLeft.innerHTML = `<span style="color: var(--muted); font-weight: 600; font-family: monospace; letter-spacing: 0.05em;">SYSTEM_ERROR</span>`;
+    if (modalTopLeft) modalTopLeft.innerHTML = `<span style="color: var(--muted); font-weight: 600; font-family: monospace; letter-spacing: 0.05em;">${t('system_error_label')}</span>`;
     if (tocMountPoint) tocMountPoint.innerHTML = '';
 
     // ✨ 動態判斷：如果是 403 就顯示鎖頭，否則顯示驚嘆號
@@ -4614,7 +4593,7 @@ function show404Modal(title, message) {
             <h1>${title}</h1>
             <p class="sys-error-desc">${message}</p>
             <button class="btn sys-error-btn" onclick="closeModal()">
-                ${GLOBAL_SVGS.arrowLeft} 返回首頁
+                ${GLOBAL_SVGS.arrowLeft} ${t('back_to_home')}
             </button>
         </div>`;
 
@@ -4720,14 +4699,13 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
                 ${GLOBAL_SVGS.closeX}
             </button>
             ${GLOBAL_SVGS.warning}
-            <h2 class="sensitive-title">內容警告 (Content Warning)</h2>
+            <h2 class="sensitive-title">${t('cw_title')}</h2>
             <p class="sensitive-desc">
-                此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。<br>
-                <span class="sensitive-desc-hint">(同意後於本次瀏覽器存續期間將不再提示)</span>
+                ${t('cw_desc')}
             </p>
             <div class="sensitive-actions">
-                <button id="sensitive-decline-btn" class="btn">不感興趣</button>
-                <button id="sensitive-agree-btn" class="btn">我已了解並前往</button>
+                <button id="sensitive-decline-btn" class="btn">${t('cw_decline')}</button>
+                <button id="sensitive-agree-btn" class="btn">${t('cw_agree')}</button>
             </div>
         </div>
     `;
@@ -4787,7 +4765,7 @@ window.applyIndentToVerticalWrapper = function(container) {
 window.cachedCreditsText = null;
 window.showCreditsModal = async function() {
     document.body.style.cursor = 'wait'; 
-    let mdText = "載入失敗"; let isError = false;
+    let mdText = t('load_failed'); let isError = false;
     
     try {
         // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
@@ -4819,7 +4797,7 @@ window.showCreditsModal = async function() {
             if (modalTopLeft) {
                 modalTopLeft.innerHTML = `
                     <div class="index-header-container">
-                        <h1 class="index-header-title">Credits</h1>
+                        <h1 class="index-header-title">${t('credits')}</h1>
                         <div class="index-header-actions">
                             <span class="article-count-badge">Acknowledgments</span>
                         </div>
@@ -4828,7 +4806,7 @@ window.showCreditsModal = async function() {
             }
 
             if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入致謝名單。');
+                modalBody.innerHTML = window.getSystemErrorHtml('System Error', t('credits_failed'));
             } else {
                 modalBody.innerHTML = `
                     <div class="credits-markdown-wrapper markdown-body" style="margin-top: -0.5rem;">
@@ -4918,9 +4896,9 @@ window.showChangelogModal = async function(isSystemFallback = false) {
         if (!isDetail) {
             modalTopLeft.innerHTML = `
                 <div class="index-header-container">
-                    <h1 class="index-header-title">System Changelog</h1>
+                    <h1 class="index-header-title">${t('changelog_title')}</h1>
                     <div class="index-header-actions">
-                        <span class="article-count-badge">Update History</span>
+                        <span class="article-count-badge">History</span>
                     </div>
                 </div>
             `;
@@ -4935,7 +4913,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
             modalTopLeft.innerHTML = `
                 <div class="changelog-header-row">
                     <button class="modal-back-btn" onclick="window.renderChangelogIndex()">
-                        ${GLOBAL_SVGS.arrowLeft} 返回清單
+                        ${GLOBAL_SVGS.arrowLeft} ${t('return_list')}
                     </button>
                     <div style="display: flex; align-items: center; gap: 0.8rem;">
                         <span class="changelog-version">${logData ? logData.version : ''}</span>
@@ -4964,7 +4942,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 renderChangelogHeader(false);
 
                 if (fetchError || !window.cachedChangelogs) {
-                    modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版本日誌。');
+                    modalBody.innerHTML = window.getSystemErrorHtml('System Error', t('changelog_failed'));
                 } else {
                     let listHTML = '<ul class="article-list-ul">';
                     window.cachedChangelogs.forEach(log => {
@@ -5053,7 +5031,7 @@ window.switchBilingualTab = function(lang, btn) {
 window.cachedLicenseText = null;
 window.showLicenseModal = async function() {
     document.body.style.cursor = 'wait'; 
-    let mdText = "載入失敗"; let isError = false;
+    let mdText = t('load_failed'); let isError = false;
 
     try {
         // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
@@ -5087,7 +5065,7 @@ window.showLicenseModal = async function() {
             if (modalTopLeft) {
                 modalTopLeft.innerHTML = `
                     <div class="index-header-container">
-                        <h1 class="index-header-title">License & Copyright</h1>
+                        <h1 class="index-header-title">${t('license_title')}</h1>
                         <div class="index-header-actions">
                             <span class="article-count-badge">important</span>
                         </div>
@@ -5097,7 +5075,7 @@ window.showLicenseModal = async function() {
 
             // 處理內容渲染
             if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版權聲明檔案。');
+                modalBody.innerHTML = window.getSystemErrorHtml('System Error', t('license_failed'));
             } else {
                 modalBody.innerHTML = `
                     <div class="markdown-body" style="margin-top: -0.5rem; padding-bottom: 2rem;">
@@ -5358,9 +5336,9 @@ window.addEventListener('offline', () => {
 
     // ✨ 呼叫共用引擎：顯示網路斷線提示
     window.showSystemToast(
-        '>_ SYSTEM_OFFLINE', 
-        '網路連線中斷', 
-        '請檢查您的網路設定，連線恢復後系統將自動重整。', 
+        t('net_offline_title'), 
+        t('net_offline_msg'), 
+        t('net_offline_sub'), 
         12000, 
         'error'
     );
@@ -5395,7 +5373,7 @@ window.showPdfActionModal = function(href, title) {
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     
     // 為了完美的 UX：如果是 PWA，我們直接把藍色主按鈕變成「下載」，並隱藏下方的第二顆按鈕
-    const viewBtnText = isPWA ? '檢視 PDF 檔案' : '於瀏覽器中檢視 PDF';
+    const viewBtnText = isPWA ? t('view_pdf') : t('view_pdf_browser');
     const viewBtnIcon = isPWA ? GLOBAL_SVGS.download : GLOBAL_SVGS.newTab;
     const downloadBtnDisplay = isPWA ? 'none' : 'flex';
 
@@ -5409,9 +5387,9 @@ window.showPdfActionModal = function(href, title) {
                     <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${viewBtnIcon}</span>${viewBtnText}
                 </button>
                 <button id="pdf-download-btn" class="pdf-action-btn secondary" style="display: ${downloadBtnDisplay};">
-                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.download}</span>下載 PDF 檔案
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.download}</span>${t('download_pdf')}
                 </button>
-                <button id="pdf-modal-close" class="pdf-action-btn cancel">取消</button>
+                <button id="pdf-modal-close" class="pdf-action-btn cancel">${t('cancel')}</button>
             </div>
         </div>
     `;
