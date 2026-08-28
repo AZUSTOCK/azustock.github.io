@@ -13,7 +13,7 @@ const I18N_DICT = {
         found_new: "發現", more_above: "上方還有", more_below: "下方還有", new_articles: "篇新內容",
         system_error: "系統錯誤", back_to_home: "返回首頁", access_denied: "拒絕存取",
         loading: "讀取中...", downloading: "下載中", opening: "開啟中", return_list: "返回清單",
-        changelog_title: "系統日誌", update_history: "更新紀錄", license_title: "版權與授權",
+        changelog_title: "系統日誌", update_history: "History", license_title: "版權與授權",
         copy_code: "複製", error: "發生錯誤", view_pdf: "檢視 PDF 檔案",
         view_pdf_browser: "於瀏覽器中檢視 PDF", download_pdf: "下載 PDF 檔案", cancel: "取消",
         click_to_retry: "點擊重試", media_not_found: "找不到媒體檔案", open_pdf_menu: "點擊開啟 PDF 操作選單",
@@ -22,7 +22,12 @@ const I18N_DICT = {
         flowchart: "流程圖 (Flowchart)", view_image: "查看大圖", prev_image: "上一張",
         next_image: "下一張", next_item: "跳至下一個", remove_filter: "解除過濾", share_site: "分享本站",
         credits: "致謝", copied_exclaim: "已複製!", click_to_retry_block: "點擊區塊以重試載入",
+        close: "關閉",
+        more_options: "更多選項",
+        fetching_file: "正在取得檔案，請稍候...",
+        processing: "處理中...",
         
+        // 剝離 HTML 的純文字變數
         cw_title: "內容警告 (Content Warning)",
         cw_desc: "此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。",
         cw_desc_hint: "(同意後於本次瀏覽器存續期間將不再提示)",
@@ -66,8 +71,8 @@ const I18N_DICT = {
         awaiting_data: ">_ 系統啟動中 : 等待資料串流...",
         manual_override: ">_ 手動覆寫 : 更新",
         fetching_rebooting: "取得資料並重啟中...",
-        important_badge: "重要",
-        acknowledgments_badge: "致謝名單",
+        important_badge: "Important",
+        acknowledgments_badge: "Acknowledgments",
         marquee_net_offline: "網路斷線 • 請檢查連線狀態 • ",
         marquee_sys_offline: "系統離線 • 發生錯誤 • ",
         core_update: "CORE_UPDATE",
@@ -75,7 +80,7 @@ const I18N_DICT = {
         success: "成功",
         chart_downloaded: "圖表已下載",
         no_quotes: "無可用題庫",
-        header_desc: "Software Engineer · Systems Builder<br />程式、金融、像素、音符、字詞",
+        header_desc: "Software Engineer · Systems Builder<br/>程式、金融、像素、音符、字詞",
         profile_desc: "一個名為「梓」的人的聚集地，<br/>通常都在寫寫字、寫程式、畫圖、音樂和財經及理解中。<br/>此亦為「梓本投資控股偽存公司」的官方網站，主要用於展示旗下梓們的作品。",
         profile_quote: "「在某個特別的時間點，妳會遇見她。興許過了一段時間後，妳會到達那個，決定閱讀她的時間點。」",
         aria_theme: "切換深淺色模式",
@@ -99,6 +104,10 @@ const I18N_DICT = {
         flowchart: "Flowchart", view_image: "View Image", prev_image: "Prev", next_image: "Next",
         next_item: "Next", remove_filter: "Clear Filter", share_site: "Share Site", credits: "Credits",
         copied_exclaim: "Copied!", click_to_retry_block: "Click to retry loading",
+        close: "Close",
+        more_options: "More Options",
+        fetching_file: "Fetching file, please wait...",
+        processing: "Processing...",
 
         cw_title: "Content Warning",
         cw_desc: "This entry may contain negative, impulsive, inexplicable content, or viewfinder shots.<br>Proceeding implies your understanding.",
@@ -109,7 +118,7 @@ const I18N_DICT = {
         err_404_proj_desc: "The specified project could not be found.<br/>It may not exist or has been removed.",
         err_403_title: "403 ACCESS DENIED",
         err_403_desc: "Access Denied.",
-        author_name: "Kazekawa Azusa",
+        author_name: "Azusa Kazekawa",
         err_404_art_title: "404 Article Not Found",
         err_404_art_desc: "The article could not be found in project '{0}'.<br/>It may not exist or has been removed.",
         system_error_label: "SYSTEM_ERROR",
@@ -153,8 +162,8 @@ const I18N_DICT = {
         chart_downloaded: "Chart Downloaded",
         no_quotes: "No quotes available",
         header_desc: "Software Engineer · Systems Builder<br />Code, Finance, Pixels, Notes, and Words",
-        profile_desc: "A gathering place for a person named 'Azu'.<br/>Usually writing, coding, drawing, making music, and studying finance.<br/>This is also the official website of 'Azustock Holdings Pseudo-Corp'.",
-        profile_quote: "「At a certain special point in time, you will meet her. Perhaps after some time, you will reach the point where you decide to read her.」",
+        profile_desc: "A gathering place for a person named 'Azusa'.<br/>Usually writing, coding, drawing, making music, and studying finance.<br/>This is also the official website of 'Azustock Holdings Company Phony'.",
+        profile_quote: "「At that moment, you meet her. Perhaps in the future, you will reach the point where you decide to read her.」",
         aria_theme: "Toggle Theme",
         aria_btt: "Back to Top"
     },
@@ -167,7 +176,7 @@ const I18N_DICT = {
         found_new: "新着", more_above: "上に", more_below: "下に", new_articles: "件",
         system_error: "エラー", back_to_home: "ホームへ", access_denied: "アクセス拒否",
         loading: "読み込み中...", downloading: "保存中...", opening: "開いています", return_list: "リストへ",
-        changelog_title: "更新履歴", update_history: "履歴", license_title: "ライセンス",
+        changelog_title: "更新履歴", update_history: "History", license_title: "ライセンス",
         copy_code: "コピー", error: "エラー", view_pdf: "PDFを表示", view_pdf_browser: "ブラウザで表示",
         download_pdf: "PDFをダウンロード", cancel: "キャンセル", click_to_retry: "再試行",
         media_not_found: "メディアが見つかりません", open_pdf_menu: "PDFメニューを開く", pdf_hint: "下のボタンをクリックしてPDFを表示または保存",
@@ -176,6 +185,10 @@ const I18N_DICT = {
         flowchart: "フローチャート", view_image: "画像を拡大", prev_image: "前へ", next_image: "次へ",
         next_item: "次へ", remove_filter: "フィルター解除", share_site: "サイトを共有", credits: "謝辞",
         copied_exclaim: "コピー完了", click_to_retry_block: "クリックして再試行",
+        close: "閉じる",
+        more_options: "その他",
+        fetching_file: "ファイルを取得しています...",
+        processing: "処理中...",
 
         cw_title: "コンテンツ警告 (Content Warning)",
         cw_desc: "このエントリには、ネガティブな内容、突発的なもの、不可解なもの、またはファインダー越しの景色が含まれる場合があります。<br>クリックして進むと、同意したとみなされます。",
@@ -220,8 +233,8 @@ const I18N_DICT = {
         awaiting_data: ">_ システム起動中 : データストリーム待機...",
         manual_override: ">_ MANUAL_OVERRIDE : UPDATE",
         fetching_rebooting: "データ取得・再起動中...",
-        important_badge: "重要",
-        acknowledgments_badge: "謝辞",
+        important_badge: "Important",
+        acknowledgments_badge: "Acknowledgments",
         marquee_net_offline: "NETWORK OFFLINE • PLEASE CHECK CONNECTION • ",
         marquee_sys_offline: "SYSTEM OFFLINE • ERROR • ",
         core_update: "CORE_UPDATE",
@@ -243,16 +256,27 @@ window.initI18n = function() {
     const savedLang = localStorage.getItem('sys_lang');
     if (savedLang && I18N_DICT[savedLang]) {
         window.CURRENT_LANG = savedLang;
-        return;
-    }
-    const browserLang = navigator.language || navigator.userLanguage;
-    if (browserLang.toLowerCase().includes('en')) {
-        window.CURRENT_LANG = 'en';
-    } else if (browserLang.toLowerCase().includes('ja')) {
-        window.CURRENT_LANG = 'ja';
     } else {
-        window.CURRENT_LANG = 'zh';
+        const browserLang = (navigator.language || navigator.userLanguage).toLowerCase();
+        
+        // ✨ 語言偵測邏輯：包含 zh 就中文，包含 ja 就日文，其餘「全部」預設為英文！
+        if (browserLang.includes('zh')) {
+            window.CURRENT_LANG = 'zh';
+        } else if (browserLang.includes('ja')) {
+            window.CURRENT_LANG = 'ja';
+        } else {
+            window.CURRENT_LANG = 'en';
+        }
     }
+
+    // ✨ 網頁載入時，自動為選單裡的語言按鈕加上高光狀態
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.lang-switch-btn').forEach(btn => {
+            if(btn.getAttribute('data-lang') === window.CURRENT_LANG) {
+                btn.classList.add('active');
+            }
+        });
+    });
 };
 
 window.t = function(key, args = []) {

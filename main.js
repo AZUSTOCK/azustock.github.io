@@ -27,11 +27,11 @@ const CONFIG = {
 const GLOBAL_SVGS = {
     // 🔗 基礎圖示
     meatballMenu: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle class="dot-1" cx="5" cy="12" r="2.5"/><circle class="dot-2" cx="12" cy="12" r="2.5"/><circle class="dot-3" cx="19" cy="12" r="2.5"/></svg>`,
-    link: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    link: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     linkLg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     extLinkSm: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     newTab: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
-    
+
     // 📌 圖釘與機密
     pin: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>`,
     pinSmall: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg);"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>`,
@@ -65,8 +65,8 @@ const GLOBAL_SVGS = {
     mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`,
 
     // 🔔 系統提示與狀態圖示 (新增收斂)
-    check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-    copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+    check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+    copy: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
     closeX: `<svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
     jumpDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`,
     jumpUp: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-up 1.5s infinite ease-in-out;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`,
@@ -294,15 +294,10 @@ window.handleCopy = function(element, shareUrl) {
     if (element.classList.contains('copied') || window.isCopying) return;
     window.isCopying = true;
     
-    const originalContent = element.innerHTML;
-    const checkSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-    
     navigator.clipboard.writeText(shareUrl).then(() => {
         element.classList.add('copied');
-        element.innerHTML = `${checkSvg} <span style="margin-left: 4px;">${t('copied')}</span>`; // ✨ 替換這裡
         setTimeout(() => {
             element.classList.remove('copied');
-            element.innerHTML = originalContent;
             window.isCopying = false; 
         }, 2000);
     }).catch(() => {
@@ -545,11 +540,11 @@ window.triggerSecureDownload = async function(url, filename, isNewTab = false) {
     
     // ✨ PWA 與手機版都會顯示載入提示，提升網路不穩時的體驗
     if (window.showSystemToast) {
-        const actionText = isNewTab ? '開啟中' : '下載中';
+        const actionText = isNewTab ? t('opening') : t('downloading');
         const iconSvg = isNewTab ? GLOBAL_SVGS.newTab : GLOBAL_SVGS.jumpDown;
         const toastTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;">${iconSvg} ${actionText}</span>`;
         
-        window.showSystemToast(toastTitle, '正在取得檔案，請稍候...', filename || '處理中...', 3000, 'success');
+        window.showSystemToast(toastTitle, t('fetching_file'), filename || t('processing'), 3000, 'success');
     }
     
     const success = await window.downloadViaBlob(url, filename, isNewTab);
@@ -1746,7 +1741,7 @@ renderer.code = function(token_or_code, language, isEscaped) {
                     <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="${t('refresh')}">${GLOBAL_SVGS.mermaidReload}</button>
                     <button class="mermaid-btn desktop-only" data-tooltip="${t('download')}" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="${t('zoom_in')}">${GLOBAL_SVGS.mermaidFull}</button>
+                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="${t('view_image')}">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
             <div class="mermaid-wrapper">
@@ -1780,17 +1775,16 @@ renderer.code = function(token_or_code, language, isEscaped) {
         <!-- 設定 max-width 避免檔名太長蓋到複製按鈕，過長會自動變成 ... -->
         <div class="code-lang-label" style="max-width: calc(100% - 100px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${fileName || cleanLang}">${labelContent}</div>
         <button class="code-copy-btn" onclick="window.copyCodeBlock(this)">
-            ${copyIcon} <span class="copy-text">${t('copy_code')}</span>
+            <span class="btn-state-wrapper">
+                <span class="state-idle">${copyIcon} <span class="copy-text">${t('copy_code')}</span></span>
+                <span class="state-success">${GLOBAL_SVGS.check} <span class="copy-text">${t('copied_exclaim')}</span></span>
+            </span>
         </button>
         <pre><code class="language-${cleanLang}">${escapedText}</code></pre>
     </div>`;
 };
 
-// ==========================================
-// ✨ 新增：程式碼區塊一鍵複製引擎
-// ==========================================
 window.copyCodeBlock = function(btn) {
-    // 防止重複點擊
     if (btn.classList.contains('copied')) return;
     
     const wrapper = btn.closest('.code-block-wrapper');
@@ -1798,20 +1792,14 @@ window.copyCodeBlock = function(btn) {
     if (!codeEl) return;
 
     const textToCopy = codeEl.innerText;
-    const originalHtml = btn.innerHTML;
-    const checkIcon = GLOBAL_SVGS.check;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
         btn.classList.add('copied');
-        btn.innerHTML = `${checkIcon} <span class="copy-text">${t('copied_exclaim')}</span>`;
         setTimeout(() => {
             btn.classList.remove('copied');
-            btn.innerHTML = originalHtml;
         }, 2000);
     }).catch(err => {
         console.error('程式碼複製失敗:', err);
-        btn.innerHTML = `<span class="copy-text" style="color: var(--error-color);">${t('error')}</span>`;
-        setTimeout(() => btn.innerHTML = originalHtml, 2000);
     });
 };
 
@@ -3020,8 +3008,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         sessionStorage.setItem('sys_reboot_count', '1');
         sessionStorage.setItem('sys_is_rebooting', 'true');
         sessionStorage.setItem('sys_expected_version', proj.min_sys_version);
-        // ✨ 顯示極簡版的更新終端機文字
-        showSystemRebootScreen(t('core_update'), CONFIG.VERSION, proj.min_sys_version, 'UPDATING', true);
+        // ✨ 顯示極簡版的更新終端機文字，套用 t('updating')
+        showSystemRebootScreen(t('core_update'), CONFIG.VERSION, proj.min_sys_version, t('updating'), true);
         
         setTimeout(() => {
             const newUrl = new URL(window.location.href);
@@ -3065,18 +3053,23 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             window.history.replaceState({ path: spaUrl }, '', spaUrl);
             const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
 
-            // 2. 將目錄標題與功能按鈕直接注入 modal-top-left
             document.getElementById('modal-top-left').innerHTML = `
                 <div class="index-header-container">
                     <h1 class="index-header-title">${proj.title} - ${t('index_title')}</h1>
                     <div class="index-header-actions">
                         <span class="article-count-badge">${t('total_articles', [visibleCount])}</span>
-                        <button id="toggle-sort-btn" class="share-link-btn sm">
+                        <button id="toggle-sort-btn" class="share-link-btn sm is-desc">
                             <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
-                            <span id="sort-btn-text" style="margin-left: 4px;"></span>
+                            <span class="btn-text-wrapper">
+                                <span class="sort-text-desc">${t('sort_desc')}</span>
+                                <span class="sort-text-asc">${t('sort_asc')}</span>
+                            </span>
                         </button>
                         <button class="share-link-btn sm" id="index-share-btn">
-                            ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">${t('copy_link')}</span>
+                            <span class="btn-state-wrapper">
+                                <span class="state-idle">${GLOBAL_SVGS.link} <span>${t('copy_link')}</span></span>
+                                <span class="state-success">${GLOBAL_SVGS.check} <span>${t('copied')}</span></span>
+                            </span>
                         </button> 
                     </div>
                 </div>
@@ -3375,7 +3368,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 const isAsc = currentSort === 'asc';
                 sortBtn.classList.toggle('is-asc', isAsc);
                 sortBtn.classList.toggle('is-desc', !isAsc);
-                sortBtn.querySelector('#sort-btn-text').innerText = isAsc ? t('sort_asc') : t('sort_desc');
             };
 
             updateSortBtnUI();
@@ -3484,8 +3476,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         sessionStorage.setItem('sys_reboot_count', '1');
         sessionStorage.setItem('sys_is_rebooting', 'true');
         sessionStorage.setItem('sys_expected_version', article.min_sys_version);
-        // ✨ 顯示極簡版的更新終端機文字
-        showSystemRebootScreen(t('core_update'), CONFIG.VERSION, article.min_sys_version, 'UPDATING', true);
+        // ✨ 顯示極簡版的更新終端機文字，套用 t('updating')
+        showSystemRebootScreen(t('core_update'), CONFIG.VERSION, article.min_sys_version, t('updating'), true);
         
         setTimeout(() => {
             const newUrl = new URL(window.location.href);
@@ -3718,7 +3710,12 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
                 const shareBtn = document.createElement('button');
                 shareBtn.className = 'share-link-btn';
-                shareBtn.innerHTML = `${GLOBAL_SVGS.link} <span>${t('copy_link')}</span>`;
+                shareBtn.innerHTML = `
+                    <span class="btn-state-wrapper">
+                        <span class="state-idle">${GLOBAL_SVGS.link} <span>${t('copy_link')}</span></span>
+                        <span class="state-success">${GLOBAL_SVGS.check} <span>${t('copied')}</span></span>
+                    </span>
+                `;
                 shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
 
                 rightGroup.appendChild(shareBtn);
@@ -4821,9 +4818,9 @@ window.showChangelogModal = async function(isSystemFallback = false) {
 
                     document.body.insertAdjacentHTML('beforeend', `
                     <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
-                        <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
+                        <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">${t('manual_override')}</div>
                             <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${vData.version}</div>
-                            <div class="loading-text" style="font-size: 1.1rem;">FETCHING_AND_REBOOTING</div>
+                            <div class="loading-text" style="font-size: 1.1rem;">${t('fetching_rebooting')}</div>
                         </div>
                     `);
                     
@@ -5049,16 +5046,22 @@ window.showLicenseModal = async function() {
                 `;
             }
 
-            // ✨ 自動注入多語系切換按鈕 (更新為支援三語的簡潔寫法)
+            // ✨ 自動注入多語系切換按鈕 (動態跟隨使用者當前語系設定)
             const switcher = modalBody.querySelector('#bilingual-switcher');
             if (switcher) {
+                const current = window.CURRENT_LANG || 'zh';
                 switcher.innerHTML = `
                     <div class="lang-tabs">
-                        <button class="lang-btn active" onclick="window.switchBilingualTab('zh', this)">中文版</button>
-                        <button class="lang-btn" onclick="window.switchBilingualTab('en', this)">English</button>
-                        <button class="lang-btn" onclick="window.switchBilingualTab('ja', this)">日本語</button>
+                        <button class="lang-btn ${current === 'zh' ? 'active' : ''}" onclick="window.switchBilingualTab('zh', this)">中文版</button>
+                        <button class="lang-btn ${current === 'en' ? 'active' : ''}" onclick="window.switchBilingualTab('en', this)">English</button>
+                        <button class="lang-btn ${current === 'ja' ? 'active' : ''}" onclick="window.switchBilingualTab('ja', this)">日本語</button>
                     </div>
                 `;
+                
+                // ✨ 核心魔法：DOM 渲染完畢後，立刻觸發一次切換函式
+                // 這樣不僅按鈕亮對顏色，底下的 Markdown 語言區塊也會精準只留下當前語言！
+                const activeBtn = switcher.querySelector('.lang-btn.active');
+                if (activeBtn) window.switchBilingualTab(current, activeBtn);
             }
 
             const modalContainer = document.querySelector('.modal-content');
