@@ -2692,7 +2692,6 @@ async function loadProjects() {
     } catch (err) {
         console.error("載入失敗:", err);
         
-        // ✨ 判斷是否為網路斷線或無法連線
         const isOffline = !navigator.onLine || (err.message && err.message.includes('Failed to fetch'));
         const errorTitle = isOffline ? t('err_offline_title') : t('err_fetch_title');
         const errorDetail = err.message ? err.message.toUpperCase() : t('err_unknown');
@@ -2709,11 +2708,10 @@ async function loadProjects() {
             </div>
         `;
         
-        // 確保萬一卡在啟動畫面時，強制關閉重開機遮罩
         if (window.hideSystemRebootScreen) window.hideSystemRebootScreen(false);
 
         if (marquee) { 
-            const marqueeMsg = isOffline ? "NETWORK OFFLINE • PLEASE CHECK CONNECTION • " : "SYSTEM OFFLINE • ERROR • ";
+            const marqueeMsg = isOffline ? t('marquee_net_offline') : t('marquee_sys_offline');
             marquee.innerHTML = `<span>${marqueeMsg}</span>`.repeat(6); 
             marquee.style.color = "var(--error-color)"; 
         }
@@ -2799,7 +2797,6 @@ async function checkSystemVersionAndBoot() {
     }
 
     try {
-        // ✨ 微型化版本檢查：同時核對「系統版號 (version.json)」與「細項內容 Hash (data_version.json)」
         const [sysRes, dataRes] = await Promise.all([
             fetch(`./version.json?t=${new Date().getTime()}`).catch(() => null),
             fetch(`./data_version.json?t=${new Date().getTime()}`).catch(() => null)
@@ -2812,26 +2809,19 @@ async function checkSystemVersionAndBoot() {
         let rebootReason = '';
         let remoteVersion = CONFIG.VERSION;
 
-        // 1. 檢查系統層級更新 (優先級最高)
         if (sysData && sysData.version && sysData.version !== CONFIG.VERSION) {
             needReboot = true;
             rebootReason = t('sys_updating');
             remoteVersion = sysData.version;
             console.warn(`[SYS_UPDATE] 發現系統新版本 ${remoteVersion}，準備強制更新...`);
         }
-        // 2. 檢查內容層級更新 (如果系統無需更新，才檢查 projects 目錄的 Hash 是否改變)
         else if (contentData && contentData.projects) {
             const localDataVersions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
-            
-            // ✨ 如果本地有舊紀錄，且專案 (projects) 的 Hash 發生改變，才需要強制重開機刷新首頁
             if (localDataVersions.projects && localDataVersions.projects !== contentData.projects) {
                 needReboot = true;
                 rebootReason = t('syncing_new_data');
                 console.info(`[DATA_UPDATE] 發現文章內容修改，準備同步資料庫...`);
             }
-            
-            // ✨ 寫入最新的細項 Hash 字典到本機
-            // (如果是 kotoba.md 等獨立細項改變，下次點擊時會自己抓最新 Hash，不需重啟畫面！)
             localStorage.setItem('sys_data_versions', JSON.stringify(contentData));
         }
 
@@ -2854,8 +2844,7 @@ async function checkSystemVersionAndBoot() {
             sessionStorage.setItem('sys_is_rebooting', 'true');
             sessionStorage.setItem('sys_expected_version', remoteVersion);
 
-            // 根據不同更新原因，顯示不同的終端機過場文字
-            const screenTitle = rebootReason === 'SYS_UPDATING' ? 'SYS_VERSION_MISMATCH' : 'CONTENT_SYNC_REQUIRED';
+            const screenTitle = rebootReason === t('sys_updating') ? 'SYS_VERSION_MISMATCH' : 'CONTENT_SYNC_REQUIRED';
             showSystemRebootScreen(screenTitle, CONFIG.VERSION, remoteVersion, rebootReason, isRebooting);
             
             setTimeout(() => {
@@ -2866,28 +2855,19 @@ async function checkSystemVersionAndBoot() {
             
             return; 
         } else {
-            // ✨ 核心神修復：檢查重啟後，系統版本是否真的有達到文章要求的預期？
             if (isRebooting && expectedVersion !== 'UNKNOWN' && window.compareVersions(CONFIG.VERSION, expectedVersion) < 0) {
                 console.error("[SYS_UPDATE] 強制升級失敗，CDN 仍快取舊版 JS。");
-                
-                // 清除標記，避免卡死
                 sessionStorage.removeItem('sys_reboot_count');
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
-                
-                // 觸發「紅色退回狀態」的終端機過場動畫
                 hideSystemRebootScreen(false); 
                 loadProjects();
                 
-                // 彈出精美的錯誤提示，告訴使用者 CDN 正在塞車
                 setTimeout(() => { 
-                    window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `無法取得 ${expectedVersion} 核心，請稍後再試。`, 12000, 'error'); 
+                    window.showSystemToast(t('update_failed'), t('cdn_delay_detected'), t('update_failed_core', [expectedVersion]), 12000, 'error'); 
                 }, 1000);
-                
-                return; // ⛔ 中斷執行，不再往下走！
+                return; 
             }
-
-            // 如果順利達標，就正常清除標記並啟動
             sessionStorage.removeItem('sys_reboot_count');
             sessionStorage.removeItem('sys_is_rebooting');
             sessionStorage.removeItem('sys_expected_version');
@@ -3034,7 +3014,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         sessionStorage.setItem('sys_is_rebooting', 'true');
         sessionStorage.setItem('sys_expected_version', proj.min_sys_version);
         // ✨ 顯示極簡版的更新終端機文字
-        showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, proj.min_sys_version, 'UPDATING', true);
+        showSystemRebootScreen(t('core_update'), CONFIG.VERSION, proj.min_sys_version, 'UPDATING', true);
         
         setTimeout(() => {
             const newUrl = new URL(window.location.href);
@@ -3498,7 +3478,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         sessionStorage.setItem('sys_is_rebooting', 'true');
         sessionStorage.setItem('sys_expected_version', article.min_sys_version);
         // ✨ 顯示極簡版的更新終端機文字
-        showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, article.min_sys_version, 'UPDATING', true);
+        showSystemRebootScreen(t('core_update'), CONFIG.VERSION, article.min_sys_version, 'UPDATING', true);
         
         setTimeout(() => {
             const newUrl = new URL(window.location.href);
@@ -4581,7 +4561,6 @@ function show404Modal(title, message) {
     if (modalTopLeft) modalTopLeft.innerHTML = `<span style="color: var(--muted); font-weight: 600; font-family: monospace; letter-spacing: 0.05em;">${t('system_error_label')}</span>`;
     if (tocMountPoint) tocMountPoint.innerHTML = '';
 
-    // ✨ 動態判斷：如果是 403 就顯示鎖頭，否則顯示驚嘆號
     const is403 = title.includes('403');
     const iconSvg = is403 
         ? GLOBAL_SVGS.errorLock.replace('<svg ', '<svg class="sys-error-icon" ') 
@@ -4600,41 +4579,23 @@ function show404Modal(title, message) {
     modalOverlay.classList.add('active');
     window.lockScroll();
 
-    // ✨ 403 畫面中的「管理員解鎖彩蛋」與「遠端鎖頭連動特效」
     const trigger = modalBody.querySelector('.secret-admin-trigger');
     if (trigger) {
         const lockIcon = modalBody.querySelector('.error-lock-icon');
         const shackle = modalBody.querySelector('.error-lock-shackle');
 
-        // 當滑鼠移入「風川梓」時：大鎖頭亮起紅光並暴力彈開
         trigger.addEventListener('mouseenter', () => {
-            if (lockIcon) {
-                lockIcon.style.stroke = 'var(--error-color)';
-                lockIcon.style.opacity = '1';
-                lockIcon.style.filter = 'drop-shadow(0 0 15px var(--error-color))';
-            }
-            if (shackle) {
-                shackle.style.transform = 'translateY(-10px) translateX(4px) rotate(15deg)';
-            }
+            if (lockIcon) { lockIcon.style.stroke = 'var(--error-color)'; lockIcon.style.opacity = '1'; lockIcon.style.filter = 'drop-shadow(0 0 15px var(--error-color))'; }
+            if (shackle) { shackle.style.transform = 'translateY(-10px) translateX(4px) rotate(15deg)'; }
         });
 
-        // 當滑鼠移出時：大鎖頭扣回原位並變回灰色
         trigger.addEventListener('mouseleave', () => {
-            if (lockIcon) {
-                lockIcon.style.stroke = 'var(--muted)';
-                lockIcon.style.opacity = '0.5';
-                lockIcon.style.filter = 'none';
-            }
-            if (shackle) {
-                shackle.style.transform = 'none';
-            }
+            if (lockIcon) { lockIcon.style.stroke = 'var(--muted)'; lockIcon.style.opacity = '0.5'; lockIcon.style.filter = 'none'; }
+            if (shackle) { shackle.style.transform = 'none'; }
         });
 
-        // 點擊執行解鎖與無縫轉場
         trigger.addEventListener('click', () => {
             document.body.classList.add('system-override-active');
-            
-            // ✨ 呼叫全域重刷引擎，確保退回首頁時，卡片數字與捲軸提示都已完美更新！
             window.refreshUIAfterOverrideToggle();
             
             const urlParams = new URLSearchParams(window.location.search);
@@ -4642,12 +4603,8 @@ function show404Modal(title, message) {
             const aParam = urlParams.get('a');
             const hashParam = window.location.hash || null;
             
-            if (pParam) {
-                window.handleAppRouting(pParam, aParam, hashParam);
-            } else {
-                closeModal();
-                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
-            }
+            if (pParam) { window.handleAppRouting(pParam, aParam, hashParam); } 
+            else { closeModal(); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }
         });
     }
 }
@@ -4806,7 +4763,7 @@ window.showCreditsModal = async function() {
             }
 
             if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml('System Error', t('credits_failed'));
+                modalBody.innerHTML = window.getSystemErrorHtml(t('system_error_label'), t('credits_failed'));
             } else {
                 modalBody.innerHTML = `
                     <div class="credits-markdown-wrapper markdown-body" style="margin-top: -0.5rem;">
@@ -4942,7 +4899,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 renderChangelogHeader(false);
 
                 if (fetchError || !window.cachedChangelogs) {
-                    modalBody.innerHTML = window.getSystemErrorHtml('System Error', t('changelog_failed'));
+                    modalBody.innerHTML = window.getSystemErrorHtml(t('system_error_label'), t('changelog_failed'));
                 } else {
                     let listHTML = '<ul class="article-list-ul">';
                     window.cachedChangelogs.forEach(log => {
@@ -5075,7 +5032,7 @@ window.showLicenseModal = async function() {
 
             // 處理內容渲染
             if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml('System Error', t('license_failed'));
+                modalBody.innerHTML = window.getSystemErrorHtml(t('system_error_label'), t('license_failed'));
             } else {
                 modalBody.innerHTML = `
                     <div class="markdown-body" style="margin-top: -0.5rem; padding-bottom: 2rem;">
