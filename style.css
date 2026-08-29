@@ -2058,8 +2058,8 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
     display: none !important; /* 隱藏除了放大檢視與重新整理以外的所有按鈕 */
 }
 
-/* 8-1. 桌機到平板的過渡 (max-width: 600px) */
-@media (max-width: 600px) {
+/* 8-1. 桌機到平板的過渡 (寬度小於 700px) */
+@media (max-width: 699px) {
     .desktop-only { display: none; }
     
     /* 版面與邊界壓縮 */
@@ -2555,11 +2555,6 @@ body {
     top: 0 !important;
     padding-top: calc(15px + var(--safe-top)) !important;
     height: calc(70px + var(--safe-top)) !important;
-}
-
-/* 8-1. 桌機到平板的過渡 (寬度小於 700px) */
-@media (max-width: 699px) {
-    .desktop-only { display: none; }
 }
 
 

@@ -3146,27 +3146,23 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 const finalArray = window.getArticleSequence(projectId);
                 const themePalette = ['var(--group-c1)', 'var(--group-c2)', 'var(--group-c3)', 'var(--group-c4)', 'var(--group-c5)'];
 
-                const generateLi = (art, idx, isHighlightGroup, customColor) => {
+                // ✨ 升級版的共用 Li 產生器
+                const generateLi = (art, idx, isHighlightGroup, themeClass = '', customStyle = '') => {
                     let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
                     let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
                     let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                     
-                    // 替換清單沒有圖片時的佔位符
                     let baseIconHtml = art.cover_image 
                         ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
                         : `<div class="article-item-fallback" style="color: var(--muted);">${GLOBAL_SVGS.docIconLg}</div>`;
                     
                     let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                    // ✨ 新增：機密小圖釘 HTML
                     let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
                     let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
-                    let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
-                    
-                    // ✨ 新增：判斷是否為隱藏文章
                     let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
 
                     return `
-                        <li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}${hiddenClass}"${colorStyle}>
+                        <li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}${hiddenClass}${themeClass}"${customStyle}>
                             <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
                                 ${iconHtml}
                                 <div class="article-item-content">
@@ -3195,19 +3191,16 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         let themeClass = '';
                         let customStyle = '';
 
-                        // ✨ The Logic: Use classes for highlight groups, inline styles ONLY for custom hex colors
                         if (groupData.highlight) {
                             const groupNum = (colorIndex % 5) + 1;
                             themeClass = ` group-color-${groupNum}`;
                             colorIndex++; 
                         } else if (groupColor) {
-                            // If they provided a specific hardcoded hex color
                             customStyle = ` style="--current-group-color: ${groupColor};"`;
                         }
 
                         const topMargin = isFirstGroup ? '0rem' : '1.8rem';
 
-                        // Apply themeClass to the title, or customStyle if it's a hardcoded hex
                         html += `
                             <div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
                                 <div class="group-header-title${themeClass}"${customStyle}>${groupData.title || groupId}</div>
@@ -3216,102 +3209,32 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             <ul class="article-list-ul">
                         `;
                         
+                        // ✨ 縮減 1：群組文章迴圈
                         groupArticles.forEach(({art, idx}) => { 
-                            let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
-                            let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
-                            let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
-                            
-                            let baseIconHtml = art.cover_image 
-                                ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
-                                : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
-                            
-                            let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                            let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
-                            let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
-                            let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
-                            
-                            // ✨ The Magic: Apply themeClass directly to the <li>
-                            let classList = `article-li ${groupData.highlight ? 'is-highlight' : 'is-normal'}${hiddenClass}${themeClass}`;
-
-                            html += `
-                                <li id="article-item-${idx}" class="${classList.trim()}"${customStyle}>
-                                    <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
-                                        ${iconHtml}
-                                        <div class="article-item-content">
-                                            <div class="article-item-title-row">
-                                                <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
-                                                ${descHtml}
-                                            </div>
-                                            ${dateHtml}
-                                        </div>
-                                    </a>
-                                </li>
-                            `;
+                            html += generateLi(art, idx, groupData.highlight, themeClass, customStyle);
                         });
                         html += `</ul>`;
                         
                         isFirstGroup = false;
                     }
+                    
                     const ungrouped = finalArray.filter(item => !item.art.group);
                     if (ungrouped.length > 0) {
                         const topMargin = isFirstGroup ? '0rem' : '1.5rem';
                         html += `<ul class="article-list-ul" style="margin-top:${topMargin};">`;
                         
+                        // ✨ 縮減 2：未分群文章迴圈
                         ungrouped.forEach(({art, idx}) => { 
-                             // Inline generic li generation for ungrouped
-                             let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
-                             let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
-                             let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
-                             let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
-                             let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                             let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
-                             let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
-                             let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
- 
-                             html += `
-                                 <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
-                                     <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
-                                         ${iconHtml}
-                                         <div class="article-item-content">
-                                             <div class="article-item-title-row">
-                                                 <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
-                                                 ${descHtml}
-                                             </div>
-                                             ${dateHtml}
-                                         </div>
-                                     </a>
-                                 </li>
-                             `;
+                             html += generateLi(art, idx, false);
                         });
                         html += `</ul>`;
                     }
                 } else {
                     html += `<ul class="article-list-ul" style="margin-top:0rem;">`;
+                    
+                    // ✨ 縮減 3：無群組專案的文章迴圈
                     finalArray.forEach(({art, idx}) => { 
-                         // Generic li for projects with no groups
-                         let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
-                         let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
-                         let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
-                         let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
-                         let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                         let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
-                         let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
-                         let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
-
-                         html += `
-                             <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
-                                 <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
-                                     ${iconHtml}
-                                     <div class="article-item-content">
-                                         <div class="article-item-title-row">
-                                             <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
-                                             ${descHtml}
-                                         </div>
-                                         ${dateHtml}
-                                     </div>
-                                 </a>
-                             </li>
-                         `;
+                         html += generateLi(art, idx, false);
                     });
                     html += `</ul>`;
                 }
@@ -4124,22 +4047,7 @@ window.centerKotobaTag = function(event) {
         let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
-        document.querySelectorAll('.marquee-content').forEach(m => {
-            if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
-            let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
-            if (currentX > 0) currentX -= contentWidth;
-            
-            m.style.transition = 'none';
-            m.style.transform = `translateX(${currentX}px)`;
-            m.style.animation = 'none';
-            
-            void m.offsetWidth; 
-            
-            const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
-
-            m.style.transition = `transform ${duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
-            m.style.transform = `translateX(${targetX}px)`;
-        });
+        window.scrollMarqueeTo(targetX, contentWidth);
     }
 };
 
@@ -4210,18 +4118,7 @@ window.filterByTag = function(targetTag, event, clickedElement) {
         let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
-        document.querySelectorAll('.marquee-content').forEach(m => {
-            if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
-            let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
-            if (currentX > 0) currentX -= contentWidth;
-            
-            m.style.transition = 'none';
-            m.style.transform = `translateX(${currentX}px)`;
-            m.style.animation = 'none';
-            void m.offsetWidth; 
-            m.style.transition = `transform ${0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7)}s cubic-bezier(0.22, 1, 0.36, 1)`;
-            m.style.transform = `translateX(${targetX}px)`;
-        });
+        window.scrollMarqueeTo(targetX, contentWidth);
     }
 
     document.querySelectorAll(`[data-tag="${targetTag}"]`).forEach(t => t.classList.add('active-tag'));
@@ -5409,8 +5306,8 @@ window.showPdfActionModal = function(href, title) {
         }, 300);
     };
 
-    // ✨ 判斷是否為 PWA (Standalone) 模式
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    // ✨ 判斷是否為 PWA (Standalone) 模式 (直接呼叫全域小幫手)
+    const isPWA = window.isPWAEnvironment();
     
     // 為了完美的 UX：如果是 PWA，我們直接把藍色主按鈕變成「下載」，並隱藏下方的第二顆按鈕
     const viewBtnText = isPWA ? t('view_pdf') : t('view_pdf_browser');
