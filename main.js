@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.8",          // 目前系統版本號
+    VERSION: "U1.5.8.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -18,11 +18,7 @@ const CONFIG = {
     // 🔗 資源路徑
     FAVICON_LIGHT: "https://azustock.github.io/assets/OG_dark.png",
     FAVICON_DARK: "https://azustock.github.io/assets/OG_light.png",
-    
-    // ✨ 多語系引擎：動態決定要讀取哪一份專案總表
-    get DATA_SOURCE() { 
-        return `./api/${window.CURRENT_LANG}/all_projects.json`; 
-    }
+    DATA_SOURCE: "./all_projects.json" 
 };
 
 // ==========================================
@@ -31,11 +27,11 @@ const CONFIG = {
 const GLOBAL_SVGS = {
     // 🔗 基礎圖示
     meatballMenu: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle class="dot-1" cx="5" cy="12" r="2.5"/><circle class="dot-2" cx="12" cy="12" r="2.5"/><circle class="dot-3" cx="19" cy="12" r="2.5"/></svg>`,
-    link: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    link: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     linkLg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     extLinkSm: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     newTab: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
-
+    
     // 📌 圖釘與機密
     pin: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(45deg);"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>`,
     pinSmall: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg);"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>`,
@@ -69,8 +65,8 @@ const GLOBAL_SVGS = {
     mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`,
 
     // 🔔 系統提示與狀態圖示 (新增收斂)
-    check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-    copy: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+    check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
+    copy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
     closeX: `<svg style="display: block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`,
     jumpDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-down 1.5s infinite ease-in-out;"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`,
     jumpUp: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: jump-arrow-bounce-up 1.5s infinite ease-in-out;"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`,
@@ -78,7 +74,6 @@ const GLOBAL_SVGS = {
     errorAlert: `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
     retry: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
     warning: `<svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
-    fallbackHint: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 4px; opacity: 0.8;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
     detailsArrow: `<svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>`
 };
 
@@ -222,7 +217,8 @@ window.compareVersions = function(v1, v2) {
 // ✨ 共用路徑與路由處理器 (重構優化)
 // ==========================================
 window.getCleanBasePath = function() {
-    const basePath = window.location.pathname.replace(/index\.html$/i, '');
+    // ✨ 核心修復：支援 index.html 與 index_local.html，同時忽略尾端可能多出的斜線 (/)
+    const basePath = window.location.pathname.replace(/index(_local)?\.html\/?$/i, '');
     return basePath.endsWith('/') ? basePath : basePath + '/';
 };
 
@@ -232,17 +228,14 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     const cleanProjectId = pParam.replace(/^\d+_/, '');
     const project = window.siteProjects.find(proj => proj.id === cleanProjectId);
     
-    // ✨ 將剛剛從 i18n 剝離的 HTML 結構放在這裡組合
-    const error403Msg = `${t('err_403_desc')}<br/><span class="err-sec-protocol">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span class="secret-admin-trigger">${t('author_name')}</span>.</span>`;
-    
     if (!project) {
-        show404Modal(t('err_404_proj_title'), t('err_404_proj_desc'));
+        show404Modal('404 Project Not Found', '無法找到您指定的專案。<br/>可能不存在或已被移除');
         window.history.replaceState(null, '', window.location.pathname);
         return;
     }
 
     if (project.is_hidden && !document.body.classList.contains('system-override-active')) {
-        show404Modal(t('err_403_title'), error403Msg);
+        show404Modal('403 ACCESS_DENIED', '拒絕存取。<br/><span style="opacity: 0.8; font-size: 0.85em; font-family: monospace;">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style="cursor: pointer; position: relative;" class="secret-admin-trigger">風川梓</span>.</span>');
         return;
     }
 
@@ -253,12 +246,12 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
         if (aIndex !== -1 && aIndex < project.articles.length) {
             const article = project.articles[aIndex];
             if (article.is_hidden && !document.body.classList.contains('system-override-active')) {
-                show404Modal(t('err_403_title'), error403Msg);
+                show404Modal('403 ACCESS_DENIED', '拒絕存取。<br/><span style="opacity: 0.8; font-size: 0.85em; font-family: monospace;">ERR_SEC_PROTOCOL: Unauthorized request blocked by <span style="cursor: pointer; position: relative;" class="secret-admin-trigger">風川梓</span>.</span>');
                 return;
             }
             window.openArticle(project.id, aIndex, false, 0, hashParam);
         } else {
-            show404Modal(t('err_404_art_title'), t('err_404_art_desc', [project.title]));
+            show404Modal('404 Article Not Found', `在專案「${project.title}」中找不到此文章。<br/>可能不存在或已被移除。`);
             window.history.replaceState(null, '', window.location.pathname);
         }
     } else {
@@ -299,10 +292,15 @@ window.handleCopy = function(element, shareUrl) {
     if (element.classList.contains('copied') || window.isCopying) return;
     window.isCopying = true;
     
+    const originalContent = element.innerHTML;
+    const checkSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    
     navigator.clipboard.writeText(shareUrl).then(() => {
         element.classList.add('copied');
+        element.innerHTML = `${checkSvg} <span style="margin-left: 4px;">已複製</span>`;
         setTimeout(() => {
             element.classList.remove('copied');
+            element.innerHTML = originalContent;
             window.isCopying = false; 
         }, 2000);
     }).catch(() => {
@@ -348,18 +346,19 @@ window.refreshUIAfterOverrideToggle = function() {
                 grid.querySelectorAll('.card').forEach(card => {
                     const titleEl = card.querySelector('h3');
                     if (titleEl && titleEl.innerText.includes(proj.title)) {
+                        // ✨ 核心修復：把尋找的 class 改為正確的 .card-action-btn
                         const actionBtn = card.querySelector('.card-action-btn');
-                        
-                        // ✨ 替換這裡：把 '展開系列' 換成 t('expand_series')
-                        if (actionBtn && actionBtn.innerText.includes(t('expand_series'))) {
+                        if (actionBtn && actionBtn.innerText.includes('展開系列')) {
+                            // 動態計算當前權限下可見的文章數量
                             const count = isUnlocked ? proj.articles.length : proj.articles.filter(art => !art.is_hidden).length;
                             
+                            // ✨ 精準抓出圖標容器，避免破壞 HTML 結構
                             const iconWrap = actionBtn.querySelector('.card-action-icon-wrap');
                             actionBtn.innerHTML = '';
                             if (iconWrap) actionBtn.appendChild(iconWrap);
                             
-                            // ✨ 替換這裡：動態插入翻譯好的文字與數量
-                            actionBtn.insertAdjacentHTML('beforeend', `${t('expand_series')} (${count})`);
+                            // 重新植入最新的數字
+                            actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
                         }
                     }
                 });
@@ -452,42 +451,17 @@ window.refreshUIAfterOverrideToggle = function() {
 // ==========================================
 // ✨ 獨立檔案快取系統 (Singleton Pattern + Hash)
 // ==========================================
-
-// ✨ 多語系檔案智慧回退引擎 (i18n Fallback Fetcher)
-window.fetchLocaleText = async function(fileName, isDocument = false) {
-    let lang = window.CURRENT_LANG;
-    let url = `./locales/${lang}/${fileName}?v=${window.getResVersion('locales_' + lang)}`;
-    let res = await fetch(url);
-    let isFallback = false;
-
-    // 如果找不到該語言的檔案 (404)，自動退回尋找 zh (繁中)
-    if (!res.ok && lang !== 'zh') {
-        url = `./locales/zh/${fileName}?v=${window.getResVersion('locales_zh')}`;
-        res = await fetch(url);
-        isFallback = true;
-    }
-
-    if (!res.ok) throw new Error(t('load_failed'));
-    
-    let text = await res.text();
-    
-    // 如果是整頁顯示的文章 (如版權、致謝)，在文末加上未翻譯提示
-    // 註: 格言與言之箱 (isDocument = false) 因為是短句陣列，不加上提示以免破壞陣列結構
-    // if (isFallback && isDocument) {
-    //     const msg = lang === 'en' 
-    //         ? "\n\n---\n> *This document has not been translated yet. Displaying the default language.*"
-    //         : "\n\n---\n> *このドキュメントはまだ翻訳されていません。デフォルトの言語を表示しています。*";
-    //     text += msg;
-    // }
-    return text;
-};
-
 window.cachedKotobaList = null;
 window.getKotobaList = async function() {
     if (window.cachedKotobaList !== null) return window.cachedKotobaList;
     try {
-        const text = await window.fetchLocaleText('kotoba.md', false);
-        window.cachedKotobaList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
+        const res = await fetch(`./kotoba.md?v=${window.getResVersion('kotoba.md')}`);
+        if (res.ok) {
+            const text = await res.text();
+            window.cachedKotobaList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
+        } else {
+            window.cachedKotobaList = [];
+        }
     } catch (err) { window.cachedKotobaList = []; }
     return window.cachedKotobaList;
 };
@@ -510,8 +484,13 @@ window.cachedQuotesList = null;
 window.getQuotesList = async function() {
     if (window.cachedQuotesList !== null) return window.cachedQuotesList;
     try {
-        const text = await window.fetchLocaleText('quotes.md', false);
-        window.cachedQuotesList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
+        const res = await fetch(`./quotes.md?v=${window.getResVersion('quotes.md')}`);
+        if (res.ok) {
+            const text = await res.text();
+            window.cachedQuotesList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
+        } else {
+            window.cachedQuotesList = [];
+        }
     } catch (err) { window.cachedQuotesList = []; }
     return window.cachedQuotesList;
 };
@@ -565,11 +544,11 @@ window.triggerSecureDownload = async function(url, filename, isNewTab = false) {
     
     // ✨ PWA 與手機版都會顯示載入提示，提升網路不穩時的體驗
     if (window.showSystemToast) {
-        const actionText = isNewTab ? t('opening') : t('downloading');
+        const actionText = isNewTab ? '開啟中' : '下載中';
         const iconSvg = isNewTab ? GLOBAL_SVGS.newTab : GLOBAL_SVGS.jumpDown;
         const toastTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;">${iconSvg} ${actionText}</span>`;
         
-        window.showSystemToast(toastTitle, t('fetching_file'), filename || t('processing'), 3000, 'success');
+        window.showSystemToast(toastTitle, '正在取得檔案，請稍候...', filename || '處理中...', 3000, 'success');
     }
     
     const success = await window.downloadViaBlob(url, filename, isNewTab);
@@ -666,7 +645,7 @@ window.handleImageError = function(img) {
         retryHint = document.createElement('div');
         retryHint.className = 'img-retry-hint';
         // 使用我們預設的重新載入 SVG 圖標
-        retryHint.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg> ${t('click_to_retry')}`;
+        retryHint.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg> 點擊重試`;
         
         // 確保父容器有定位能力，讓 absolute 能精準置中
         if (window.getComputedStyle(img.parentNode).position === 'static') {
@@ -742,9 +721,9 @@ window.handleMediaError = function(sourceEl) {
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
                     <line x1="2" y1="2" x2="22" y2="22"></line>
                 </svg>
-                <div class="media-error-title">${t('media_not_found')}</div>
+                <div class="media-error-title">MEDIA_NOT_FOUND</div>
                 <div class="retry-text">
-                    ${GLOBAL_SVGS.retry} ${t('click_to_retry_block')}
+                    ${GLOBAL_SVGS.retry} 點擊區塊以重試載入
                 </div>
             </div>
         `;
@@ -945,8 +924,9 @@ window.openLightbox = function(btn, event) {
         window.lightboxState.images = figures.map(fig => {
             const img = fig.querySelector('img');
             return {
+                // ✨ 優先拿 data-full，沒有才退回 src
                 src: img?.getAttribute('data-full') || img?.src,
-                caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').replace(window.t ? window.t('view_image') : '', '').trim()
+                caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
             }
         }).filter(item => item.src);
         
@@ -954,8 +934,8 @@ window.openLightbox = function(btn, event) {
         window.lightboxState.currentIndex = window.lightboxState.images.findIndex(item => item.src === targetFullSrc);
     } else {
         window.lightboxState.images = [{
-            src: targetImg?.getAttribute('data-full') || targetImg?.src, // ✨ 修正變數
-            caption: container.querySelector('figcaption')?.innerText.replace('查看大圖', '').replace(window.t ? window.t('view_image') : '', '').trim() // ✨ 修正變數
+            src: targetImg.getAttribute('data-full') || targetImg.src, // ✨ 優先拿 data-full
+            caption: container.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
         }];
     }
 
@@ -1343,7 +1323,7 @@ window.downloadMermaidPNG = function(btn) {
             if (!isPWA) {
                 window.triggerHaptic('success');
                 if (window.showSystemToast) {
-                    window.showSystemToast(t('success'), t('chart_downloaded'), fileName, 3000, 'success');
+                     window.showSystemToast('SUCCESS', '圖表已下載', fileName, 3000, 'success');
                 }
             }
         }, 'image/png', 1.0);
@@ -1624,30 +1604,38 @@ function renderPDFIframe(href, altText) {
     const hMatch = href.match(/[?&]h=(\d+)/i);
     if (hMatch) customHeight = hMatch[1] + "px";
     
-    const mobileClickHandler = `event.stopPropagation(); window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');`;
+    // ✨ 只要是觸控裝置 (手機/平板/PWA)，點擊就彈出安全操作面板
+    const mobileClickHandler = `
+        event.stopPropagation();
+        window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');
+    `;
 
     return `
-    <div class="pdf-container" onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }">
+    <!-- ✨ 全面使用 CSS 類別提取版 -->
+    <div class="pdf-container" 
+        onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }">
+        
         <div class="pdf-container-header" onclick="event.stopPropagation();">
             <div class="pdf-container-title">
                 ${GLOBAL_SVGS.docIcon}
                 <span style="transform: translateY(1px);">${altText || 'Document.pdf'}</span>
             </div>
+            
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <button class="mermaid-btn" data-tooltip="${t('refresh')}" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
+                <button class="mermaid-btn" data-tooltip="重新整理" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
                     ${GLOBAL_SVGS.mermaidReload}
                 </button>
                 <div class="action-btn-divider desktop-only"></div>
-                <button class="mermaid-btn desktop-only" data-tooltip="${t('open_new_tab')}" onclick="event.stopPropagation(); window.open('${href}', '_blank');">
+                <button class="mermaid-btn desktop-only" data-tooltip="新分頁開啟" onclick="event.stopPropagation(); window.open('${href}', '_blank');">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </button>
             </div>
         </div>
-        <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);"></iframe>
+        <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
         <div class="pdf-mobile-placeholder">
-            <span style="font-size: 1.05rem; letter-spacing: 0.05em;">${t('pdf_hint')}</span>
+            <span style="font-size: 1.05rem; letter-spacing: 0.05em;">點擊下方按鈕以檢視或下載 PDF 檔案</span>
             <span class="pdf-mobile-btn">
-                ${GLOBAL_SVGS.newTab} ${t('open_pdf_menu')}
+                ${GLOBAL_SVGS.newTab} 點擊開啟 PDF 操作選單
             </span>
         </div>
     </div>`;
@@ -1657,21 +1645,23 @@ function renderPDFIframe(href, altText) {
 // ✨ 輔助函數：渲染影音標籤 (Video / Audio)
 // ==========================================
 function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle) {
-    const displayTitle = altText || imgTitle || (isVideo ? t('video_player') : t('audio_player'));
+    const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
     const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
     const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
     const mediaTag = isVideo 
-        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">${t('browser_no_video')}</video>`
-        : `<audio preload="metadata" controls class="md-audio"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">${t('browser_no_audio')}</audio>`;
+        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
+        : `<audio preload="metadata" controls class="md-audio"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
 
+    // ✨ 影音專屬：重載腳本 (加上時間戳防快取)
     const reloadScript = `event.stopPropagation(); const media = this.closest('.media-container-wrapper').querySelector('.md-video, .md-audio'); const source = media.querySelector('source'); const orig = source.src.split('?retry=')[0].split('&retry=')[0]; const sep = orig.includes('?') ? '&' : '?'; source.src = orig + sep + 'retry=' + new Date().getTime(); media.load();`;
 
+    // ✨ 注入重新整理按鈕，並在有全螢幕按鈕時加入分隔線
     const actionBtns = `
         <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button class="mermaid-btn" data-tooltip="${t('refresh')}" onclick="${reloadScript}">${GLOBAL_SVGS.mermaidReload}</button>
+            <button class="mermaid-btn" data-tooltip="重新整理" onclick="${reloadScript}">${GLOBAL_SVGS.mermaidReload}</button>
             ${isVideo ? `
             <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-            <button class="mermaid-btn" data-tooltip="${t('fullscreen')}" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>
+            <button class="mermaid-btn" data-tooltip="全螢幕檢視" onclick="window.toggleWebFullscreen(this.closest('.media-container-wrapper').querySelector('video'))">${GLOBAL_SVGS.mermaidFull}</button>
             ` : ''}
         </div>
     `;
@@ -1728,8 +1718,8 @@ renderer.image = function(token_or_href, title, text) {
     }
 
     const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
-    const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="${t('zoom_in')}" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
-    const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="${t('zoom_in')}" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
+    const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
+    const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
     if (imgTitle) {
         let figureClass = (altText === 'float-right' || altText === 'float-left') ? ` class="${altText}"` : '';
@@ -1764,7 +1754,7 @@ renderer.code = function(token_or_code, language, isEscaped) {
         // 使用翻譯蒟蒻，將原文裡的 var() 與 rgba 轉成 Hex 色碼
         const processedText = window.processMermaidCssVars(rawText);
 
-        let chartTitle = t('flowchart');
+        let chartTitle = "流程圖 (Flowchart)";
         const fullLang = typeof token_or_code === 'object' ? (token_or_code.lang || language) : (language || '');
         const titleMatch = fullLang.match(/\[(.*?)\]/);
         
@@ -1779,17 +1769,29 @@ renderer.code = function(token_or_code, language, isEscaped) {
             <div class="mermaid-toolbar" onclick="event.stopPropagation();">
                 <span class="mermaid-title">${chartTitle}</span>
                 <div class="mermaid-btns">
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="${t('zoom_in')}">${GLOBAL_SVGS.mermaidZoomIn}</button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="${t('zoom_out')}">${GLOBAL_SVGS.mermaidZoomOut}</button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'center')" data-tooltip="${t('center_view')}">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" /><path d="M12 2v3M2 12h3M22 12h-3M12 22v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-in')" data-tooltip="放大">${GLOBAL_SVGS.mermaidZoomIn}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'zoom-out')" data-tooltip="縮小">${GLOBAL_SVGS.mermaidZoomOut}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'center')" data-tooltip="置中">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                            <circle cx="12" cy="12" r="3" />
+                            <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" />
+                            <path d="M12 2v3M2 12h3M22 12h-3M12 22v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg>
                     </button>
-                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="${t('reset_view')}">${GLOBAL_SVGS.mermaidReset}</button>
+                    <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
+                    
+                    <!-- ✨ 這條線會被觸控裝置隱藏 (解決圖片中多出來的那條線) -->
                     <div class="action-btn-divider desktop-only"></div>
-                    <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="${t('refresh')}">${GLOBAL_SVGS.mermaidReload}</button>
-                    <button class="mermaid-btn desktop-only" data-tooltip="${t('download')}" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
+                    
+                    <!-- 重新整理按鈕 -->
+                    <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="重新整理">${GLOBAL_SVGS.mermaidReload}</button>
+                    
+                    <button class="mermaid-btn desktop-only" data-tooltip="下載" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
+                    
+                    <!-- ✨ 這條線沒有 desktop-only，所以在觸控裝置上會完美保留在「重整」與「全螢幕」之間 -->
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
-                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="${t('view_image')}">${GLOBAL_SVGS.mermaidFull}</button>
+                    
+                    <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
             <div class="mermaid-wrapper">
@@ -1823,31 +1825,45 @@ renderer.code = function(token_or_code, language, isEscaped) {
         <!-- 設定 max-width 避免檔名太長蓋到複製按鈕，過長會自動變成 ... -->
         <div class="code-lang-label" style="max-width: calc(100% - 100px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${fileName || cleanLang}">${labelContent}</div>
         <button class="code-copy-btn" onclick="window.copyCodeBlock(this)">
-            <span class="btn-state-wrapper">
-                <span class="state-idle">${copyIcon} <span class="copy-text">${t('copy_code')}</span></span>
-                <span class="state-success">${GLOBAL_SVGS.check} <span class="copy-text">${t('copied_exclaim')}</span></span>
-            </span>
+            ${copyIcon} <span class="copy-text">Copy</span>
         </button>
         <pre><code class="language-${cleanLang}">${escapedText}</code></pre>
     </div>`;
 };
 
+// ==========================================
+// ✨ 新增：程式碼區塊一鍵複製引擎
+// ==========================================
 window.copyCodeBlock = function(btn) {
+    // 防止重複點擊
     if (btn.classList.contains('copied')) return;
     
+    // 往上找到外層容器，再往下精準抓取 code 裡面的文字
     const wrapper = btn.closest('.code-block-wrapper');
     const codeEl = wrapper.querySelector('code');
     if (!codeEl) return;
 
+    // innerText 會自動處理好換行與跳脫字元，拿來複製最精準
     const textToCopy = codeEl.innerText;
 
+    // 儲存原本的按鈕內容
+    const originalHtml = btn.innerHTML;
+    const checkIcon = GLOBAL_SVGS.check;
+
     navigator.clipboard.writeText(textToCopy).then(() => {
+        // 成功時切換狀態與文字
         btn.classList.add('copied');
+        btn.innerHTML = `${checkIcon} <span class="copy-text">Copied!</span>`;
+
+        // 2 秒後恢復原狀
         setTimeout(() => {
             btn.classList.remove('copied');
+            btn.innerHTML = originalHtml;
         }, 2000);
     }).catch(err => {
         console.error('程式碼複製失敗:', err);
+        btn.innerHTML = `<span class="copy-text" style="color: var(--error-color);">Error</span>`;
+        setTimeout(() => btn.innerHTML = originalHtml, 2000);
     });
 };
 
@@ -2114,21 +2130,6 @@ window.handleSpaLink = function(event, url) {
 // === 1. 介面與導覽列邏輯 (Theme & Menu) ===
 document.addEventListener('DOMContentLoaded', () => {
     
-    // ✨ 自動翻譯 HTML 中的靜態標籤與 Tooltip (i18n)
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        el.innerHTML = window.t ? window.t(el.getAttribute('data-i18n')) : el.innerHTML;
-    });
-    document.querySelectorAll('[data-i18n-tooltip]').forEach(el => {
-        el.setAttribute('data-tooltip', window.t ? window.t(el.getAttribute('data-i18n-tooltip')) : el.getAttribute('data-tooltip'));
-    });
-    document.querySelectorAll('[data-i18n-alt]').forEach(el => {
-        el.setAttribute('alt', window.t ? window.t(el.getAttribute('data-i18n-alt')) : el.getAttribute('alt'));
-    });
-    // ✨ 加上這三行，支援 aria-label 的翻譯！
-    document.querySelectorAll('[data-i18n-aria]').forEach(el => {
-        el.setAttribute('aria-label', window.t ? window.t(el.getAttribute('data-i18n-aria')) : el.getAttribute('aria-label'));
-    });
-
     const themeToggle = document.getElementById('theme-toggle');
     const savedTheme = localStorage.getItem('theme');
     const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
@@ -2287,7 +2288,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 try {
                     const notes = await window.getKotobaList();
-                    if (notes.length === 0) throw new Error(t('no_quotes'));
+                    if (notes.length === 0) throw new Error("無可用題庫");
                     const randomNote = notes[Math.floor(Math.random() * notes.length)];
                     
                     setTimeout(() => {
@@ -2349,8 +2350,8 @@ async function loadProjects() {
     const marquee = document.getElementById('marquee-text');
 
     try {
-        // ✨ 核心資料載入：向 localStorage 取得當前語系專案總表的專屬 Hash 版號
-        const projVersion = window.getResVersion(`projects_${window.CURRENT_LANG}`);
+        // ✨ 核心資料載入：向 localStorage 取得 projects 的專屬 Hash 版號
+        const projVersion = window.getResVersion('projects');
         const response = await fetch(`${CONFIG.DATA_SOURCE}?v=${projVersion}`);
         const db = await response.json();
         
@@ -2612,7 +2613,7 @@ async function loadProjects() {
                         <div class="card-action-icon-wrap">
                             ${GLOBAL_SVGS.folderClosed}
                             ${GLOBAL_SVGS.folderOpen}
-                        </div>${t('expand_series')} (${visibleCount})</div>`; // ✨ 換成 t('expand_series')
+                        </div>展開系列 (${visibleCount})</div>`;
                 } else if (data.link) {
                     card.style.cursor = 'pointer';
                     card.onclick = () => { 
@@ -2630,7 +2631,7 @@ async function loadProjects() {
                     
                     actionText = `<div class="card-action-btn">
                         ${GLOBAL_SVGS.linkLg} 
-                        ${t('external_project')} <span class="action-arrow card-action-arrow" data-dir="up-right"> <!-- ✨ 換成 t('external_project') -->
+                        前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">
                         ${GLOBAL_SVGS.arrowUpRight}</span></div>`;
                 } else {
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
@@ -2735,14 +2736,15 @@ async function loadProjects() {
     } catch (err) {
         console.error("載入失敗:", err);
         
+        // ✨ 判斷是否為網路斷線或無法連線
         const isOffline = !navigator.onLine || (err.message && err.message.includes('Failed to fetch'));
-        const errorTitle = isOffline ? t('err_offline_title') : t('err_fetch_title');
-        const errorDetail = err.message ? err.message.toUpperCase() : t('err_unknown');
-        const errorSub = isOffline ? t('err_offline_sub') : `${t('sys_dump')} ${errorDetail}`;
+        const errorTitle = isOffline ? "ERR: NO INTERNET CONNECTION" : "ERR: FAILED TO FETCH DATA";
+        const errorDetail = err.message ? err.message.toUpperCase() : "UNKNOWN_SYSTEM_ERROR";
+        const errorSub = isOffline ? "請檢查您的網路設定，連線恢復後請重新整理。" : `[SYS_DUMP] ${errorDetail}`;
         
         portfolioSections.innerHTML = `
             <div class="error-container" style="flex-direction: column; gap: 0.8rem;">
-                <span class="error-text" onclick="this.style.opacity='0.5'; this.innerHTML='${t('rebooting')}'; window.location.reload();">
+                <span class="error-text" onclick="this.style.opacity='0.5'; this.innerHTML='>_ REBOOTING...'; window.location.reload();">
                     ${GLOBAL_SVGS.retry} ${errorTitle}
                 </span>
                 <span style="font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--muted); opacity: 0.6; letter-spacing: 0.05em;">
@@ -2751,10 +2753,11 @@ async function loadProjects() {
             </div>
         `;
         
+        // 確保萬一卡在啟動畫面時，強制關閉重開機遮罩
         if (window.hideSystemRebootScreen) window.hideSystemRebootScreen(false);
 
         if (marquee) { 
-            const marqueeMsg = isOffline ? t('marquee_net_offline') : t('marquee_sys_offline');
+            const marqueeMsg = isOffline ? "NETWORK OFFLINE • PLEASE CHECK CONNECTION • " : "SYSTEM OFFLINE • ERROR • ";
             marquee.innerHTML = `<span>${marqueeMsg}</span>`.repeat(6); 
             marquee.style.color = "var(--error-color)"; 
         }
@@ -2807,11 +2810,11 @@ function hideSystemRebootScreen(isSuccess = true) {
     const msgEl = screen.querySelector('.loading-text');
     
     if (isSuccess) {
-        if (titleEl) { titleEl.innerText = t('sys_online'); titleEl.style.color = 'var(--accent-2)'; titleEl.style.textShadow = '0 0 10px var(--accent-2)'; }
-        if (msgEl) { msgEl.innerText = t('update_success'); msgEl.style.color = 'var(--accent-2)'; msgEl.style.animation = 'none'; }
+        if (titleEl) { titleEl.innerText = '>_ SYSTEM_ONLINE'; titleEl.style.color = 'var(--accent-2)'; titleEl.style.textShadow = '0 0 10px var(--accent-2)'; }
+        if (msgEl) { msgEl.innerText = 'UPDATE_SUCCESSFUL'; msgEl.style.color = 'var(--accent-2)'; msgEl.style.animation = 'none'; }
     } else {
-        if (titleEl) { titleEl.innerText = t('sys_reverted'); titleEl.style.color = 'var(--muted)'; titleEl.style.textShadow = 'none'; }
-        if (msgEl) { msgEl.innerText = t('cdn_delay'); msgEl.style.color = 'var(--muted)'; msgEl.style.animation = 'none'; }
+        if (titleEl) { titleEl.innerText = '>_ SYSTEM_REVERTED'; titleEl.style.color = 'var(--muted)'; titleEl.style.textShadow = 'none'; }
+        if (msgEl) { msgEl.innerText = 'CDN_CACHE_DELAY'; msgEl.style.color = 'var(--muted)'; msgEl.style.animation = 'none'; }
     }
 
     // ✨ 停頓 0.6 秒讓使用者欣賞成功訊息，再平滑淡出
@@ -2836,10 +2839,11 @@ async function checkSystemVersionAndBoot() {
     const sysIntent = sessionStorage.getItem('sys_intent');
 
     if (isRebooting) {
-        showSystemRebootScreen(t('sys_rebooting'), CONFIG.VERSION, expectedVersion, t('verifying_modules'), true);
+        showSystemRebootScreen('SYSTEM_REBOOTING', CONFIG.VERSION, expectedVersion, 'VERIFYING_MODULES', true);
     }
 
     try {
+        // ✨ 微型化版本檢查：同時核對「系統版號 (version.json)」與「細項內容 Hash (data_version.json)」
         const [sysRes, dataRes] = await Promise.all([
             fetch(`./version.json?t=${new Date().getTime()}`).catch(() => null),
             fetch(`./data_version.json?t=${new Date().getTime()}`).catch(() => null)
@@ -2852,19 +2856,26 @@ async function checkSystemVersionAndBoot() {
         let rebootReason = '';
         let remoteVersion = CONFIG.VERSION;
 
+        // 1. 檢查系統層級更新 (優先級最高)
         if (sysData && sysData.version && sysData.version !== CONFIG.VERSION) {
             needReboot = true;
-            rebootReason = t('sys_updating');
+            rebootReason = 'SYS_UPDATING';
             remoteVersion = sysData.version;
             console.warn(`[SYS_UPDATE] 發現系統新版本 ${remoteVersion}，準備強制更新...`);
         }
+        // 2. 檢查內容層級更新 (如果系統無需更新，才檢查 projects 目錄的 Hash 是否改變)
         else if (contentData && contentData.projects) {
             const localDataVersions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
+            
+            // ✨ 如果本地有舊紀錄，且專案 (projects) 的 Hash 發生改變，才需要強制重開機刷新首頁
             if (localDataVersions.projects && localDataVersions.projects !== contentData.projects) {
                 needReboot = true;
-                rebootReason = t('syncing_new_data');
+                rebootReason = 'SYNCING_NEW_DATA';
                 console.info(`[DATA_UPDATE] 發現文章內容修改，準備同步資料庫...`);
             }
+            
+            // ✨ 寫入最新的細項 Hash 字典到本機
+            // (如果是 kotoba.md 等獨立細項改變，下次點擊時會自己抓最新 Hash，不需重啟畫面！)
             localStorage.setItem('sys_data_versions', JSON.stringify(contentData));
         }
 
@@ -2879,7 +2890,7 @@ async function checkSystemVersionAndBoot() {
                 hideSystemRebootScreen(false); 
                 loadProjects(); 
                 if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600); 
-                setTimeout(() => { window.showSystemToast(t('update_failed'), t('cdn_delay_detected'), t('reverted_safe_state'), 12000, 'error'); }, 1000);
+                setTimeout(() => { window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `已還原為安全狀態`, 12000, 'error'); }, 1000);
                 return;
             }
             
@@ -2887,7 +2898,8 @@ async function checkSystemVersionAndBoot() {
             sessionStorage.setItem('sys_is_rebooting', 'true');
             sessionStorage.setItem('sys_expected_version', remoteVersion);
 
-            const screenTitle = rebootReason === t('sys_updating') ? 'SYS_VERSION_MISMATCH' : 'CONTENT_SYNC_REQUIRED';
+            // 根據不同更新原因，顯示不同的終端機過場文字
+            const screenTitle = rebootReason === 'SYS_UPDATING' ? 'SYS_VERSION_MISMATCH' : 'CONTENT_SYNC_REQUIRED';
             showSystemRebootScreen(screenTitle, CONFIG.VERSION, remoteVersion, rebootReason, isRebooting);
             
             setTimeout(() => {
@@ -2898,19 +2910,28 @@ async function checkSystemVersionAndBoot() {
             
             return; 
         } else {
+            // ✨ 核心神修復：檢查重啟後，系統版本是否真的有達到文章要求的預期？
             if (isRebooting && expectedVersion !== 'UNKNOWN' && window.compareVersions(CONFIG.VERSION, expectedVersion) < 0) {
                 console.error("[SYS_UPDATE] 強制升級失敗，CDN 仍快取舊版 JS。");
+                
+                // 清除標記，避免卡死
                 sessionStorage.removeItem('sys_reboot_count');
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
+                
+                // 觸發「紅色退回狀態」的終端機過場動畫
                 hideSystemRebootScreen(false); 
                 loadProjects();
                 
+                // 彈出精美的錯誤提示，告訴使用者 CDN 正在塞車
                 setTimeout(() => { 
-                    window.showSystemToast(t('update_failed'), t('cdn_delay_detected'), t('update_failed_core', [expectedVersion]), 12000, 'error'); 
+                    window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `無法取得 ${expectedVersion} 核心，請稍後再試。`, 12000, 'error'); 
                 }, 1000);
-                return; 
+                
+                return; // ⛔ 中斷執行，不再往下走！
             }
+
+            // 如果順利達標，就正常清除標記並啟動
             sessionStorage.removeItem('sys_reboot_count');
             sessionStorage.removeItem('sys_is_rebooting');
             sessionStorage.removeItem('sys_expected_version');
@@ -3056,8 +3077,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         sessionStorage.setItem('sys_reboot_count', '1');
         sessionStorage.setItem('sys_is_rebooting', 'true');
         sessionStorage.setItem('sys_expected_version', proj.min_sys_version);
-        // ✨ 顯示極簡版的更新終端機文字，套用 t('updating')
-        showSystemRebootScreen(t('core_update'), CONFIG.VERSION, proj.min_sys_version, t('updating'), true);
+        // ✨ 顯示極簡版的更新終端機文字
+        showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, proj.min_sys_version, 'UPDATING', true);
         
         setTimeout(() => {
             const newUrl = new URL(window.location.href);
@@ -3099,28 +3120,21 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const cleanPath = window.getCleanBasePath();
             const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}`;
             window.history.replaceState({ path: spaUrl }, '', spaUrl);
-            
-            // ✨ 修正專案分享連結：加上目前的語系路徑，讓爬蟲能抓到對應語言的 OG Tags
-            const projLang = window.CURRENT_LANG; 
-            const shareUrl = `${window.location.origin}${cleanPath}api/${projLang}/${projectId}/index.html`;
+            const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
 
+            // 2. 將目錄標題與功能按鈕直接注入 modal-top-left
             document.getElementById('modal-top-left').innerHTML = `
                 <div class="index-header-container">
-                    <h1 class="index-header-title">${proj.title} - ${t('index_title')}</h1>
+                    <h1 class="index-header-title">${proj.title} - 目錄</h1>
                     <div class="index-header-actions">
-                        <span class="article-count-badge">${t('total_articles', [visibleCount])}</span>
-                        <button id="toggle-sort-btn" class="share-link-btn sm is-desc">
+                        <!-- ✨ 使用 visibleCount 替換掉原本的 proj.articles.length -->
+                        <span class="article-count-badge">共 ${visibleCount} 篇</span>
+                        <button id="toggle-sort-btn" class="share-link-btn sm">
                             <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
-                            <span class="btn-text-wrapper">
-                                <span class="sort-text-desc">${t('sort_desc')}</span>
-                                <span class="sort-text-asc">${t('sort_asc')}</span>
-                            </span>
+                            <span id="sort-btn-text" style="margin-left: 4px;"></span>
                         </button>
                         <button class="share-link-btn sm" id="index-share-btn">
-                            <span class="btn-state-wrapper">
-                                <span class="state-idle">${GLOBAL_SVGS.link} <span>${t('copy_link')}</span></span>
-                                <span class="state-success">${GLOBAL_SVGS.check} <span>${t('copied')}</span></span>
-                            </span>
+                            ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">複製連結</span>
                         </button> 
                     </div>
                 </div>
@@ -3146,23 +3160,27 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 const finalArray = window.getArticleSequence(projectId);
                 const themePalette = ['var(--group-c1)', 'var(--group-c2)', 'var(--group-c3)', 'var(--group-c4)', 'var(--group-c5)'];
 
-                // ✨ 升級版的共用 Li 產生器
-                const generateLi = (art, idx, isHighlightGroup, themeClass = '', customStyle = '') => {
+                const generateLi = (art, idx, isHighlightGroup, customColor) => {
                     let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
                     let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
                     let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                     
+                    // 替換清單沒有圖片時的佔位符
                     let baseIconHtml = art.cover_image 
                         ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
                         : `<div class="article-item-fallback" style="color: var(--muted);">${GLOBAL_SVGS.docIconLg}</div>`;
                     
                     let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                    // ✨ 新增：機密小圖釘 HTML
                     let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
                     let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                    let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
+                    
+                    // ✨ 新增：判斷是否為隱藏文章
                     let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
 
                     return `
-                        <li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}${hiddenClass}${themeClass}"${customStyle}>
+                        <li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}${hiddenClass}"${colorStyle}>
                             <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
                                 ${iconHtml}
                                 <div class="article-item-content">
@@ -3191,16 +3209,19 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         let themeClass = '';
                         let customStyle = '';
 
+                        // ✨ The Logic: Use classes for highlight groups, inline styles ONLY for custom hex colors
                         if (groupData.highlight) {
                             const groupNum = (colorIndex % 5) + 1;
                             themeClass = ` group-color-${groupNum}`;
                             colorIndex++; 
                         } else if (groupColor) {
+                            // If they provided a specific hardcoded hex color
                             customStyle = ` style="--current-group-color: ${groupColor};"`;
                         }
 
                         const topMargin = isFirstGroup ? '0rem' : '1.8rem';
 
+                        // Apply themeClass to the title, or customStyle if it's a hardcoded hex
                         html += `
                             <div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
                                 <div class="group-header-title${themeClass}"${customStyle}>${groupData.title || groupId}</div>
@@ -3209,32 +3230,102 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             <ul class="article-list-ul">
                         `;
                         
-                        // ✨ 縮減 1：群組文章迴圈
                         groupArticles.forEach(({art, idx}) => { 
-                            html += generateLi(art, idx, groupData.highlight, themeClass, customStyle);
+                            let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                            let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
+                            let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                            
+                            let baseIconHtml = art.cover_image 
+                                ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
+                                : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+                            
+                            let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                            let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                            let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                            let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
+                            
+                            // ✨ The Magic: Apply themeClass directly to the <li>
+                            let classList = `article-li ${groupData.highlight ? 'is-highlight' : 'is-normal'}${hiddenClass}${themeClass}`;
+
+                            html += `
+                                <li id="article-item-${idx}" class="${classList.trim()}"${customStyle}>
+                                    <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                        ${iconHtml}
+                                        <div class="article-item-content">
+                                            <div class="article-item-title-row">
+                                                <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                                ${descHtml}
+                                            </div>
+                                            ${dateHtml}
+                                        </div>
+                                    </a>
+                                </li>
+                            `;
                         });
                         html += `</ul>`;
                         
                         isFirstGroup = false;
                     }
-                    
                     const ungrouped = finalArray.filter(item => !item.art.group);
                     if (ungrouped.length > 0) {
                         const topMargin = isFirstGroup ? '0rem' : '1.5rem';
                         html += `<ul class="article-list-ul" style="margin-top:${topMargin};">`;
                         
-                        // ✨ 縮減 2：未分群文章迴圈
                         ungrouped.forEach(({art, idx}) => { 
-                             html += generateLi(art, idx, false);
+                             // Inline generic li generation for ungrouped
+                             let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                             let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
+                             let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                             let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+                             let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                             let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                             let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                             let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
+ 
+                             html += `
+                                 <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
+                                     <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                         ${iconHtml}
+                                         <div class="article-item-content">
+                                             <div class="article-item-title-row">
+                                                 <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                                 ${descHtml}
+                                             </div>
+                                             ${dateHtml}
+                                         </div>
+                                     </a>
+                                 </li>
+                             `;
                         });
                         html += `</ul>`;
                     }
                 } else {
                     html += `<ul class="article-list-ul" style="margin-top:0rem;">`;
-                    
-                    // ✨ 縮減 3：無群組專案的文章迴圈
                     finalArray.forEach(({art, idx}) => { 
-                         html += generateLi(art, idx, false);
+                         // Generic li for projects with no groups
+                         let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                         let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
+                         let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
+                         let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+                         let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
+                         let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                         let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
+                         let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
+
+                         html += `
+                             <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
+                                 <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
+                                     ${iconHtml}
+                                     <div class="article-item-content">
+                                         <div class="article-item-title-row">
+                                             <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                             ${descHtml}
+                                         </div>
+                                         ${dateHtml}
+                                     </div>
+                                 </a>
+                             </li>
+                         `;
                     });
                     html += `</ul>`;
                 }
@@ -3288,13 +3379,13 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                             if (countBelow > 0) {
                                 targetArticle = closestBelow;
-                                const prefix = countVisible > 0 ? t('more_below') : t('found_new');
-                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpDown} ${prefix} ${countBelow} ${t('new_articles')}`;
+                                const prefix = countVisible > 0 ? '下方還有' : '發現';
+                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpDown} ${prefix} ${countBelow} 篇新內容`;
                                 jumpToast.classList.add('is-visible');
                             } else if (countAbove > 0) {
                                 targetArticle = closestAbove;
-                                const prefix = countVisible > 0 ? t('more_above') : t('found_new');
-                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpUp} ${prefix} ${countAbove} ${t('new_articles')}`;
+                                const prefix = countVisible > 0 ? '上方還有' : '發現';
+                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpUp} ${prefix} ${countAbove} 篇新內容`;
                                 jumpToast.classList.add('is-visible');
                             } else {
                                 targetArticle = null;
@@ -3342,6 +3433,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 const isAsc = currentSort === 'asc';
                 sortBtn.classList.toggle('is-asc', isAsc);
                 sortBtn.classList.toggle('is-desc', !isAsc);
+                sortBtn.querySelector('#sort-btn-text').innerText = isAsc ? '由舊到新' : '由新到舊';
             };
 
             updateSortBtnUI();
@@ -3450,8 +3542,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         sessionStorage.setItem('sys_reboot_count', '1');
         sessionStorage.setItem('sys_is_rebooting', 'true');
         sessionStorage.setItem('sys_expected_version', article.min_sys_version);
-        // ✨ 顯示極簡版的更新終端機文字，套用 t('updating')
-        showSystemRebootScreen(t('core_update'), CONFIG.VERSION, article.min_sys_version, t('updating'), true);
+        // ✨ 顯示極簡版的更新終端機文字
+        showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, article.min_sys_version, 'UPDATING', true);
         
         setTimeout(() => {
             const newUrl = new URL(window.location.href);
@@ -3503,26 +3595,20 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     }
     
     document.body.style.cursor = 'wait';
-    let markdownContent = t('load_failed');
-    let isArticleFallback = false; // ✨ 獨立宣告，讓下方的渲染器能讀到它
+    let markdownContent = "載入失敗";
     
     try {
-        // 判斷是否跨語系抓了 zh 的檔案
-        isArticleFallback = article.content_path.includes('/zh/') && window.CURRENT_LANG !== 'zh';
-        
         const response = await fetch(article.content_path);
         if (!response.ok) throw new Error("Network response was not ok");
         const data = await response.json();
         markdownContent = data.content; 
-        
-        // ✨ 已經拔除 Markdown 字串串接，維持原始內文 100% 乾淨！
     } catch (error) {
         console.error("無法載入文章內容:", error);
         
         // 動態判斷是網路斷線還是檔案遺失
         const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
-        const errTitle = isOffline ? t('err_net_disconnect') : t('err_not_found');
-        const errMsg = isOffline ? t('net_offline_sub') : t('err_not_found'); // 統一用字典的字
+        const errTitle = isOffline ? 'ERR_INTERNET_DISCONNECTED' : '404 NOT_FOUND';
+        const errMsg = isOffline ? '網路連線中斷，請檢查您的網路狀態。' : '無法載入文章內容。';
         
         markdownContent = `
 # ${article.title}
@@ -3593,7 +3679,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             const generateNavBtn = (item, type) => {
                 const isPrev = type === 'prev';
                 const iconSvg = isPrev ? GLOBAL_SVGS.chevronLeft : GLOBAL_SVGS.chevronRight;
-                const text = isPrev ? t('prev_article') : t('next_article');
+                const text = isPrev ? '上一篇' : '下一篇';
                 
                 if (!item) {
                     return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled>${iconSvg}</button>` };
@@ -3686,43 +3772,22 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const articleSlug = article.id || articleIndex;
                 const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleSlug}${targetHash || ''}`;
                 window.history.replaceState({ path: spaUrl }, '', spaUrl);
-                
-                // ✨ 智慧判定：如果這個文章被回退到 zh，分享網址也要給出有實體 HTML 的 zh 路徑
-                const artLang = article.content_path.includes('/zh/') ? 'zh' : window.CURRENT_LANG;
-                const shareUrl = `${window.location.origin}${cleanPath}api/${artLang}/${projectId}/${articleSlug}/index.html`;
+                const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/${articleSlug}/index.html`;
 
                 const shareBtn = document.createElement('button');
                 shareBtn.className = 'share-link-btn';
-                shareBtn.innerHTML = `
-                    <span class="btn-state-wrapper">
-                        <span class="state-idle">${GLOBAL_SVGS.link} <span>${t('copy_link')}</span></span>
-                        <span class="state-success">${GLOBAL_SVGS.check} <span>${t('copied')}</span></span>
-                    </span>
-                `;
+                shareBtn.innerHTML = `${GLOBAL_SVGS.link} <span>複製連結</span>`;
                 shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
 
                 rightGroup.appendChild(shareBtn);
                 wrapper.appendChild(rightGroup);
-                
-                // ✨ 終極解法：如果是回退文章，在標題下方插入純 DOM 警告橫幅，完美避開 Markdown 解析干擾！
-                if (isArticleFallback) {
-                    const fallbackBanner = document.createElement('div');
-                    
-                    // ✨ 修正 1：將 align-items 改為 center，讓圖標與文字完美垂直置中
-                    fallbackBanner.style.cssText = "margin: -0.2rem 0 1.5rem 0; padding: 0.8rem 1.2rem; background: color-mix(in srgb, var(--accent-2) 10%, transparent); border-left: 4px solid var(--accent-2); border-radius: 4px 8px 8px 4px; color: var(--text); font-size: 0.9rem; display: flex; align-items: center; gap: 8px;";
-                    
-                    // ✨ 修正 2：拔除圖標的偏移，並使用 marked.parseInline() 讓星號真正變成漂亮的斜體！
-                    fallbackBanner.innerHTML = `<span style="color: var(--accent-2); flex-shrink: 0; display: flex; align-items: center;">${GLOBAL_SVGS.fallbackHint}</span> <span style="opacity: 0.9; line-height: 1.4; padding-top: 2px;">${marked.parseInline(t('article_fallback_hint'))}</span>`;
-                    
-                    wrapper.parentNode.insertBefore(fallbackBanner, wrapper.nextSibling);
-                }
             }
 
             const topLeft = document.getElementById('modal-top-left');
-            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="${t('history_back')}">${GLOBAL_SVGS.historyBack}</button>` : '';
+            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
-            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="${t('back_to_index')}">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">${t('index_title')}</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
+            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
 
             const tocMount = document.getElementById('toc-mount-point');
             tocMount.innerHTML = ''; 
@@ -3924,7 +3989,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                         const existingBtn = figure.querySelector('.zoom-btn');
                         if (!existingBtn) {
                             const zoomBtn = document.createElement('button');
-                            zoomBtn.setAttribute('data-tooltip', t('zoom_in'));
+                            zoomBtn.setAttribute('data-tooltip', '放大檢視');
                             zoomBtn.innerHTML = GLOBAL_SVGS.zoomIcon;
                             
                             zoomBtn.onclick = (event) => {
@@ -4047,7 +4112,22 @@ window.centerKotobaTag = function(event) {
         let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
-        window.scrollMarqueeTo(targetX, contentWidth);
+        document.querySelectorAll('.marquee-content').forEach(m => {
+            if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
+            let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
+            if (currentX > 0) currentX -= contentWidth;
+            
+            m.style.transition = 'none';
+            m.style.transform = `translateX(${currentX}px)`;
+            m.style.animation = 'none';
+            
+            void m.offsetWidth; 
+            
+            const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
+
+            m.style.transition = `transform ${duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
+            m.style.transform = `translateX(${targetX}px)`;
+        });
     }
 };
 
@@ -4118,7 +4198,18 @@ window.filterByTag = function(targetTag, event, clickedElement) {
         let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
-        window.scrollMarqueeTo(targetX, contentWidth);
+        document.querySelectorAll('.marquee-content').forEach(m => {
+            if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
+            let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
+            if (currentX > 0) currentX -= contentWidth;
+            
+            m.style.transition = 'none';
+            m.style.transform = `translateX(${currentX}px)`;
+            m.style.animation = 'none';
+            void m.offsetWidth; 
+            m.style.transition = `transform ${0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7)}s cubic-bezier(0.22, 1, 0.36, 1)`;
+            m.style.transform = `translateX(${targetX}px)`;
+        });
     }
 
     document.querySelectorAll(`[data-tag="${targetTag}"]`).forEach(t => t.classList.add('active-tag'));
@@ -4306,69 +4397,6 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// ==========================================================================
-// ✨ 全域智慧焦點鎖定引擎 (Accessibility Focus Trap Engine)
-// 攔截 Tab 鍵，確保鍵盤焦點只會停留在「當前最上層的活躍彈窗」內部
-// ==========================================================================
-document.addEventListener('keydown', function(e) {
-    if (e.key !== 'Tab') return;
-
-    // 1. 智慧判定當前處於最高圖層且「正在顯示」的彈窗 (依照 Z-Index 優先級遞減)
-    let activeModal = null;
-    if (document.getElementById('pdf-action-modal')) {
-        activeModal = document.getElementById('pdf-action-modal');
-    } else if (document.getElementById('sensitive-modal-overlay')) {
-        activeModal = document.getElementById('sensitive-modal-overlay');
-    } else if (document.getElementById('lightbox-modal') && document.getElementById('lightbox-modal').classList.contains('is-active')) {
-        activeModal = document.getElementById('lightbox-modal');
-    } else if (document.getElementById('md-modal') && document.getElementById('md-modal').classList.contains('active')) {
-        activeModal = document.getElementById('md-modal');
-    } else if (document.getElementById('fullscreen-menu') && document.getElementById('fullscreen-menu').classList.contains('active')) {
-        activeModal = document.getElementById('fullscreen-menu');
-    }
-
-    // 如果沒有任何彈窗開啟，就維持瀏覽器原生行為，直接退出
-    if (!activeModal) return; 
-
-    // 2. 抓取該彈窗內部「所有可以被 Focus 的元素」
-    const focusableSelectors = 'a[href]:not([disabled]), button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    
-    // 過濾掉被 CSS 隱藏 (display: none 或 width: 0) 的元素
-    const focusableElements = Array.from(activeModal.querySelectorAll(focusableSelectors)).filter(el => {
-        return (el.offsetWidth > 0 || el.offsetHeight > 0) && window.getComputedStyle(el).visibility !== 'hidden';
-    });
-
-    if (focusableElements.length === 0) {
-        e.preventDefault(); // 彈窗內完全沒有可互動元素，鎖死焦點
-        return;
-    }
-
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-
-    // 3. 焦點迷失救援：如果當前的焦點完全不在活躍彈窗內，強制將焦點抓回彈窗的第一個元素
-    if (!activeModal.contains(document.activeElement)) {
-        firstElement.focus();
-        e.preventDefault();
-        return;
-    }
-
-    // 4. 無限迴圈鎖定 (Focus Trap Logic)
-    if (e.shiftKey) {
-        // 使用者按下 Shift + Tab (往回跳)
-        if (document.activeElement === firstElement) {
-            lastElement.focus(); // 如果已經是第一個，跳回最後一個
-            e.preventDefault();
-        }
-    } else {
-        // 使用者按下 Tab (往下跳)
-        if (document.activeElement === lastElement) {
-            firstElement.focus(); // 如果已經是最後一個，跳回第一個
-            e.preventDefault();
-        }
-    }
-});
-
 // ==========================================
 // ✨ Mermaid 專業控制台引擎
 // ==========================================
@@ -4479,10 +4507,10 @@ window.fullscreenMermaid = function(btn) {
 
     // 3. 設定 Lightbox 狀態，加上 isDomMode 隱藏屬性
     window.lightboxState = { 
-        images: [{ src: '', caption: titleNode ? titleNode.innerText : t('flowchart') }], // ✨ 替換為 t('flowchart')
+        images: [{ src: '', caption: titleNode ? titleNode.innerText : "Mermaid 流程圖" }], 
         currentIndex: 0, 
         zoom: 1, 
-        x: 0,
+        x: 0, 
         y: 0,
         maxZoom: 5, // 圖表允許放得更大
         isDomMode: true
@@ -4595,9 +4623,10 @@ function show404Modal(title, message) {
     const modalTopLeft = document.getElementById('modal-top-left');
     const tocMountPoint = document.getElementById('toc-mount-point');
 
-    if (modalTopLeft) modalTopLeft.innerHTML = `<span style="color: var(--muted); font-weight: 600; font-family: monospace; letter-spacing: 0.05em;">${t('system_error_label')}</span>`;
+    if (modalTopLeft) modalTopLeft.innerHTML = `<span style="color: var(--muted); font-weight: 600; font-family: monospace; letter-spacing: 0.05em;">SYSTEM_ERROR</span>`;
     if (tocMountPoint) tocMountPoint.innerHTML = '';
 
+    // ✨ 動態判斷：如果是 403 就顯示鎖頭，否則顯示驚嘆號
     const is403 = title.includes('403');
     const iconSvg = is403 
         ? GLOBAL_SVGS.errorLock.replace('<svg ', '<svg class="sys-error-icon" ') 
@@ -4609,30 +4638,48 @@ function show404Modal(title, message) {
             <h1>${title}</h1>
             <p class="sys-error-desc">${message}</p>
             <button class="btn sys-error-btn" onclick="closeModal()">
-                ${GLOBAL_SVGS.arrowLeft} ${t('back_to_home')}
+                ${GLOBAL_SVGS.arrowLeft} 返回首頁
             </button>
         </div>`;
 
     modalOverlay.classList.add('active');
     window.lockScroll();
 
+    // ✨ 403 畫面中的「管理員解鎖彩蛋」與「遠端鎖頭連動特效」
     const trigger = modalBody.querySelector('.secret-admin-trigger');
     if (trigger) {
         const lockIcon = modalBody.querySelector('.error-lock-icon');
         const shackle = modalBody.querySelector('.error-lock-shackle');
 
+        // 當滑鼠移入「風川梓」時：大鎖頭亮起紅光並暴力彈開
         trigger.addEventListener('mouseenter', () => {
-            if (lockIcon) { lockIcon.style.stroke = 'var(--error-color)'; lockIcon.style.opacity = '1'; lockIcon.style.filter = 'drop-shadow(0 0 15px var(--error-color))'; }
-            if (shackle) { shackle.style.transform = 'translateY(-10px) translateX(4px) rotate(15deg)'; }
+            if (lockIcon) {
+                lockIcon.style.stroke = 'var(--error-color)';
+                lockIcon.style.opacity = '1';
+                lockIcon.style.filter = 'drop-shadow(0 0 15px var(--error-color))';
+            }
+            if (shackle) {
+                shackle.style.transform = 'translateY(-10px) translateX(4px) rotate(15deg)';
+            }
         });
 
+        // 當滑鼠移出時：大鎖頭扣回原位並變回灰色
         trigger.addEventListener('mouseleave', () => {
-            if (lockIcon) { lockIcon.style.stroke = 'var(--muted)'; lockIcon.style.opacity = '0.5'; lockIcon.style.filter = 'none'; }
-            if (shackle) { shackle.style.transform = 'none'; }
+            if (lockIcon) {
+                lockIcon.style.stroke = 'var(--muted)';
+                lockIcon.style.opacity = '0.5';
+                lockIcon.style.filter = 'none';
+            }
+            if (shackle) {
+                shackle.style.transform = 'none';
+            }
         });
 
+        // 點擊執行解鎖與無縫轉場
         trigger.addEventListener('click', () => {
             document.body.classList.add('system-override-active');
+            
+            // ✨ 呼叫全域重刷引擎，確保退回首頁時，卡片數字與捲軸提示都已完美更新！
             window.refreshUIAfterOverrideToggle();
             
             const urlParams = new URLSearchParams(window.location.search);
@@ -4640,8 +4687,12 @@ function show404Modal(title, message) {
             const aParam = urlParams.get('a');
             const hashParam = window.location.hash || null;
             
-            if (pParam) { window.handleAppRouting(pParam, aParam, hashParam); } 
-            else { closeModal(); setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100); }
+            if (pParam) {
+                window.handleAppRouting(pParam, aParam, hashParam);
+            } else {
+                closeModal();
+                setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+            }
         });
     }
 }
@@ -4693,14 +4744,14 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
                 ${GLOBAL_SVGS.closeX}
             </button>
             ${GLOBAL_SVGS.warning}
-            <h2 class="sensitive-title">${t('cw_title')}</h2>
+            <h2 class="sensitive-title">內容警告 (Content Warning)</h2>
             <p class="sensitive-desc">
-                ${t('cw_desc')}
-                <br><span class="sensitive-desc-hint">${t('cw_desc_hint')}</span>
+                此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。<br>
+                <span class="sensitive-desc-hint">(同意後於本次瀏覽器存續期間將不再提示)</span>
             </p>
             <div class="sensitive-actions">
-                <button id="sensitive-decline-btn" class="btn">${t('cw_decline')}</button>
-                <button id="sensitive-agree-btn" class="btn">${t('cw_agree')}</button>
+                <button id="sensitive-decline-btn" class="btn">不感興趣</button>
+                <button id="sensitive-agree-btn" class="btn">我已了解並前往</button>
             </div>
         </div>
     `;
@@ -4760,14 +4811,16 @@ window.applyIndentToVerticalWrapper = function(container) {
 window.cachedCreditsText = null;
 window.showCreditsModal = async function() {
     document.body.style.cursor = 'wait'; 
-    let mdText = t('load_failed'); let isError = false;
+    let mdText = "載入失敗"; let isError = false;
     
     try {
         // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
         if (window.cachedCreditsText !== null) {
             mdText = window.cachedCreditsText;
         } else {
-            mdText = await window.fetchLocaleText('credits.md', true); // isDocument = true
+            const response = await fetch(`./credits.md?v=${window.getResVersion('credits.md')}`);
+            if (!response.ok) throw new Error('找不到 credits.md 檔案');
+            mdText = await response.text();
             window.cachedCreditsText = mdText;
         }
     } catch (error) {
@@ -4790,16 +4843,16 @@ window.showCreditsModal = async function() {
             if (modalTopLeft) {
                 modalTopLeft.innerHTML = `
                     <div class="index-header-container">
-                        <h1 class="index-header-title">${t('credits')}</h1>
+                        <h1 class="index-header-title">Credits</h1>
                         <div class="index-header-actions">
-                            <span class="article-count-badge">${t('acknowledgments_badge')}</span>
+                            <span class="article-count-badge">Acknowledgments</span>
                         </div>
                     </div>
                 `;
             }
 
             if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml(t('system_error_label'), t('credits_failed'));
+                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入致謝名單。');
             } else {
                 modalBody.innerHTML = `
                     <div class="credits-markdown-wrapper markdown-body" style="margin-top: -0.5rem;">
@@ -4849,9 +4902,9 @@ window.showChangelogModal = async function(isSystemFallback = false) {
 
                     document.body.insertAdjacentHTML('beforeend', `
                     <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
-                        <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">${t('manual_override')}</div>
+                        <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
                             <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${vData.version}</div>
-                            <div class="loading-text" style="font-size: 1.1rem;">${t('fetching_rebooting')}</div>
+                            <div class="loading-text" style="font-size: 1.1rem;">FETCHING_AND_REBOOTING</div>
                         </div>
                     `);
                     
@@ -4870,7 +4923,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
             // 已有快取，不需重抓
         } else {
             const response = await fetch(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`);
-            if (!response.ok) throw new Error(t('changelog_not_found'));
+            if (!response.ok) throw new Error('找不到 changelogs.json');
             window.cachedChangelogs = await response.json();
         }
 
@@ -4889,9 +4942,9 @@ window.showChangelogModal = async function(isSystemFallback = false) {
         if (!isDetail) {
             modalTopLeft.innerHTML = `
                 <div class="index-header-container">
-                    <h1 class="index-header-title">${t('changelog_title')}</h1>
+                    <h1 class="index-header-title">System Changelog</h1>
                     <div class="index-header-actions">
-                        <span class="article-count-badge">${t('update_history')}</span>
+                        <span class="article-count-badge">Update History</span>
                     </div>
                 </div>
             `;
@@ -4906,7 +4959,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
             modalTopLeft.innerHTML = `
                 <div class="changelog-header-row">
                     <button class="modal-back-btn" onclick="window.renderChangelogIndex()">
-                        ${GLOBAL_SVGS.arrowLeft} ${t('return_list')}
+                        ${GLOBAL_SVGS.arrowLeft} 返回清單
                     </button>
                     <div style="display: flex; align-items: center; gap: 0.8rem;">
                         <span class="changelog-version">${logData ? logData.version : ''}</span>
@@ -4935,7 +4988,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 renderChangelogHeader(false);
 
                 if (fetchError || !window.cachedChangelogs) {
-                    modalBody.innerHTML = window.getSystemErrorHtml(t('system_error_label'), t('changelog_failed'));
+                    modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版本日誌。');
                 } else {
                     let listHTML = '<ul class="article-list-ul">';
                     window.cachedChangelogs.forEach(log => {
@@ -5024,16 +5077,15 @@ window.switchBilingualTab = function(lang, btn) {
 window.cachedLicenseText = null;
 window.showLicenseModal = async function() {
     document.body.style.cursor = 'wait'; 
-    let mdText = t('load_failed'); let isError = false;
+    let mdText = "載入失敗"; let isError = false;
 
     try {
         // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
         if (window.cachedLicenseText !== null) {
             mdText = window.cachedLicenseText;
         } else {
-            // ✨ 改回直接向根目錄請求，並使用它專屬的 Hash 版號
             const response = await fetch(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`);
-            if (!response.ok) throw new Error(t('license_not_found'));
+            if (!response.ok) throw new Error("找不到版權檔案");
             mdText = await response.text();
             window.cachedLicenseText = mdText;
         }
@@ -5059,9 +5111,9 @@ window.showLicenseModal = async function() {
             if (modalTopLeft) {
                 modalTopLeft.innerHTML = `
                     <div class="index-header-container">
-                        <h1 class="index-header-title">${t('license_title')}</h1>
+                        <h1 class="index-header-title">License & Copyright</h1>
                         <div class="index-header-actions">
-                            <span class="article-count-badge">${t('important_badge')}</span>
+                            <span class="article-count-badge">important</span>
                         </div>
                     </div>
                 `;
@@ -5069,7 +5121,7 @@ window.showLicenseModal = async function() {
 
             // 處理內容渲染
             if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml(t('system_error_label'), t('license_failed'));
+                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版權聲明檔案。');
             } else {
                 modalBody.innerHTML = `
                     <div class="markdown-body" style="margin-top: -0.5rem; padding-bottom: 2rem;">
@@ -5078,22 +5130,16 @@ window.showLicenseModal = async function() {
                 `;
             }
 
-            // ✨ 自動注入多語系切換按鈕 (動態跟隨使用者當前語系設定)
+            // ✨ 自動注入多語系切換按鈕 (更新為支援三語的簡潔寫法)
             const switcher = modalBody.querySelector('#bilingual-switcher');
             if (switcher) {
-                const current = window.CURRENT_LANG || 'zh';
                 switcher.innerHTML = `
                     <div class="lang-tabs">
-                        <button class="lang-btn ${current === 'zh' ? 'active' : ''}" onclick="window.switchBilingualTab('zh', this)">中文版</button>
-                        <button class="lang-btn ${current === 'en' ? 'active' : ''}" onclick="window.switchBilingualTab('en', this)">English</button>
-                        <button class="lang-btn ${current === 'ja' ? 'active' : ''}" onclick="window.switchBilingualTab('ja', this)">日本語</button>
+                        <button class="lang-btn active" onclick="window.switchBilingualTab('zh', this)">中文版</button>
+                        <button class="lang-btn" onclick="window.switchBilingualTab('en', this)">English</button>
+                        <button class="lang-btn" onclick="window.switchBilingualTab('ja', this)">日本語</button>
                     </div>
                 `;
-                
-                // ✨ 核心魔法：DOM 渲染完畢後，立刻觸發一次切換函式
-                // 這樣不僅按鈕亮對顏色，底下的 Markdown 語言區塊也會精準只留下當前語言！
-                const activeBtn = switcher.querySelector('.lang-btn.active');
-                if (activeBtn) window.switchBilingualTab(current, activeBtn);
             }
 
             const modalContainer = document.querySelector('.modal-content');
@@ -5336,9 +5382,9 @@ window.addEventListener('offline', () => {
 
     // ✨ 呼叫共用引擎：顯示網路斷線提示
     window.showSystemToast(
-        t('net_offline_title'), 
-        t('net_offline_msg'), 
-        t('net_offline_sub'), 
+        '>_ SYSTEM_OFFLINE', 
+        '網路連線中斷', 
+        '請檢查您的網路設定，連線恢復後系統將自動重整。', 
         12000, 
         'error'
     );
@@ -5369,11 +5415,11 @@ window.showPdfActionModal = function(href, title) {
         }, 300);
     };
 
-    // ✨ 判斷是否為 PWA (Standalone) 模式 (直接呼叫全域小幫手)
-    const isPWA = window.isPWAEnvironment();
+    // ✨ 判斷是否為 PWA (Standalone) 模式
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     
     // 為了完美的 UX：如果是 PWA，我們直接把藍色主按鈕變成「下載」，並隱藏下方的第二顆按鈕
-    const viewBtnText = isPWA ? t('view_pdf') : t('view_pdf_browser');
+    const viewBtnText = isPWA ? '檢視 PDF 檔案' : '於瀏覽器中檢視 PDF';
     const viewBtnIcon = isPWA ? GLOBAL_SVGS.download : GLOBAL_SVGS.newTab;
     const downloadBtnDisplay = isPWA ? 'none' : 'flex';
 
@@ -5387,9 +5433,9 @@ window.showPdfActionModal = function(href, title) {
                     <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${viewBtnIcon}</span>${viewBtnText}
                 </button>
                 <button id="pdf-download-btn" class="pdf-action-btn secondary" style="display: ${downloadBtnDisplay};">
-                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.download}</span>${t('download_pdf')}
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${GLOBAL_SVGS.download}</span>下載 PDF 檔案
                 </button>
-                <button id="pdf-modal-close" class="pdf-action-btn cancel">${t('cancel')}</button>
+                <button id="pdf-modal-close" class="pdf-action-btn cancel">取消</button>
             </div>
         </div>
     `;

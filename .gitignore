@@ -14,6 +14,5 @@ data_version.json
 version.json
 .build_cache.json
 index.html
-index.html
 main.min.js
 style.min.css
