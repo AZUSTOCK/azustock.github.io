@@ -181,36 +181,6 @@ body {
     
     color: var(--text); line-height: 1.7; transition: background-color 0.5s ease, color 0.5s ease; 
 }
-
-/* ========================================================================== */
-/* ✨ 無障礙體驗 (Accessibility Focus Styles)                                   */
-/* ========================================================================== */
-/* 只有在使用者透過「鍵盤 (Tab)」選取時才顯示輪廓，滑鼠點擊不會觸發，保持畫面純淨 */
-*:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 4px;
-    border-radius: 4px;
-}
-
-/* 針對本身已經是圓角的按鈕、卡片微調輪廓貼合度 */
-.btn:focus-visible, 
-.share-link-btn:focus-visible, 
-.capsule-btn:focus-visible, 
-.nav-card:focus-visible, 
-.card:focus-visible,
-.toolbar-btn:focus-visible,
-.modal-close-btn:focus-visible {
-    outline-offset: 2px;
-}
-
-/* 針對目錄區塊、文章超連結微調 */
-.toc-dropdown a:focus-visible,
-.article-li a:focus-visible {
-    outline: none;
-    background-color: var(--tag-bg);
-    color: var(--accent-2);
-}
-
 header { padding: 5rem 1.5rem 4rem; text-align: center; }
 header h1 { 
     font-size: clamp(2.2rem, 5vw, 3rem); 
@@ -518,9 +488,9 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     width: 100%; box-sizing: border-box; 
     box-shadow: 30px 0 0 0 var(--nav-bg); 
     
-    height: 100vh; height: 100dvh; background: var(--nav-bg); backdrop-filter: blur(10px); z-index: 999; display: flex; align-items: flex-start; overflow-y: auto; transform: translateY(-100%); visibility: hidden; transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease, visibility 0s 0.6s; 
+    height: 100vh; height: 100dvh; background: var(--nav-bg); backdrop-filter: blur(10px); z-index: 999; display: flex; align-items: flex-start; overflow-y: auto; transform: translateY(-100%); transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease; 
 }
-.fullscreen-nav.active { transform: translateY(0); visibility: visible; transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease, visibility 0s; }
+.fullscreen-nav.active { transform: translateY(0); }
 .nav-links { list-style: none; padding: 3rem 0; margin: auto; text-align: center; width: 100%; }
 .nav-item { display: inline-block; font-family: 'Courier New', monospace; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: bold; color: var(--text); text-decoration: none; margin: 1.5rem 0; text-transform: uppercase; transition: all 0.3s ease; }
 .nav-item:hover { color: var(--accent-hover); letter-spacing: 0.2em; text-shadow: 0 0 15px var(--nav-text-shadow); }
@@ -965,8 +935,8 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .toc-toggle-btn.open:hover { border-color: var(--error-color); box-shadow: 0 0 10px var(--error-shadow); }
 .toc-toggle-btn.open:hover .bar:nth-child(2) { background-color: var(--error-color); transform: scaleX(0.75); }
 
-.toc-dropdown { box-sizing: border-box; position: absolute; top: 3rem; right: 0; z-index: 1052; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.2rem 1.5rem; width: 260px; max-width: calc(100vw - 5rem); box-shadow: 0 10px 30px var(--shadow-base); opacity: 0; pointer-events: none; visibility: hidden; transform: translateY(-10px) scale(0.95); transform-origin: top right; transition: all 0.3s var(--ease-smooth), visibility 0.3s ease; }
-.toc-dropdown.active { opacity: 1; pointer-events: auto; visibility: visible; transform: translateY(0) scale(1); transition: all 0.3s var(--ease-smooth), visibility 0s ease; }
+.toc-dropdown { box-sizing: border-box; position: absolute; top: 3rem; right: 0; z-index: 1052; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.2rem 1.5rem; width: 260px; max-width: calc(100vw - 5rem); box-shadow: 0 10px 30px var(--shadow-base); opacity: 0; pointer-events: none; transform: translateY(-10px) scale(0.95); transform-origin: top right; transition: all 0.3s var(--ease-smooth); }
+.toc-dropdown.active { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
 .toc-dropdown ul { list-style: none !important; padding-left: 0 !important; margin: 0 !important; max-height: 50vh; overflow-y: auto; overflow-x: hidden; padding-right: 10px; }
 .toc-dropdown li { margin-bottom: 0.5rem; padding-bottom: 0.5rem; line-height: 1.5; border-bottom: 1px dashed var(--divider-line); }
 .toc-dropdown li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
@@ -1699,24 +1669,18 @@ figure.no-caption img { margin: 0 !important; display: block; }
 .zoom-btn.floating { position: absolute; top: 10px; right: 10px; margin: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0.6; z-index: 10; transform: translateZ(0) scale(1); }
 figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 .zoom-btn.floating:hover { background: var(--accent); color: #fff; opacity: 1; transform: translateZ(0) scale(1.15); }
-figure.no-caption:hover .zoom-btn.floating, figure.no-caption:focus-within .zoom-btn.floating { opacity: 1; }
-.zoom-btn.floating:hover, .zoom-btn.floating:focus-visible { background: var(--accent); color: #fff; opacity: 1; transform: translateZ(0) scale(1.15); }
-
 /* ==========================================
-   ✨ 圖片 Hover 與放大鏡的完美視覺連動 (支援滑鼠與鍵盤)
+   ✨ 圖片 Hover 與放大鏡的完美視覺連動 (僅限獨立圖片)
    ========================================== */
-/* 1. 帶有圖說的獨立圖片：滑鼠/焦點移到圖片上時，放大鏡跟著亮起 */
-figure.standalone-figure:has(img:hover) .zoom-btn,
-figure.standalone-figure:focus-within .zoom-btn {
+/* 1. 帶有圖說的獨立圖片：滑鼠移到圖片上時，放大鏡跟著亮起 */
+figure.standalone-figure:has(img:hover) .zoom-btn {
     color: var(--accent); 
     transform: translateZ(0) scale(1.15); 
 }
 
-/* 2. 無圖說獨立圖片/影片：滑鼠/焦點移到媒體上時，懸浮放大鏡跟著填滿顏色並發光 */
+/* 2. 無圖說獨立圖片/影片：滑鼠移到媒體上時，懸浮放大鏡跟著填滿顏色並發光 */
 figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
-figure.standalone-figure.no-caption:focus-within .zoom-btn.floating,
-.video-wrapper:has(video:hover) .zoom-btn.floating,
-.video-wrapper:focus-within .zoom-btn.floating { 
+.video-wrapper:has(video:hover) .zoom-btn.floating { 
     background: var(--accent); 
     color: #fff; 
     opacity: 1; 
@@ -1725,13 +1689,13 @@ figure.standalone-figure.no-caption:focus-within .zoom-btn.floating,
 
 /* 6-4. 畫廊系統 (Gallery) */
 .markdown-body .gallery { --g-width: 200px; --g-rows: 1; --g-ratio: 1/1; display: grid; gap: 1rem; margin: 0.2rem -0.8rem 0.2rem -0.8rem; padding: 0.5rem 0.8rem 1.5rem 0.8rem; grid-template-rows: repeat(var(--g-rows), auto); grid-auto-flow: column; grid-auto-columns: minmax(var(--g-width), var(--g-width)); overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-.markdown-body .gallery figure { margin: 0; padding: 0; width: var(--g-width) !important; aspect-ratio: var(--g-ratio); max-width: none !important; flex-shrink: 0; border-radius: 0.6rem; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); overflow: clip; position: relative; backface-visibility: hidden; transform: translateZ(0); transition: transform 0.3s var(--ease-smooth), border-radius 0.3s ease; cursor: pointer; }
+.markdown-body .gallery figure { margin: 0; padding: 0; width: var(--g-width) !important; aspect-ratio: var(--g-ratio); max-width: none !important; flex-shrink: 0; border-radius: 0.6rem; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); overflow: hidden; position: relative; backface-visibility: hidden; transform: translateZ(0); transition: transform 0.3s var(--ease-smooth), border-radius 0.3s ease; cursor: pointer; }
 .markdown-body .gallery.row-fill-mode { grid-auto-flow: row; grid-template-columns: repeat(var(--g-cols, 1), max-content); }
 .markdown-body .gallery figure:hover { transform: scale(1.05) translateZ(0); border-radius: 0; z-index: 10; }
 .markdown-body .gallery figure img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; border: none; border-radius: 0; transform: scale(1.02); }
 .markdown-body .gallery figure img.is-broken { transform: none; }
 .markdown-body .gallery figure figcaption { position: absolute; bottom: -3px; left: -3px; right: -3px; width: auto; margin: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); color: #fff; font-size: 0.85rem; font-weight: 500; text-align: center; padding: 0.6rem 0; transform: translateY(105%); transition: transform 0.3s var(--ease-smooth); }
-.markdown-body .gallery figure:hover figcaption, .markdown-body .gallery figure:focus-within figcaption { transform: translateY(0); }
+.markdown-body .gallery figure:hover figcaption { transform: translateY(0); }
 .markdown-body .gallery figure.hide-caption figcaption { transform: translateY(105%) !important; }
 
 /* 6-5. Mermaid 圖表引擎 */
@@ -2094,8 +2058,8 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
     display: none !important; /* 隱藏除了放大檢視與重新整理以外的所有按鈕 */
 }
 
-/* 8-1. 桌機到平板的過渡 (寬度小於 700px) */
-@media (max-width: 699px) {
+/* 8-1. 桌機到平板的過渡 (max-width: 700px) */
+@media (max-width: 700px) {
     .desktop-only { display: none; }
     
     /* 版面與邊界壓縮 */
@@ -2338,8 +2302,6 @@ body.system-override-active .sys-hidden-tag {
 /* 🔓 第十一層：403 錯誤畫面隱藏解鎖彩蛋 (Admin Trigger)                       */
 /* ========================================================================== */
 .secret-admin-trigger {
-    position: relative; /* ✨ 補上基準點，讓底線乖乖鎖在名字的寬度內！ */
-    cursor: pointer;    /* ✨ 確保游標變成可點擊的手指 */
     color: var(--muted);
     transition: color 0.3s ease, text-shadow 0.3s ease;
 }
@@ -2593,6 +2555,12 @@ body {
     height: calc(70px + var(--safe-top)) !important;
 }
 
+@media (max-width: 600px) {
+    .modal-content {
+        max-height: 100% !important; 
+    }
+}
+
 
 /* ========================================================================== */
 /* ✨ 系統重啟 / 更新畫面 (System Reboot Screen)                              */
@@ -2663,13 +2631,6 @@ body {
     font-size: 1.05rem; 
     max-width: 400px; 
     line-height: 1.6;
-}
-.err-sec-protocol {
-    opacity: 0.8;
-    font-size: 0.85em;
-    font-family: monospace;
-    display: block;
-    margin-top: 0.5rem;
 }
 .sys-error-btn {
     margin-top: 2.5rem; 
@@ -2978,92 +2939,3 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         pointer-events: none;
     }
 }
-/* ========================================================================== */
-/* ✨ i18n 多語系專屬佈局與修復 (Language Selector & Button Anti-Jitter)       */
-/* ========================================================================== */
-
-/* 1. 全域語言切換器 (隱藏於漢堡選單內) */
-.global-lang-selector {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-.lang-switch-btn {
-    background: var(--box-bg);
-    border: 1px solid var(--box-border);
-    color: var(--muted);
-    border-radius: 8px;
-    padding: 0.5rem 1.2rem;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-.lang-switch-btn:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-}
-.lang-switch-btn.active {
-    background: var(--accent-2);
-    color: var(--card);
-    border-color: var(--accent-2);
-    box-shadow: 0 4px 15px var(--glow-1);
-}
-/* 2. 拔除所有按鈕的固定寬度，交由內部 Grid 自動計算最長字元 */
-.share-site-btn, .share-link-btn, .markdown-body .code-copy-btn {
-    min-width: auto !important; 
-    width: auto !important; 
-    /* ✨ 核心修復：拔除 inline-grid，改回 inline-flex，讓圖示與文字乖乖水平排列 */
-    display: inline-flex !important; 
-    white-space: nowrap !important; /* 🔥 絕對防止任何文字斷行 */
-    padding: 0 1rem; 
-}
-.markdown-body .code-copy-btn { padding: 4px 12px; }
-
-/* 3. 複製按鈕專屬：狀態疊加防抖引擎 */
-.btn-state-wrapper {
-    display: inline-grid;
-    align-items: center;
-    justify-items: center;
-    width: max-content; 
-}
-.btn-state-wrapper > * {
-    grid-area: 1 / 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    /* ✨ 拔除 Scale 放大特效，只保留單純的垂直滑出，與連結圖示一致 */
-    transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-/* 預設：成功狀態在下方等待 */
-.btn-state-wrapper .state-success { opacity: 0; transform: translateY(10px); pointer-events: none; }
-.btn-state-wrapper .state-idle { opacity: 1; transform: translateY(0); pointer-events: auto; }
-
-/* 點擊後的狀態反轉：原文字往上飛，成功文字往上滑入 */
-.copied .btn-state-wrapper .state-idle { opacity: 0; transform: translateY(-10px); pointer-events: none; }
-.copied .btn-state-wrapper .state-success { opacity: 1; transform: translateY(0); pointer-events: auto; }
-
-/* 4. 排序按鈕專屬：文字防抖引擎 */
-.btn-text-wrapper {
-    display: inline-grid;
-    align-items: center;
-    justify-items: start;
-    margin-left: 6px;
-}
-.btn-text-wrapper > * {
-    grid-area: 1 / 1;
-    white-space: nowrap; 
-    transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-/* 預設為降序 (desc) 狀態 */
-.btn-text-wrapper .sort-text-asc { opacity: 0; transform: translateY(10px); pointer-events: none; }
-.btn-text-wrapper .sort-text-desc { opacity: 1; transform: translateY(0); pointer-events: auto; }
-
-/* 切換為升序 (asc) 狀態 */
-.is-asc .btn-text-wrapper .sort-text-desc { opacity: 0; transform: translateY(-10px); pointer-events: none; }
-.is-asc .btn-text-wrapper .sort-text-asc { opacity: 1; transform: translateY(0); pointer-events: auto; }
