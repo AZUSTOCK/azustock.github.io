@@ -1,48 +1,30 @@
 <!DOCTYPE html>
-<html lang="zh-TW" data-theme="dark"> <!-- 預設主題 -->
+<html lang="zh-TW" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
-  <!-- 強制瀏覽器每次都向伺服器驗證是否有新版本 HTML -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-
   <title>風川梓 | Azustock</title>
 
-  <!-- ========================================== -->
-  <!-- ✨ PWA 沉浸式 App 體驗設定 -->
-  <!-- ========================================== -->
-  <!-- 允許 iOS 與 Android 將網站加入主畫面並隱藏網址列 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  
-  <!-- 設定 iOS 頂部時間/電量狀態列的風格 (透明黑底，完美融入星空背景) -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  
-  <!-- 設定安裝在桌面時的 App 顯示名稱 -->
   <meta name="apple-mobile-web-app-title" content="Azustock">
   <meta name="application-name" content="Azustock">
-  
-  <!-- PWA 主題色 (會改變 Android Chrome 與部分瀏覽器網址列顏色，跟隨你的深淺色主題) -->
   <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#F1F5F9" media="(prefers-color-scheme: light)">
 
-  <!-- ========================================== -->
-  <!-- ✨ 0 毫秒無縫接軌引擎：防止重整時舊畫面與遮罩閃爍 -->
-  <!-- ========================================== -->
   <style>
-      /* 如果正在重啟，隱藏 body 內的所有東西，只准顯示黑底遮罩 */
       html { background-color: #020617; }
       html.sys-rebooting body > *:not(#sys-reboot-screen) { display: none !important; }
   </style>
   <script>
-      // 在畫面連第一幀都還沒畫出來之前，如果發現通行證，立刻披上隱形斗篷！
       if (sessionStorage.getItem('sys_is_rebooting') === 'true') {
           document.documentElement.classList.add('sys-rebooting');
       }
   </script>
 
-  <!-- ✨ 1. 圖示與 PWA 設定 (已更新為 azustock 絕對路徑) -->
   <link rel="apple-touch-icon" sizes="180x180" href="https://azustock.github.io/assets/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="https://azustock.github.io/assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="https://azustock.github.io/assets/favicon-16x16.png">
@@ -50,7 +32,6 @@
   <link rel="shortcut icon" href="https://azustock.github.io/assets/favicon.ico">
   <link rel="preload" href="./all_projects.json" as="fetch" crossorigin="anonymous" />
 
-  <!-- ✨ 2. 社群分享標籤 (Open Graph / Twitter Cards) - 這裡「必須」是絕對路徑 -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://azustock.github.io/" />
   <meta property="og:title" content="風川梓 | Azustock" />
@@ -65,16 +46,17 @@
   <meta name="twitter:description" content="程式、金融、像素、音符、字詞。" />
   <meta name="twitter:image" content="https://azustock.github.io/assets/og.png" />
   
+  <script src="./i18n.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <link rel="stylesheet" href="./style.css?u=U1.5.7.5" />
   <script defer src="./main.js?u=U1.5.7.5"></script>
 </head>
 <body>
-<button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
+<button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式" data-i18n-aria="aria_theme">
     <img src="./assets/light.png" id="icon-sun" class="theme-img" alt="Sun">
     <img src="./assets/dark.png" id="icon-moon" class="theme-img" alt="Moon">
-  </button>
+</button>
 <button id="menu-toggle" class="menu-btn">
     <span class="bar"></span>
     <span class="bar"></span>
@@ -85,21 +67,21 @@
     <div style="width: 100%; display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; min-height: 100dvh; box-sizing: border-box; padding: 3rem 0;">
         <ul class="nav-links" id="dynamic-nav" style="margin: auto 0;"></ul>
         
-        <!-- ✨ 方案 A：低調的終端機風格重整按鈕 -->
         <div style="text-align: center; padding-bottom: 2rem;">
-            <button onclick="window.location.reload();" style="
-                background: transparent; border: 1px solid var(--card-border); 
-                color: var(--muted); font-family: 'Courier New', monospace;
-                font-size: 0.8rem; padding: 0.4rem 1.2rem; cursor: pointer;
-                transition: all 0.3s ease;
-            " onmouseover="this.style.color='var(--accent-2)'; this.style.borderColor='var(--accent-2)';" onmouseout="this.style.color='var(--muted)'; this.style.borderColor='var(--card-border)';">
-                >_ RELOAD_SYSTEM
+            <div class="global-lang-selector">
+                <button class="lang-switch-btn" onclick="window.changeLanguage('zh')" data-lang="zh">繁中</button>
+                <button class="lang-switch-btn" onclick="window.changeLanguage('en')" data-lang="en">EN (WIP)</button>
+                <button class="lang-switch-btn" onclick="window.changeLanguage('ja')" data-lang="ja">日本語 (WIP)</button>
+            </div>
+            
+            <button onclick="window.location.reload();" style="background: transparent; border: 1px solid var(--card-border); color: var(--muted); font-family: 'Courier New', monospace; font-size: 0.8rem; padding: 0.4rem 1.2rem; cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.color='var(--accent-2)'; this.style.borderColor='var(--accent-2)';" onmouseout="this.style.color='var(--muted)'; this.style.borderColor='var(--card-border)';" data-i18n="reload_system">
+              >_ RELOAD_SYSTEM
             </button>
         </div>
     </div>
   </nav>
 
-  <button id="back-to-top" class="btt-btn" aria-label="返回頂部">
+  <button id="back-to-top" class="btt-btn" aria-label="返回頂部" data-i18n-aria="aria_btt">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
   </button>
 
@@ -117,91 +99,70 @@
           </button>
         </div>
       </div>
-      
       <div id="modal-body" class="markdown-body"></div>
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- ✨ 進階版全螢幕大圖預覽 (Lightbox 2.0 終極版) -->
-  <!-- ========================================== -->
   <div id="lightbox-modal" class="lightbox-hidden">
-    <!-- 情境式毛玻璃背景 -->
     <img id="lightbox-backdrop" src="" alt="">
-    
-    <!-- 頂部工具列 -->
     <div id="lightbox-toolbar">
-      <!-- 左側：導覽膠囊 -->
       <div class="toolbar-left" id="lightbox-nav-container">
         <div id="lightbox-nav-capsule" class="lightbox-capsule">
-            <button id="lightbox-prev" class="lightbox-capsule-btn" onclick="window.navigateLightbox(-1, event)" data-tooltip="上一張">
+            <button id="lightbox-prev" class="lightbox-capsule-btn" onclick="window.navigateLightbox(-1, event)" data-i18n-tooltip="prev_image" data-tooltip="上一張">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
             </button>
             <div class="lightbox-capsule-divider"></div>
             <span id="lightbox-counter" class="lightbox-capsule-progress">1 / 1</span>
             <div class="lightbox-capsule-divider"></div>
-            <button id="lightbox-next" class="lightbox-capsule-btn" onclick="window.navigateLightbox(1, event)" data-tooltip="下一張">
+            <button id="lightbox-next" class="lightbox-capsule-btn" onclick="window.navigateLightbox(1, event)" data-i18n-tooltip="next_image" data-tooltip="下一張">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
             </button>
         </div>
       </div>
       
-      <!-- 右側：功能按鈕區 -->
       <div class="toolbar-right">
-        <!-- ✨ 1. 工具箱群組 (桌機平排，手機版會變成下拉選單) -->
         <div id="lightbox-toolbox" class="toolbox-group">
-          <button class="toolbar-btn" onclick="window.lightboxAction('zoom-in', event)" data-tooltip="放大">
+          <button class="toolbar-btn" onclick="window.lightboxAction('zoom-in', event)" data-i18n-tooltip="zoom_in" data-tooltip="放大">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
           </button>
-          <button class="toolbar-btn" onclick="window.lightboxAction('zoom-out', event)" data-tooltip="縮小">
+          <button class="toolbar-btn" onclick="window.lightboxAction('zoom-out', event)" data-i18n-tooltip="zoom_out" data-tooltip="縮小">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
           </button>
-          <button class="toolbar-btn" onclick="window.lightboxAction('center', event)" data-tooltip="置中">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-              <circle cx="12" cy="12" r="3" />
-              <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" />
-              <path d="M12 2v3M2 12h3M22 12h-3M12 22v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
+          <button class="toolbar-btn" onclick="window.lightboxAction('center', event)" data-i18n-tooltip="center_view" data-tooltip="置中">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle cx="12" cy="12" r="3" /><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2" /><path d="M12 2v3M2 12h3M22 12h-3M12 22v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
           </button>
-          <button class="toolbar-btn" onclick="window.lightboxAction('reset', event)" data-tooltip="還原初始">
+          <button class="toolbar-btn" onclick="window.lightboxAction('reset', event)" data-i18n-tooltip="reset_view" data-tooltip="還原初始">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"></path></svg>
           </button>
           <div class="toolbar-divider"></div>
-          <button class="toolbar-btn" onclick="window.lightboxAction('reload', event)" data-tooltip="重新載入">
+          <button class="toolbar-btn" onclick="window.lightboxAction('reload', event)" data-i18n-tooltip="refresh" data-tooltip="重新載入">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
           </button>
-          <button class="toolbar-btn" onclick="window.handleLightboxDownload(this)" data-tooltip="下載">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
+          <button class="toolbar-btn" onclick="window.handleLightboxDownload(this)" data-i18n-tooltip="download" data-tooltip="下載">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
           </button>
-          <button class="toolbar-btn" onclick="window.lightboxAction('new-tab', event)" data-tooltip="新分頁開啟">
+          <button class="toolbar-btn" onclick="window.lightboxAction('new-tab', event)" data-i18n-tooltip="open_new_tab" data-tooltip="新分頁開啟">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
           </button>
         </div>
 
-        <!-- ✨ 2. 手機版專屬：展開工具箱的按鈕 (桌機版隱藏) -->
-        <button class="toolbar-btn toolbox-toggle-btn" onclick="window.toggleLightboxTools(event)" data-tooltip="更多選項">
+        <button class="toolbar-btn toolbox-toggle-btn" onclick="window.toggleLightboxTools(event)" data-i18n-tooltip="more_options" data-tooltip="更多選項">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
         </button>
 
         <div class="toolbar-divider desktop-only-divider"></div>
-        <button class="toolbar-btn close-btn" onclick="window.closeLightbox()" data-tooltip="關閉">
+        <button class="toolbar-btn close-btn" onclick="window.closeLightbox()" data-i18n-tooltip="close" data-tooltip="關閉">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
     </div>
 
-    <!-- 圖片主體容器 -->
     <div class="lightbox-content-wrapper">
       <div class="lightbox-img-wrapper">
-        <img id="lightbox-img" src="" alt="大圖預覽">
+        <!-- ✨ 自動替換 alt 標籤 -->
+        <img id="lightbox-img" src="" alt="大圖預覽" data-i18n-alt="lightbox_preview">
       </div>
     </div>
-    
-    <!-- 底部浮動說明文字膠囊 -->
     <div id="lightbox-caption" class="lightbox-caption"></div>
   </div>
 
@@ -212,11 +173,11 @@
       <span id="toast-count" style="font-size: 0.85rem; color: var(--muted); margin-left: 6px; font-family: monospace;"></span>
     </div>
     <div class="toast-actions">
-      <button class="toast-btn next-btn" onclick="window.scrollToNextCard(event)" data-tooltip="跳至下一個">
+      <button class="toast-btn next-btn" onclick="window.scrollToNextCard(event)" data-i18n-tooltip="next_item" data-tooltip="跳至下一個">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg>
       </button>
       <div class="toast-divider"></div>
-      <button class="toast-btn close-btn" onclick="window.clearFilter(event)" data-tooltip="解除過濾">
+      <button class="toast-btn close-btn" onclick="window.clearFilter(event)" data-i18n-tooltip="remove_filter" data-tooltip="解除過濾">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -227,25 +188,31 @@
 
   <header>
     <h1>風川梓</h1>
-    <p>
+    <p data-i18n="header_desc">
       Software Engineer · Systems Builder<br />
       程式、金融、像素、音符、字詞
     </p>
     <div class="cta">
       <a class="btn" href="https://github.com/AZUSTOCK" target="_blank">GitHub</a>
-      <button class="btn share-site-btn" style="width: 120px;" onclick="window.handleCopy(this, 'https://azustock.github.io/')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px;">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-        </svg>
-        分享本站
-    </button>
+      <button class="btn share-site-btn" onclick="window.handleCopy(this, 'https://azustock.github.io/')">
+        <span class="btn-state-wrapper">
+            <span class="state-idle">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
+                <span data-i18n="share_site">分享本站</span>
+            </span>
+            <span class="state-success">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span data-i18n="copied">已複製</span>
+            </span>
+        </span>
+      </button>
     </div>
   </header>
-    <!-- ✨ 跑馬燈外層容器 -->
     <div class="marquee-container">
-        <!-- ✨ 初始狀態：置中的 Loading 文字 (會被 JS 無縫替換) -->
-        <div id="marquee-text" class="initial-loading">
+        <div id="marquee-text" class="initial-loading" data-i18n="awaiting_data">
             >_ SYSTEM_BOOTING : AWAITING_DATA_STREAM...
         </div>
     </div>
@@ -253,13 +220,13 @@
   <main>
     <section class="watermark-profile">
       <h2>Profile</h2>
-      <p>
+      <p data-i18n="profile_desc">
         一個名為「梓」的人的聚集地，<br/>
         通常都在寫寫字、寫程式、畫圖、音樂和財經及理解中。<br/>
         此亦為「梓本投資控股偽存公司」的官方網站，主要用於展示旗下梓們的作品。
       </p>
       <div class="sys-quote-box">
-        <div class="quote-text">
+        <div class="quote-text" data-i18n="profile_quote">
           「在某個特別的時間點，妳會遇見她。興許過了一段時間後，妳會到達那個，決定閱讀她的時間點。」
         </div>
         <div class="quote-author">風川梓</div>
@@ -267,33 +234,27 @@
     </section>
 
     <div id="portfolio-sections">
-      <div class="loading-container"><span class="loading-text">FETCHING DATA</span></div>
+      <div class="loading-container"><span class="loading-text" data-i18n="fetching_data">FETCHING DATA</span></div>
     </div>
-
   </main>
 
   <footer>
    <div class="copyright-box">
       <p>
-        <!-- 著作權文字 & 互動 -->
         <a href="#" onclick="window.showLicenseModal(); return false;" style="color: var(--text); text-decoration: none; opacity: 0.8; transition: opacity 0.3s, color 0.3s;" onmouseover="this.style.opacity='1'; this.style.color='var(--accent-2)';" onmouseout="this.style.opacity='0.8'; this.style.color='var(--text)';">© 2026 風川梓 (Azustock). All rights reserved.</a>
       </p>
-      
-      <!-- 左右留白的 Footer Flex 容器 -->
       <p class="copyright-footer" style="justify-content: center; gap: 1rem; flex-wrap: wrap;">
         <span style="color: var(--muted);">Hosted on GitHub Pages.</span>
         
-        <!-- 致謝按鈕 -->
-        <button id="credits-btn" class="footer-btn" onclick="window.showCreditsModal()" data-tooltip="Credits">
+        <button id="credits-btn" class="footer-btn" onclick="window.showCreditsModal()" data-i18n-tooltip="credits" data-tooltip="Credits">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg>
-            致謝
+            <span data-i18n="credits">致謝</span>
         </button>
       </p>
       
       <p style="text-align: right; margin-top: 0.5rem; margin-bottom: 0;">
-        <!-- 版本號按鈕 -->
         <button id="sys-version-btn" class="footer-btn version-btn" onclick="window.showChangelogModal()">
             <span id="sys-version" class="sys-version">U1.5.7.5</span>
         </button>

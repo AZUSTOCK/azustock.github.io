@@ -1,6 +1,6 @@
 {
-  "version": "U1.5.7.5",
-  "date": "2026-08",
-  "status": "",
-  "description": ""
+  "version": "U1.5.8",
+  "date": "2026-08-29",
+  "status": "REFACTOR",
+  "description": "支援多語言與架構、UI、行為等修正"
 }

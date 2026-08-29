@@ -3,6 +3,7 @@
 * **GitHub Actions** - CI/CD Automation Pipeline
 * **Marked.js** - Markdown Rendering Engine
 * **Mermaid.js** - Diagram & Visualization Engine
+* **rjsmin & rcssmin** - Asset Minification & Code Compression
 * **AI** - Code Implementation
 * **風川梓** - System Architect
 
