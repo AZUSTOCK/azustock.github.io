@@ -64,7 +64,7 @@ export function switchModalContent(updateDOMCallback, afterUpdateCallback = null
         
         setTimeout(() => {
             modalContainer.style.transition = 'none'; 
-            updateDOMCallback();
+            updateDOMCallback(); // 這裡替換了內容，捲軸會瞬間歸零
             void modalBody.offsetHeight; 
             
             modalContainer.style.height = ''; 
@@ -73,9 +73,12 @@ export function switchModalContent(updateDOMCallback, afterUpdateCallback = null
             void modalContainer.offsetHeight; 
             modalContainer.style.transition = ''; 
             
+            // ✨ 核心修復：在 DOM 更新後的「同一個事件迴圈」內，立刻同步執行捲軸復原
+            // 絕對不能放進下方的 requestAnimationFrame 裡面，否則瀏覽器會先畫出 scrollTop=0 的殘影！
+            if (afterUpdateCallback) afterUpdateCallback();
+            
             requestAnimationFrame(() => {
                 modalContainer.style.height = newHeight + 'px';
-                if (afterUpdateCallback) afterUpdateCallback();
                 modalBody.classList.remove('content-fade-out'); 
                 
                 if (animateTopBar) {
@@ -84,7 +87,7 @@ export function switchModalContent(updateDOMCallback, afterUpdateCallback = null
                 }
                 setTimeout(() => { modalContainer.style.height = ''; }, 320); 
             });
-        }, 120); 
+        }, 120);
     } else {
         updateDOMCallback();
         if (afterUpdateCallback) afterUpdateCallback();
@@ -309,35 +312,47 @@ export function openProjectIndex(projectId, restoreScroll = false) {
             modalOverlay.classList.add('active');
             if(window.lockScroll) window.lockScroll(); 
         },
+        // 在 openProjectIndex 函式中，替換掉最後的 afterUpdateCallback 區塊
         () => {
             const modalContainer = document.querySelector('.modal-content');
             if (modalContainer) {
-                requestAnimationFrame(() => {
-                    if (restoreScroll && window.lastReadArticleIndex !== undefined) {
-                        if (window._indexScrollTopCache !== undefined) modalContainer.scrollTop = window._indexScrollTopCache;
-                        const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
-                        if (targetItem) {
-                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
-                            let itemTop = targetItem.offsetTop, currentEl = targetItem.offsetParent;
-                            while(currentEl && currentEl !== modalContainer) { itemTop += currentEl.offsetTop; currentEl = currentEl.offsetParent; }
-                            const itemBottom = itemTop + targetItem.offsetHeight;
-                            const containerHeight = modalContainer.clientHeight, visibleTop = modalContainer.scrollTop + topBarHeight, visibleBottom = modalContainer.scrollTop + containerHeight;
-                            const isVisible = (itemTop >= visibleTop) && (itemBottom <= visibleBottom);
+                // ✨ 移除 requestAnimationFrame，改為直接同步執行
+                if (restoreScroll && window.lastReadArticleIndex !== undefined) {
+                    if (window._indexScrollTopCache !== undefined) {
+                        modalContainer.scrollTop = window._indexScrollTopCache;
+                    }
 
-                            if (!isVisible) {
-                                if (itemTop < visibleTop) { modalContainer.scrollTop = itemTop - topBarHeight - 20; } 
-                                else if (itemBottom > visibleBottom) {
-                                    let newScrollTop = itemBottom + 20 - containerHeight;
-                                    if (itemTop < newScrollTop + topBarHeight) newScrollTop = itemTop - topBarHeight - 40;
-                                    modalContainer.scrollTop = newScrollTop;
-                                }
-                            }
-                            if(window.simulateHoverFlash) window.simulateHoverFlash(targetItem);
+                    const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
+                    if (targetItem) {
+                        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
+                        let itemTop = targetItem.offsetTop, currentEl = targetItem.offsetParent;
+                        while(currentEl && currentEl !== modalContainer) { 
+                            itemTop += currentEl.offsetTop; 
+                            currentEl = currentEl.offsetParent; 
                         }
-                    } else { modalContainer.scrollTop = 0; }
-                });
+                        const itemBottom = itemTop + targetItem.offsetHeight;
+                        const containerHeight = modalContainer.clientHeight;
+                        const visibleTop = modalContainer.scrollTop + topBarHeight;
+                        const visibleBottom = modalContainer.scrollTop + containerHeight;
+                        const isVisible = (itemTop >= visibleTop) && (itemBottom <= visibleBottom);
+
+                        if (!isVisible) {
+                            if (itemTop < visibleTop) { 
+                                modalContainer.scrollTop = itemTop - topBarHeight - 20; 
+                            } else if (itemBottom > visibleBottom) {
+                                let newScrollTop = itemBottom + 20 - containerHeight;
+                                if (itemTop < newScrollTop + topBarHeight) newScrollTop = itemTop - topBarHeight - 40;
+                                modalContainer.scrollTop = newScrollTop;
+                            }
+                        }
+                        if(window.simulateHoverFlash) window.simulateHoverFlash(targetItem);
+                    }
+                } else { 
+                    modalContainer.scrollTop = 0; 
+                }
             }
-        }
+        },
+        animateTopBar // (第三個參數維持原樣)
     ); 
 }
 
@@ -615,28 +630,54 @@ export async function openArticle(projectId, articleIndex, isFromHistory = false
                 }
             });
         },
+        // 在 openArticle 函式中，替換掉最後的 afterUpdateCallback 區塊
         () => {
             const modalContainer = document.querySelector('.modal-content');
             if (!modalContainer) return;
             
-            requestAnimationFrame(() => {
-                if (targetHash) { if(window.executeAnchorScroll) { const success = window.executeAnchorScroll(targetHash, true); if (success) return; } } 
-                if (isFromHistory) {
-                    const doRestoreScroll = () => {
-                        modalContainer.scrollTop = restoreScrollTop;
-                        if (restoreInnerScrolls && restoreInnerScrolls.length > 0) {
-                            const wrappers = modalBody.querySelectorAll('.vertical-wrapper');
-                            wrappers.forEach((w, i) => { if (restoreInnerScrolls[i]) { w.scrollTop = restoreInnerScrolls[i].scrollTop; w.scrollLeft = restoreInnerScrolls[i].scrollLeft; } });
-                        }
-                    };
-                    doRestoreScroll(); 
-                    let trackers = []; trackers.push(setTimeout(doRestoreScroll, 300)); trackers.push(setTimeout(doRestoreScroll, 600)); trackers.push(setTimeout(doRestoreScroll, 1200));
-                    const cancelTrackers = () => { trackers.forEach(clearTimeout); modalContainer.removeEventListener('wheel', cancelTrackers); modalContainer.removeEventListener('touchstart', cancelTrackers); };
-                    modalContainer.addEventListener('wheel', cancelTrackers, { passive: true }); modalContainer.addEventListener('touchstart', cancelTrackers, { passive: true });
-                } else { modalContainer.scrollTop = 0; }
-            });
+            // ✨ 移除 requestAnimationFrame，改為直接同步執行
+            if (targetHash) { 
+                if(window.executeAnchorScroll) { 
+                    const success = window.executeAnchorScroll(targetHash, true); 
+                    if (success) return; 
+                } 
+            } 
+            
+            if (isFromHistory) {
+                const doRestoreScroll = () => {
+                    modalContainer.scrollTop = restoreScrollTop;
+                    if (restoreInnerScrolls && restoreInnerScrolls.length > 0) {
+                        const wrappers = modalBody.querySelectorAll('.vertical-wrapper');
+                        wrappers.forEach((w, i) => { 
+                            if (restoreInnerScrolls[i]) { 
+                                w.scrollTop = restoreInnerScrolls[i].scrollTop; 
+                                w.scrollLeft = restoreInnerScrolls[i].scrollLeft; 
+                            } 
+                        });
+                    }
+                };
+                
+                doRestoreScroll(); // ✨ 第一次瞬間復原 (現在是絕對同步的，無殘影)
+                
+                let trackers = []; 
+                trackers.push(setTimeout(doRestoreScroll, 300)); 
+                trackers.push(setTimeout(doRestoreScroll, 600)); 
+                trackers.push(setTimeout(doRestoreScroll, 1200));
+                
+                const cancelTrackers = () => { 
+                    trackers.forEach(clearTimeout); 
+                    modalContainer.removeEventListener('wheel', cancelTrackers); 
+                    modalContainer.removeEventListener('touchstart', cancelTrackers); 
+                };
+                
+                modalContainer.addEventListener('wheel', cancelTrackers, { passive: true }); 
+                modalContainer.addEventListener('touchstart', cancelTrackers, { passive: true });
+                
+            } else { 
+                modalContainer.scrollTop = 0; 
+            }
         },
-        animateTopBar
+        animateTopBar // (第三個參數維持原樣)
     ); 
 }
 

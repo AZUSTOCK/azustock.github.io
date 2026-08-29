@@ -228,7 +228,7 @@ export async function loadProjects() {
                 let actionText = '';
                 if (data.articles && data.articles.length > 0) {
                     card.style.cursor = 'pointer';
-                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); if(window.openProjectIndex) window.openProjectIndex(data.id); };
+                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.openProjectIndex(data.id); };
                     const visibleCount = data.articles.filter(art => !art.is_hidden).length;
                     actionText = `<div class="card-action-btn"><div class="card-action-icon-wrap">${window.GLOBAL_SVGS.folderClosed}${window.GLOBAL_SVGS.folderOpen}</div>${window.t('expand_series')} (${visibleCount})</div>`; 
                 } else if (data.link) {

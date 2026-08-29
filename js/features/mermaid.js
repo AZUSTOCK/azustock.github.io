@@ -38,7 +38,16 @@ export function reloadMermaid(btn) {
     const mermaidDiv = container.querySelector('.mermaid');
     if (!mermaidDiv) return;
 
-    container.dataset.zoom = 1; container.dataset.x = 0; container.dataset.y = 0;
+    // ✨ 核心修復 1：強制拔除 CSS 過渡動畫，並瞬間歸零定位
+    mermaidDiv.style.transition = 'none';
+    container.dataset.zoom = 1; 
+    container.dataset.x = 0; 
+    container.dataset.y = 0;
+    mermaidDiv.style.transform = 'translate(0px, 0px) scale(1)';
+    
+    // ✨ 核心修復 2：強制觸發重繪 (Reflow)，讓瀏覽器立刻計算歸零後的「正確實體尺寸」
+    void mermaidDiv.offsetWidth;
+    
     mermaidDiv.style.opacity = '0.3';
     
     setTimeout(() => {
@@ -46,18 +55,24 @@ export function reloadMermaid(btn) {
         if (originalText) {
             mermaidDiv.removeAttribute('data-processed');
             // 注意：processMermaidCssVars 仍依賴 window 呼叫
-            mermaidDiv.innerHTML = window.processMermaidCssVars(originalText);
-            mermaidDiv.style.transform = 'translate(0px, 0px) scale(1)';
+            if (window.processMermaidCssVars) {
+                mermaidDiv.innerHTML = window.processMermaidCssVars(originalText);
+            }
             
             if (window.mermaid) {
                 window.mermaid.run({ querySelector: '.mermaid' })
                     .catch(e => console.warn('Mermaid reload failed:', e))
-                    .finally(() => { mermaidDiv.style.opacity = '1'; window.initMermaidDrag(); });
+                    .finally(() => { 
+                        mermaidDiv.style.opacity = '1'; 
+                        mermaidDiv.style.transition = ''; // 恢復原本的動畫能力
+                        if (window.initMermaidDrag) window.initMermaidDrag(); 
+                    });
             }
         } else {
             mermaidDiv.style.opacity = '1';
+            mermaidDiv.style.transition = '';
         }
-    }, 150);
+    }, 50); // 縮短等待時間，因為我們已經手動強制重繪了
 }
 
 export function fullscreenMermaid(btn) {
