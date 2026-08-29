@@ -31,47 +31,49 @@ SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR'
 # ==========================================
 # 🗜️ 自動化壓縮引擎 (Minification Engine)
 # ==========================================
-def minify_assets():
+# 傳入 is_ci 參數，確保只在雲端部署時覆寫模組
+def minify_assets(is_ci):
     print(f"\n==========================================")
     print(f"🗜️ [壓縮階段] 開始壓縮 JS 與 CSS 檔案...")
     print(f"==========================================")
     
     try:
-        # 1. 讀取原始檔案
+        # 1. 壓縮原本的 main.js 與 style.css
         with open('main.js', 'r', encoding='utf-8') as f:
             js_content = f.read()
         with open('style.css', 'r', encoding='utf-8') as f:
             css_content = f.read()
             
-        # 2. 執行壓縮
         min_js = rjsmin.jsmin(js_content)
         min_css = rcssmin.cssmin(css_content)
         
-        # 3. 輸出 .min 檔案
         with open('main.min.js', 'w', encoding='utf-8') as f:
             f.write(min_js)
         with open('style.min.css', 'w', encoding='utf-8') as f:
             f.write(min_css)
-            
-        print(f"  └─ JS 壓縮成功:  {len(js_content)/1024:.1f} KB -> {len(min_js)/1024:.1f} KB")
-        print(f"  └─ CSS 壓縮成功: {len(css_content)/1024:.1f} KB -> {len(min_css)/1024:.1f} KB")
 
-        # 4. 自動替換 index.html 裡的引入路徑 (此時 index.html 已由前一步生成)
         if os.path.exists('index.html'):
             with open('index.html', 'r', encoding='utf-8') as f:
                 html = f.read()
-            
-            # ✨ 精準替換：包含前面的 ./ 也能正確辨識並加上 .min
             html = re.sub(r'src="(\./)?main\.js', r'src="\g<1>main.min.js', html)
             html = re.sub(r'href="(\./)?style\.css', r'href="\g<1>style.min.css', html)
-
             with open('index.html', 'w', encoding='utf-8') as f:
                 f.write(html)
-            print("  └─ 網頁掛載成功: index.html 已自動切換為壓縮版資源。")
+        
+        # ✨ 2. 新增：若是 CI 環境，將 js/ 資料夾下的所有模組原地壓縮
+        if is_ci:
+            for root, dirs, files in os.walk('js'):
+                for file in files:
+                    if file.endswith('.js'):
+                        filepath = os.path.join(root, file)
+                        with open(filepath, 'r', encoding='utf-8') as f:
+                            mod_js = rjsmin.jsmin(f.read())
+                        with open(filepath, 'w', encoding='utf-8') as f:
+                            f.write(mod_js)
+            print("  └─ ES 模組壓縮成功: 已將 js/ 目錄下的所有檔案完成就地壓縮！")
             
     except Exception as e:
         print(f"⚠️ 壓縮失敗: {e}")
-
 # ==========================================
 # 🛠️ 輔助系統 (Helper Functions)
 # ==========================================
@@ -1238,7 +1240,7 @@ if __name__ == "__main__":
     update_data_version()
 
     # 👇 4. 呼叫最後的自動化壓縮引擎！
-    minify_assets()
+    minify_assets(is_github_actions)
 
     print(f"\n==========================================")
     print(f"過期tag提示 ({len(expiration_l)})")
