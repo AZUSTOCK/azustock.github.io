@@ -7,6 +7,8 @@ from PIL import Image
 from datetime import datetime, timedelta
 from tools.convert_webp import convert_to_webp_with_protection, generate_cover_thumbnail
 from tools.update_paths import update_extensions_to_webp
+import rjsmin
+import rcssmin
 
 # 準備一個 Set 來記錄所有合法的 API 檔案絕對路徑，用於最後的清理階段
 valid_api_files = set()
@@ -25,6 +27,50 @@ stats = {lang: {
 } for lang in LANGS}
 
 SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED', 'WIP', 'OC'}
+
+# ==========================================
+# 🗜️ 自動化壓縮引擎 (Minification Engine)
+# ==========================================
+def minify_assets():
+    print(f"\n==========================================")
+    print(f"🗜️ [壓縮階段] 開始壓縮 JS 與 CSS 檔案...")
+    print(f"==========================================")
+    
+    try:
+        # 1. 讀取原始檔案
+        with open('main.js', 'r', encoding='utf-8') as f:
+            js_content = f.read()
+        with open('style.css', 'r', encoding='utf-8') as f:
+            css_content = f.read()
+            
+        # 2. 執行壓縮
+        min_js = rjsmin.jsmin(js_content)
+        min_css = rcssmin.cssmin(css_content)
+        
+        # 3. 輸出 .min 檔案
+        with open('main.min.js', 'w', encoding='utf-8') as f:
+            f.write(min_js)
+        with open('style.min.css', 'w', encoding='utf-8') as f:
+            f.write(min_css)
+            
+        print(f"  └─ JS 壓縮成功:  {len(js_content)/1024:.1f} KB -> {len(min_js)/1024:.1f} KB")
+        print(f"  └─ CSS 壓縮成功: {len(css_content)/1024:.1f} KB -> {len(min_css)/1024:.1f} KB")
+
+        # 4. 自動替換 index.html 裡的引入路徑 (此時 index.html 已由前一步生成)
+        if os.path.exists('index.html'):
+            with open('index.html', 'r', encoding='utf-8') as f:
+                html = f.read()
+            
+            # ✨ 精準替換：包含前面的 ./ 也能正確辨識並加上 .min
+            html = re.sub(r'src="(\./)?main\.js', r'src="\g<1>main.min.js', html)
+            html = re.sub(r'href="(\./)?style\.css', r'href="\g<1>style.min.css', html)
+
+            with open('index.html', 'w', encoding='utf-8') as f:
+                f.write(html)
+            print("  └─ 網頁掛載成功: index.html 已自動切換為壓縮版資源。")
+            
+    except Exception as e:
+        print(f"⚠️ 壓縮失敗: {e}")
 
 # ==========================================
 # 🛠️ 輔助系統 (Helper Functions)
@@ -321,24 +367,25 @@ def generate_version_json():
         else:
             print("⚠️ 找不到 main.js 檔案，無法更新前端系統版本！")
 
-        # 3. 反向同步更新 index.html (包含 CSS/JS 快取後綴與 Footer 顯示)
-        if os.path.exists('index.html'):
-            with open('index.html', 'r', encoding='utf-8') as f:
+        # 3. 讀取本地測試檔 index_local.html 並生成正式發布版 index.html
+        local_html = 'index_local.html'
+        output_html = 'index.html'
+        
+        if os.path.exists(local_html):
+            with open(local_html, 'r', encoding='utf-8') as f:
                 html_content = f.read()
             
             # 替換 CSS 與 JS 的快取後綴 (例如 ./style.css?u=U1.5.6.1)
             new_html = re.sub(r'(\.(?:css|js)\?u=)[^"]+(")', rf'\g<1>{latest_version}\g<2>', html_content)
-            # 替換 Footer 裡的靜態文字 (例如 <span id="sys-version">U1.5.6.1</span>)
+            # 替換 Footer 裡的靜態文字
             new_html = re.sub(r'(<span id="sys-version"[^>]*>)[^<]+(</span>)', rf'\g<1>{latest_version}\g<2>', new_html)
             
-            if html_content != new_html:
-                with open('index.html', 'w', encoding='utf-8') as f:
-                    f.write(new_html)
-                print(f"✅ 成功將 index.html 的快取版號與 Footer 同步更新為 {latest_version}")
-            else:
-                print(f"⏭️ index.html 版本號已是最新，無須修改。")
+            # 永遠強制輸出 index.html
+            with open(output_html, 'w', encoding='utf-8') as f:
+                f.write(new_html)
+            print(f"✅ 成功從 {local_html} 生成正式版 {output_html} (版號 {latest_version})")
         else:
-            print("⚠️ 找不到 index.html 檔案，跳過 HTML 版號同步。")
+            print(f"⚠️ 找不到 {local_html} 檔案，跳過 HTML 版號與生成處理。")
 
     except Exception as e:
         print(f"⚠️ 系統版本號同步失敗: {e}")
@@ -1189,6 +1236,9 @@ if __name__ == "__main__":
 
     # 3. 執行細項 Hash 快取引擎，統整並輸出 data_version.json
     update_data_version()
+
+    # 👇 4. 呼叫最後的自動化壓縮引擎！
+    minify_assets()
 
     print(f"\n==========================================")
     print(f"過期tag提示 ({len(expiration_l)})")

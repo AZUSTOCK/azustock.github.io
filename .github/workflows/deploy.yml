@@ -37,7 +37,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install pillow  # 確保安裝了圖片處理套件
+          pip install pillow rjsmin rcssmin  # 確保安裝了圖片處理與自動壓縮套件
 
       - name: Generate API and Data
         run: |
@@ -66,6 +66,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
           rm -f .gitignore
+          rm -f index_local.html
           
           git add .
           git commit -m "Deploy to GitHub Pages"

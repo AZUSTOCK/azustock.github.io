@@ -181,6 +181,36 @@ body {
     
     color: var(--text); line-height: 1.7; transition: background-color 0.5s ease, color 0.5s ease; 
 }
+
+/* ========================================================================== */
+/* ✨ 無障礙體驗 (Accessibility Focus Styles)                                   */
+/* ========================================================================== */
+/* 只有在使用者透過「鍵盤 (Tab)」選取時才顯示輪廓，滑鼠點擊不會觸發，保持畫面純淨 */
+*:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+
+/* 針對本身已經是圓角的按鈕、卡片微調輪廓貼合度 */
+.btn:focus-visible, 
+.share-link-btn:focus-visible, 
+.capsule-btn:focus-visible, 
+.nav-card:focus-visible, 
+.card:focus-visible,
+.toolbar-btn:focus-visible,
+.modal-close-btn:focus-visible {
+    outline-offset: 2px;
+}
+
+/* 針對目錄區塊、文章超連結微調 */
+.toc-dropdown a:focus-visible,
+.article-li a:focus-visible {
+    outline: none;
+    background-color: var(--tag-bg);
+    color: var(--accent-2);
+}
+
 header { padding: 5rem 1.5rem 4rem; text-align: center; }
 header h1 { 
     font-size: clamp(2.2rem, 5vw, 3rem); 
@@ -488,9 +518,9 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     width: 100%; box-sizing: border-box; 
     box-shadow: 30px 0 0 0 var(--nav-bg); 
     
-    height: 100vh; height: 100dvh; background: var(--nav-bg); backdrop-filter: blur(10px); z-index: 999; display: flex; align-items: flex-start; overflow-y: auto; transform: translateY(-100%); transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease; 
+    height: 100vh; height: 100dvh; background: var(--nav-bg); backdrop-filter: blur(10px); z-index: 999; display: flex; align-items: flex-start; overflow-y: auto; transform: translateY(-100%); visibility: hidden; transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease, visibility 0s 0.6s; 
 }
-.fullscreen-nav.active { transform: translateY(0); }
+.fullscreen-nav.active { transform: translateY(0); visibility: visible; transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease, visibility 0s; }
 .nav-links { list-style: none; padding: 3rem 0; margin: auto; text-align: center; width: 100%; }
 .nav-item { display: inline-block; font-family: 'Courier New', monospace; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: bold; color: var(--text); text-decoration: none; margin: 1.5rem 0; text-transform: uppercase; transition: all 0.3s ease; }
 .nav-item:hover { color: var(--accent-hover); letter-spacing: 0.2em; text-shadow: 0 0 15px var(--nav-text-shadow); }
@@ -935,8 +965,8 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .toc-toggle-btn.open:hover { border-color: var(--error-color); box-shadow: 0 0 10px var(--error-shadow); }
 .toc-toggle-btn.open:hover .bar:nth-child(2) { background-color: var(--error-color); transform: scaleX(0.75); }
 
-.toc-dropdown { box-sizing: border-box; position: absolute; top: 3rem; right: 0; z-index: 1052; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.2rem 1.5rem; width: 260px; max-width: calc(100vw - 5rem); box-shadow: 0 10px 30px var(--shadow-base); opacity: 0; pointer-events: none; transform: translateY(-10px) scale(0.95); transform-origin: top right; transition: all 0.3s var(--ease-smooth); }
-.toc-dropdown.active { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+.toc-dropdown { box-sizing: border-box; position: absolute; top: 3rem; right: 0; z-index: 1052; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.2rem 1.5rem; width: 260px; max-width: calc(100vw - 5rem); box-shadow: 0 10px 30px var(--shadow-base); opacity: 0; pointer-events: none; visibility: hidden; transform: translateY(-10px) scale(0.95); transform-origin: top right; transition: all 0.3s var(--ease-smooth), visibility 0.3s ease; }
+.toc-dropdown.active { opacity: 1; pointer-events: auto; visibility: visible; transform: translateY(0) scale(1); transition: all 0.3s var(--ease-smooth), visibility 0s ease; }
 .toc-dropdown ul { list-style: none !important; padding-left: 0 !important; margin: 0 !important; max-height: 50vh; overflow-y: auto; overflow-x: hidden; padding-right: 10px; }
 .toc-dropdown li { margin-bottom: 0.5rem; padding-bottom: 0.5rem; line-height: 1.5; border-bottom: 1px dashed var(--divider-line); }
 .toc-dropdown li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
@@ -1669,18 +1699,24 @@ figure.no-caption img { margin: 0 !important; display: block; }
 .zoom-btn.floating { position: absolute; top: 10px; right: 10px; margin: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0.6; z-index: 10; transform: translateZ(0) scale(1); }
 figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
 .zoom-btn.floating:hover { background: var(--accent); color: #fff; opacity: 1; transform: translateZ(0) scale(1.15); }
+figure.no-caption:hover .zoom-btn.floating, figure.no-caption:focus-within .zoom-btn.floating { opacity: 1; }
+.zoom-btn.floating:hover, .zoom-btn.floating:focus-visible { background: var(--accent); color: #fff; opacity: 1; transform: translateZ(0) scale(1.15); }
+
 /* ==========================================
-   ✨ 圖片 Hover 與放大鏡的完美視覺連動 (僅限獨立圖片)
+   ✨ 圖片 Hover 與放大鏡的完美視覺連動 (支援滑鼠與鍵盤)
    ========================================== */
-/* 1. 帶有圖說的獨立圖片：滑鼠移到圖片上時，放大鏡跟著亮起 */
-figure.standalone-figure:has(img:hover) .zoom-btn {
+/* 1. 帶有圖說的獨立圖片：滑鼠/焦點移到圖片上時，放大鏡跟著亮起 */
+figure.standalone-figure:has(img:hover) .zoom-btn,
+figure.standalone-figure:focus-within .zoom-btn {
     color: var(--accent); 
     transform: translateZ(0) scale(1.15); 
 }
 
-/* 2. 無圖說獨立圖片/影片：滑鼠移到媒體上時，懸浮放大鏡跟著填滿顏色並發光 */
+/* 2. 無圖說獨立圖片/影片：滑鼠/焦點移到媒體上時，懸浮放大鏡跟著填滿顏色並發光 */
 figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
-.video-wrapper:has(video:hover) .zoom-btn.floating { 
+figure.standalone-figure.no-caption:focus-within .zoom-btn.floating,
+.video-wrapper:has(video:hover) .zoom-btn.floating,
+.video-wrapper:focus-within .zoom-btn.floating { 
     background: var(--accent); 
     color: #fff; 
     opacity: 1; 
@@ -1689,13 +1725,13 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 
 /* 6-4. 畫廊系統 (Gallery) */
 .markdown-body .gallery { --g-width: 200px; --g-rows: 1; --g-ratio: 1/1; display: grid; gap: 1rem; margin: 0.2rem -0.8rem 0.2rem -0.8rem; padding: 0.5rem 0.8rem 1.5rem 0.8rem; grid-template-rows: repeat(var(--g-rows), auto); grid-auto-flow: column; grid-auto-columns: minmax(var(--g-width), var(--g-width)); overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-.markdown-body .gallery figure { margin: 0; padding: 0; width: var(--g-width) !important; aspect-ratio: var(--g-ratio); max-width: none !important; flex-shrink: 0; border-radius: 0.6rem; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); overflow: hidden; position: relative; backface-visibility: hidden; transform: translateZ(0); transition: transform 0.3s var(--ease-smooth), border-radius 0.3s ease; cursor: pointer; }
+.markdown-body .gallery figure { margin: 0; padding: 0; width: var(--g-width) !important; aspect-ratio: var(--g-ratio); max-width: none !important; flex-shrink: 0; border-radius: 0.6rem; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); overflow: clip; position: relative; backface-visibility: hidden; transform: translateZ(0); transition: transform 0.3s var(--ease-smooth), border-radius 0.3s ease; cursor: pointer; }
 .markdown-body .gallery.row-fill-mode { grid-auto-flow: row; grid-template-columns: repeat(var(--g-cols, 1), max-content); }
 .markdown-body .gallery figure:hover { transform: scale(1.05) translateZ(0); border-radius: 0; z-index: 10; }
 .markdown-body .gallery figure img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; border: none; border-radius: 0; transform: scale(1.02); }
 .markdown-body .gallery figure img.is-broken { transform: none; }
 .markdown-body .gallery figure figcaption { position: absolute; bottom: -3px; left: -3px; right: -3px; width: auto; margin: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); color: #fff; font-size: 0.85rem; font-weight: 500; text-align: center; padding: 0.6rem 0; transform: translateY(105%); transition: transform 0.3s var(--ease-smooth); }
-.markdown-body .gallery figure:hover figcaption { transform: translateY(0); }
+.markdown-body .gallery figure:hover figcaption, .markdown-body .gallery figure:focus-within figcaption { transform: translateY(0); }
 .markdown-body .gallery figure.hide-caption figcaption { transform: translateY(105%) !important; }
 
 /* 6-5. Mermaid 圖表引擎 */

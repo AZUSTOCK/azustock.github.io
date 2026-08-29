@@ -4306,6 +4306,69 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// ==========================================================================
+// ✨ 全域智慧焦點鎖定引擎 (Accessibility Focus Trap Engine)
+// 攔截 Tab 鍵，確保鍵盤焦點只會停留在「當前最上層的活躍彈窗」內部
+// ==========================================================================
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Tab') return;
+
+    // 1. 智慧判定當前處於最高圖層且「正在顯示」的彈窗 (依照 Z-Index 優先級遞減)
+    let activeModal = null;
+    if (document.getElementById('pdf-action-modal')) {
+        activeModal = document.getElementById('pdf-action-modal');
+    } else if (document.getElementById('sensitive-modal-overlay')) {
+        activeModal = document.getElementById('sensitive-modal-overlay');
+    } else if (document.getElementById('lightbox-modal') && document.getElementById('lightbox-modal').classList.contains('is-active')) {
+        activeModal = document.getElementById('lightbox-modal');
+    } else if (document.getElementById('md-modal') && document.getElementById('md-modal').classList.contains('active')) {
+        activeModal = document.getElementById('md-modal');
+    } else if (document.getElementById('fullscreen-menu') && document.getElementById('fullscreen-menu').classList.contains('active')) {
+        activeModal = document.getElementById('fullscreen-menu');
+    }
+
+    // 如果沒有任何彈窗開啟，就維持瀏覽器原生行為，直接退出
+    if (!activeModal) return; 
+
+    // 2. 抓取該彈窗內部「所有可以被 Focus 的元素」
+    const focusableSelectors = 'a[href]:not([disabled]), button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    
+    // 過濾掉被 CSS 隱藏 (display: none 或 width: 0) 的元素
+    const focusableElements = Array.from(activeModal.querySelectorAll(focusableSelectors)).filter(el => {
+        return (el.offsetWidth > 0 || el.offsetHeight > 0) && window.getComputedStyle(el).visibility !== 'hidden';
+    });
+
+    if (focusableElements.length === 0) {
+        e.preventDefault(); // 彈窗內完全沒有可互動元素，鎖死焦點
+        return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    // 3. 焦點迷失救援：如果當前的焦點完全不在活躍彈窗內，強制將焦點抓回彈窗的第一個元素
+    if (!activeModal.contains(document.activeElement)) {
+        firstElement.focus();
+        e.preventDefault();
+        return;
+    }
+
+    // 4. 無限迴圈鎖定 (Focus Trap Logic)
+    if (e.shiftKey) {
+        // 使用者按下 Shift + Tab (往回跳)
+        if (document.activeElement === firstElement) {
+            lastElement.focus(); // 如果已經是第一個，跳回最後一個
+            e.preventDefault();
+        }
+    } else {
+        // 使用者按下 Tab (往下跳)
+        if (document.activeElement === lastElement) {
+            firstElement.focus(); // 如果已經是最後一個，跳回第一個
+            e.preventDefault();
+        }
+    }
+});
+
 // ==========================================
 // ✨ Mermaid 專業控制台引擎
 // ==========================================
