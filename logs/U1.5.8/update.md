@@ -11,6 +11,7 @@
 ## change / update
 1. responsive `max-width` breakpoint to `699px`
 2. `get_html_template` support `<html lang="?">`
+3. js, css narrow
 
 ## adjust
 1. touch feedback in gallery (remove)
@@ -34,9 +35,3 @@
 ## remove
 1. redundant `DOMMatrix` calculation in `main.js`
 2. old `is-touch-device` detection fragment
-
-## pending
-1. 
-
-## notice
-1. 

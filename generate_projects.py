@@ -7,8 +7,8 @@ from PIL import Image
 from datetime import datetime, timedelta
 from tools.convert_webp import convert_to_webp_with_protection, generate_cover_thumbnail
 from tools.update_paths import update_extensions_to_webp
-import rjsmin
-import rcssmin
+import rjsmin # type: ignore
+import rcssmin # type: ignore
 
 # 準備一個 Set 來記錄所有合法的 API 檔案絕對路徑，用於最後的清理階段
 valid_api_files = set()
