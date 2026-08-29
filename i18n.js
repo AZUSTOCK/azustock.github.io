@@ -119,7 +119,7 @@ const I18N_DICT = {
         err_404_proj_desc: "The specified project could not be found.<br/>It may not exist or has been removed.",
         err_403_title: "403 ACCESS DENIED",
         err_403_desc: "Access Denied.",
-        author_name: "Azusa Kazekawa",
+        author_name: "Kazekawa-Azusa",
         err_404_art_title: "404 Article Not Found",
         err_404_art_desc: "The article could not be found in project '{0}'.<br/>It may not exist or has been removed.",
         system_error_label: "SYSTEM_ERROR",

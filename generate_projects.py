@@ -427,7 +427,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             'en': {
                 'lang_code': 'en', 'site_name': 'Azustock Holdings', 'routing': 'System is routing to:',
                 'manual_link': 'If not redirected, <a href="{url}" style="color: #3b82f6; text-decoration: none; font-weight: 600;">click here</a>.',
-                'footer': '— Azusa Kazekawa | Azustock —'
+                'footer': '— Kazekawa-Azusa | Azustock —'
             },
             'ja': {
                 'lang_code': 'ja', 'site_name': '梓本投資控股', 'routing': 'システムをルーティングしています:',
