@@ -84,7 +84,8 @@ const I18N_DICT = {
         profile_desc: "一個名為「梓」的人的聚集地，<br/>通常都在寫寫字、寫程式、畫圖、音樂和財經及理解中。<br/>此亦為「梓本投資控股偽存公司」的官方網站，主要用於展示旗下梓們的作品。",
         profile_quote: "「在某個特別的時間點，妳會遇見她。興許過了一段時間後，妳會到達那個，決定閱讀她的時間點。」",
         aria_theme: "切換深淺色模式",
-        aria_btt: "返回頂部"
+        aria_btt: "返回頂部",
+        article_fallback_hint: "*此文章尚未提供當前語言的翻譯，目前顯示預設語言。*"
     },
     en: {
         copy_link: "Copy Link", copied: "Copied!", download: "Download", refresh: "Refresh",
@@ -165,7 +166,9 @@ const I18N_DICT = {
         profile_desc: "A gathering place for a person named 'Azusa'.<br/>Usually writing, coding, drawing, making music, and studying finance.<br/>This is also the official website of 'Azustock Holdings Company Phony'.",
         profile_quote: "「At that moment, you meet her. Perhaps in the future, you will reach the point where you decide to read her.」",
         aria_theme: "Toggle Theme",
-        aria_btt: "Back to Top"
+        aria_btt: "Back to Top",
+        // ✨ 新增：文章未翻譯時的回退提示
+        article_fallback_hint: "*This article has not been translated into English yet. Displaying the default language.*"
     },
     ja: {
         copy_link: "リンク複製", copied: "コピー完了", download: "保存", refresh: "更新",
@@ -246,7 +249,9 @@ const I18N_DICT = {
         profile_desc: "「梓」という名の人の集まる場所。<br/>普段は文章を書いたり、プログラミング、絵描き、音楽、金融の勉強をしています。<br/>ここは「梓本投資控股偽存会社」の公式サイトでもあり、梓たちの作品を展示しています。",
         profile_quote: "「ある特別な時期に、あなたは彼女に出会う。そしておそらく、しばらくしてから、あなたは彼女を読むと決めるその時に到達するだろう。」",
         aria_theme: "テーマ切替",
-        aria_btt: "トップへ戻る"
+        aria_btt: "トップへ戻る",
+        // ✨ 新增：文章未翻譯時的回退提示
+        article_fallback_hint: "*この記事はまだ翻訳されていません。デフォルトの言語を表示しています。*"
     }
 };
 

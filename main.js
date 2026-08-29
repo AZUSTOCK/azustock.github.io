@@ -18,7 +18,11 @@ const CONFIG = {
     // 🔗 資源路徑
     FAVICON_LIGHT: "https://azustock.github.io/assets/OG_dark.png",
     FAVICON_DARK: "https://azustock.github.io/assets/OG_light.png",
-    DATA_SOURCE: "./all_projects.json" 
+    
+    // ✨ 多語系引擎：動態決定要讀取哪一份專案總表
+    get DATA_SOURCE() { 
+        return `./api/${window.CURRENT_LANG}/all_projects.json`; 
+    }
 };
 
 // ==========================================
@@ -74,6 +78,7 @@ const GLOBAL_SVGS = {
     errorAlert: `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
     retry: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
     warning: `<svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
+    fallbackHint: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 4px; opacity: 0.8;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
     detailsArrow: `<svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>`
 };
 
@@ -447,17 +452,42 @@ window.refreshUIAfterOverrideToggle = function() {
 // ==========================================
 // ✨ 獨立檔案快取系統 (Singleton Pattern + Hash)
 // ==========================================
+
+// ✨ 多語系檔案智慧回退引擎 (i18n Fallback Fetcher)
+window.fetchLocaleText = async function(fileName, isDocument = false) {
+    let lang = window.CURRENT_LANG;
+    let url = `./locales/${lang}/${fileName}?v=${window.getResVersion('locales_' + lang)}`;
+    let res = await fetch(url);
+    let isFallback = false;
+
+    // 如果找不到該語言的檔案 (404)，自動退回尋找 zh (繁中)
+    if (!res.ok && lang !== 'zh') {
+        url = `./locales/zh/${fileName}?v=${window.getResVersion('locales_zh')}`;
+        res = await fetch(url);
+        isFallback = true;
+    }
+
+    if (!res.ok) throw new Error(t('load_failed'));
+    
+    let text = await res.text();
+    
+    // 如果是整頁顯示的文章 (如版權、致謝)，在文末加上未翻譯提示
+    // 註: 格言與言之箱 (isDocument = false) 因為是短句陣列，不加上提示以免破壞陣列結構
+    // if (isFallback && isDocument) {
+    //     const msg = lang === 'en' 
+    //         ? "\n\n---\n> *This document has not been translated yet. Displaying the default language.*"
+    //         : "\n\n---\n> *このドキュメントはまだ翻訳されていません。デフォルトの言語を表示しています。*";
+    //     text += msg;
+    // }
+    return text;
+};
+
 window.cachedKotobaList = null;
 window.getKotobaList = async function() {
     if (window.cachedKotobaList !== null) return window.cachedKotobaList;
     try {
-        const res = await fetch(`./kotoba.md?v=${window.getResVersion('kotoba.md')}`);
-        if (res.ok) {
-            const text = await res.text();
-            window.cachedKotobaList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
-        } else {
-            window.cachedKotobaList = [];
-        }
+        const text = await window.fetchLocaleText('kotoba.md', false);
+        window.cachedKotobaList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
     } catch (err) { window.cachedKotobaList = []; }
     return window.cachedKotobaList;
 };
@@ -480,13 +510,8 @@ window.cachedQuotesList = null;
 window.getQuotesList = async function() {
     if (window.cachedQuotesList !== null) return window.cachedQuotesList;
     try {
-        const res = await fetch(`./quotes.md?v=${window.getResVersion('quotes.md')}`);
-        if (res.ok) {
-            const text = await res.text();
-            window.cachedQuotesList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
-        } else {
-            window.cachedQuotesList = [];
-        }
+        const text = await window.fetchLocaleText('quotes.md', false);
+        window.cachedQuotesList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
     } catch (err) { window.cachedQuotesList = []; }
     return window.cachedQuotesList;
 };
@@ -1368,17 +1393,40 @@ document.addEventListener('DOMContentLoaded', () => {
         window.visualViewport.addEventListener('resize', window.adjustModalViewports);
     }
 
-    // 2. 觸控裝置偵測 (用於 CSS 的 is-touch-device 標籤)
-    const isTouchDevice = (('ontouchstart' in window) || 
-                           (navigator.maxTouchPoints > 0) || 
-                           (navigator.msMaxTouchPoints > 0));
-    if (isTouchDevice) {
-        document.body.classList.add('is-touch-device');
-        document.addEventListener('touchstart', function() {}, {passive: true});
+    // 2. 觸控裝置與窄螢幕動態偵測引擎 (解決桌面版縮小視窗時工具列擠壓消失的問題)
+    const checkMobileLayout = () => {
+        const isTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+        const isNarrowScreen = window.innerWidth < 700; // ✨ 螢幕寬度小於 700px 時強制啟動收合工具列
         
-        // ✨ 強制替換手機版工具列開關的圖示，確保結構可被 CSS 動畫精準控制
-        const toggleBtn = document.querySelector('.toolbox-toggle-btn');
-        if (toggleBtn) toggleBtn.innerHTML = GLOBAL_SVGS.meatballMenu;
+        if (isTouch || isNarrowScreen) {
+            document.body.classList.add('is-touch-device');
+            
+            // ✨ 強制替換手機版工具列開關的圖示，確保結構可被 CSS 動畫精準控制
+            const toggleBtn = document.querySelector('.toolbox-toggle-btn');
+            if (toggleBtn && !toggleBtn.dataset.iconInjected) {
+                toggleBtn.innerHTML = GLOBAL_SVGS.meatballMenu;
+                toggleBtn.dataset.iconInjected = 'true'; // 標記已注入，避免重複執行
+            }
+        } else {
+            document.body.classList.remove('is-touch-device');
+            
+            // 當恢復寬螢幕桌面版時，確保下拉選單處於關閉狀態，避免版面錯亂
+            const toolbox = document.getElementById('lightbox-toolbox');
+            const toggleBtn = document.querySelector('.toolbox-toggle-btn');
+            if (toolbox) toolbox.classList.remove('is-open');
+            if (toggleBtn) toggleBtn.classList.remove('is-active');
+        }
+    };
+
+    // 初始化並綁定到 Resize 追蹤引擎
+    checkMobileLayout();
+    window.addEventListener('resize', () => {
+        window.requestAnimationFrame(checkMobileLayout);
+    });
+    
+    // 針對真實觸控裝置，保留 passive touchstart 監聽以觸發 CSS :active 按壓回饋
+    if (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0)) {
+        document.addEventListener('touchstart', function() {}, {passive: true});
     }
 
     // 3. ✨ Lightbox 多指觸控與拖曳引擎
@@ -2301,8 +2349,8 @@ async function loadProjects() {
     const marquee = document.getElementById('marquee-text');
 
     try {
-        // ✨ 核心資料載入：向 localStorage 取得 projects 的專屬 Hash 版號
-        const projVersion = window.getResVersion('projects');
+        // ✨ 核心資料載入：向 localStorage 取得當前語系專案總表的專屬 Hash 版號
+        const projVersion = window.getResVersion(`projects_${window.CURRENT_LANG}`);
         const response = await fetch(`${CONFIG.DATA_SOURCE}?v=${projVersion}`);
         const db = await response.json();
         
@@ -3051,7 +3099,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const cleanPath = window.getCleanBasePath();
             const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}`;
             window.history.replaceState({ path: spaUrl }, '', spaUrl);
-            const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
+            
+            // ✨ 修正專案分享連結：加上目前的語系路徑，讓爬蟲能抓到對應語言的 OG Tags
+            const projLang = window.CURRENT_LANG; 
+            const shareUrl = `${window.location.origin}${cleanPath}api/${projLang}/${projectId}/index.html`;
 
             document.getElementById('modal-top-left').innerHTML = `
                 <div class="index-header-container">
@@ -3530,12 +3581,18 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     
     document.body.style.cursor = 'wait';
     let markdownContent = t('load_failed');
+    let isArticleFallback = false; // ✨ 獨立宣告，讓下方的渲染器能讀到它
     
     try {
+        // 判斷是否跨語系抓了 zh 的檔案
+        isArticleFallback = article.content_path.includes('/zh/') && window.CURRENT_LANG !== 'zh';
+        
         const response = await fetch(article.content_path);
         if (!response.ok) throw new Error("Network response was not ok");
         const data = await response.json();
         markdownContent = data.content; 
+        
+        // ✨ 已經拔除 Markdown 字串串接，維持原始內文 100% 乾淨！
     } catch (error) {
         console.error("無法載入文章內容:", error);
         
@@ -3706,7 +3763,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const articleSlug = article.id || articleIndex;
                 const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleSlug}${targetHash || ''}`;
                 window.history.replaceState({ path: spaUrl }, '', spaUrl);
-                const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/${articleSlug}/index.html`;
+                
+                // ✨ 智慧判定：如果這個文章被回退到 zh，分享網址也要給出有實體 HTML 的 zh 路徑
+                const artLang = article.content_path.includes('/zh/') ? 'zh' : window.CURRENT_LANG;
+                const shareUrl = `${window.location.origin}${cleanPath}api/${artLang}/${projectId}/${articleSlug}/index.html`;
 
                 const shareBtn = document.createElement('button');
                 shareBtn.className = 'share-link-btn';
@@ -3720,6 +3780,19 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
                 rightGroup.appendChild(shareBtn);
                 wrapper.appendChild(rightGroup);
+                
+                // ✨ 終極解法：如果是回退文章，在標題下方插入純 DOM 警告橫幅，完美避開 Markdown 解析干擾！
+                if (isArticleFallback) {
+                    const fallbackBanner = document.createElement('div');
+                    
+                    // ✨ 修正 1：將 align-items 改為 center，讓圖標與文字完美垂直置中
+                    fallbackBanner.style.cssText = "margin: -0.2rem 0 1.5rem 0; padding: 0.8rem 1.2rem; background: color-mix(in srgb, var(--accent-2) 10%, transparent); border-left: 4px solid var(--accent-2); border-radius: 4px 8px 8px 4px; color: var(--text); font-size: 0.9rem; display: flex; align-items: center; gap: 8px;";
+                    
+                    // ✨ 修正 2：拔除圖標的偏移，並使用 marked.parseInline() 讓星號真正變成漂亮的斜體！
+                    fallbackBanner.innerHTML = `<span style="color: var(--accent-2); flex-shrink: 0; display: flex; align-items: center;">${GLOBAL_SVGS.fallbackHint}</span> <span style="opacity: 0.9; line-height: 1.4; padding-top: 2px;">${marked.parseInline(t('article_fallback_hint'))}</span>`;
+                    
+                    wrapper.parentNode.insertBefore(fallbackBanner, wrapper.nextSibling);
+                }
             }
 
             const topLeft = document.getElementById('modal-top-left');
@@ -4734,9 +4807,7 @@ window.showCreditsModal = async function() {
         if (window.cachedCreditsText !== null) {
             mdText = window.cachedCreditsText;
         } else {
-            const response = await fetch(`./credits.md?v=${window.getResVersion('credits.md')}`);
-            if (!response.ok) throw new Error(t('credits_not_found'));
-            mdText = await response.text();
+            mdText = await window.fetchLocaleText('credits.md', true); // isDocument = true
             window.cachedCreditsText = mdText;
         }
     } catch (error) {
@@ -5000,6 +5071,7 @@ window.showLicenseModal = async function() {
         if (window.cachedLicenseText !== null) {
             mdText = window.cachedLicenseText;
         } else {
+            // ✨ 改回直接向根目錄請求，並使用它專屬的 Hash 版號
             const response = await fetch(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`);
             if (!response.ok) throw new Error(t('license_not_found'));
             mdText = await response.text();
