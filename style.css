@@ -766,10 +766,10 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 /* ⬇️ 將特定按鈕加入往下彈出的清單中，避免被容器頂部切掉 */
-.capsule-btn::after, .zoom-btn.floating::after, .toolbar-btn::after, .lightbox-capsule-btn::after, .mermaid-btn::after, .share-link-btn::after { 
+.capsule-btn::after, .zoom-btn.floating::after, .toolbar-btn::after, .lightbox-capsule-btn::after, .mermaid-btn::after, .share-link-btn::after, .modal-tool-btn::after, .modal-close-btn::after { 
     top: 100%; margin-top: 10px; bottom: auto; transform: translateX(-50%) translateY(-8px); 
 }
-.capsule-btn::before, .zoom-btn.floating::before, .toolbar-btn::before, .lightbox-capsule-btn::before, .mermaid-btn::before, .share-link-btn::before { 
+.capsule-btn::before, .zoom-btn.floating::before, .toolbar-btn::before, .lightbox-capsule-btn::before, .mermaid-btn::before, .share-link-btn::before, .modal-tool-btn::before, .modal-close-btn::before { 
     top: 100%; margin-top: 0px; border-color: transparent transparent var(--text) transparent; transform: translateX(-50%) translateY(-8px); 
 }
 
@@ -904,11 +904,16 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     margin: 0 !important; 
     padding: 0 !important; 
     position: relative; 
-    z-index: 10; /* ✨ 核心修復：確保頂部按鈕與氣泡永遠蓋在進度條之上 */
+    z-index: 10; 
 }
-#modal-top-left { gap: 0.5rem; }
-#modal-top-right { gap: 0rem; align-self: flex-start; }
-#modal-top-right:has(.toc-wrapper) { gap: 0.5rem; }
+#modal-top-left { gap: 0.0.8rem; }
+
+/* ✨ 統一間距為 0.5rem，並靠右對齊 */
+#modal-top-right { gap: 0.0.8rem; justify-content: flex-end; align-self: flex-start; margin-left: auto; }
+
+/* ✨ 終極防護：目錄為空時強制隱藏，消滅幽靈間距，讓 [T][X] 絕對不會位移 */
+#toc-mount-point:empty { display: none; }
+
 .modal-close-btn, .toc-toggle-btn { box-sizing: border-box !important; flex-shrink: 0 !important; }
 
 .modal-back-btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; box-sizing: border-box; height: 36px; padding: 0 1rem; margin: 0; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; transition: all 0.3s var(--ease-smooth); }
@@ -922,6 +927,24 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .modal-close-btn:hover { color: var(--error-color); border-color: var(--error-color); box-shadow: 0 0 10px var(--error-shadow); }
 .modal-close-btn svg { display: block; transition: transform 0.4s var(--ease-smooth); transform-origin: center center; }
 .modal-close-btn:hover svg { transform: rotate(90deg); }
+
+/* ✨ 統一所有的圓形工具按鈕樣式 (包含 T 與 X) */
+.modal-close-btn, .modal-tool-btn { 
+    pointer-events: auto !important; background: var(--glass-bg); backdrop-filter: blur(8px); 
+    border: 1px solid var(--card-border); border-radius: 50%; width: 36px; height: 36px; 
+    display: flex; justify-content: center; align-items: center; color: var(--muted); 
+    font-size: 1.5rem; cursor: pointer; transition: all 0.3s var(--ease-smooth); flex-shrink: 0; 
+}
+.modal-close-btn:hover { 
+    color: var(--error-color); border-color: var(--error-color); box-shadow: 0 0 10px var(--error-shadow); 
+}
+.modal-tool-btn:hover { 
+    color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--glow-1); 
+}
+.modal-close-btn svg, .modal-tool-btn svg { display: block; transition: transform 0.4s var(--ease-smooth); transform-origin: center center; }
+.modal-close-btn:hover svg { transform: rotate(90deg); }
+.modal-tool-btn:hover svg { transform: scale(1.15); }
+
 
 
 
@@ -964,7 +987,24 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .index-header-container { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; padding-right: 0rem; }
 .index-header-title { margin: 0 !important; padding: 0 !important; border: none !important; color: var(--accent) !important; word-break: break-word; font-weight: bold !important; display: inline-block; font-size: clamp(1.85rem, 6vw, 2.1rem) !important; line-height: 1.1 !important; }
 .index-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.article-count-badge { font-family: monospace; font-size: 0.85rem; font-weight: 600; color: var(--accent) !important; background: var(--tag-bg) !important; padding: 0.15rem 0.6rem; border-radius: 999px; letter-spacing: 0.05em; border: 1px solid var(--card-border); white-space: nowrap; }
+.article-count-badge { 
+    font-family: monospace; 
+    font-size: 0.85rem; 
+    font-weight: 600; 
+    color: var(--accent) !important; 
+    background: var(--tag-bg) !important; 
+    border-radius: 999px; 
+    letter-spacing: 0.05em; 
+    border: 1px solid var(--card-border); 
+    white-space: nowrap;
+    
+    /* ✨ 新增與修改：與右側膠囊對齊的終極魔法 */
+    height: 30px;                  /* 鎖死高度與按鈕一模一樣 */
+    display: inline-flex;          /* 改為 Flex 排版 */
+    align-items: center;           /* 讓裡面的文字絕對垂直置中 */
+    box-sizing: border-box;        /* 確保邊框不會把高度撐出去 */
+    padding: 0 0.6rem;             /* 拔除上下的 padding，交給 Flex 置中即可 */
+}
 #article-list-container { opacity: 1; transition: opacity 0.2s ease-in-out; will-change: opacity; }
 
 .article-list-ul { list-style: none !important; padding-left: 0 !important; }
@@ -1044,7 +1084,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .capsule-btn { 
     display: inline-flex; align-items: center; justify-content: center; height: 100%; 
     background: transparent; border: none; color: var(--accent); cursor: pointer; 
-    padding: 0 0.3rem; transition: all 0.2s ease; position: relative; 
+    padding: 0 0.5rem; transition: all 0.2s ease; position: relative; 
     flex-shrink: 0; 
 }
 .capsule-btn:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; } .capsule-btn:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
@@ -1931,7 +1971,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 
 /* 7-3. 相簿膠囊 (動態主題適應) */
 .lightbox-capsule { display: none; position: static; transform: none; align-items: center; height: 40px; border: 1px solid var(--box-border); border-radius: 999px; background: var(--box-bg); backdrop-filter: blur(8px); box-sizing: border-box; transition: all 0.3s ease; pointer-events: auto; margin-left: 10px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-.lightbox-capsule-btn { display: inline-flex; align-items: center; justify-content: center; height: 100%; background: transparent; border: none; color: var(--text); cursor: pointer; padding: 0 0.8rem; transition: all 0.2s ease; position: relative; }
+.lightbox-capsule-btn { display: inline-flex; align-items: center; justify-content: center; height: 100%; background: transparent; border: none; color: var(--text); cursor: pointer; padding: 0 0.5rem; transition: all 0.2s ease; position: relative; }
 .lightbox-capsule-btn:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
 .lightbox-capsule-btn:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
 .lightbox-capsule-btn:hover:not(.disabled) { background: var(--tag-bg); color: var(--accent); }
@@ -2120,7 +2160,10 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
     .markdown-body img[alt="center"] { width: 90%; }
 
     /* 文章導覽膠囊與底部卡片 */
-    .capsule-btn.main-back { padding: 0 0.8rem; }
+    .capsule-btn.main-back { padding: 0 0.5rem; }
+    .index-header-actions {gap: 0.3rem;}
+    #modal-top-left {gap: 0.3rem;}
+    #modal-top-right {gap: 0.3rem;}
     .capsule-progress { padding: 0 0.2rem; font-size: 0.75rem; }
     .nav-card { min-width: 0; padding: 0.8rem; overflow: hidden; }
     .nav-card.prev { text-align: left; align-items: flex-start; }

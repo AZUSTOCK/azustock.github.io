@@ -194,7 +194,7 @@ window.currentTextScale = parseInt(localStorage.getItem('sys_text_scale')) || 0;
 
 window.applyTextScale = function() {
     // ✨ 全站縮放：100% (標準) -> 105% (微放) -> 110% (大字)
-    const sizes = ['100%', '105%', '110%'];
+    const sizes = ['100%', '110%', '125%'];
     document.documentElement.style.setProperty('--sys-base-font-size', sizes[window.currentTextScale]);
     
     // 防呆設計：推播捲軸事件讓「閱讀進度條」與「捲動提示」重新校正
@@ -210,7 +210,7 @@ window.toggleTextScale = function(event) {
     localStorage.setItem('sys_text_scale', window.currentTextScale);
     window.applyTextScale();
     
-    const scaleNames = ['標準字體 100%', '全站放大 105%', '全站特大 110%'];
+    const scaleNames = ['標準字體 100%', '全站放大 110%', '全站特大 125%'];
     if (window.showSystemToast) {
          window.showSystemToast('>_ SYS_PREFERENCE', '排版尺寸已更新', scaleNames[window.currentTextScale], 2500, 'success');
     }
@@ -3172,35 +3172,20 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             window.history.replaceState({ path: spaUrl }, '', spaUrl);
             const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
 
-            // 2. 將目錄標題與功能按鈕直接注入 modal-top-left (全置左排版，恢復獨立按鈕樣式)
+            // 2. 將目錄標題與功能按鈕直接注入 modal-top-left (完全還原原始樣式)
             document.getElementById('modal-top-left').innerHTML = `
-                <div class="index-header-container" style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.8rem 1.2rem;">
-                    
-                    <h1 class="index-header-title" style="margin: 0; line-height: 1.2;">${proj.title} - 目錄</h1>
-                    
-                    <!-- ✨ 徽章與按鈕群組包在同一個 flex 容器，確保換行時它們黏在一起並靠左對齊 -->
-                    <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
-                        
-                        <span class="article-count-badge" style="margin-top: 2px;">共 ${visibleCount} 篇</span>
-                        
-                        <!-- ✨ 恢復成三個獨立按鈕 (share-link-btn)，用 gap 隔開 -->
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            
-                            <button class="share-link-btn" onclick="window.toggleTextScale(event)" data-tooltip="調整全站字體" style="min-width: 34px; width: 34px; height: 30px; padding: 0; margin: 0; justify-content: center;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="12" y1="4" x2="12" y2="20"></line><line x1="9" y1="20" x2="15" y2="20"></line></svg>
-                            </button>
-
-                            <!-- ✨ 加上 margin: 0; 覆寫掉 CSS 原本設定的 margin-left: auto; 避免按鈕自己跑走 -->
-                            <button id="toggle-sort-btn" class="share-link-btn" style="height: 30px; padding: 0 0.8rem; margin: 0;">
-                                <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
-                                <span id="sort-btn-text" style="margin-left: 4px;"></span>
-                            </button>
-
-                            <button class="share-link-btn icon-only-copy" id="index-share-btn" data-tooltip="複製連結" style="min-width: 34px; width: 34px; height: 30px; padding: 0; margin: 0; justify-content: center;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                            </button> 
-                            
-                        </div>
+                <div class="index-header-container">
+                    <h1 class="index-header-title">${proj.title} - 目錄</h1>
+                    <div class="index-header-actions">
+                        <!-- ✨ 使用 visibleCount 替換掉原本的 proj.articles.length -->
+                        <span class="article-count-badge">共 ${visibleCount} 篇</span>
+                        <button id="toggle-sort-btn" class="share-link-btn sm">
+                            <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
+                            <span id="sort-btn-text" style="margin-left: 4px;"></span>
+                        </button>
+                        <button class="share-link-btn icon-only-copy" id="index-share-btn" data-tooltip="複製連結" style="min-width: 34px; width: 34px; height: 30px; padding: 0; margin: 0; justify-content: center;">
+                            ${GLOBAL_SVGS.link}
+                        </button>
                     </div>
                 </div>
             `;
@@ -3852,11 +3837,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
-            // 👇 ✨ 組合字體按鈕
-            let textSizeHtml = `<div class="capsule-divider"></div><button class="capsule-btn" onclick="window.toggleTextScale(event)" data-tooltip="調整字體大小">${GLOBAL_SVGS.textSize}</button>`;
-
-            // 👇 ✨ 把 textSizeHtml 放在膠囊的最右邊
-            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}${textSizeHtml}</div>`;
+            // ✨ 移除 textSizeHtml，維持文章膠囊的純淨導航功能
+            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
             const tocMount = document.getElementById('toc-mount-point');
             tocMount.innerHTML = ''; 
             const headings = modalBody.querySelectorAll('h1, h2, h3'); 

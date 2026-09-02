@@ -108,8 +108,16 @@
       <div class="modal-top-bar">
         <div id="modal-top-left"></div>
         <div id="modal-top-right">
+          <!-- 1. 最左邊：目錄掛載點 [三] (在文章頁時會動態注入) -->
           <div id="toc-mount-point"></div>
-          <button id="close-modal" class="modal-close-btn">
+          
+          <!-- 2. 中間：字體大小設定 [T] -->
+          <button id="modal-text-scale-btn" class="modal-tool-btn" onclick="window.toggleTextScale(event)" data-tooltip="調整全站字體">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="12" y1="4" x2="12" y2="20"></line><line x1="9" y1="20" x2="15" y2="20"></line></svg>
+          </button>
+          
+          <!-- 3. 最右邊：永遠固定在角落的關閉按鈕 [X] -->
+          <button id="close-modal" class="modal-close-btn" data-tooltip="關閉視窗">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
