@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.7.10",          // 目前系統版本號
+    VERSION: "U1.5.7.11",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -63,6 +63,7 @@ const GLOBAL_SVGS = {
     mermaidReset: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7"></path></svg>`,
     mermaidReload: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
     mermaidFull: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>`,
+    textSize: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="12" y1="4" x2="12" y2="20"></line><line x1="9" y1="20" x2="15" y2="20"></line></svg>`,
 
     // 🔔 系統提示與狀態圖示 (新增收斂)
     check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
@@ -187,6 +188,37 @@ window.getResVersion = function(key) {
 };
 
 // ==========================================
+// ✨ 全域字體縮放引擎 (Text Scaling Engine)
+// ==========================================
+window.currentTextScale = parseInt(localStorage.getItem('sys_text_scale')) || 0; 
+
+window.applyTextScale = function() {
+    // ✨ 全站縮放：100% (標準) -> 105% (微放) -> 110% (大字)
+    const sizes = ['100%', '110%', '125%'];
+    document.documentElement.style.setProperty('--sys-base-font-size', sizes[window.currentTextScale]);
+    
+    // 防呆設計：推播捲軸事件讓「閱讀進度條」與「捲動提示」重新校正
+    const modalContainer = document.querySelector('.modal-content');
+    if (modalContainer) {
+        setTimeout(() => modalContainer.dispatchEvent(new Event('scroll')), 350);
+    }
+};
+
+window.toggleTextScale = function(event) {
+    if (event) event.stopPropagation();
+    window.currentTextScale = (window.currentTextScale + 1) % 3;
+    localStorage.setItem('sys_text_scale', window.currentTextScale);
+    window.applyTextScale();
+    
+    const scaleNames = ['標準字體 100%', '全站放大 110%', '全站特大 125%'];
+    if (window.showSystemToast) {
+         window.showSystemToast('>_ SYS_PREFERENCE', '排版尺寸已更新', scaleNames[window.currentTextScale], 2500, 'success');
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => window.applyTextScale());
+
+// ==========================================
 // ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
 window.lockScroll = function() {
@@ -293,14 +325,32 @@ window.handleCopy = function(element, shareUrl) {
     window.isCopying = true;
     
     const originalContent = element.innerHTML;
-    const checkSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+    // ✨ 抓取原本的 tooltip (如果有)
+    const originalTooltip = element.getAttribute('data-tooltip');
+    // ✨ 判斷這是不是一個「純圖示」按鈕
+    const isIconOnly = element.classList.contains('icon-only-copy');
+    
+    // 依據按鈕類型，給予不同大小的打勾圖示
+    const iconSize = isIconOnly ? '16' : '12';
+    const checkSvg = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
     
     navigator.clipboard.writeText(shareUrl).then(() => {
         element.classList.add('copied');
-        element.innerHTML = `${checkSvg} <span style="margin-left: 4px;">已複製</span>`;
+        
+        // ✨ 如果是純圖示，我們只換打勾圖示，並動態把 Tooltip 改成「已複製！」
+        if (isIconOnly) {
+            element.innerHTML = checkSvg;
+            if (originalTooltip) element.setAttribute('data-tooltip', '已複製！');
+        } else {
+            element.innerHTML = `${checkSvg} <span style="margin-left: 4px;">已複製</span>`;
+        }
+        
         setTimeout(() => {
             element.classList.remove('copied');
             element.innerHTML = originalContent;
+            
+            // ✨ 動畫結束後，把 Tooltip 換回原本的文字
+            if (isIconOnly && originalTooltip) element.setAttribute('data-tooltip', originalTooltip);
             window.isCopying = false; 
         }, 2000);
     }).catch(() => {
@@ -3122,7 +3172,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             window.history.replaceState({ path: spaUrl }, '', spaUrl);
             const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
 
-            // 2. 將目錄標題與功能按鈕直接注入 modal-top-left
+            // 2. 將目錄標題與功能按鈕直接注入 modal-top-left (完全還原原始樣式)
             document.getElementById('modal-top-left').innerHTML = `
                 <div class="index-header-container">
                     <h1 class="index-header-title">${proj.title} - 目錄</h1>
@@ -3133,9 +3183,9 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
                             <span id="sort-btn-text" style="margin-left: 4px;"></span>
                         </button>
-                        <button class="share-link-btn sm" id="index-share-btn">
-                            ${GLOBAL_SVGS.link} <span style="margin-left: 4px;">複製連結</span>
-                        </button> 
+                        <button class="share-link-btn icon-only-copy" id="index-share-btn" data-tooltip="複製連結" style="min-width: 34px; width: 34px; height: 30px; padding: 0; margin: 0; justify-content: center;">
+                            ${GLOBAL_SVGS.link}
+                        </button>
                     </div>
                 </div>
             `;
@@ -3787,8 +3837,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
+            // ✨ 移除 textSizeHtml，維持文章膠囊的純淨導航功能
             topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
-
             const tocMount = document.getElementById('toc-mount-point');
             tocMount.innerHTML = ''; 
             const headings = modalBody.querySelectorAll('h1, h2, h3'); 
@@ -4394,6 +4444,11 @@ document.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'm' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
         const themeBtn = document.getElementById('theme-toggle');
         if (themeBtn) themeBtn.click();
+    }
+
+    // ✨ 新增：按 [T] 鍵：一鍵切換全站字體大小
+    if (e.key.toLowerCase() === 't' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        window.toggleTextScale();
     }
 });
 
