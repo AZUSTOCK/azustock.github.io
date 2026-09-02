@@ -419,13 +419,13 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     border: 1px solid var(--card-border); 
     color: var(--muted); 
     border-radius: 999px; 
-    min-width: 105px;      /* 鎖死最小寬度，容納「已複製」和圖示 */
+    min-width: 100px;      /* 鎖死最小寬度，容納「已複製」和圖示 */
     height: 30px; 
     padding: 0 0.8rem;     /* 使用 padding 取代寫死的 width，更有彈性 */
     display: inline-flex; 
     align-items: center; 
     justify-content: center; 
-    gap: 6px; 
+    gap: 0px; 
     font-size: 0.8rem; 
     font-family: inherit; 
     font-weight: 500; 
@@ -1660,7 +1660,7 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 }
 
 /* 放大鏡互動按鈕 */
-.zoom-btn { background: transparent; border: none; color: var(--muted); border-radius: 6px; padding: 4px; margin-left: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.25s var(--ease-smooth), color 0.25s ease, background-color 0.25s ease, opacity 0.25s ease; vertical-align: middle; position: relative; top: -2px; transform: translateZ(0) scale(1); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.zoom-btn { background: transparent; border: none; color: var(--muted); border-radius: 6px; padding: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.25s var(--ease-smooth), color 0.25s ease, background-color 0.25s ease, opacity 0.25s ease; vertical-align: middle; position: relative; top: -2px; transform: translateZ(0) scale(1); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .zoom-btn svg { pointer-events: none; display: block; }
 .zoom-btn:hover { color: var(--accent); transform: translateZ(0) scale(1.15); }
 .zoom-btn::after, .zoom-btn::before { display: none !important; }
