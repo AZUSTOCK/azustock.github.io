@@ -409,9 +409,11 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     justify-content: center; 
     gap: 6px; 
     line-height: 1; 
-    min-width: 120px;      /* 鎖死最小寬度 */
+    min-width: 120px;      /* 保持最小寬度，讓它在標準字體時不會太短 */
+    width: max-content;    /* ✨ 新增：允許按鈕隨文字放大而自由撐開寬度 */
     height: 42px;          /* 鎖死高度 */
     box-sizing: border-box; 
+    white-space: nowrap;   /* ✨ 新增：絕對禁止文字換行 */
 }
 .share-site-btn svg { flex-shrink: 0; }
 
@@ -428,7 +430,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     display: inline-flex; 
     align-items: center; 
     justify-content: center; 
-    gap: 0px; 
+    gap: 6px; 
     font-size: 0.8rem; 
     font-family: inherit; 
     font-weight: 500; 
@@ -648,7 +650,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .toast-btn.close-btn:hover { background: var(--error-color); color: #fff; }
 .toast-divider { width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; }
 
-.new-jump-toast { position: fixed; bottom: 55px; left: 50%; transform: translateX(-50%) translateY(40px); opacity: 0; pointer-events: none; z-index: 1070; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--error-color); color: var(--error-color); padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.95rem; font-weight: 700; box-shadow: 0 10px 25px var(--error-shadow); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.4s var(--ease-smooth); }
+.new-jump-toast { position: fixed; bottom: 55px; left: 50%; transform: translateX(-50%) translateY(40px); opacity: 0; pointer-events: none; z-index: 1070; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--error-color); color: var(--error-color); padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.95rem; font-weight: 700; box-shadow: 0 10px 25px var(--error-shadow); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.4s var(--ease-smooth); white-space: nowrap; width: max-content;}
 .new-jump-toast.is-visible { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
 .new-jump-toast:hover { background: var(--error-color); color: #fff; transform: translateX(-50%) translateY(-4px); box-shadow: 0 12px 30px var(--error-shadow); }
 .new-jump-toast svg { display: block; }
@@ -906,10 +908,10 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     position: relative; 
     z-index: 10; 
 }
-#modal-top-left { gap: 0.0.8rem; }
+#modal-top-left { gap: 0 0.5rem; }
 
 /* ✨ 統一間距為 0.5rem，並靠右對齊 */
-#modal-top-right { gap: 0.0.8rem; justify-content: flex-end; align-self: flex-start; margin-left: auto; }
+#modal-top-right { gap: 0 0.5rem; justify-content: flex-end; align-self: flex-start; margin-left: auto; }
 
 /* ✨ 終極防護：目錄為空時強制隱藏，消滅幽靈間距，讓 [T][X] 絕對不會位移 */
 #toc-mount-point:empty { display: none; }
@@ -2160,10 +2162,7 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
     .markdown-body img[alt="center"] { width: 90%; }
 
     /* 文章導覽膠囊與底部卡片 */
-    .capsule-btn.main-back { padding: 0 0.5rem; }
-    .index-header-actions {gap: 0.3rem;}
-    #modal-top-left {gap: 0.3rem;}
-    #modal-top-right {gap: 0.3rem;}
+    .capsule-btn.main-back { padding: 0 0.8rem; }
     .capsule-progress { padding: 0 0.2rem; font-size: 0.75rem; }
     .nav-card { min-width: 0; padding: 0.8rem; overflow: hidden; }
     .nav-card.prev { text-align: left; align-items: flex-start; }
@@ -2183,6 +2182,12 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
 /* 8-2. 針對非常小的手機螢幕 (max-width: 500px) */
 @media (max-width: 500px) {
     /* 縮小返回頂部按鈕，並避開跳轉膠囊 */
+    .capsule-btn.main-back { padding: 0 0.5rem; }
+    .index-header-actions {gap: 0.3rem;}
+    #modal-top-left {gap: 0.3rem;}
+    #modal-top-right {gap: 0.3rem;}
+    .capsule-btn { padding: 0 0.3rem; }
+    .toggle-sort-btn { padding: 0 0.3rem; }
     .btt-btn { width: 42px; height: 42px; right: max(1rem, calc(var(--safe-right) + 1rem)); bottom: max(1.5rem, calc(var(--safe-bottom) + 1rem)); }
     body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(var(--safe-bottom) + 80px)); }
 }

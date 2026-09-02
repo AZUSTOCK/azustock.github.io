@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.7.11",          // 目前系統版本號
+    VERSION: "U1.5.7.12",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -324,6 +324,10 @@ window.handleCopy = function(element, shareUrl) {
     if (element.classList.contains('copied') || window.isCopying) return;
     window.isCopying = true;
     
+    // 🔒 終極防抖魔法：在改變文字前，先精準鎖死按鈕當下的實際像素寬度！
+    const currentWidth = element.getBoundingClientRect().width;
+    element.style.width = `${currentWidth}px`;
+    
     const originalContent = element.innerHTML;
     // ✨ 抓取原本的 tooltip (如果有)
     const originalTooltip = element.getAttribute('data-tooltip');
@@ -331,7 +335,7 @@ window.handleCopy = function(element, shareUrl) {
     const isIconOnly = element.classList.contains('icon-only-copy');
     
     // 依據按鈕類型，給予不同大小的打勾圖示
-    const iconSize = isIconOnly ? '16' : '12';
+    const iconSize = isIconOnly ? '16' : '14';
     const checkSvg = `<svg width="${iconSize}" height="${iconSize}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
     
     navigator.clipboard.writeText(shareUrl).then(() => {
@@ -342,18 +346,23 @@ window.handleCopy = function(element, shareUrl) {
             element.innerHTML = checkSvg;
             if (originalTooltip) element.setAttribute('data-tooltip', '已複製！');
         } else {
-            element.innerHTML = `${checkSvg} <span style="margin-left: 4px;">已複製</span>`;
+            // 加上 div flex 確保打勾跟文字完美置中對齊
+            element.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; gap: 4px;">${checkSvg} <span>已複製</span></div>`;
         }
         
         setTimeout(() => {
             element.classList.remove('copied');
             element.innerHTML = originalContent;
             
-            // ✨ 動畫結束後，把 Tooltip 換回原本的文字
+            // 🔓 動畫結束後，解除寬度鎖定，把控制權還給 CSS
+            element.style.width = '';
+            
+            // ✨ 把 Tooltip 換回原本的文字
             if (isIconOnly && originalTooltip) element.setAttribute('data-tooltip', originalTooltip);
             window.isCopying = false; 
         }, 2000);
     }).catch(() => {
+        element.style.width = ''; // 發生錯誤時也要記得解鎖
         window.isCopying = false;
     });
 };
@@ -3179,10 +3188,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     <div class="index-header-actions">
                         <!-- ✨ 使用 visibleCount 替換掉原本的 proj.articles.length -->
                         <span class="article-count-badge">共 ${visibleCount} 篇</span>
-                        <button id="toggle-sort-btn" class="share-link-btn sm">
-                            <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
-                            <span id="sort-btn-text" style="margin-left: 4px;"></span>
-                        </button>
+                        <button id="toggle-sort-btn" class="share-link-btn sm" style="margin: 0;">
+                                <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
+                                <span id="sort-btn-text""></span>
+                            </button>
                         <button class="share-link-btn icon-only-copy" id="index-share-btn" data-tooltip="複製連結" style="min-width: 34px; width: 34px; height: 30px; padding: 0; margin: 0; justify-content: center;">
                             ${GLOBAL_SVGS.link}
                         </button>
