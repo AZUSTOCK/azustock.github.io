@@ -1,0 +1,138 @@
+[
+  {
+    "id": "U1.5.7",
+    "version": "U1.5.7",
+    "date": "2026-08-20",
+    "status": "STABLE",
+    "description": "PWA相關、UI、行為、action行為等修正",
+    "content": "## refactor\n1. clean inline style\n\n## add\n1. file reload\n\n## change / update\n1. 4th version number behavior\n2. `handleOrientationChange`\n3. Haptic-like Touch Feedback\n4. PWA loading feedback\n5. deploy behavior\n\n## adjust\n1. detail block css\n2. `handleImageError`\n3. deploy log\n\n## fix\n1. PWA associated\n2. Scroll Lock Bug\n3. UI\n4. btn behavior\n5. button click feedback"
+  },
+  {
+    "id": "U1.5.6",
+    "version": "U1.5.6",
+    "date": "2026-08-19",
+    "status": "REFACTOR",
+    "description": "PWA應用問題、快取重構與其他修正",
+    "content": "## refactor\n1. Cache engine (implemented MD5 Hash)\n2. Separation of core data loading strategy\n\n## add\n1. Handle `MEDIA_NOT_FOUND` fallback\n2. Hash dictionary in `contents.json` and `meta.json`\n3. Micro-Version Check for `version.json` and `data_version.json`\n4. Singleton Cache for `COPYRIGHT.md`, `credits.md`, and `changelogs.json`\n5. Automated version update mechanism\n\n## change / update\n1. `generate_projects.py`: Updated `generate_version_json()`\n\n## adjust\n1. App name\n2. Lightbox image transition behavior\n\n## fix\n1. SVG not showing issue\n2. `handleImageError` logic\n3. PWA-associated download issue\n4. Lightbox broken image issue\n\n## deprecate\n1. Usage of `new Date().getTime()` for URL parameter `?t=...`\n2. Cache busting based on `os.path.getmtime`"
+  },
+  {
+    "id": "U1.5.5",
+    "version": "U1.5.5",
+    "date": "2026-08-18",
+    "status": "FEATURE",
+    "description": "多處改進與問題修正",
+    "content": "## Refactor\n1. Auto-add `md-sys-` prefix to markdown title IDs to prevent native anchor scroll conflicts.\n2. Add `disableTrackers` parameter to `window.executeAnchorScroll` and `hashchange` events.\n3. Consolidate and clean up core logic in `style.css` and `main.js`.\n\n## Add\n1. Support custom title anchor ID syntax.\n2. Add `data-raw-title` attribute to TOC engine for clean heading displays.\n3. Add reading progress bar for both horizontal and vertical writing modes.\n4. Add one-click high-resolution download feature for images and Mermaid diagrams.\n5. Add comprehensive PWA (Progressive Web App) support and configurations.\n6. Add system reload button (`>_ RELOAD_SYSTEM`) in the fullscreen menu.\n7. Introduce `window.triggerHaptic` engine for native-like tactile feedback on mobile devices.\n8. Add native-like PDF Action Sheet for mobile/touch devices to enhance safety and UX.\n9. Add global keyboard shortcuts (e.g., `M` for theme toggle, refined `Esc` logic).\n10. Add custom Web Fullscreen engine for videos to bypass PWA native API restrictions.\n\n## Change / Update\n1. Update hamburger menu jumping behavior to prioritize targeting outer `div` wrappers.\n\n## Adjust\n1. Fine-tune UI layout and DOM manipulation details across `style.css` and `main.js`.\n2. Optimize `animateTopBar` parameter logic in `switchModalContent` and `openArticle` for smoother top-bar transitions.\n\n## Fix\n1. Fix PDF open issue on touch devices with wider screens.\n2. Fix scroll jittering/jumping error when manually modifying the URL hash.\n3. Fix scroll restoration accuracy when returning to previous articles (integrating Layout Shift Chaser).\n\n## Remove\n1. Remove Giscus associated code.\n\n## Notice\n1. Custom anchor syntax: `## title {#custom-id}`"
+  },
+  {
+    "id": "U1.5.4",
+    "version": "U1.5.4",
+    "date": "2026-08-17",
+    "status": "REFACTOR",
+    "description": "改進捲動引擎、特殊提示，新增監測與問題修正",
+    "content": "## refactor\n1. integrate `window.showSystemToast` (internet offline & update failed)\n2. `window.executeAnchorScroll`\n\n## add\n1. Network Status Monitor\n2. offline hint\n3. Layout Shift Chaser\n\n## change / update\n1. index page Scroll to Nearest\n\n## adjust\n1. toast hint X button\n2. `openProjectIndex` scroll locate\n3. inside page jump\n4. css\n\n## fix\n1. mobile jitter\n2. anchor scroll shake\n3. scroll jump\n\n## remove\n1. old toast hint html\n2. toast hint `cursor: pointer`"
+  },
+  {
+    "id": "U1.5.3",
+    "version": "U1.5.3",
+    "date": "2026-08-16",
+    "status": "PATCH",
+    "description": "新增快取破壞機制，修復滾動、UI、影音問題等",
+    "content": "## refactor\n1. project card horizontal scrolling engine\n\n## add\n1. error handler\n2. sensitive-warning-svg behavior\n\n## change / update\n1. image cache busting\n2. light mode color\n\n## adjust\n1. nav-cards nowrap\n2. image border\n3. content warning page behavior & text\n\n## fix\n1. video add playsinline\n2. .code-block-wrapper css\n3. main page scroll error by hidden cards\n4. .copyright-footer css\n5. page behavior\n\n## pending\n1. gallery virtualization\n\n## notice\n1. Colors may vary between desktop and mobile devices."
+  },
+  {
+    "id": "U1.5.2",
+    "version": "U1.5.2",
+    "date": "2026-08-15",
+    "status": "FEATURE",
+    "description": "mermaid細節修正、新增注意頁面",
+    "content": "# add\n1. lightbox loading\n2. mermaid_styles.txt\n3. copy code\n4. Content Warning Engine\n\n# update\n1. mermaid\n\n# adjust\n1. mermaid css\n2. css\n3. mermaid & lightbox\n4. copy code style\n\n# fix\n1. mermaid behavior"
+  },
+  {
+    "id": "U1.5.1",
+    "version": "U1.5.1",
+    "date": "2026-08-14",
+    "status": "REFACTOR",
+    "description": "系統重構與細節修正",
+    "content": "# refactor\n1. extract refreshUIAfterOverrideToggle & window.scrollMarqueeTo\n2. global SVG\n3. apply executeAnchorScroll\n4. tooltip by [data-tooltip]\n\n# add\n1. marquee Warp Speed Injection animate\n\n# update\n1. hidden associated behavior\n\n# adjust\n1. css\n2. hidden associated style\n\n# fix\n1. 403 behavior\n2. marquee position\n3. marquee style\n4. mobile tooltip display\n5. auto update behavior\n\n# deprecate\n1. .md-highlight-block HTML structure\n\n# remove\n1. querySelectorAll in window.openArticle\n2. patch for spoiler in css\n\n# notice\n1. SVG icons are in `GLOBAL_SVGS` in `main.js` and the `:root` variables in `style.css`"
+  },
+  {
+    "id": "U1.5.0",
+    "version": "U1.5.0",
+    "date": "2026-08-13",
+    "status": "MAJOR",
+    "description": ".py打包工具整理與新增格言區塊、自動更新、其它",
+    "content": "## add\n1. hidden\n2. quote.md\n3. auto version update\n\n## adjust\n1. scroll timeout\n2. organize *.py to tools/\n3. tag count behavior\n4. scroll hint\n5. css\n\n## fix\n1. tools/*.py path & behavior\n2. Event Delegation"
+  },
+  {
+    "id": "U1.4.4",
+    "version": "U1.4.4",
+    "date": "2026-08-11",
+    "status": "FEATURE",
+    "description": "添加highlight與修正mermaid & spoiler",
+    "content": "## add\n1. highlight\n2. mermaid view\n\n## update\n1. spoiler\n2. mermaid\n\n## adjust\n1. theme color\n2. spoiler\n3. deploy.yml\n4. css\n\n## remove\n1. branch main api/"
+  },
+  {
+    "id": "U1.4.3",
+    "version": "U1.4.3",
+    "date": "2026-08-05",
+    "status": "PATCH",
+    "description": "滾動跳轉與錨點處理修正",
+    "content": "## add\n1. .md-divider & .md-clear & .no-glow\n2. article jump\n\n## update\n1. goBackInHistory\n\n## adjust\n1. scroll bar\n2. kotoba associated\n3. jumpToast\n4. markdown link style\n\n## pending\n1. scroll bar style"
+  },
+  {
+    "id": "U1.4.2",
+    "version": "U1.4.2",
+    "date": "2026-08-01",
+    "status": "FEATURE",
+    "description": "細節修正，新增語言設定、版權與授權條款 Modal",
+    "content": "## add\n1. generate_projects.py logs logic\n2. showLicenseModal\n3. Anchor Scroll inside md\n4. COPYRIGHT.md UI\n5. css lang-\n\n## update\n1. COPYRIGHT.md\n\n## adjust\n1. new-jump-toast detail\n2. vertical-wrapper\n3. project's status tag\n4. css"
+  },
+  {
+    "id": "U1.4.1",
+    "version": "U1.4.1",
+    "date": "2026-07-29",
+    "status": "REFACTOR",
+    "description": "CSS重構、捲軸相關",
+    "content": "## change\n1. css\n2. index.html\n\n## adjust\n1. Tooltip\n2. style follow theme\n\n## fix\n1. scroll bar associated\n2. mobile PDF"
+  },
+  {
+    "id": "U1.4.0",
+    "version": "U1.4.0",
+    "date": "2026-07-28",
+    "status": "MAJOR",
+    "description": "新增感謝頁面、版本紀錄、PDF閱讀器",
+    "content": "## add\n1. credits\n2. version logs\n3. new badges\n4. PDF reader\n\n## adjust\n1. modal-top-right gap\n2. css"
+  },
+  {
+    "id": "U1.3.3",
+    "version": "U1.3.3",
+    "date": "2026-07-26",
+    "status": "PATCH",
+    "description": "新增浮水印、主頁錨點跳轉與 simulate-hover 互動特效",
+    "content": "## add\n1. watermark\n2. sticky-index-header\n3. main section jump css\n4. crop_tool WIP\n5. simulate-hover\n\n## adjust\n1. scroll jump\n2. article-header-wrapper merge to modal-top-bar\n3. style from js to css"
+  },
+  {
+    "id": "U1.3.2",
+    "version": "U1.3.2",
+    "date": "2026-07-18",
+    "status": "HOTFIX",
+    "description": "新增縮圖，改善讀取速度與大圖預覽修正",
+    "content": "## add\n1. thumbnail\n\n## change\n1. generate_projects.py\n2. css\n\n## adjust\n1. lightbox\n2. css"
+  },
+  {
+    "id": "U1.3.1",
+    "version": "U1.3.1",
+    "date": "2026-07-17",
+    "status": "PATCH",
+    "description": "新增大圖預覽、鍵盤行為",
+    "content": "## add\n1. Light box css\n2. keyboard action\n3. vertical-wrapper intent\n\n## adjust\n1. Light box css\n\n## fix\n1. toolbar-left\n2. load image"
+  },
+  {
+    "id": "U1.3.0",
+    "version": "U1.3.0",
+    "date": "2026-07-16",
+    "status": "REFACTOR",
+    "description": "git repository 重構",
+    "content": "## refactor\n1. git repository\n\n## fix\n1. security\n\n## notice\n因應資料庫重構，先前版本不可考。"
+  }
+]

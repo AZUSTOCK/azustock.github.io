@@ -1,0 +1,69 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # 當推送代碼到 main 分支時觸發
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ✨ 升級至 v4 避免系統警告，並移除已搬家的 all_projects.json
+      - name: Cache Build Data
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build_cache.json
+            api/
+            data_version.json
+            version.json
+            changelogs.json
+          key: build-cache-${{ github.sha }}
+          restore-keys: |
+            build-cache-
+
+      # ✨ 升級至 v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install pillow rjsmin rcssmin  # 確保安裝壓縮套件
+
+      - name: Generate API and Data
+        run: |
+          python generate_projects.py
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy
+        run: |
+          mkdir -p .gh-pages-temp
+          
+          # ✨ 加上 --exclude='main.js' 與 'style.css'，只發布壓縮過的 .min 版本，極致瘦身！
+          rsync -av --exclude='.git' --exclude='.gh-pages-temp' --exclude='main.js' --exclude='style.css' . .gh-pages-temp/
+          
+          cd .gh-pages-temp
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          rm -f .gitignore
+          rm -f index_local.html
+          
+          git add .
+          git commit -m "Deploy to GitHub Pages"
+          
+          git push --force https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git master:gh-pages
