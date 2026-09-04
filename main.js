@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.7.12",          // 目前系統版本號
+    VERSION: "U1.5.7.13",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -5384,6 +5384,9 @@ window.addEventListener('hashchange', () => {
 document.addEventListener('click', (e) => {
     // ✨ 絕對防護 1：如果點擊的是防雷貼紙，直接退出，絕對不准切換高光！
     if (e.target.closest('.spoiler-text')) return;
+
+    // ✨ 絕對防護 2：如果點擊的是圖片、畫廊、放大鏡、影音或 PDF，直接退出，防止點擊穿透！
+    if (e.target.closest('figure, img, .zoom-btn, .media-container-wrapper, .pdf-container, .code-block-wrapper')) return;
 
     // 找出點擊的對象是不是我們的高光文字
     const xrayTarget = e.target.closest('.md-highlight-text');

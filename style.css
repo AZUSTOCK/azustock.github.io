@@ -27,6 +27,7 @@
     --group-c3: #FF9F1C; --c3-text: #FFEDD5;
     --group-c4: #C77DFF; --c4-text: #F3E8FF;
     --group-c5: #00E5FF; --c5-text: #E0F2FE;
+    --cursor-link: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='transform: rotate(-15deg); filter: drop-shadow(0 0 4px rgba(255, 77, 121, 0.5));'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E") 6 6, pointer;
 }
 
 /* 2. 淺色模式 (Light Mode) - 極淨透亮調色盤 */
@@ -60,7 +61,7 @@
     --group-c3: #cb4b05; --c3-text: #7C2D12;
     --group-c4: #5420af; --c4-text: #4C1D95;
     --group-c5: #006a9f; --c5-text: #082F49;
-}
+    --cursor-link: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23DB3069' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='transform: rotate(-15deg); filter: drop-shadow(0 0 4px rgba(255, 77, 121, 0.5));'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E") 6 6, pointer;} /* 挑好想要的 Hex 色碼（例如 #XXXXXX），把 # 拿掉接在 %23 後面 */
 
 /* ==========================================
    ✨ 全域動畫與圖層變數 (Design Tokens)
@@ -1198,15 +1199,33 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
     transition: color 0.3s ease, text-shadow 0.3s ease; 
 }
 .markdown-body p { margin-bottom: 1rem; }
-.markdown-body a { color: var(--accent-2); text-decoration: none; }
-.markdown-body a:hover { text-decoration: underline; color: var(--accent-hover); }
-/* ✨ 保護 Markdown 裡的實體按鈕不被超連結黃色污染 */
+.markdown-body a { 
+    color: var(--accent-2); 
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-underline-offset: 4px; /* 讓底線離文字遠一點，更有呼吸感 */
+    text-decoration-thickness: 2px;
+    /* 預設給予微弱的透明底線，才不會干擾閱讀 */
+    text-decoration-color: color-mix(in srgb, var(--accent-2) 60%, transparent); 
+    transition: all 0.3s ease; 
+}
+
+.markdown-body a:hover { 
+    color: var(--accent-hover); 
+    text-decoration-style: solid;
+    text-decoration-color: var(--accent-hover); /* 底線顏色變飽和 */
+    /* cursor: var(--cursor-link); */
+}
+
+/* ✨ 保護 Markdown 裡的實體按鈕不被超連結黃色底線污染 */
 .markdown-body a.btn { 
     color: var(--accent) !important; 
-    text-decoration: none; 
+    text-decoration: none !important; 
+    cursor: pointer; /* 按鈕維持原生的手指指標 */
 }
 .markdown-body a.btn:hover { 
     color: var(--card) !important; 
+    text-decoration: none !important;
 }
 
 /* ==========================================
@@ -1688,7 +1707,9 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
    ✨ 區塊型高光透視框 (Block Highlight) 專屬排版
    ========================================== */
 .markdown-body .md-highlight-text.is-block {
-    display: block;       
+    display: block;
+    margin: 0 -1rem; /* ✨ 讓背景與框線左右往外擴張 1rem */
+    padding: 0 1rem; /* ✨ 利用 Padding 把內部文字推回原位，視覺上不偏移 */
 }
 
 .markdown-body .md-highlight-text.is-block .text-content {
@@ -1723,8 +1744,9 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 .markdown-body img.is-loading, .markdown-body img.is-broken { width: 100%; min-height: 200px; max-height: 450px; aspect-ratio: 1 / 1; object-fit: cover; }
 .markdown-body img[alt="center"] { width: 75%; max-width: 600px; }
 .markdown-body img[alt="center"].is-loading, .markdown-body img[alt="center"].is-broken { aspect-ratio: 4 / 3; }
-.markdown-body img[alt="float-right"], .markdown-body figure.float-right { float: right; width: 40%; max-width: 280px; margin: 0.5rem 0 1.5rem 1.5rem; }
-.markdown-body img[alt="float-left"], .markdown-body figure.float-left { float: left; width: 40%; max-width: 280px; margin: 0.5rem 1.5rem 1.5rem 0; }
+/* 替換原本的 float 圖片設定 */
+.markdown-body img[alt="float-right"], .markdown-body figure.float-right { float: right; width: 40%; max-width: 280px; margin: 0.5rem 0 1.5rem 1.5rem; position: relative; z-index: 10; }
+.markdown-body img[alt="float-left"], .markdown-body figure.float-left { float: left; width: 40%; max-width: 280px; margin: 0.5rem 1.5rem 1.5rem 0; position: relative; z-index: 10; }
 .markdown-body img[alt="float-right"].is-loading, .markdown-body img[alt="float-right"].is-broken, .markdown-body img[alt="float-left"].is-loading, .markdown-body img[alt="float-left"].is-broken { min-height: 150px; max-height: 300px; aspect-ratio: 1 / 1; }
 .markdown-body img[alt="full"] { width: 100%; max-width: none; border-radius: 0; }
 .markdown-body img[alt="icon"] { display: inline-block; width: 48px; height: 48px; margin: 0 0.5rem; vertical-align: middle; box-shadow: none; border-radius: 0; }
@@ -2186,7 +2208,7 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
     .index-header-actions {gap: 0.3rem;}
     #modal-top-left {gap: 0.3rem;}
     #modal-top-right {gap: 0.3rem;}
-    .capsule-btn { padding: 0 0.3rem; }
+    .capsule-btn { padding: 0 0.4rem; }
     .toggle-sort-btn { padding: 0 0.3rem; }
     .btt-btn { width: 42px; height: 42px; right: max(1rem, calc(var(--safe-right) + 1rem)); bottom: max(1.5rem, calc(var(--safe-bottom) + 1rem)); }
     body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(var(--safe-bottom) + 80px)); }
