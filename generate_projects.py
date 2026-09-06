@@ -292,15 +292,28 @@ def generate_version_json():
             if not os.path.isdir(folder_path): continue
 
             actual_version = folder
+            skip_tracking = False  # ✨ 預設為追蹤
+
             detail_path = os.path.join(folder_path, 'detail.json')
             if os.path.exists(detail_path):
                 try:
                     with open(detail_path, 'r', encoding='utf-8') as f:
                         detail = json.load(f)
+                        
+                        # ✨ 檢查是否有「不追蹤」參數 (支援中文或英文命名)
+                        if detail.get('no_track', False):
+                            skip_tracking = True
+                            
                         if 'version' in detail:
                             actual_version = detail['version']
                 except Exception:
                     pass
+            
+            # ✨ 如果標記為不追蹤，就跳過，不加入全站版本號的選拔池中
+            if skip_tracking:
+                print(f"  ⏭️ 略過不追蹤版本: {actual_version}")
+                continue
+
             versions_found.append(actual_version)
 
         if not versions_found:

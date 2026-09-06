@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.7.13",          // 目前系統版本號
+    VERSION: "U1.5.8.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -91,29 +91,6 @@ window.STATUS_LIST = [
     ['OC'],
     ['DEV']
 ];
-
-// ==========================================
-// ✨ 從 CSS 動態讀取標籤顏色的魔法引擎 (Single Source of Truth)
-// ==========================================
-window.getStatusColorFromCSS = function(status) {
-    // 建立快取，相同的標籤只會去讀取一次 CSS，效能極佳
-    if (!window._statusColorCache) window._statusColorCache = {};
-    if (window._statusColorCache[status]) return window._statusColorCache[status];
-    
-    // 建立隱藏的測試元素，套用對應的狀態
-    const dummy = document.createElement('span');
-    dummy.setAttribute('data-status', status);
-    dummy.style.display = 'none';
-    document.body.appendChild(dummy);
-    
-    // 從 DOM 提取 CSS 檔案中寫的 --s-color (例如會讀到 "var(--error-color)")
-    const color = getComputedStyle(dummy).getPropertyValue('--s-color').trim();
-    document.body.removeChild(dummy);
-    
-    // 如果 CSS 沒寫，預設給主題高光色
-    window._statusColorCache[status] = color || 'var(--accent)';
-    return window._statusColorCache[status];
-};
 
 // ==========================================
 // ✨ 全域觸覺回饋引擎 (Haptic Feedback Engine) [研議中]
@@ -917,7 +894,7 @@ window.initProgressBar = function(mountEl, scrollEl, type, existingBarId = null)
         if (progress >= 100) {
             bar.classList.add('is-complete');
             bar.classList.remove('is-start');
-        } else if (progress <= 0 || currentScroll <= 0) {
+        } else if (progress <= 0 || currentScroll <= 5) {
             bar.classList.add('is-start');
             bar.classList.remove('is-complete');
         } else {
@@ -3728,6 +3705,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 wrapper.style.margin = '0';
                 container.appendChild(wrapper);
 
+                // ✨ 呼叫中文直書專屬：自動段落縮排處理器
+                window.applyIndentToVerticalWrapper(wrapper);
+
                 // ✨ 直接呼叫引擎，一行搞定所有特效與事件綁定！
                 window.initProgressBar(container, wrapper, 'vertical');
             });
@@ -4330,13 +4310,6 @@ window.scrollToNextCard = function(event) {
     if (toastCount) toastCount.innerText = `(${window.currentCardIndex + 1}/${window.highlightedCards.length})`;
     
     if (window.highlightedCards.length > 0) window.focusAndBumpCard(window.highlightedCards[window.currentCardIndex]);
-};
-
-window.openMarkdownModal = function(markdownText) {
-    modalBody.innerHTML = marked.parse(markdownText);
-    modalOverlay.classList.add('active');
-    window.lockScroll(); // ✨ 替換為防跳動版本
-    document.querySelector('.modal-content').scrollTop = 0;
 };
 
 // ==========================================
@@ -5483,7 +5456,7 @@ window.showPdfActionModal = function(href, title) {
     };
 
     // ✨ 判斷是否為 PWA (Standalone) 模式
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    const isPWA = window.isPWAEnvironment();
     
     // 為了完美的 UX：如果是 PWA，我們直接把藍色主按鈕變成「下載」，並隱藏下方的第二顆按鈕
     const viewBtnText = isPWA ? '檢視 PDF 檔案' : '於瀏覽器中檢視 PDF';
@@ -5519,7 +5492,7 @@ window.showPdfActionModal = function(href, title) {
     overlay.querySelector('#pdf-view-btn').onclick = () => {
         if (isPWA) {
             // ✨ 聽你的！為了原生的 Safari 工具列，我們換回最強的 Blob 大法！
-            window.downloadPdfDirectly(href, title, true);
+            window.triggerSecureDownload(href, title, true);
         } else {
             // 普通瀏覽器直接另開分頁即可
             window.open(href, '_blank');
@@ -5530,18 +5503,13 @@ window.showPdfActionModal = function(href, title) {
     if (!isPWA) {
         overlay.querySelector('#pdf-download-btn').onclick = () => {
             // ✨ 單純下載 PDF，傳入 false
-            window.downloadPdfDirectly(href, title, false);
+            window.triggerSecureDownload(href, title, false);
             closeModal();
         };
     }
 
     overlay.querySelector('#pdf-modal-close').onclick = closeModal;
     overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
-};
-
-// 加上 isNewTab 參數傳遞
-window.downloadPdfDirectly = async function(url, filename, isNewTab = false) {
-    window.triggerSecureDownload(url, filename, isNewTab);
 };
 
 

@@ -1,7 +1,8 @@
 {
-  "version": "U1.5.7.13",
-  "date": "2026-08-29",
+  "version": "U1.6.0",
+  "date": "2026-",
   "status": "WIP",
-  "description": "支援多語言與架構、UI、行為等修正",
-  "hidden": true
+  "description": "UI、行為等修正",
+  "hidden": true,
+  "no_track": true
 }
