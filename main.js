@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.8.4",          // 目前系統版本號
+    VERSION: "U1.5.8.5",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -669,6 +669,75 @@ window.initScrollHints = function(container, hintLeft, hintRight) {
 
     new ResizeObserver(checkScroll).observe(container);
     setTimeout(checkScroll, 100);
+};
+
+// ==========================================
+// ✨ 全域漢堡目錄選單渲染引擎 (TOC Menu Engine)
+// ==========================================
+window.renderTocMenu = function(menuItems, tooltipText) {
+    const tocMount = document.getElementById('toc-mount-point');
+    if (!tocMount) return;
+
+    let tocWrapper = tocMount.querySelector('.toc-wrapper');
+
+    if (menuItems && menuItems.length > 0) {
+        let tocBtn, tocDropdown, tocList;
+
+        if (!tocWrapper) {
+            // NO -> YES: 從無到有，建立並掛上初始透明隱形狀態
+            tocWrapper = document.createElement('div');
+            tocWrapper.className = 'toc-wrapper content-fade-out';
+            
+            tocBtn = document.createElement('div');
+            tocBtn.className = 'toc-toggle-btn';
+            tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
+            
+            tocDropdown = document.createElement('div');
+            tocDropdown.className = 'toc-dropdown';
+            tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
+            
+            tocWrapper.appendChild(tocBtn);
+            tocWrapper.appendChild(tocDropdown);
+            tocMount.appendChild(tocWrapper);
+            
+            requestAnimationFrame(() => { requestAnimationFrame(() => { tocWrapper.classList.remove('content-fade-out'); }); });
+        } else {
+            // YES -> YES: 沿用舊的 DOM，絕對靜止不動！
+            tocBtn = tocWrapper.querySelector('.toc-toggle-btn');
+            tocDropdown = tocWrapper.querySelector('.toc-dropdown');
+            tocWrapper.classList.remove('content-fade-out');
+        }
+
+        tocBtn.setAttribute('data-tooltip', tooltipText);
+        tocList = tocDropdown.querySelector('.toc-list');
+        tocList.innerHTML = ''; // 清空舊選項
+
+        menuItems.forEach(item => {
+            const li = document.createElement('li');
+            li.className = item.className || 'toc-h1';
+            const a = document.createElement('a');
+            a.innerText = item.label;
+            a.href = "javascript:void(0)";
+            a.onclick = () => {
+                window.executeAnchorScroll(item.targetHash, false);
+                tocBtn.classList.remove('open');
+                tocDropdown.classList.remove('active');
+            };
+            li.appendChild(a);
+            tocList.appendChild(li);
+        });
+
+        tocBtn.onclick = () => { tocBtn.classList.toggle('open'); tocDropdown.classList.toggle('active'); };
+        tocBtn.classList.remove('open');
+        tocDropdown.classList.remove('active');
+
+    } else {
+        // YES -> NO: 從有到無，播放離場動畫並移除
+        if (tocWrapper) {
+            tocWrapper.classList.add('content-fade-out');
+            setTimeout(() => { if (tocWrapper && tocWrapper.parentNode) tocWrapper.remove(); }, 300);
+        }
+    }
 };
 
 // ==========================================
@@ -3318,114 +3387,26 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 listContainer.innerHTML = html;
 
                 // ==========================================
-                // ✨ 動態建立群組跳轉漢堡選單 (智慧復用版)
+                // ✨ 動態建立群組跳轉漢堡選單 (導入共用引擎)
                 // ==========================================
-                const tocMount = document.getElementById('toc-mount-point');
-                let tocWrapper = tocMount.querySelector('.toc-wrapper'); // 尋找既有的選單
-
-                let needTOC = false;
-                let validGroups = [];
-                let hasUngrouped = false;
-
+                let menuItems = [];
                 if (proj.groups && Object.keys(proj.groups).length > 0) {
-                    validGroups = Object.entries(proj.groups).filter(([gId, gData]) => {
-                        return finalArray.some(item => item.art.group === gId);
-                    });
-                    hasUngrouped = finalArray.some(item => !item.art.group);
+                    const validGroups = Object.entries(proj.groups).filter(([gId, gData]) => finalArray.some(item => item.art.group === gId));
+                    const hasUngrouped = finalArray.some(item => !item.art.group);
                     
-                    const totalSections = validGroups.length + (hasUngrouped ? 1 : 0);
-                    if (totalSections >= 2) needTOC = true;
-                }
-
-                if (needTOC) {
-                    let tocBtn, tocDropdown, tocList;
-                    
-                    if (!tocWrapper) {
-                        // NO -> YES: 從無到有，先掛上 content-fade-out 透明隱形狀態
-                        tocWrapper = document.createElement('div');
-                        tocWrapper.className = 'toc-wrapper content-fade-out'; 
-
-                        tocBtn = document.createElement('div');
-                        tocBtn.className = 'toc-toggle-btn';
-                        tocBtn.setAttribute('data-tooltip', '系列分群');
-                        tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
-
-                        tocDropdown = document.createElement('div');
-                        tocDropdown.className = 'toc-dropdown';
-                        tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
-
-                        tocWrapper.appendChild(tocBtn);
-                        tocWrapper.appendChild(tocDropdown);
-                        tocMount.appendChild(tocWrapper);
-                        
-                        // ✨ 魔法：在下一幀拔除透明狀態，觸發與 Modal 完全一致的浮現動畫！
-                        requestAnimationFrame(() => {
-                            requestAnimationFrame(() => {
-                                tocWrapper.classList.remove('content-fade-out');
+                    if ((validGroups.length + (hasUngrouped ? 1 : 0)) >= 2) {
+                        validGroups.forEach(([groupId, groupData]) => {
+                            menuItems.push({
+                                label: groupData.title || groupId,
+                                targetHash: `#group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`,
+                                className: 'toc-h1'
                             });
                         });
-                    } else {
-                        // YES -> YES: 沿用舊的 DOM，絕對靜止不動！
-                        tocBtn = tocWrapper.querySelector('.toc-toggle-btn');
-                        tocBtn.setAttribute('data-tooltip', '系列分群'); 
-                        tocDropdown = tocWrapper.querySelector('.toc-dropdown');
-                        tocWrapper.classList.remove('content-fade-out'); // 防呆確保顯示
-                    }
-
-                    tocList = tocDropdown.querySelector('.toc-list');
-                    tocList.innerHTML = '';
-
-                    // 寫入群組項目
-                    validGroups.forEach(([groupId, groupData]) => {
-                        const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
-                        const li = document.createElement('li');
-                        li.className = 'toc-h1';
-                        const a = document.createElement('a');
-                        a.innerText = groupData.title || groupId;
-                        a.href = "javascript:void(0)";
-                        a.onclick = () => {
-                            window.executeAnchorScroll(`#${safeGroupId}`, false);
-                            tocBtn.classList.remove('open');
-                            tocDropdown.classList.remove('active');
-                        };
-                        li.appendChild(a);
-                        tocList.appendChild(li);
-                    });
-
-                    // 寫入「其他文章」項目
-                    if (hasUngrouped) {
-                        const li = document.createElement('li');
-                        li.className = 'toc-h1';
-                        const a = document.createElement('a');
-                        a.innerText = '其他';
-                        a.href = "javascript:void(0)";
-                        a.onclick = () => {
-                            window.executeAnchorScroll(`#group-ungrouped`, false);
-                            tocBtn.classList.remove('open');
-                            tocDropdown.classList.remove('active');
-                        };
-                        li.appendChild(a);
-                        tocList.appendChild(li);
-                    }
-
-                    // 重置開關狀態與事件
-                    tocBtn.onclick = () => { 
-                        tocBtn.classList.toggle('open'); 
-                        tocDropdown.classList.toggle('active'); 
-                    };
-                    tocBtn.classList.remove('open');
-                    tocDropdown.classList.remove('active');
-                    
-                } else {
-                    // YES -> NO: 從有到無，掛上透明狀態觸發離場動畫，然後移除
-                    if (tocWrapper) {
-                        tocWrapper.classList.add('content-fade-out'); 
-                        setTimeout(() => {
-                            if (tocWrapper && tocWrapper.parentNode) tocWrapper.remove();
-                        }, 300); // 配合 Modal 動畫時間
+                        if (hasUngrouped) menuItems.push({ label: '其他', targetHash: '#group-ungrouped', className: 'toc-h1' });
                     }
                 }
-
+                window.renderTocMenu(menuItems, '系列分群');
+                
                 const initJumpToast = () => {
                     const newArticles = Array.from(listContainer.querySelectorAll('.article-li'))
                         .filter(li => li.querySelector('.status-badge[data-status="NEW"]'));
@@ -3876,101 +3857,39 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
-            // ✨ 移除 textSizeHtml，維持文章膠囊的純淨導航功能
+
             topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
-           // 🚨 將原本的 tocMount.innerHTML = ''; 替換掉！
+
             const tocMount = document.getElementById('toc-mount-point');
             let tocWrapper = tocMount.querySelector('.toc-wrapper'); // 尋找既有的選單
+            // ==========================================
+            // ✨ 建立文章內文目錄漢堡選單 (導入共用引擎)
+            // ==========================================
             const headings = modalBody.querySelectorAll('h1, h2, h3'); 
+            let menuItems = [];
             
             if (headings.length > 1) {
-                let tocBtn, tocDropdown, tocList;
-
-                if (!tocWrapper) {
-                    // NO -> YES: 建立並掛上初始透明隱形狀態
-                    tocWrapper = document.createElement('div');
-                    tocWrapper.className = 'toc-wrapper content-fade-out';
-
-                    tocBtn = document.createElement('div');
-                    tocBtn.className = 'toc-toggle-btn';
-                    tocBtn.setAttribute('data-tooltip', '文章目錄');
-                    tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
-
-                    tocDropdown = document.createElement('div');
-                    tocDropdown.className = 'toc-dropdown';
-                    tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
-
-                    tocWrapper.appendChild(tocBtn);
-                    tocWrapper.appendChild(tocDropdown);
-                    tocMount.appendChild(tocWrapper);
-                    
-                    // ✨ 觸發與 Modal 完全一致的浮現動畫！
-                    requestAnimationFrame(() => {
-                        requestAnimationFrame(() => {
-                            tocWrapper.classList.remove('content-fade-out');
-                        });
-                    });
-                } else {
-                    // YES -> YES: 已經存在，絕對靜止不動！
-                    tocBtn = tocWrapper.querySelector('.toc-toggle-btn');
-                    tocBtn.setAttribute('data-tooltip', '文章目錄'); 
-                    tocDropdown = tocWrapper.querySelector('.toc-dropdown');
-                    tocWrapper.classList.remove('content-fade-out'); 
-                }
-
-                tocList = tocDropdown.querySelector('.toc-list');
-                tocList.innerHTML = ''; // 只清空舊的標題清單
-
                 headings.forEach((h, index) => {
-                    if (!h.id) {
-                        const textId = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-');
-                        h.id = textId || `article-heading-${index}`;
-                    }
+                    if (!h.id) h.id = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-') || `article-heading-${index}`;
                     
-                    const li = document.createElement('li');
-                    li.className = `toc-${h.tagName.toLowerCase()}`; 
-                    const a = document.createElement('a');
-                    
+                    let labelText = h.innerText;
                     const rawTitle = h.getAttribute('data-raw-title');
                     if (rawTitle) {
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = decodeURIComponent(rawTitle);
-                        a.innerText = tempDiv.innerText;
-                    } else {
-                        a.innerText = h.innerText;
+                        labelText = tempDiv.innerText;
                     }
                     
-                    a.href = "javascript:void(0)";
-                    a.onclick = () => {
-                        let targetHash = '#' + h.id;
-                        if (h.id.startsWith('md-sys-')) {
-                            const baseId = h.id.replace('md-sys-', '');
-                            if (document.getElementById(baseId)) {
-                                targetHash = '#' + baseId;
-                            }
-                        }
-                        
-                        window.executeAnchorScroll(targetHash, false);
-                        tocBtn.classList.remove('open');
-                        tocDropdown.classList.remove('active');
-                    };
-                    li.appendChild(a);
-                    tocList.appendChild(li);
+                    let targetHash = '#' + h.id;
+                    if (h.id.startsWith('md-sys-')) {
+                        const baseId = h.id.replace('md-sys-', '');
+                        if (document.getElementById(baseId)) targetHash = '#' + baseId;
+                    }
+                    
+                    menuItems.push({ label: labelText, targetHash: targetHash, className: `toc-${h.tagName.toLowerCase()}` });
                 });
-
-                tocBtn.onclick = () => { tocBtn.classList.toggle('open'); tocDropdown.classList.toggle('active'); };
-                tocBtn.classList.remove('open');
-                tocDropdown.classList.remove('active');
-
-            } else {
-                // YES -> NO: 掛上透明狀態觸發離場動畫，然後移除
-                if (tocWrapper) {
-                    tocWrapper.classList.add('content-fade-out');
-                    setTimeout(() => {
-                        if (tocWrapper && tocWrapper.parentNode) tocWrapper.remove();
-                    }, 300);
-                }
             }
+            window.renderTocMenu(menuItems, '文章目錄');
 
             modalBody.querySelectorAll('.gallery').forEach(gallery => {
                 const wrapper = document.createElement('div');
@@ -4231,22 +4150,7 @@ window.centerKotobaTag = function(event) {
         let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
-        document.querySelectorAll('.marquee-content').forEach(m => {
-            if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
-            let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
-            if (currentX > 0) currentX -= contentWidth;
-            
-            m.style.transition = 'none';
-            m.style.transform = `translateX(${currentX}px)`;
-            m.style.animation = 'none';
-            
-            void m.offsetWidth; 
-            
-            const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
-
-            m.style.transition = `transform ${duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
-            m.style.transform = `translateX(${targetX}px)`;
-        });
+        window.scrollMarqueeTo(targetX, contentWidth);
     }
 };
 
@@ -4317,18 +4221,7 @@ window.filterByTag = function(targetTag, event, clickedElement) {
         let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
         if (targetX > 0) targetX -= contentWidth;
         
-        document.querySelectorAll('.marquee-content').forEach(m => {
-            if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
-            let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
-            if (currentX > 0) currentX -= contentWidth;
-            
-            m.style.transition = 'none';
-            m.style.transform = `translateX(${currentX}px)`;
-            m.style.animation = 'none';
-            void m.offsetWidth; 
-            m.style.transition = `transform ${0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7)}s cubic-bezier(0.22, 1, 0.36, 1)`;
-            m.style.transform = `translateX(${targetX}px)`;
-        });
+        window.scrollMarqueeTo(targetX, contentWidth);
     }
 
     document.querySelectorAll(`[data-tag="${targetTag}"]`).forEach(t => t.classList.add('active-tag'));

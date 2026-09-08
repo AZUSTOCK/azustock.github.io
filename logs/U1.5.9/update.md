@@ -2,6 +2,7 @@
 1. extract `<li class="article-li">...</li>` to `generateLi` (function)
 2. extract to `window.triggerSystemUpdate` (function)
 3. extract to `window.getRelativeOffsetTop` (function)
+4. extract to `renderTocMenu` (function)
 
 ## add
 1. `toc-toggle-btn` (Series Groups menu) in project page
