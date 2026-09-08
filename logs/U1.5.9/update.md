@@ -14,10 +14,13 @@
 ## adjust
 1. Jump Toast UI (Fix horizontal jitter & center alignment)
 2. `data-tooltip` UI (Fix line-height & top cut-off issue)
+3. animation for `toc-toggle-btn`
+4. UI
 
 ## fix
 1. unlock article version check (Add pre-check on 403 unlock trigger)
 2. `targetItem` undefined error in `executeAnchorScroll`
+3. UI
 
 ## deprecate
 

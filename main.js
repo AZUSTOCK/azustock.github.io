@@ -3091,7 +3091,6 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
         // ✨ 如果判斷需要動畫，才為頂端目錄列加上 fade-out 效果
         if (animateTopBar) {
             if (topLeft) topLeft.classList.add('content-fade-out');
-            if (tocMount) tocMount.classList.add('content-fade-out');
         }
         
         setTimeout(() => {
@@ -3116,7 +3115,6 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
                 // ✨ 同步判斷移除
                 if (animateTopBar) {
                     if (topLeft) topLeft.classList.remove('content-fade-out');
-                    if (tocMount) tocMount.classList.remove('content-fade-out');
                 }
 
                 setTimeout(() => { modalContainer.style.height = ''; }, 320); 
@@ -3129,7 +3127,6 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
         
         modalBody.classList.remove('content-fade-out');
         if (topLeft) topLeft.classList.remove('content-fade-out');
-        if (tocMount) tocMount.classList.remove('content-fade-out');
         
         // ✨ 彈窗首次開啟時，強制校正視窗座標，防漏底！
         if (window.adjustModalViewports) window.adjustModalViewports();
@@ -3157,7 +3154,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const modalContainer = document.querySelector('.modal-content');
             
             document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
-            document.getElementById('toc-mount-point').innerHTML = ``;
 
             const proj = window.siteProjects.find(p => p.id === projectId);
             if (!proj || !proj.articles) return;
@@ -3321,85 +3317,112 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 }
                 listContainer.innerHTML = html;
 
-                listContainer.innerHTML = html;
-
                 // ==========================================
-                // ✨ 動態建立群組跳轉漢堡選單 (當有效區塊 >= 2 個時觸發)
+                // ✨ 動態建立群組跳轉漢堡選單 (智慧復用版)
                 // ==========================================
                 const tocMount = document.getElementById('toc-mount-point');
-                tocMount.innerHTML = ''; // 確保先清空舊的
+                let tocWrapper = tocMount.querySelector('.toc-wrapper'); // 尋找既有的選單
 
-                // ✨ 修正 1：只要有設定群組 (length > 0)，就進入計算邏輯
+                let needTOC = false;
+                let validGroups = [];
+                let hasUngrouped = false;
+
                 if (proj.groups && Object.keys(proj.groups).length > 0) {
-                    
-                    // 過濾出「裡面真的有文章」的有效群組
-                    const validGroups = Object.entries(proj.groups).filter(([gId, gData]) => {
+                    validGroups = Object.entries(proj.groups).filter(([gId, gData]) => {
                         return finalArray.some(item => item.art.group === gId);
                     });
-                    const hasUngrouped = finalArray.some(item => !item.art.group);
+                    hasUngrouped = finalArray.some(item => !item.art.group);
                     
-                    // ✨ 修正 2：計算畫面上的「總區塊數」
                     const totalSections = validGroups.length + (hasUngrouped ? 1 : 0);
+                    if (totalSections >= 2) needTOC = true;
+                }
 
-                    // ✨ 修正 3：只要總區塊數大於等於 2（例如 2 個群組，或 1 個群組 + 1 個其他），就顯示選單！
-                    if (totalSections >= 2) {
-                        const tocWrapper = document.createElement('div');
-                        tocWrapper.className = 'toc-wrapper';
+                if (needTOC) {
+                    let tocBtn, tocDropdown, tocList;
+                    
+                    if (!tocWrapper) {
+                        // NO -> YES: 從無到有，先掛上 content-fade-out 透明隱形狀態
+                        tocWrapper = document.createElement('div');
+                        tocWrapper.className = 'toc-wrapper content-fade-out'; 
 
-                        // 建立漢堡按鈕
-                        const tocBtn = document.createElement('div');
+                        tocBtn = document.createElement('div');
                         tocBtn.className = 'toc-toggle-btn';
-                        tocBtn.setAttribute('data-tooltip', '系列分群'); // ✨ 加上懸浮提示
+                        tocBtn.setAttribute('data-tooltip', '系列分群');
                         tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
 
-                        // 建立下拉選單
-                        const tocDropdown = document.createElement('div');
+                        tocDropdown = document.createElement('div');
                         tocDropdown.className = 'toc-dropdown';
                         tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
-                        const tocList = tocDropdown.querySelector('.toc-list');
 
-                        // 寫入群組項目
-                        validGroups.forEach(([groupId, groupData]) => {
-                            const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
-                            const li = document.createElement('li');
-                            li.className = 'toc-h1'; // 沿用文章的 H1 樣式
-                            const a = document.createElement('a');
-                            a.innerText = groupData.title || groupId;
-                            a.href = "javascript:void(0)";
-                            a.onclick = () => {
-                                // ✨ 呼叫你強大的平滑追蹤跳轉引擎！
-                                window.executeAnchorScroll(`#${safeGroupId}`, false);
-                                tocBtn.classList.remove('open');
-                                tocDropdown.classList.remove('active');
-                            };
-                            li.appendChild(a);
-                            tocList.appendChild(li);
-                        });
-
-                        // 寫入「其他文章」項目
-                        if (hasUngrouped) {
-                            const li = document.createElement('li');
-                            li.className = 'toc-h1';
-                            const a = document.createElement('a');
-                            a.innerText = '其他';
-                            a.href = "javascript:void(0)";
-                            a.onclick = () => {
-                                window.executeAnchorScroll(`#group-ungrouped`, false);
-                                tocBtn.classList.remove('open');
-                                tocDropdown.classList.remove('active');
-                            };
-                            li.appendChild(a);
-                            tocList.appendChild(li);
-                        }
-
-                        // 綁定開關事件並掛載到畫面上
-                        tocBtn.onclick = () => { 
-                            tocBtn.classList.toggle('open'); 
-                            tocDropdown.classList.toggle('active'); 
-                        };
                         tocWrapper.appendChild(tocBtn);
                         tocWrapper.appendChild(tocDropdown);
                         tocMount.appendChild(tocWrapper);
+                        
+                        // ✨ 魔法：在下一幀拔除透明狀態，觸發與 Modal 完全一致的浮現動畫！
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                tocWrapper.classList.remove('content-fade-out');
+                            });
+                        });
+                    } else {
+                        // YES -> YES: 沿用舊的 DOM，絕對靜止不動！
+                        tocBtn = tocWrapper.querySelector('.toc-toggle-btn');
+                        tocBtn.setAttribute('data-tooltip', '系列分群'); 
+                        tocDropdown = tocWrapper.querySelector('.toc-dropdown');
+                        tocWrapper.classList.remove('content-fade-out'); // 防呆確保顯示
+                    }
+
+                    tocList = tocDropdown.querySelector('.toc-list');
+                    tocList.innerHTML = '';
+
+                    // 寫入群組項目
+                    validGroups.forEach(([groupId, groupData]) => {
+                        const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
+                        const li = document.createElement('li');
+                        li.className = 'toc-h1';
+                        const a = document.createElement('a');
+                        a.innerText = groupData.title || groupId;
+                        a.href = "javascript:void(0)";
+                        a.onclick = () => {
+                            window.executeAnchorScroll(`#${safeGroupId}`, false);
+                            tocBtn.classList.remove('open');
+                            tocDropdown.classList.remove('active');
+                        };
+                        li.appendChild(a);
+                        tocList.appendChild(li);
+                    });
+
+                    // 寫入「其他文章」項目
+                    if (hasUngrouped) {
+                        const li = document.createElement('li');
+                        li.className = 'toc-h1';
+                        const a = document.createElement('a');
+                        a.innerText = '其他';
+                        a.href = "javascript:void(0)";
+                        a.onclick = () => {
+                            window.executeAnchorScroll(`#group-ungrouped`, false);
+                            tocBtn.classList.remove('open');
+                            tocDropdown.classList.remove('active');
+                        };
+                        li.appendChild(a);
+                        tocList.appendChild(li);
+                    }
+
+                    // 重置開關狀態與事件
+                    tocBtn.onclick = () => { 
+                        tocBtn.classList.toggle('open'); 
+                        tocDropdown.classList.toggle('active'); 
+                    };
+                    tocBtn.classList.remove('open');
+                    tocDropdown.classList.remove('active');
+                    
+                } else {
+                    // YES -> NO: 從有到無，掛上透明狀態觸發離場動畫，然後移除
+                    if (tocWrapper) {
+                        tocWrapper.classList.add('content-fade-out'); 
+                        setTimeout(() => {
+                            if (tocWrapper && tocWrapper.parentNode) tocWrapper.remove();
+                        }, 300); // 配合 Modal 動畫時間
                     }
                 }
 
@@ -3855,22 +3878,48 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
             // ✨ 移除 textSizeHtml，維持文章膠囊的純淨導航功能
             topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
+           // 🚨 將原本的 tocMount.innerHTML = ''; 替換掉！
             const tocMount = document.getElementById('toc-mount-point');
-            tocMount.innerHTML = ''; 
+            let tocWrapper = tocMount.querySelector('.toc-wrapper'); // 尋找既有的選單
             const headings = modalBody.querySelectorAll('h1, h2, h3'); 
+            
             if (headings.length > 1) {
-                const tocWrapper = document.createElement('div');
-                tocWrapper.className = 'toc-wrapper';
+                let tocBtn, tocDropdown, tocList;
 
-                const tocBtn = document.createElement('div');
-                tocBtn.className = 'toc-toggle-btn';
-                tocBtn.setAttribute('data-tooltip', '文章目錄'); // ✨ 幫文章目錄補上懸浮提示
-                tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
+                if (!tocWrapper) {
+                    // NO -> YES: 建立並掛上初始透明隱形狀態
+                    tocWrapper = document.createElement('div');
+                    tocWrapper.className = 'toc-wrapper content-fade-out';
 
-                const tocDropdown = document.createElement('div');
-                tocDropdown.className = 'toc-dropdown';
-                tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
-                const tocList = tocDropdown.querySelector('.toc-list');
+                    tocBtn = document.createElement('div');
+                    tocBtn.className = 'toc-toggle-btn';
+                    tocBtn.setAttribute('data-tooltip', '文章目錄');
+                    tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
+
+                    tocDropdown = document.createElement('div');
+                    tocDropdown.className = 'toc-dropdown';
+                    tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
+
+                    tocWrapper.appendChild(tocBtn);
+                    tocWrapper.appendChild(tocDropdown);
+                    tocMount.appendChild(tocWrapper);
+                    
+                    // ✨ 觸發與 Modal 完全一致的浮現動畫！
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            tocWrapper.classList.remove('content-fade-out');
+                        });
+                    });
+                } else {
+                    // YES -> YES: 已經存在，絕對靜止不動！
+                    tocBtn = tocWrapper.querySelector('.toc-toggle-btn');
+                    tocBtn.setAttribute('data-tooltip', '文章目錄'); 
+                    tocDropdown = tocWrapper.querySelector('.toc-dropdown');
+                    tocWrapper.classList.remove('content-fade-out'); 
+                }
+
+                tocList = tocDropdown.querySelector('.toc-list');
+                tocList.innerHTML = ''; // 只清空舊的標題清單
 
                 headings.forEach((h, index) => {
                     if (!h.id) {
@@ -3882,10 +3931,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     li.className = `toc-${h.tagName.toLowerCase()}`; 
                     const a = document.createElement('a');
                     
-                    // ✨ 優先讀取我們剛才存在 data-raw-title 裡「已經剔除自訂 ID」的乾淨標題
                     const rawTitle = h.getAttribute('data-raw-title');
                     if (rawTitle) {
-                        // 因為剛剛 encode 過，這裡要 decode 回來，然後再把它當作 HTML 解析一次以支援內部標籤
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = decodeURIComponent(rawTitle);
                         a.innerText = tempDiv.innerText;
@@ -3895,12 +3942,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     
                     a.href = "javascript:void(0)";
                     a.onclick = () => {
-                        // ✨ 智慧判斷：如果標題剛好被外層 <div id="自訂ID"> 包覆，優先跳轉到該 div
-                        // 這樣才能確保 float 圖片或自訂的外圍排版不會被導覽列切掉！
                         let targetHash = '#' + h.id;
                         if (h.id.startsWith('md-sys-')) {
                             const baseId = h.id.replace('md-sys-', '');
-                            // 檢查畫面上是否存在這個同名的外層 div
                             if (document.getElementById(baseId)) {
                                 targetHash = '#' + baseId;
                             }
@@ -3915,9 +3959,17 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 });
 
                 tocBtn.onclick = () => { tocBtn.classList.toggle('open'); tocDropdown.classList.toggle('active'); };
-                tocWrapper.appendChild(tocBtn);
-                tocWrapper.appendChild(tocDropdown);
-                tocMount.appendChild(tocWrapper);
+                tocBtn.classList.remove('open');
+                tocDropdown.classList.remove('active');
+
+            } else {
+                // YES -> NO: 掛上透明狀態觸發離場動畫，然後移除
+                if (tocWrapper) {
+                    tocWrapper.classList.add('content-fade-out');
+                    setTimeout(() => {
+                        if (tocWrapper && tocWrapper.parentNode) tocWrapper.remove();
+                    }, 300);
+                }
             }
 
             modalBody.querySelectorAll('.gallery').forEach(gallery => {
@@ -5063,7 +5115,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                     <button class="modal-back-btn" onclick="window.renderChangelogIndex()">
                         ${GLOBAL_SVGS.arrowLeft} 返回清單
                     </button>
-                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                    <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
                         <span class="changelog-version">${logData ? logData.version : ''}</span>
                         ${badgeHTML}
                         <span class="changelog-date">${logData ? logData.date : ''}</span>
