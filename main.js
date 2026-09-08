@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.8.3",          // 目前系統版本號
+    VERSION: "U1.5.8.4",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -323,8 +323,8 @@ window.handleCopy = function(element, shareUrl) {
             element.innerHTML = checkSvg;
             if (originalTooltip) element.setAttribute('data-tooltip', '已複製！');
         } else {
-            // 加上 div flex 確保打勾跟文字完美置中對齊
-            element.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; gap: 4px;">${checkSvg} <span>已複製</span></div>`;
+            // ✨ 加上 btn-text-hideable 確保手機版不會彈出這段文字
+            element.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; gap: 4px;">${checkSvg} <span class="btn-text-hideable">已複製</span></div>`;
         }
         
         setTimeout(() => {
@@ -611,6 +611,32 @@ window.getSystemErrorHtml = function(title, msg) {
         <h2 style="margin:0; color:var(--error-color); font-size:1.5rem;">${title}</h2>
         <p class="sys-error-desc">${msg}</p>
     </div>`;
+};
+
+
+
+window.triggerSystemUpdate = function(targetVersion) {
+    closeModal();
+    sessionStorage.setItem('sys_reboot_count', '1');
+    sessionStorage.setItem('sys_is_rebooting', 'true');
+    sessionStorage.setItem('sys_expected_version', targetVersion);
+    showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, targetVersion, 'UPDATING', true);
+    
+    setTimeout(() => {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set('v', new Date().getTime());
+        window.location.replace(newUrl.toString());
+    }, 1200);
+};
+
+window.getRelativeOffsetTop = function(element, container) {
+    let itemTop = element.offsetTop;
+    let currentEl = element.offsetParent;
+    while(currentEl && currentEl !== container) {
+        itemTop += currentEl.offsetTop;
+        currentEl = currentEl.offsetParent;
+    }
+    return itemTop;
 };
 
 
@@ -2401,9 +2427,13 @@ async function loadProjects() {
         // 1. 處理「一般狀態」的過期 (例如 NEW, UPDATED 超過期限就消失)
         const evaluateStatus = (val) => {
             if (val === true || String(val).toLowerCase() === 'true') return true; 
-            if (typeof val === 'string' && /^\d{4}[-/]\d{2}[-/]\d{2}$/.test(val)) {
-                const tagDate = new Date(val.replace(/-/g, '/')).getTime();
-                return !isNaN(tagDate) && (nowMs - tagDate <= expireMs);
+            if (typeof val === 'string') {
+                const cleanVal = val.trim(); // ✨ 容錯：自動消除前後空白
+                // ✨ 容錯：支援單數月份與日期 (\d{1,2})
+                if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(cleanVal)) {
+                    const tagDate = new Date(cleanVal.replace(/-/g, '/')).getTime();
+                    return !isNaN(tagDate) && (nowMs - tagDate <= expireMs);
+                }
             }
             return !!val; 
         };
@@ -2411,21 +2441,28 @@ async function loadProjects() {
         // ✨ 1.5 處理「機密隱藏」的解封 (例如 HIDDEN，時間還沒到就隱藏，時間到了就公開)
         const evaluateHidden = (val) => {
             if (val === true || String(val).toLowerCase() === 'true') return true; 
-            if (typeof val === 'string' && /^\d{4}[-/]\d{2}[-/]\d{2}$/.test(val)) {
-                const unsealDate = new Date(val.replace(/-/g, '/')).getTime();
-                // 只要現在時間「小於」解封日，就保持隱藏 (true)
-                // 到了解封日當天或之後，就變成公開 (false)
-                return !isNaN(unsealDate) && (nowMs < unsealDate);
+            if (typeof val === 'string') {
+                const cleanVal = val.trim(); // ✨ 容錯：自動消除前後空白
+                if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(cleanVal)) {
+                    const unsealDate = new Date(cleanVal.replace(/-/g, '/')).getTime();
+                    // 只要現在時間「小於」解封日，就保持隱藏 (true)
+                    // 到了解封日當天或之後，就變成公開 (false)
+                    return !isNaN(unsealDate) && (nowMs < unsealDate);
+                }
             }
             return !!val; 
         };
 
-        // 2. 處理「標籤陣列」的過期 (例如 "tags": ["NEW:2026-08-14"])
+        // 2. 處理「標籤陣列」的過期 (例如 "tags": ["NEW: 2026-09-08"])
         const parseAndFilterTags = (tags) => {
-            if (!tags) return [];
+            if (!tags || !Array.isArray(tags)) return [];
             let validTags = [];
             tags.forEach(tag => {
-                const match = tag.match(/^(NEW|UPDATED|LATEST|FEATURE):(\d{4}[-/]\d{2}[-/]\d{2})$/i);
+                const strTag = String(tag).trim(); // ✨ 容錯：強制轉字串並消除空白
+                
+                // ✨ 容錯升級：允許冒號後方有空格 (\s*)，並支援單數月份與日期 (\d{1,2})
+                const match = strTag.match(/^(NEW|UPDATED|LATEST|FEATURE):\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})$/i);
+                
                 if (match) {
                     const baseTag = match[1].toUpperCase();
                     const tagDate = new Date(match[2].replace(/-/g, '/')).getTime();
@@ -2433,7 +2470,7 @@ async function loadProjects() {
                         validTags.push(baseTag);
                     }
                 } else {
-                    validTags.push(tag); 
+                    validTags.push(strTag); 
                 }
             });
             return validTags;
@@ -3108,20 +3145,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
     // ✨ 新增：版本相容性防護網 (專案層級)
     if (proj.min_sys_version && window.compareVersions(CONFIG.VERSION, proj.min_sys_version) < 0) {
-        closeModal(); // 確保關閉舊彈窗
-        // 寫入更新標記，利用現有的更新流程
-        sessionStorage.setItem('sys_reboot_count', '1');
-        sessionStorage.setItem('sys_is_rebooting', 'true');
-        sessionStorage.setItem('sys_expected_version', proj.min_sys_version);
-        // ✨ 顯示極簡版的更新終端機文字
-        showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, proj.min_sys_version, 'UPDATING', true);
-        
-        setTimeout(() => {
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('v', new Date().getTime());
-            window.location.replace(newUrl.toString());
-        }, 1200);
-        return; // 中斷後續執行！
+        window.triggerSystemUpdate(proj.min_sys_version);
+        return;
     }
 
     window.isRendering = false; 
@@ -3165,12 +3190,17 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     <div class="index-header-actions">
                         <!-- ✨ 使用 visibleCount 替換掉原本的 proj.articles.length -->
                         <span class="article-count-badge">共 ${visibleCount} 篇</span>
-                        <button id="toggle-sort-btn" class="share-link-btn sm" style="margin: 0;">
-                                <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
-                                <span id="sort-btn-text""></span>
-                            </button>
-                        <button class="share-link-btn icon-only-copy" id="index-share-btn" data-tooltip="複製連結" style="min-width: 34px; width: 34px; height: 30px; padding: 0; margin: 0; justify-content: center;">
+                        
+                        <!-- ✨ 拔除 data-tooltip -->
+                        <button id="toggle-sort-btn" class="share-link-btn responsive-share-btn" style="margin: 0;">
+                            <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
+                            <span id="sort-btn-text" class="btn-text-hideable"></span>
+                        </button>
+                        
+                        <!-- ✨ 拔除 data-tooltip -->
+                        <button class="share-link-btn responsive-share-btn" id="index-share-btn" style="margin: 0;">
                             ${GLOBAL_SVGS.link}
+                            <span class="btn-text-hideable">複製連結</span>
                         </button>
                     </div>
                 </div>
@@ -3194,29 +3224,24 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             const renderList = () => {
                 const finalArray = window.getArticleSequence(projectId);
-                const themePalette = ['var(--group-c1)', 'var(--group-c2)', 'var(--group-c3)', 'var(--group-c4)', 'var(--group-c5)'];
 
-                const generateLi = (art, idx, isHighlightGroup, customColor) => {
+                const generateLi = (art, idx, isHighlightGroup, themeClass = '', customStyle = '') => {
                     let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
                     let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
                     let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                     
-                    // 替換清單沒有圖片時的佔位符
                     let baseIconHtml = art.cover_image 
                         ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
                         : `<div class="article-item-fallback" style="color: var(--muted);">${GLOBAL_SVGS.docIconLg}</div>`;
                     
                     let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                    // ✨ 新增：機密小圖釘 HTML
                     let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
                     let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
-                    let colorStyle = customColor ? ` style="--tab-color: ${customColor};"` : '';
-                    
-                    // ✨ 新增：判斷是否為隱藏文章
                     let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
 
+                    // ✨ 將 themeClass 也整合進 classList 裡
                     return `
-                        <li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}${hiddenClass}"${colorStyle}>
+                        <li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}${hiddenClass}${themeClass}"${customStyle}>
                             <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
                                 ${iconHtml}
                                 <div class="article-item-content">
@@ -3257,9 +3282,11 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                         const topMargin = isFirstGroup ? '0rem' : '1.8rem';
 
-                        // Apply themeClass to the title, or customStyle if it's a hardcoded hex
+                        // ✨ 加上專屬 ID 供漢堡選單跳轉定位
+                        const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
+                        
                         html += `
-                            <div class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
+                            <div id="${safeGroupId}" class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
                                 <div class="group-header-title${themeClass}"${customStyle}>${groupData.title || groupId}</div>
                                 ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
                             </div>
@@ -3267,36 +3294,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         `;
                         
                         groupArticles.forEach(({art, idx}) => { 
-                            let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
-                            let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
-                            let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
-                            
-                            let baseIconHtml = art.cover_image 
-                                ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` 
-                                : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
-                            
-                            let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                            let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
-                            let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
-                            let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
-                            
-                            // ✨ The Magic: Apply themeClass directly to the <li>
-                            let classList = `article-li ${groupData.highlight ? 'is-highlight' : 'is-normal'}${hiddenClass}${themeClass}`;
-
-                            html += `
-                                <li id="article-item-${idx}" class="${classList.trim()}"${customStyle}>
-                                    <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
-                                        ${iconHtml}
-                                        <div class="article-item-content">
-                                            <div class="article-item-title-row">
-                                                <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
-                                                ${descHtml}
-                                            </div>
-                                            ${dateHtml}
-                                        </div>
-                                    </a>
-                                </li>
-                            `;
+                            html += generateLi(art, idx, groupData.highlight, themeClass, customStyle);
                         });
                         html += `</ul>`;
                         
@@ -3305,67 +3303,105 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     const ungrouped = finalArray.filter(item => !item.art.group);
                     if (ungrouped.length > 0) {
                         const topMargin = isFirstGroup ? '0rem' : '1.5rem';
+                        // ✨ 未分群區塊也加上 ID
+                        html += `<ul id="group-ungrouped" class="article-list-ul" style="margin-top:${topMargin};">`;
                         html += `<ul class="article-list-ul" style="margin-top:${topMargin};">`;
                         
                         ungrouped.forEach(({art, idx}) => { 
-                             // Inline generic li generation for ungrouped
-                             let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
-                             let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
-                             let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
-                             let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
-                             let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                             let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
-                             let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
-                             let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
- 
-                             html += `
-                                 <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
-                                     <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
-                                         ${iconHtml}
-                                         <div class="article-item-content">
-                                             <div class="article-item-title-row">
-                                                 <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
-                                                 ${descHtml}
-                                             </div>
-                                             ${dateHtml}
-                                         </div>
-                                     </a>
-                                 </li>
-                             `;
+                            html += generateLi(art, idx, false);
                         });
                         html += `</ul>`;
                     }
                 } else {
                     html += `<ul class="article-list-ul" style="margin-top:0rem;">`;
                     finalArray.forEach(({art, idx}) => { 
-                         // Generic li for projects with no groups
-                         let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
-                         let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
-                         let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
-                         let baseIconHtml = art.cover_image ? `<img src="${art.cover_image}" alt="cover" class="article-item-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : `<div class="article-item-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
-                         let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                         let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
-                         let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
-                         let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
-
-                         html += `
-                             <li id="article-item-${idx}" class="article-li is-normal${hiddenClass}">
-                                 <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
-                                     ${iconHtml}
-                                     <div class="article-item-content">
-                                         <div class="article-item-title-row">
-                                             <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
-                                             ${descHtml}
-                                         </div>
-                                         ${dateHtml}
-                                     </div>
-                                 </a>
-                             </li>
-                         `;
+                        html += generateLi(art, idx, false);
                     });
                     html += `</ul>`;
                 }
                 listContainer.innerHTML = html;
+
+                listContainer.innerHTML = html;
+
+                // ==========================================
+                // ✨ 動態建立群組跳轉漢堡選單 (當有效區塊 >= 2 個時觸發)
+                // ==========================================
+                const tocMount = document.getElementById('toc-mount-point');
+                tocMount.innerHTML = ''; // 確保先清空舊的
+
+                // ✨ 修正 1：只要有設定群組 (length > 0)，就進入計算邏輯
+                if (proj.groups && Object.keys(proj.groups).length > 0) {
+                    
+                    // 過濾出「裡面真的有文章」的有效群組
+                    const validGroups = Object.entries(proj.groups).filter(([gId, gData]) => {
+                        return finalArray.some(item => item.art.group === gId);
+                    });
+                    const hasUngrouped = finalArray.some(item => !item.art.group);
+                    
+                    // ✨ 修正 2：計算畫面上的「總區塊數」
+                    const totalSections = validGroups.length + (hasUngrouped ? 1 : 0);
+
+                    // ✨ 修正 3：只要總區塊數大於等於 2（例如 2 個群組，或 1 個群組 + 1 個其他），就顯示選單！
+                    if (totalSections >= 2) {
+                        const tocWrapper = document.createElement('div');
+                        tocWrapper.className = 'toc-wrapper';
+
+                        // 建立漢堡按鈕
+                        const tocBtn = document.createElement('div');
+                        tocBtn.className = 'toc-toggle-btn';
+                        tocBtn.setAttribute('data-tooltip', '系列分群'); // ✨ 加上懸浮提示
+                        tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
+
+                        // 建立下拉選單
+                        const tocDropdown = document.createElement('div');
+                        tocDropdown.className = 'toc-dropdown';
+                        tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
+                        const tocList = tocDropdown.querySelector('.toc-list');
+
+                        // 寫入群組項目
+                        validGroups.forEach(([groupId, groupData]) => {
+                            const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
+                            const li = document.createElement('li');
+                            li.className = 'toc-h1'; // 沿用文章的 H1 樣式
+                            const a = document.createElement('a');
+                            a.innerText = groupData.title || groupId;
+                            a.href = "javascript:void(0)";
+                            a.onclick = () => {
+                                // ✨ 呼叫你強大的平滑追蹤跳轉引擎！
+                                window.executeAnchorScroll(`#${safeGroupId}`, false);
+                                tocBtn.classList.remove('open');
+                                tocDropdown.classList.remove('active');
+                            };
+                            li.appendChild(a);
+                            tocList.appendChild(li);
+                        });
+
+                        // 寫入「其他文章」項目
+                        if (hasUngrouped) {
+                            const li = document.createElement('li');
+                            li.className = 'toc-h1';
+                            const a = document.createElement('a');
+                            a.innerText = '其他';
+                            a.href = "javascript:void(0)";
+                            a.onclick = () => {
+                                window.executeAnchorScroll(`#group-ungrouped`, false);
+                                tocBtn.classList.remove('open');
+                                tocDropdown.classList.remove('active');
+                            };
+                            li.appendChild(a);
+                            tocList.appendChild(li);
+                        }
+
+                        // 綁定開關事件並掛載到畫面上
+                        tocBtn.onclick = () => { 
+                            tocBtn.classList.toggle('open'); 
+                            tocDropdown.classList.toggle('active'); 
+                        };
+                        tocWrapper.appendChild(tocBtn);
+                        tocWrapper.appendChild(tocDropdown);
+                        tocMount.appendChild(tocWrapper);
+                    }
+                }
 
                 const initJumpToast = () => {
                     const newArticles = Array.from(listContainer.querySelectorAll('.article-li'))
@@ -3517,13 +3553,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             const topBarHeight = topBar ? topBar.offsetHeight : 80;
                             
                             // ✨ 2. 捨棄受動畫縮放影響的 getBoundingClientRect，改用絕對物理座標 offsetTop
-                            let itemTop = targetItem.offsetTop;
-                            let currentEl = targetItem.offsetParent;
-                            // 遍歷往上加總，直到抵達 modalContainer，取得最真實的相對高度
-                            while(currentEl && currentEl !== modalContainer) {
-                                itemTop += currentEl.offsetTop;
-                                currentEl = currentEl.offsetParent;
-                            }
+                            let itemTop = window.getRelativeOffsetTop(targetItem, modalContainer);
                             const itemBottom = itemTop + targetItem.offsetHeight;
 
                             // ✨ 3. 計算容器的安全可視範圍 (相對座標)
@@ -3572,21 +3602,17 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     const proj = window.siteProjects.find(p => p.id === projectId);
     const article = proj.articles[articleIndex];
 
-    // ✨ 新增：版本相容性防護網 (文章層級)
-    if (article && article.min_sys_version && window.compareVersions(CONFIG.VERSION, article.min_sys_version) < 0) {
-        closeModal();
-        sessionStorage.setItem('sys_reboot_count', '1');
-        sessionStorage.setItem('sys_is_rebooting', 'true');
-        sessionStorage.setItem('sys_expected_version', article.min_sys_version);
-        // ✨ 顯示極簡版的更新終端機文字
-        showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, article.min_sys_version, 'UPDATING', true);
-        
-        setTimeout(() => {
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('v', new Date().getTime());
-            window.location.replace(newUrl.toString());
-        }, 1200);
-        return; // 中斷後續執行！
+    // ✨ 新增：版本相容性防護網 (文章層級，同時比對專案與文章的要求，取較高者)[cite: 14]
+    let targetVersion = proj.min_sys_version || null;
+    if (article && article.min_sys_version) {
+        if (!targetVersion || window.compareVersions(targetVersion, article.min_sys_version) < 0) {
+            targetVersion = article.min_sys_version;
+        }
+    }
+
+    if (targetVersion && window.compareVersions(CONFIG.VERSION, targetVersion) < 0) {
+        window.triggerSystemUpdate(targetVersion);
+        return;
     }
 
     const jumpToast = document.getElementById('new-jump-toast');
@@ -3813,9 +3839,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 window.history.replaceState({ path: spaUrl }, '', spaUrl);
                 const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/${articleSlug}/index.html`;
 
+                // ✨ 替換這兩行，將文章內的複製按鈕升級為無氣泡的響應式
                 const shareBtn = document.createElement('button');
-                shareBtn.className = 'share-link-btn';
-                shareBtn.innerHTML = `${GLOBAL_SVGS.link} <span>複製連結</span>`;
+                shareBtn.className = 'share-link-btn responsive-share-btn';
+                shareBtn.innerHTML = `${GLOBAL_SVGS.link} <span class="btn-text-hideable">複製連結</span>`;
                 shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
 
                 rightGroup.appendChild(shareBtn);
@@ -3837,6 +3864,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
                 const tocBtn = document.createElement('div');
                 tocBtn.className = 'toc-toggle-btn';
+                tocBtn.setAttribute('data-tooltip', '文章目錄'); // ✨ 幫文章目錄補上懸浮提示
                 tocBtn.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
 
                 const tocDropdown = document.createElement('div');
@@ -4714,15 +4742,52 @@ function show404Modal(title, message) {
 
         // 點擊執行解鎖與無縫轉場
         trigger.addEventListener('click', () => {
-            document.body.classList.add('system-override-active');
-            
-            // ✨ 呼叫全域重刷引擎，確保退回首頁時，卡片數字與捲軸提示都已完美更新！
-            window.refreshUIAfterOverrideToggle();
-            
             const urlParams = new URLSearchParams(window.location.search);
             const pParam = urlParams.get('p');
             const aParam = urlParams.get('a');
             const hashParam = window.location.hash || null;
+            
+            // ✨ 新增：在正式解封前，預先檢查目標專案與文章的版本需求
+            if (pParam) {
+                const cleanProjectId = pParam.replace(/^\d+_/, '');
+                const project = window.siteProjects.find(proj => proj.id === cleanProjectId);
+                if (project) {
+                    let targetVersion = project.min_sys_version || null;
+                    
+                    // 如果有指定文章，進一步比對文章的版本要求，取兩者中較高者
+                    if (aParam !== null && aParam !== undefined) {
+                        let aIndex = project.articles.findIndex(art => art.id === aParam);
+                        if (aIndex === -1 && !isNaN(parseInt(aParam))) aIndex = parseInt(aParam, 10);
+                        if (aIndex !== -1 && project.articles[aIndex].min_sys_version) {
+                            if (!targetVersion || window.compareVersions(targetVersion, project.articles[aIndex].min_sys_version) < 0) {
+                                targetVersion = project.articles[aIndex].min_sys_version;
+                            }
+                        }
+                    }
+
+                    // 如果系統版本不足，攔截解封動作，直接觸發更新引擎！
+                    if (targetVersion && window.compareVersions(CONFIG.VERSION, targetVersion) < 0) {
+                        closeModal(); // 關閉 403 畫面
+                        sessionStorage.setItem('sys_reboot_count', '1');
+                        sessionStorage.setItem('sys_is_rebooting', 'true');
+                        sessionStorage.setItem('sys_expected_version', targetVersion);
+                        
+                        showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, targetVersion, 'UPDATING', true);
+                        
+                        setTimeout(() => {
+                            const newUrl = new URL(window.location.href);
+                            newUrl.searchParams.set('v', new Date().getTime());
+                            window.location.replace(newUrl.toString());
+                        }, 1200);
+                        return; // ⛔ 中斷後續解封執行
+                    }
+                }
+            }
+
+            document.body.classList.add('system-override-active');
+            
+            // ✨ 呼叫全域重刷引擎，確保退回首頁時，卡片數字與捲軸提示都已完美更新！
+            window.refreshUIAfterOverrideToggle();
             
             if (pParam) {
                 window.handleAppRouting(pParam, aParam, hashParam);
@@ -5262,13 +5327,7 @@ window.executeAnchorScroll = function(hash, forceInstantFirst = false, disableTr
         const topBarHeight = topBar ? topBar.offsetHeight : 80;
         
         // ✨ 捨棄受動畫縮放影響的 getBoundingClientRect，改用絕對物理座標 offsetTop
-        let itemTop = targetEl.offsetTop;
-        let currentEl = targetEl.offsetParent;
-        // 遍歷往上加總，直到抵達 modalContainer，取得最真實的相對高度
-        while(currentEl && currentEl !== modalContainer) {
-            itemTop += currentEl.offsetTop;
-            currentEl = currentEl.offsetParent;
-        }
+        let itemTop = window.getRelativeOffsetTop(targetEl, modalContainer);
         
         const targetScrollTop = itemTop - topBarHeight - 7; 
         
