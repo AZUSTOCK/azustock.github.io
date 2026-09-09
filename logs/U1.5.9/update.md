@@ -23,11 +23,5 @@
 2. `targetItem` undefined error in `executeAnchorScroll`
 3. UI
 
-## deprecate
-
 ## remove
 1. `data-tooltip` in `toggle-sort-btn`, `share-link-btn`
-
-## pending
-
-## notice
