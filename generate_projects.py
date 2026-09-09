@@ -287,11 +287,14 @@ def generate_version_json():
             return [int(x) for x in re.findall(r'\d+', v_str)]
             
         versions_found = []
-        for folder in os.listdir(base_dir):
-            folder_path = os.path.join(base_dir, folder)
-            if not os.path.isdir(folder_path): continue
+        # ✨ 升級為深度掃描，無視資料夾層級結構
+        for root, dirs, files in os.walk(base_dir):
+            if 'detail.json' not in files:
+                continue
 
-            actual_version = folder
+            folder_path = root
+            version_folder = os.path.basename(root) # 自動抓取最後一層資料夾名稱，例如 U1.5.8
+            actual_version = version_folder
             skip_tracking = False  # ✨ 預設為追蹤
 
             detail_path = os.path.join(folder_path, 'detail.json')
@@ -384,10 +387,17 @@ def generate_changelogs_json():
     def parse_version(v_str):
         return [int(x) for x in re.findall(r'\d+', v_str)]
 
-    for version_folder in sorted(os.listdir(base_dir), key=parse_version, reverse=True):
-        folder_path = os.path.join(base_dir, version_folder)
-        if not os.path.isdir(folder_path): continue
+    # ✨ 升級為深度掃描，搜集所有包含 detail.json 的有效日誌路徑
+    log_folders = []
+    for root, dirs, files in os.walk(base_dir):
+        if 'detail.json' in files:
+            log_folders.append(root)
 
+    # ✨ 依照資料夾名稱 (basename) 進行版本號反向排序
+    log_folders.sort(key=lambda x: parse_version(os.path.basename(x)), reverse=True)
+
+    for folder_path in log_folders:
+        version_folder = os.path.basename(folder_path)
         version = version_folder
         date = "2026-01-01"
         status = "UPDATE"
