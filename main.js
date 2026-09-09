@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.9",          // 目前系統版本號
+    VERSION: "U1.5.9.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -205,6 +205,136 @@ window.lockScroll = function() {
 
 window.unlockScroll = function() {
     document.body.style.overflow = '';
+};
+
+// ==========================================
+// ✨ PWA 專屬全域下拉重新整理引擎 (Pull-to-Refresh Engine)
+// ==========================================
+window.initPWAPullToRefresh = function() {
+    // 🛡️ 核心防護：只有在 PWA (Standalone) 模式下才啟用，不干擾一般瀏覽器的原生下拉
+    if (!window.isPWAEnvironment()) return;
+
+    const indicator = document.createElement('div');
+    indicator.id = 'pwa-refresh-indicator';
+    indicator.className = 'pwa-refresh-indicator';
+    indicator.innerHTML = GLOBAL_SVGS.mermaidReload; // 借用系統的重整 SVG
+    document.body.appendChild(indicator);
+
+    let startY = 0;
+    let isPulling = false;
+    let canRefresh = false;
+    const threshold = 75; // 觸發重整的門檻 (px)
+
+    // 智慧判斷當下正在滾動的容器是首頁還是 Modal？
+    const getScrollContainer = () => {
+        const modalOverlay = document.getElementById('md-modal');
+        if (modalOverlay && modalOverlay.classList.contains('active')) {
+            return document.querySelector('.modal-content');
+        }
+        return document.documentElement; // 首頁
+    };
+
+    document.addEventListener('touchstart', (e) => {
+        const container = getScrollContainer();
+        const scrollTop = container ? (container.scrollTop || window.scrollY || 0) : 0;
+        
+        // 只有在畫面「最頂端」時才允許啟動下拉
+        if (scrollTop <= 0) {
+            startY = e.touches[0].clientY;
+            isPulling = true;
+            indicator.style.transition = 'none'; // 拖曳時關閉 CSS 過渡動畫，跟隨手指
+            
+            // 每次重新下拉時，確保圖示是重新整理的箭頭
+            indicator.classList.remove('is-success');
+            indicator.innerHTML = GLOBAL_SVGS.mermaidReload;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isPulling) return;
+        
+        const currentY = e.touches[0].clientY;
+        const pullDistance = currentY - startY;
+
+        // 只有往下拉才起作用
+        if (pullDistance > 0) {
+            // 🚨 阻止 PWA 在 iOS 上的原生橡皮筋回彈效應，由我們全面接管畫面！
+            if (e.cancelable) e.preventDefault();
+            
+            // 物理引擎：加入阻力 (Damping)，讓下拉越來越吃力，產生 Q 彈感
+            const dampenedDistance = Math.pow(pullDistance, 0.85); 
+            
+            // ✨ 加上負號，讓它變成逆時針旋轉！
+            const rotation = -Math.min(pullDistance * 1.5, 360);
+            
+            indicator.style.opacity = Math.min(pullDistance / 40, 1).toString();
+            
+            // ✨ 外層容器只做 Y 軸位移
+            indicator.style.transform = `translate(-50%, calc(${dampenedDistance}px - 100%))`;
+
+            // ✨ 內部 SVG 才做旋轉 (這樣就不會跟外層的動畫打架了！)
+            const svgIcon = indicator.querySelector('svg');
+            if (svgIcon && !indicator.classList.contains('is-reloading')) {
+                svgIcon.style.transform = `rotate(${rotation}deg)`;
+            }
+
+            // 判斷是否拉過門檻
+            if (dampenedDistance >= threshold) {
+                canRefresh = true;
+                indicator.classList.add('ready');
+            } else {
+                canRefresh = false;
+                indicator.classList.remove('ready');
+            }
+        } else {
+            isPulling = false; // 如果往上滑直接中斷
+        }
+    }, { passive: false }); 
+
+    document.addEventListener('touchend', () => {
+        if (!isPulling) return;
+        isPulling = false;
+
+        // 手指離開，恢復 CSS 過渡動畫
+        indicator.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease';
+        indicator.classList.remove('ready');
+        
+        if (canRefresh) {
+            // 1. 達標：鎖定在頂部並開始 CSS 無限旋轉
+            indicator.classList.add('is-reloading');
+            indicator.style.transform = `translate(-50%, 30px)`;
+            
+            // 清除 JS 給的寫死旋轉角度，讓 CSS 的 @keyframes 完美無縫接管！
+            const svgIcon = indicator.querySelector('svg');
+            if (svgIcon) svgIcon.style.transform = ''; 
+
+            window.triggerHaptic('light'); // 輕微震動提示開始轉
+            
+            // 2. 轉個 0.7 秒後，漂亮地變成「打勾」圖示！
+            setTimeout(() => {
+                indicator.classList.remove('is-reloading');
+                indicator.classList.add('is-success');
+                indicator.innerHTML = GLOBAL_SVGS.check; // 換上打勾圖示
+                window.triggerHaptic('success'); // 強震動提示完成
+                
+                // 3. 停頓 0.4 秒讓使用者看清楚打勾，然後才觸發真正的重整
+                setTimeout(() => {
+                    if (window.showSystemRebootScreen) {
+                        window.showSystemRebootScreen('MANUAL_RELOAD', CONFIG.VERSION, CONFIG.VERSION, 'UPDATING', true);
+                    }
+                    window.location.reload();
+                }, 400);
+
+            }, 700);
+            
+        } else {
+            // ❌ 未達門檻：彈回原位隱藏
+            indicator.style.transform = `translate(-50%, -100%)`;
+            indicator.style.opacity = '0';
+            window.triggerHaptic('light');
+        }
+        canRefresh = false;
+    });
 };
 
 // ==========================================
@@ -732,10 +862,10 @@ window.renderTocMenu = function(menuItems, tooltipText) {
         tocDropdown.classList.remove('active');
 
     } else {
-        // YES -> NO: 從有到無，播放離場動畫並移除
-        if (tocWrapper) {
-            tocWrapper.classList.add('content-fade-out');
-            setTimeout(() => { if (tocWrapper && tocWrapper.parentNode) tocWrapper.remove(); }, 300);
+        // YES -> NO: 從有到無，瞬間移除無動畫，防止退場期間佔用 Flex 空間導致排版跳動！
+        // (因為外層 switchModalContent 已經有全域淡出淡入保護，這裡直接拔除 DOM 視覺最完美)
+        if (tocWrapper && tocWrapper.parentNode) {
+            tocWrapper.remove();
         }
     }
 };
@@ -3093,6 +3223,9 @@ async function checkSystemVersionAndBoot() {
 window.addEventListener('DOMContentLoaded', () => {
     checkSystemVersionAndBoot();
     window.getMermaidStyles(); // ✨ 在背景無感預先載入 Mermaid 樣式
+    
+    // ✨ 啟動 PWA 專屬下拉重整引擎
+    window.initPWAPullToRefresh();
 });
 
 // === 4. 索引式 Markdown Modal 邏輯 ===
@@ -5463,8 +5596,8 @@ window.showPdfActionModal = function(href, title) {
     const isPWA = window.isPWAEnvironment();
     
     // 為了完美的 UX：如果是 PWA，我們直接把藍色主按鈕變成「下載」，並隱藏下方的第二顆按鈕
-    const viewBtnText = isPWA ? '檢視 PDF 檔案' : '於瀏覽器中檢視 PDF';
-    const viewBtnIcon = isPWA ? GLOBAL_SVGS.download : GLOBAL_SVGS.newTab;
+    const viewBtnText = isPWA ? '檢視 PDF 檔案' : '在新視窗檢視 PDF';
+    const viewBtnIcon = GLOBAL_SVGS.newTab;
     const downloadBtnDisplay = isPWA ? 'none' : 'flex';
 
     overlay.innerHTML = `

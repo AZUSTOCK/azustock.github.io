@@ -3160,6 +3160,88 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 
 /* ========================================================================== */
+/* ✨ PWA 專屬：下拉重新整理指示器 (Pull to Refresh)                              */
+/* ========================================================================== */
+.pwa-refresh-indicator {
+    position: fixed;
+    /* 躲在頂部瀏海/狀態列下方，預設往上隱藏 */
+    top: max(10px, env(safe-area-inset-top, 0px));
+    left: 50%;
+    /* ✨ 修正：外層容器只負責「位移」與「縮放」，不負責旋轉 */
+    transform: translate(-50%, -100%); 
+    z-index: 100000;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    color: var(--accent);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 15px var(--shadow-base);
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+}
+
+/* ✨ 修正：旋轉動畫交給內部的 SVG 負責 */
+.pwa-refresh-indicator svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    transform-origin: center center;
+}
+
+/* 達到重整門檻時的高光與放大 */
+.pwa-refresh-indicator.ready {
+    color: var(--card);
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    box-shadow: 0 4px 15px var(--glow-1);
+    transform: translate(-50%, calc(75px - 100%)) scale(1.1) !important;
+}
+
+/* ✨ 新增：專屬的逆時針無限旋轉動畫 */
+@keyframes pwa-spin {
+    to { transform: rotate(-360deg); }
+}
+
+/* 載入中的狀態 */
+.pwa-refresh-indicator.is-reloading {
+    color: var(--card);
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    box-shadow: 0 4px 15px var(--glow-1);
+}
+.pwa-refresh-indicator.is-reloading svg {
+    /* ✨ 改用逆時針動畫 */
+    animation: pwa-spin 0.7s linear infinite; 
+}
+
+
+/* ✨ 新增：專屬的打勾彈出動畫 (拔除了會讓位置跑掉的 translate) */
+@keyframes pwa-check-pop {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* 成功打勾的狀態 */
+.pwa-refresh-indicator.is-success {
+    color: var(--card);
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    box-shadow: 0 4px 15px var(--glow-1);
+}
+.pwa-refresh-indicator.is-success svg {
+    /* ✨ 改用專屬的彈跳動畫，保證乖乖待在正中間！ */
+    animation: pwa-check-pop 0.4s var(--ease-bounce) forwards;
+}
+
+
+/* ========================================================================== */
 /* ✨ PWA 全域狀態列防護盾 (極淨版：統一變數與圖層降級)                           */
 /* ========================================================================== */
 @media (display-mode: standalone) {
