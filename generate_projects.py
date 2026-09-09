@@ -513,10 +513,17 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
         })
 
         # 2. 掃描分類底下的專案 (Projects)
-        for proj_folder in sorted(os.listdir(cat_path)):
-            proj_path = os.path.join(cat_path, proj_folder)
-            if not os.path.isdir(proj_path): continue
+        proj_folders = []
+        for root, dirs, files in os.walk(cat_path):
+            # ✂️ 神級防呆：遇到 articles 資料夾就剪枝，防止掃描誤闖文章區域
+            if 'articles' in dirs:
+                dirs.remove('articles') 
+            if 'detail.json' in files and root != cat_path:
+                proj_folders.append(root)
 
+        for proj_path in sorted(proj_folders):
+            proj_folder = os.path.basename(proj_path) # 依然能精準抓到 '02_mind' 作為 ID
+            
             stats["proj_total"] += 1
             proj_detail_path = os.path.join(proj_path, 'detail.json')
             proj_data = load_detail_json(proj_detail_path)
@@ -558,7 +565,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             
             proj_cover = proj_data.get('cover')
             if proj_cover:
-                clean_proj_data['cover_image'] = f"{base_dir}/{cat_folder}/{proj_folder}/{proj_cover}"
+                clean_proj_data['cover_image'] = f"{proj_path.replace(os.sep, '/')}/{proj_cover}"
                 
             proj_data = clean_proj_data 
             articles = []
@@ -661,12 +668,16 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
             # 3. 掃描專案底下的文章 (Articles)
             articles_dir = os.path.join(proj_path, 'articles')
+            art_folders = []
             
             if os.path.exists(articles_dir) and os.path.isdir(articles_dir):
-                for item in os.listdir(articles_dir):
-                    item_path = os.path.join(articles_dir, item)
-                    if not os.path.isdir(item_path): continue
-
+                for root, dirs, files in os.walk(articles_dir):
+                    if 'detail.json' in files:
+                        art_folders.append(root)
+                        
+                for item_path in sorted(art_folders):
+                    item = os.path.basename(item_path) # 依然能精準抓到 '24_create' 作為 ID
+                    
                     art_detail_path = os.path.join(item_path, 'detail.json')
                     sub_data = load_detail_json(art_detail_path)
                     default_art_order, clean_art_title = parse_folder_meta(item)
@@ -681,8 +692,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     check_expiration_reminders(meta_title, "文章", sub_data, art_detail_path)
 
                     md_file_path = None
-                    rel_base = f"{base_dir}/{cat_folder}/{proj_folder}/articles/{item}"
-
+                    rel_base = item_path.replace(os.sep, '/')
                     for sub_item in os.listdir(item_path):
                         if sub_item.endswith('.md'):
                             md_file_path = os.path.join(item_path, sub_item)
@@ -717,7 +727,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 meta_title = raw_md_content.split('\n')[0].replace('# ', '').strip()
                             
                             content = raw_md_content 
-                            real_path = f"./projects/{cat_folder}/{proj_folder}/articles/{item}/"
+                            real_path = f"./{item_path.replace(os.sep, '/')}/"
                             
                             def replace_md_img(match):
                                 nonlocal art_needs_update

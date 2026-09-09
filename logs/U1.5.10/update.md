@@ -1,5 +1,5 @@
 ## refactor
-1. new logs path
+1. Recursive Pathing for `generate_projects.py `
 
 ## add
 1. 
@@ -11,7 +11,7 @@
 1. 
 
 ## fix
-1. 
+1. Dynamic path mapping repair
 
 ## deprecate
 1. 
