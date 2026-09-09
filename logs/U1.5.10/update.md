@@ -2,10 +2,10 @@
 1. Recursive Pathing for `generate_projects.py `
 
 ## add
-1. 
+1. Pull-to-Refresh Engine
 
 ## change / update
-1. 
+1. description & SVG hint
 
 ## adjust
 1. 
