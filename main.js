@@ -732,10 +732,10 @@ window.renderTocMenu = function(menuItems, tooltipText) {
         tocDropdown.classList.remove('active');
 
     } else {
-        // YES -> NO: 從有到無，播放離場動畫並移除
-        if (tocWrapper) {
-            tocWrapper.classList.add('content-fade-out');
-            setTimeout(() => { if (tocWrapper && tocWrapper.parentNode) tocWrapper.remove(); }, 300);
+        // YES -> NO: 從有到無，瞬間移除無動畫，防止退場期間佔用 Flex 空間導致排版跳動！
+        // (因為外層 switchModalContent 已經有全域淡出淡入保護，這裡直接拔除 DOM 視覺最完美)
+        if (tocWrapper && tocWrapper.parentNode) {
+            tocWrapper.remove();
         }
     }
 };
