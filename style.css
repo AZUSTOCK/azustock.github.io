@@ -1003,7 +1003,22 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 
 
 /* 5-3. 文章目錄系統 (TOC) */
-.toc-wrapper { position: relative; display: flex; align-items: center; }
+.toc-wrapper { 
+    position: relative; display: flex; align-items: center; 
+    /* ✨ 讓漢堡選單完美繼承系統 Modal 的專屬過渡動畫變數！ */
+    transition: var(--modal-transition);
+    will-change: var(--modal-will-change);
+    transform-origin: var(--modal-origin);
+}
+
+/* ✨ 掛上此 Class 時，套用系統 Modal 退場的位移與景深特效 */
+.toc-wrapper.content-fade-out {
+    opacity: var(--modal-out-opacity) !important; 
+    transform: var(--modal-out-transform) !important; 
+    filter: var(--modal-out-filter) !important; 
+    pointer-events: none;
+}
+
 .toc-toggle-btn { background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--card-border); border-radius: 50%; width: 36px; height: 36px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; cursor: pointer; transition: all 0.3s ease; flex-shrink: 0; }
 .toc-toggle-btn .bar { width: 16px; height: 2px; background-color: var(--muted); transition: all 0.3s ease-in-out; }
 .toc-toggle-btn:not(.open):hover { border-color: var(--accent-2); box-shadow: 0 0 10px var(--accent-2); }
@@ -1071,7 +1086,15 @@ img.article-item-cover { position: relative; z-index: 2; width: 44px !important;
 .article-item-title-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
 span.article-item-title { font-size: 1.15rem; color: var(--accent); font-weight: bold; }
 span.article-item-desc { font-size: 0.95rem; color: var(--muted); line-height: 1.4; }
-span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(--muted); margin-left: auto; padding-left: 1rem; flex-shrink: 0; }
+span.article-item-date { 
+    font-family: monospace; 
+    font-size: 0.85rem; 
+    color: var(--muted); 
+    margin-left: auto; 
+    padding-left: 1rem; 
+    flex-shrink: 0; 
+    white-space: nowrap; /* ✨ 關鍵修復 2：防止日期被連字號 (Hyphen) 從中間切斷 */
+}
 .group-header-title { 
     font-size: 0.75rem; 
     letter-spacing: 0.15em; 
@@ -1487,22 +1510,58 @@ span.article-item-date { font-family: monospace; font-size: 0.85rem; color: var(
 }
 
 /* 文章標題區塊整合 */
-.article-header-wrapper { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; border-bottom: 2px solid var(--card-border); padding-bottom: 0.5rem; margin-bottom: 0.8rem; }
+.article-header-wrapper { 
+    display: flex; 
+    flex-wrap: wrap; 
+    align-items: flex-end; /* ✨ 讓右側按鈕貼齊底線 */
+    justify-content: space-between; 
+    gap: 0.5rem; 
+    border-bottom: 2px solid var(--card-border); 
+    padding-bottom: 0.5rem; 
+    margin-bottom: 0.8rem; 
+}
+
 .header-left { 
     display: flex; 
-    flex-direction: column; 
-    gap: 0.4rem; 
+    flex-direction: row; 
+    align-items: baseline; 
+    flex-wrap: wrap; 
+    gap: 0.4rem 1rem; 
     
-    /* ✨ 恢復為 auto，讓文字自然計算需要的寬度 */
-    flex: 1 1 auto; 
-    
-    /* ✨ 移除 min-width: 50%，改用 0 */
-    /* 這是 Flexbox 魔法，允許這個區塊「縮得比文字內容還小」，右邊按鈕就不會被擠下去了 */
+    /* 預設（無日期時）：強勢推開按鈕 */
+    flex: 1 1 max-content; 
+}
+
+/* ✨ 神級選擇器：當內部含有日期時，轉為彈性收縮模式 */
+.header-left:has(.article-date) { 
+    flex: 1 1 200px;
     min-width: 0; 
 }
-.header-left h1 { margin: 0 !important; padding: 0 !important; border: none !important; line-height: 1.3; }
-.article-date { font-family: monospace; font-size: 0.85rem; color: var(--muted); }
-.header-right { display: flex; align-items: center; gap: 0.8rem; margin-left: auto; flex-wrap: nowrap; flex-shrink: 0; }
+
+.header-left h1 { 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    border: none !important; 
+    line-height: 1.3; 
+}
+
+.article-date { 
+    font-family: monospace; 
+    font-size: 0.85rem; 
+    color: var(--muted); 
+    white-space: nowrap; /* 確保日期絕對不會被連字號切斷 */
+}
+
+.header-right { 
+    display: flex; 
+    align-items: center; 
+    gap: 0.8rem; 
+    margin-left: auto; 
+    flex-wrap: nowrap; 
+    flex-shrink: 0; 
+    margin-bottom: 2px; /* 微調按鈕視覺置中 */
+}
+
 .status-badge-container { display: flex; align-items: center; gap: 0.4rem; }
 
 /* ========================================================================== */
@@ -3016,8 +3075,12 @@ body {
     font-size: 1.5rem; letter-spacing: 0.05em; line-height: 1; transform: translateY(1px); 
 }
 .changelog-date { 
-    font-family: monospace; color: var(--muted); font-size: 0.9rem; 
-    margin-left: 0.2rem; transform: translateY(2px); 
+    font-family: monospace; 
+    color: var(--muted); 
+    font-size: 0.9rem; 
+    margin-left: 0.2rem; 
+    transform: translateY(2px); 
+    white-space: nowrap; /* ✨ 關鍵魔法：強制日期絕對不准從中間斷開 */
 }
 .changelog-list-item { margin-bottom: 1rem; }
 .changelog-item-version { font-family: monospace; color: var(--tab-color); font-size: 1.15rem; }
