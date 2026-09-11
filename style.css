@@ -2375,10 +2375,12 @@ body.is-touch-device .media-container-wrapper[data-is-broken="true"]:has(.media-
 body.is-touch-device .pdf-iframe { display: none !important; }
 body.is-touch-device .pdf-mobile-cover { display: block !important; }
 
-/* 觸控點擊回饋：按下時除了原本的容器微縮外，下方的提示條會亮起變色 */
-body.is-touch-device .pdf-container:active .pdf-mobile-hint {
-    background: var(--tag-bg);
-    color: var(--accent-2);
+/* ✨ 觸控點擊回饋：按下整個 PDF 區塊時，右上角的按鈕會發光放大，產生強烈的互動感！ */
+body.is-touch-device .pdf-container:active .pdf-floating-btn {
+    background: var(--accent);
+    color: #fff;
+    opacity: 1;
+    transform: translateZ(0) scale(1.15);
 }
 
 /* ========================================================================== */
@@ -3054,13 +3056,14 @@ body {
 .pdf-mobile-cover {
     display: none; /* 桌機預設隱藏 */
     width: 100%;
+    position: relative;
     background: var(--bg);
     overflow: hidden;
 }
 
 .pdf-poster-img {
     width: 100%;
-    height: auto; /* ✨ 魔法在這裡：不寫死高度，讓圖片依照原比例自動往下撐開！ */
+    height: auto; /* ✨ 讓圖片依照原比例自動往下撐開 */
     display: block;
     margin: 0 !important;
     border-radius: 0 !important;
@@ -3070,7 +3073,7 @@ body {
 
 .pdf-poster-fallback {
     width: 100%;
-    min-height: 200px; /* 沒有圖片時給個基本高度 */
+    min-height: 200px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3080,19 +3083,10 @@ body {
 }
 .pdf-poster-fallback svg { width: 64px; height: 64px; }
 
-.pdf-mobile-hint {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 0.9rem 1rem;
-    background: var(--box-bg);
-    color: var(--accent);
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-align: center;
-    border-top: 1px solid var(--card-border); /* 在圖片與文字間加一條優雅的分隔線 */
-    transition: background-color 0.2s ease, color 0.2s ease;
+/* 讓 PDF 專屬的懸浮按鈕比平常的稍微明顯一點，且不干擾外層的點擊事件 */
+.pdf-floating-btn {
+    opacity: 0.85; 
+    pointer-events: none; 
 }
 
 

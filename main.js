@@ -1901,12 +1901,13 @@ function renderPDFIframe(href, altText, posterUrl = '') {
         <!-- 桌機版原生預覽區 (維持原本寫死的高度) -->
         <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
         
-        <!-- ✨ 手機版專屬：動態高度預覽圖 + 底部文字提示 -->
+        <!-- ✨ 手機版專屬：動態高度預覽圖 + 右上角懸浮跳轉按鈕 -->
         <div class="pdf-mobile-cover">
             ${posterHtml}
-            <div class="pdf-mobile-hint">
-                ${GLOBAL_SVGS.newTab} 點擊區塊以檢視或下載 PDF 檔案
-            </div>
+            <!-- 借用圖片放大鏡的懸浮樣式，完美統一視覺語言 -->
+            <button class="zoom-btn floating pdf-floating-btn">
+                ${GLOBAL_SVGS.newTab}
+            </button>
         </div>
     </div>`;
 }
