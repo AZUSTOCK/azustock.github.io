@@ -1858,21 +1858,24 @@ window.processMermaidCssVars = function(text) {
 };
 
 // ==========================================
-// ✨ 輔助函數：渲染 PDF 嵌入框架 (改進版：全面以觸控裝置為判斷依據)
+// ✨ 輔助函數：渲染 PDF 嵌入框架 (支援影音播放器模式)
 // ==========================================
-function renderPDFIframe(href, altText) {
+function renderPDFIframe(href, altText, posterUrl = '') {
     let customHeight = "600px";
     const hMatch = href.match(/[?&]h=(\d+)/i);
     if (hMatch) customHeight = hMatch[1] + "px";
     
-    // ✨ 只要是觸控裝置 (手機/平板/PWA)，點擊就彈出安全操作面板
     const mobileClickHandler = `
         event.stopPropagation();
         window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');
     `;
 
+    // 判斷是否有海報，沒有的話給予置中的高質感大圖示
+    const posterHtml = posterUrl 
+        ? `<img src="${posterUrl}" class="pdf-poster-img" alt="PDF Cover">` 
+        : `<div class="pdf-poster-fallback">${GLOBAL_SVGS.docIconLg}</div>`;
+
     return `
-    <!-- ✨ 全面使用 CSS 類別提取版 -->
     <div class="pdf-container" 
         onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }">
         
@@ -1893,11 +1896,13 @@ function renderPDFIframe(href, altText) {
             </div>
         </div>
         <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
-        <div class="pdf-mobile-placeholder">
-            <span style="font-size: 1.05rem; letter-spacing: 0.05em;">點擊下方按鈕以檢視或下載 PDF 檔案</span>
-            <span class="pdf-mobile-btn">
-                ${GLOBAL_SVGS.newTab} 點擊開啟 PDF 操作選單
-            </span>
+        
+        <!-- ✨ 手機版專屬：影音播放器模式的封面與開啟按鈕 -->
+        <div class="pdf-mobile-cover">
+            ${posterHtml}
+            <div class="pdf-play-btn-overlay">
+                ${GLOBAL_SVGS.newTab}
+            </div>
         </div>
     </div>`;
 }
@@ -1949,11 +1954,7 @@ renderer.image = function(token_or_href, title, text) {
     
     if (!href) return '';
 
-    // 1. 攔截 PDF
-    const cleanUrlForCheck = href.split('?')[0].split('#')[0];
-    if (cleanUrlForCheck.match(/\.pdf$/i)) return renderPDFIframe(href, altText);
-
-    // 2. 攔截影音
+    // ✨ 將海報 (Poster) 參數的解析邏輯提前，讓 PDF 與影音共用！
     const decodedHref = href.replace(/%23/g, '#');
     let cleanMediaUrl = decodedHref;
     let posterUrl = '';
@@ -1963,6 +1964,11 @@ renderer.image = function(token_or_href, title, text) {
     }
     
     const pureUrlForExt = cleanMediaUrl.split('?')[0];
+
+    // 1. 攔截 PDF (把 cleanMediaUrl 跟 posterUrl 傳進去)
+    if (pureUrlForExt.match(/\.pdf$/i)) return renderPDFIframe(cleanMediaUrl, altText, posterUrl);
+
+    // 2. 攔截影音
     const isVideo = pureUrlForExt.match(/\.(mp4|webm|ogg)$/i);
     const isAudio = pureUrlForExt.match(/\.(mp3|wav)$/i);
     

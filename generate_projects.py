@@ -130,6 +130,47 @@ def create_og_image(original_path, output_path, bg_path=None):
         print(f"⚠️ 生成 OG 圖片失敗 {original_path}: {e}")
         return False
 
+def generate_pdf_thumbnail(pdf_path, output_path, max_width=800, quality=90):
+    """讀取 PDF 第一頁並轉換為 WebP 縮圖"""
+    try:
+        import pymupdf  # type: ignore # PyMuPDF
+    except ImportError:
+        print("⚠️ 未安裝 PyMuPDF，無法自動生成 PDF 縮圖。請執行: pip install PyMuPDF")
+        return False
+        
+    try:
+        doc = pymupdf.open(pdf_path)
+        if len(doc) == 0:
+            return False
+        page = doc.load_page(0)  # 讀取第一頁 (Index 0)
+        
+        # 矩陣縮放 2 倍以提高解析度 (讓文字邊緣更銳利)
+        pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2))
+        
+        # 將 PyMuPDF 的 pixmap 轉為 PIL Image 格式
+        mode = "RGBA" if pix.alpha else "RGB"
+        img = Image.frombytes(mode, [pix.width, pix.height], pix.samples)
+        
+        # ✨ 防呆：PDF 通常是透明背景，直接轉 RGB 會變全黑，所以強制墊上一層白底！
+        if mode == "RGBA":
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img, mask=img.split()[3]) # 使用 Alpha 通道作為遮罩
+            img = bg
+        
+        # 調整尺寸
+        if img.width > max_width:
+            ratio = max_width / img.width
+            new_size = (max_width, int(img.height * ratio))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            
+        # 轉存為 WebP
+        img.save(output_path, "WEBP", quality=quality)
+        doc.close()
+        return True
+    except Exception as e:
+        print(f"⚠️ PDF 縮圖生成失敗 {pdf_path}: {e}")
+        return False
+
 def parse_folder_meta(folder_name):
     match = re.match(r'^(-?\d+)_+(.*)$', folder_name)
     if match:
@@ -746,7 +787,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     local_main_path = os.path.normpath(main_url)
                                     ext = os.path.splitext(local_main_path)[1].lower()
                                     
-                                    valid_media_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.mp4', '.webm', '.ogg', '.mp3', '.wav'}
+                                    # ✨ 將 .pdf 加入白名單，讓它能進入後續的處理流程
+                                    valid_media_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.mp4', '.webm', '.ogg', '.mp3', '.wav', '.pdf'}
                                     if ext not in valid_media_exts:
                                         return f"![{alt_text}]({fixed_url}{title_str})"
                                         
@@ -800,6 +842,45 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         else:
                                             return f"![{alt_text}]({thumb_url}#full={orig_url_t}{title_str})"
                                             
+                                    # ==========================================
+                                    # ✨ PDF 自動生成縮圖與 Poster 注入引擎
+                                    # ==========================================
+                                    if ext == '.pdf' and os.path.exists(local_main_path):
+                                        # 如果 Markdown 中沒有手動寫 #poster=，我們就自己產！
+                                        if '#poster=' not in final_stamped_url:
+                                            stats["inline_thumb_total"] += 1
+                                            clean_url = main_url.replace(real_path, '')
+                                            safe_name = clean_url.replace('/', '_').replace('\\', '_')
+                                            thumb_dir = os.path.join(art_dir, "thumbnails")
+                                            os.makedirs(thumb_dir, exist_ok=True)
+                                            
+                                            # 自動命名封面圖為 thumb_檔名.webp
+                                            thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
+                                            thumb_local_path = os.path.join(thumb_dir, thumb_filename)
+                                            
+                                            # 透過 Hash 快取判定是否需要重新產生
+                                            inline_status, pdf_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, overwrite_thumb)
+                                            current_hashes[local_main_path] = pdf_hash
+                                            
+                                            if inline_status in ('NEW', 'UPDATED'):
+                                                art_needs_update = True
+                                                success = generate_pdf_thumbnail(local_main_path, thumb_local_path, max_width=800, quality=85)
+                                                if success:
+                                                    print_conversion("📄 [PDF縮圖]", local_main_path, thumb_local_path, context=f"{proj_id} / {art_id}")
+                                                    if inline_status == 'NEW': stats["inline_thumb_new"] += 1
+                                                    else: stats["inline_thumb_updated"] += 1
+                                                else:
+                                                    stats["inline_thumb_skipped"] += 1
+                                            else:
+                                                stats["inline_thumb_skipped"] += 1
+                                                
+                                            valid_api_files.add(os.path.abspath(thumb_local_path))
+                                            
+                                            # ✨ 如果檔案成功產出，自動將生成的路徑加上 #poster= 塞進網址裡
+                                            if os.path.exists(thumb_local_path):
+                                                thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
+                                                final_stamped_url += f"#poster={thumb_url}"
+
                                     return f"![{alt_text}]({final_stamped_url}{title_str})"
                                         
                                 return f"![{alt_text}]({url_part})"
