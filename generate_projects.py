@@ -22,7 +22,8 @@ stats = {
     "json_total": 0, "json_new": 0, "json_updated": 0, "json_skipped": 0,       
     "og_total": 0,   "og_new": 0,   "og_updated": 0,   "og_skipped": 0,         
     "thumb_total": 0, "thumb_new": 0, "thumb_updated": 0, "thumb_skipped": 0,    
-    "inline_thumb_total": 0, "inline_thumb_new": 0, "inline_thumb_updated": 0, "inline_thumb_skipped": 0 
+    "inline_thumb_total": 0, "inline_thumb_new": 0, "inline_thumb_updated": 0, "inline_thumb_skipped": 0,
+    "pdf_thumb_total": 0, "pdf_thumb_new": 0, "pdf_thumb_updated": 0, "pdf_thumb_skipped": 0 # ✨ 新增 PDF 專屬統計
 }
 
 SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED', 'WIP', 'OC'}
@@ -163,8 +164,16 @@ def generate_pdf_thumbnail(pdf_path, output_path, max_width=800, quality=90):
             new_size = (max_width, int(img.height * ratio))
             img = img.resize(new_size, Image.Resampling.LANCZOS)
             
-        # 轉存為 WebP
-        img.save(output_path, "WEBP", quality=quality)
+        # ✨ 寫入數位簽章 (EXIF Metadata)
+        clean_exif = img.getexif()
+        clean_exif.clear()
+        clean_exif[40093] = ("風川梓 (Azustock)" + '\x00').encode('utf-16le') # 作者 Author
+        clean_exif[40092] = ("Copyright (c) 2026 風川梓 (Azustock). All rights reserved." + '\x00').encode('utf-16le') # 註解/版權宣告
+        clean_exif[315] = "Azustock" # 軟體/建立者
+        exif_bytes = clean_exif.tobytes()
+            
+        # 轉存為 WebP (無縫夾帶 EXIF 數位簽章)
+        img.save(output_path, "WEBP", quality=quality, exif=exif_bytes)
         doc.close()
         return True
     except Exception as e:
@@ -187,13 +196,18 @@ def load_detail_json(json_path):
     return {}
 
 def get_hash_url(local_path, base_url):
-    """獲取帶有檔案內容 Hash 的網址 (取代容易在 CI 失效的 mtime)"""
-    if os.path.exists(local_path):
+    """獲取帶有檔案內容 Hash 的網址 (支援帶有 ? 參數的網址)"""
+    # ✨ 濾掉 local_path 的 query 參數與 hash，確保能在本機找到檔案
+    clean_local_path = local_path.split('?')[0].split('#')[0]
+    
+    if os.path.exists(clean_local_path):
         try:
-            # 讀取檔案內容計算 MD5 前 8 碼
-            with open(local_path, 'rb') as f:
+            with open(clean_local_path, 'rb') as f:
                 file_hash = hashlib.md5(f.read()).hexdigest()[:8]
-            return f"{base_url}?v={file_hash}"
+            
+            # ✨ 判斷原本的網址是否已經帶有參數 (?)，若有則改用 & 串接
+            sep = '&' if '?' in base_url else '?'
+            return f"{base_url}{sep}v={file_hash}"
         except Exception:
             pass
     return base_url
@@ -484,7 +498,7 @@ def generate_changelogs_json():
 # ==========================================
 # 🚀 主生成器邏輯
 # ==========================================
-def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_thumb=False):
+def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_thumb=False, overwrite_pdf_thumb=False):
     base_dir = 'projects'
     output_data = {"categories": [], "projects": []}
     BASE_URL = "https://azustock.github.io"
@@ -784,7 +798,10 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 if not url.startswith(('http://', 'https://', 'data:')) and 'projects/' not in url:
                                     fixed_url = url.replace('./', real_path)
                                     main_url = fixed_url.split('#')[0]
-                                    local_main_path = os.path.normpath(main_url)
+                                    
+                                    # ✨ 關鍵修復：把 query 參數 (例如 ?h=450) 先濾掉，再拿去取副檔名與檢查實體檔案
+                                    clean_local_url = main_url.split('?')[0]
+                                    local_main_path = os.path.normpath(clean_local_url)
                                     ext = os.path.splitext(local_main_path)[1].lower()
                                     
                                     # ✨ 將 .pdf 加入白名單，讓它能進入後續的處理流程
@@ -848,7 +865,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     if ext == '.pdf' and os.path.exists(local_main_path):
                                         # 如果 Markdown 中沒有手動寫 #poster=，我們就自己產！
                                         if '#poster=' not in final_stamped_url:
-                                            stats["inline_thumb_total"] += 1
+                                            stats["pdf_thumb_total"] += 1 # ✨ 替換為 PDF 獨立計數
                                             clean_url = main_url.replace(real_path, '')
                                             safe_name = clean_url.replace('/', '_').replace('\\', '_')
                                             thumb_dir = os.path.join(art_dir, "thumbnails")
@@ -858,8 +875,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                             thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                             
-                                            # 透過 Hash 快取判定是否需要重新產生
-                                            inline_status, pdf_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, overwrite_thumb)
+                                            # 透過 Hash 快取判定是否需要重新產生 (✨ 替換為 overwrite_pdf_thumb)
+                                            inline_status, pdf_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, overwrite_pdf_thumb)
                                             current_hashes[local_main_path] = pdf_hash
                                             
                                             if inline_status in ('NEW', 'UPDATED'):
@@ -867,12 +884,12 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                                 success = generate_pdf_thumbnail(local_main_path, thumb_local_path, max_width=800, quality=85)
                                                 if success:
                                                     print_conversion("📄 [PDF縮圖]", local_main_path, thumb_local_path, context=f"{proj_id} / {art_id}")
-                                                    if inline_status == 'NEW': stats["inline_thumb_new"] += 1
-                                                    else: stats["inline_thumb_updated"] += 1
+                                                    if inline_status == 'NEW': stats["pdf_thumb_new"] += 1
+                                                    else: stats["pdf_thumb_updated"] += 1
                                                 else:
-                                                    stats["inline_thumb_skipped"] += 1
+                                                    stats["pdf_thumb_skipped"] += 1
                                             else:
-                                                stats["inline_thumb_skipped"] += 1
+                                                stats["pdf_thumb_skipped"] += 1
                                                 
                                             valid_api_files.add(os.path.abspath(thumb_local_path))
                                             
@@ -893,7 +910,10 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 if not url.startswith(('http://', 'https://', 'data:')) and 'projects/' not in url:
                                     clean_url = url[2:] if url.startswith('./') else url
                                     orig_url = f"{real_path}{clean_url}"
-                                    local_img_path = os.path.normpath(orig_url)
+                                    
+                                    # ✨ 關鍵修復：同步濾掉 HTML 標籤內的參數
+                                    clean_local_url = orig_url.split('?')[0].split('#')[0]
+                                    local_img_path = os.path.normpath(clean_local_url)
                                     
                                     valid_image_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'}
                                     ext = os.path.splitext(local_img_path)[1].lower()
@@ -1149,6 +1169,7 @@ if __name__ == "__main__":
     overwrite_json = False
     overwrite_og = False
     overwrite_thumb = False
+    overwrite_pdf_thumb = False  # ✨ 補上這一行：設定預設值
 
     if is_github_actions:
         print("\n🤖 [CI/CD 模式] 偵測到 GitHub Actions 環境。")
@@ -1166,26 +1187,31 @@ if __name__ == "__main__":
             overwrite_json = True
             overwrite_og = True
             overwrite_thumb = True
+            overwrite_pdf_thumb = True # ✨ 新增
         elif choice == '3':
             print("\n-- 自訂義細項設定 --")
-            w_choice = input("  [A] 第一階段(1/4): 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            w_choice = input("  [A] 第一階段(1/5): 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_webp = (w_choice == '2')
             
-            j_choice = input("  [B] 第二階段(2/4): Markdown轉JSON與HTML [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            j_choice = input("  [B] 第二階段(2/5): Markdown轉JSON與HTML [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_json = (j_choice == '2')
             
-            o_choice = input("  [C] 第二階段3/4): OG 分享圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            o_choice = input("  [C] 第二階段(3/5): OG 分享圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_og = (o_choice == '2')
             
-            t_choice = input("  [D] 第二階段(4/4): 封面與內文縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            t_choice = input("  [D] 第二階段(4/5): 封面與內文圖片縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_thumb = (t_choice == '2')
+
+            p_choice = input("  [E] 第二階段(5/5): PDF 封面預覽縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            overwrite_pdf_thumb = (p_choice == '2') # ✨ 新增
 
     convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
     
     print(f"\n==========================================")
     print(f"📦 [第二階段] 開始解析 Markdown 並打包 JSON 資料庫...")
     print(f"==========================================")
-    generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb)
+    # ✨ 在傳遞參數時補上 overwrite_pdf_thumb
+    generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb, overwrite_pdf_thumb=overwrite_pdf_thumb)
     
     # 1. 先產生最新的 changelogs.json
     generate_changelogs_json()
@@ -1200,6 +1226,7 @@ if __name__ == "__main__":
     print(f"  - 分享圖 (OG webp)        : 共 {stats['og_total']:>4} 張 | 新增 {stats['og_new']:>4} 張 | 更新 {stats['og_updated']:>4} 張 | 略過 {stats['og_skipped']:>4} 張")
     print(f"  - 封面縮圖 (cover_thumb)  : 共 {stats['thumb_total']:>4} 張 | 新增 {stats['thumb_new']:>4} 張 | 更新 {stats['thumb_updated']:>4} 張 | 略過 {stats['thumb_skipped']:>4} 張")
     print(f"  - 內文縮圖 (inline_thumb) : 共 {stats['inline_thumb_total']:>4} 張 | 新增 {stats['inline_thumb_new']:>4} 張 | 更新 {stats['inline_thumb_updated']:>4} 張 | 略過 {stats['inline_thumb_skipped']:>4} 張")
+    print(f"  - PDF 預覽圖 (pdf_thumb)  : 共 {stats['pdf_thumb_total']:>4} 張 | 新增 {stats['pdf_thumb_new']:>4} 張 | 更新 {stats['pdf_thumb_updated']:>4} 張 | 略過 {stats['pdf_thumb_skipped']:>4} 張") # ✨ 新增
     
     cleanup_old_api_files()
     

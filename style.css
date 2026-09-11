@@ -2375,12 +2375,83 @@ body.is-touch-device .media-container-wrapper[data-is-broken="true"]:has(.media-
 body.is-touch-device .pdf-iframe { display: none !important; }
 body.is-touch-device .pdf-mobile-cover { display: block !important; }
 
-/* ✨ 觸控點擊回饋：按下整個 PDF 區塊時，右上角的按鈕會發光放大，產生強烈的互動感！ */
-body.is-touch-device .pdf-container:active .pdf-floating-btn {
+/* ========================================================================== */
+/* ✨ 手機版 PDF 首次引導遮罩 (First-time Onboarding Overlay) */
+/* ========================================================================== */
+.pdf-first-time-overlay {
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg) 5%, transparent); /* 較深的半透明黑底 */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    color: #fff;
+    transition: opacity 0.4s ease;
+    
+    /* ✨ 核心魔法：讓點擊事件直接穿透遮罩，觸發下方的卡片開啟功能 */
+    pointer-events: none; 
+}
+
+.pdf-first-time-text {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    text-align: center;
+    line-height: 1.6;
+}
+
+.pdf-first-time-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--accent);
+    color: var(--card);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px var(--glow-1);
+    animation: pdf-hint-pulse 2s infinite ease-in-out;
+    will-change: transform;
+    transform: translateZ(0);
+}
+
+.pdf-first-time-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* 吸引目光的呼吸放大特效 */
+@keyframes pdf-hint-pulse {
+    0%, 100% { transform: scale(1) translateZ(0); box-shadow: 0 4px 15px var(--glow-1); }
+    50% { transform: scale(1.15) translateZ(0); box-shadow: 0 4px 25px var(--accent); }
+}
+
+/* ✨ 當系統判定使用者已經看過時，直接從根目錄強制隱藏所有遮罩！ */
+html.pdf-hint-dismissed .pdf-first-time-overlay {
+    display: none !important;
+}
+
+/* ✨ 觸控點擊回饋：按下整個 PDF 區塊時 (排除點擊標題列的情況) */
+/* 1. 如果有圖片，右上角跳轉按鈕會發光放大 */
+body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):active .pdf-floating-btn {
     background: var(--accent);
     color: #fff;
     opacity: 1;
     transform: translateZ(0) scale(1.15);
+}
+
+/* 2. 如果處於破圖 Fallback 狀態，底部的膠囊按鈕會微縮變色 */
+body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):active .pdf-hint-capsule {
+    transform: scale(0.95);
+    background: var(--accent);
+    color: var(--card);
+    box-shadow: 0 4px 15px var(--glow-1);
 }
 
 /* ========================================================================== */
@@ -2590,7 +2661,6 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
 /* 新增至 CSS */
 .video-fs-placeholder {
     width: 100%; aspect-ratio: 16/9; background: #000;
-    border-bottom-left-radius: 0.8rem; border-bottom-right-radius: 0.8rem;
 }
 
 .md-video.is-web-fullscreen {
@@ -3051,7 +3121,7 @@ body {
 }
 
 /* ========================================================================== */
-/* ✨ 手機版 PDF 動態高度預覽區 (無遮擋版) */
+/* ✨ 手機版 PDF 動態高度預覽區 (無遮擋版與破圖回退設計) */
 /* ========================================================================== */
 .pdf-mobile-cover {
     display: none; /* 桌機預設隱藏 */
@@ -3071,17 +3141,53 @@ body {
     box-shadow: none !important;
 }
 
-.pdf-poster-fallback {
+/* ========================================================================== */
+/* ✨ 新增：PDF 縮圖載入中 (含重試) 的狀態 */
+/* ========================================================================== */
+.pdf-poster-img.is-loading {
+    aspect-ratio: unset !important; /* 拔除全域 img.is-loading 預設的 1/1 比例 */
+    height: 310px !important;       /* 精準鎖定高度，完美對齊 Fallback 失敗介面的高度 (~310px) */
+    max-height: none !important;
+}
+
+/* Fallback 容器：完美還原為原始的文字與膠囊排版 */
+.pdf-fallback-wrapper {
+    flex-direction: column;
     width: 100%;
-    min-height: 200px;
-    display: flex;
+    background: var(--bg); 
+    padding: 1.5rem 1rem;
+    
+    /* ✨ 關鍵修復：鎖定 padding 不會撐破寬度 */
+    box-sizing: border-box; 
+    
     align-items: center;
     justify-content: center;
-    background: var(--box-bg);
-    color: var(--muted);
-    opacity: 0.3;
+    text-align: center;
 }
-.pdf-poster-fallback svg { width: 64px; height: 64px; }
+
+.pdf-fallback-text {
+    font-size: 1.05rem;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-bottom: 1.2rem;
+}
+
+.pdf-hint-capsule {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0.6rem 1.5rem;
+    background: var(--tag-bg);
+    color: var(--accent);
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    transition: all 0.2s var(--ease-smooth);
+    will-change: transform;
+}
 
 /* 讓 PDF 專屬的懸浮按鈕比平常的稍微明顯一點，且不干擾外層的點擊事件 */
 .pdf-floating-btn {
