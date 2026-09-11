@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.9.1",          // 目前系統版本號
+    VERSION: "U1.5.9.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1858,21 +1858,211 @@ window.processMermaidCssVars = function(text) {
 };
 
 // ==========================================
-// ✨ 輔助函數：渲染 PDF 嵌入框架 (改進版：全面以觸控裝置為判斷依據)
+// ✨ 專屬：PDF 首次引導遮罩解除引擎 (Session 級別)
 // ==========================================
-function renderPDFIframe(href, altText) {
+// 網頁一載入，立刻檢查「本次瀏覽期間」是否已經點擊過 PDF
+if (sessionStorage.getItem('sys_pdf_hint_seen') === 'true') {
+    document.documentElement.classList.add('pdf-hint-dismissed');
+}
+
+window.dismissPdfHint = function() {
+    if (sessionStorage.getItem('sys_pdf_hint_seen') !== 'true') {
+        // 1. 寫入 Session 記憶，並為整個網頁掛上隱藏標籤
+        sessionStorage.setItem('sys_pdf_hint_seen', 'true');
+        document.documentElement.classList.add('pdf-hint-dismissed');
+        
+        // 2. 讓當下被點擊的那張遮罩有「平滑淡出」的效果
+        document.querySelectorAll('.pdf-first-time-overlay').forEach(el => {
+            el.style.opacity = '0';
+            setTimeout(() => el.remove(), 400); 
+        });
+    }
+};
+
+// ==========================================
+// ✨ 專屬：PDF 縮圖背景無縫重試引擎
+// ==========================================
+window.handlePdfPosterError = function(img) {
+    const coverDiv = img.closest('.pdf-mobile-cover');
+    if (!coverDiv || img.dataset.isPermanentBroken) return;
+
+    const floatBtn = coverDiv.querySelector('.pdf-floating-btn');
+    const fallback = coverDiv.querySelector('.pdf-fallback-wrapper');
+    const brokenIcon = fallback ? fallback.querySelector('.pdf-status-icon.broken') : null;
+    const loadingIcon = fallback ? fallback.querySelector('.pdf-status-icon.loading') : null;
+
+    // 1. 紀錄原始網址供重試使用
+    if (!img.dataset.retrySrc) img.dataset.retrySrc = img.src;
+
+    // 2. 發生錯誤時，立刻切換至 Fallback 降級版面 (徹底隱藏原生破圖圖示)
+    img.style.display = 'none';
+    img.classList.remove('is-loading');
+    if (floatBtn) floatBtn.style.display = 'none';
+    if (fallback) fallback.style.display = 'flex';
+
+    // 3. 背景隱形重試機制：最多重試 1 次
+    let retryCount = parseInt(img.dataset.retryCount || '0');
+    if (retryCount < 1) {
+        img.dataset.retryCount = (retryCount + 1).toString();
+        const origSrc = img.dataset.retrySrc;
+        const sep = origSrc.includes('?') ? '&' : '?';
+        const retryUrl = origSrc + sep + 'retry=' + new Date().getTime();
+        
+        // 自動重試中：將 Fallback 中間的圖示切換為 Loading 圓圈
+        if (brokenIcon) brokenIcon.style.display = 'none';
+        if (loadingIcon) loadingIcon.style.display = 'block';
+
+        // 創建一個隱形的 Image 物件在背景偷偷載入
+        const bgImg = new Image();
+        bgImg.onload = function() {
+            // 🎉 背景重試成功！瞬間切回封面圖版面
+            img.src = retryUrl;
+            img.style.display = 'block';
+            if (floatBtn) floatBtn.style.display = '';
+            if (fallback) fallback.style.display = 'none';
+            
+            // 將圖示狀態復原，以備未來使用
+            if (brokenIcon) brokenIcon.style.display = 'block';
+            if (loadingIcon) loadingIcon.style.display = 'none';
+        };
+        bgImg.onerror = function() {
+            // ❌ 背景重試依然失敗：標記為永久失效，將圖示切回「破圖相框」
+            img.dataset.isPermanentBroken = 'true';
+            if (brokenIcon) brokenIcon.style.display = 'block';
+            if (loadingIcon) loadingIcon.style.display = 'none';
+        };
+        
+        // 等待 500ms 後再發出請求，完美錯開 CI 打包與 CDN 快取的時間差
+        setTimeout(() => { bgImg.src = retryUrl; }, 500);
+    } else {
+        // 重試次數用盡
+        img.dataset.isPermanentBroken = 'true';
+        if (brokenIcon) brokenIcon.style.display = 'block';
+        if (loadingIcon) loadingIcon.style.display = 'none';
+    }
+};
+
+// ✨ 統一重新載入引擎 (同時重整 iframe 與手機縮圖)
+window.reloadPdfContainer = function(btn) {
+    const container = btn.closest('.pdf-container');
+    if (!container) return;
+
+    // 1. 重整桌機版 iframe
+    const ifr = container.querySelector('iframe');
+    if (ifr) {
+        const orig = ifr.src;
+        ifr.src = '';
+        setTimeout(() => ifr.src = orig, 100);
+    }
+
+    // 2. 重整手機版縮圖
+    const img = container.querySelector('.pdf-poster-img');
+    if (img) {
+        const coverDiv = container.querySelector('.pdf-mobile-cover');
+        const fallback = coverDiv.querySelector('.pdf-fallback-wrapper');
+        const floatBtn = coverDiv.querySelector('.pdf-floating-btn');
+
+        // 解除永久失效封印
+        delete img.dataset.isPermanentBroken;
+        img.dataset.retryCount = '0';
+        
+        const origSrc = img.dataset.retrySrc || img.src;
+        const sep = origSrc.includes('?') ? '&' : '?';
+        const retryUrl = origSrc + sep + 'manual_retry=' + new Date().getTime();
+
+        // 判斷當下是否處於「破圖 Fallback」畫面
+        const isBroken = fallback && window.getComputedStyle(fallback).display !== 'none';
+
+        if (isBroken) {
+            // ✨ 如果在破圖狀態下按重整：不動版面，只將中間的破圖 SVG 切換為 Loading 圓圈
+            const brokenIcon = fallback.querySelector('.pdf-status-icon.broken');
+            const loadingIcon = fallback.querySelector('.pdf-status-icon.loading');
+            
+            if (brokenIcon) brokenIcon.style.display = 'none';
+            if (loadingIcon) loadingIcon.style.display = 'block';
+
+            // 啟動隱形重試引擎
+            const bgImg = new Image();
+            bgImg.onload = function() {
+                // 成功了，瞬間切回封面圖
+                img.src = retryUrl;
+                img.style.display = 'block';
+                img.classList.remove('is-loading');
+                if (floatBtn) floatBtn.style.display = '';
+                if (fallback) fallback.style.display = 'none';
+                
+                if (brokenIcon) brokenIcon.style.display = 'block';
+                if (loadingIcon) loadingIcon.style.display = 'none';
+            };
+            bgImg.onerror = function() {
+                // 失敗了，切回破圖圖示
+                img.dataset.isPermanentBroken = 'true';
+                if (brokenIcon) brokenIcon.style.display = 'block';
+                if (loadingIcon) loadingIcon.style.display = 'none';
+            };
+            bgImg.src = retryUrl;
+
+        } else {
+            // ✨ 如果原本是正常圖片，按重整就恢復成系統原本的 loading 掃光狀態
+            if (fallback) fallback.style.display = 'none';
+            img.style.display = 'block';
+            img.classList.add('is-loading');
+            if (floatBtn) floatBtn.style.display = ''; 
+            img.src = retryUrl;
+        }
+    }
+};
+
+// ==========================================
+// ✨ 輔助函數：渲染 PDF 嵌入框架 (動態高度預覽版)
+// ==========================================
+function renderPDFIframe(href, altText, posterUrl = '') {
     let customHeight = "600px";
     const hMatch = href.match(/[?&]h=(\d+)/i);
     if (hMatch) customHeight = hMatch[1] + "px";
     
-    // ✨ 只要是觸控裝置 (手機/平板/PWA)，點擊就彈出安全操作面板
+    // 點擊事件：如果首次引導遮罩存在，順便將其消除
     const mobileClickHandler = `
         event.stopPropagation();
+        if(window.dismissPdfHint) window.dismissPdfHint();
         window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');
     `;
 
+    const posterHtml = posterUrl 
+        ? `<img src="${posterUrl}" class="pdf-poster-img is-loading" alt="PDF Cover" onload="this.classList.remove('is-loading')" onerror="window.handlePdfPosterError(this)">` 
+        : '';
+
+    // 若沒有設定圖片封面，預設直接顯示 Fallback
+    const fallbackStyle = posterUrl ? 'display: none;' : 'display: flex;';
+
+    // ✨ 準備三種 SVG 圖示，確保它們的尺寸完全一致 (64x64)，這樣切換時就絕對不會位移！
+    const genericDocSvg = GLOBAL_SVGS.docIconLg.replace('width="20" height="20"', 'class="pdf-status-icon generic" width="64" height="64" style="opacity: 0.5; margin-bottom: 1.2rem;"');
+    const brokenImgSvg = `<svg class="pdf-status-icon broken" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1.2rem; ${posterUrl ? '' : 'display: none;'}"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline><line x1="3" y1="3" x2="21" y2="21"></line></svg>`;
+    const loadingSvg = `<svg class="pdf-status-icon loading" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 1.2rem; transform-origin: center center; animation: lightbox-spin 0.8s linear infinite; display: none;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>`;
+
+    // 將三個 SVG 疊加在同一個位置
+    const fallbackHtml = `
+        <div class="pdf-fallback-wrapper" style="${fallbackStyle}">
+            <div class="pdf-poster-fallback">
+                ${posterUrl ? brokenImgSvg + loadingSvg : genericDocSvg}
+            </div>
+            <div class="pdf-fallback-text">點擊下方按鈕以檢視或下載 PDF 檔案</div>
+            <div class="pdf-hint-capsule">
+                ${GLOBAL_SVGS.newTab} 點擊開啟 PDF 操作選單
+            </div>
+        </div>
+    `;
+
+    const firstTimeOverlayHtml = posterUrl ? `
+        <div class="pdf-first-time-overlay">
+            <div class="pdf-first-time-icon">
+                ${GLOBAL_SVGS.newTab}
+            </div>
+            <div class="pdf-first-time-text">點擊區塊以檢視<br>或下載 PDF 檔案</div>
+        </div>
+    ` : '';
+
     return `
-    <!-- ✨ 全面使用 CSS 類別提取版 -->
     <div class="pdf-container" 
         onclick="if(document.body.classList.contains('is-touch-device')) { ${mobileClickHandler} }">
         
@@ -1883,7 +2073,7 @@ function renderPDFIframe(href, altText) {
             </div>
             
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <button class="mermaid-btn" data-tooltip="重新整理" onclick="event.stopPropagation(); const ifr = this.closest('.pdf-container').querySelector('iframe'); const orig = ifr.src; ifr.src=''; setTimeout(() => ifr.src = orig, 100);">
+                <button class="mermaid-btn" data-tooltip="重新整理" onclick="event.stopPropagation(); window.reloadPdfContainer(this);">
                     ${GLOBAL_SVGS.mermaidReload}
                 </button>
                 <div class="action-btn-divider desktop-only"></div>
@@ -1892,12 +2082,14 @@ function renderPDFIframe(href, altText) {
                 </button>
             </div>
         </div>
+        
         <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
-        <div class="pdf-mobile-placeholder">
-            <span style="font-size: 1.05rem; letter-spacing: 0.05em;">點擊下方按鈕以檢視或下載 PDF 檔案</span>
-            <span class="pdf-mobile-btn">
-                ${GLOBAL_SVGS.newTab} 點擊開啟 PDF 操作選單
-            </span>
+        
+        <div class="pdf-mobile-cover">
+            ${posterHtml}
+            ${fallbackHtml}
+            ${posterUrl ? `<button class="zoom-btn floating pdf-floating-btn">${GLOBAL_SVGS.newTab}</button>` : ''}
+            ${firstTimeOverlayHtml}
         </div>
     </div>`;
 }
@@ -1949,11 +2141,7 @@ renderer.image = function(token_or_href, title, text) {
     
     if (!href) return '';
 
-    // 1. 攔截 PDF
-    const cleanUrlForCheck = href.split('?')[0].split('#')[0];
-    if (cleanUrlForCheck.match(/\.pdf$/i)) return renderPDFIframe(href, altText);
-
-    // 2. 攔截影音
+    // ✨ 將海報 (Poster) 參數的解析邏輯提前，讓 PDF 與影音共用！
     const decodedHref = href.replace(/%23/g, '#');
     let cleanMediaUrl = decodedHref;
     let posterUrl = '';
@@ -1963,6 +2151,11 @@ renderer.image = function(token_or_href, title, text) {
     }
     
     const pureUrlForExt = cleanMediaUrl.split('?')[0];
+
+    // 1. 攔截 PDF (把 cleanMediaUrl 跟 posterUrl 傳進去)
+    if (pureUrlForExt.match(/\.pdf$/i)) return renderPDFIframe(cleanMediaUrl, altText, posterUrl);
+
+    // 2. 攔截影音
     const isVideo = pureUrlForExt.match(/\.(mp4|webm|ogg)$/i);
     const isAudio = pureUrlForExt.match(/\.(mp3|wav)$/i);
     
@@ -5138,7 +5331,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
 
             modalTopLeft.innerHTML = `
                 <div class="changelog-header-row">
-                    <button class="modal-back-btn" onclick="window.renderChangelogIndex()">
+                    <button class="modal-back-btn" onclick="window.renderChangelogIndex(true)">
                         ${GLOBAL_SVGS.arrowLeft} 返回清單
                     </button>
                     <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
@@ -5152,7 +5345,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
     }
 
     // 2. 渲染第一層：索引清單
-    window.renderChangelogIndex = function() {
+    window.renderChangelogIndex = function(restoreScroll = false) {
         switchModalContent(
             () => {
                 const modalOverlay = document.getElementById('md-modal');
@@ -5201,12 +5394,26 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 modalOverlay.classList.add('active');
                 window.lockScroll();
             },
-            () => document.querySelector('.modal-content').scrollTop = 0
+            () => {
+                const modalContainer = document.querySelector('.modal-content');
+                // ✨ 判斷是否需要恢復位置
+                if (restoreScroll && window._changelogScrollTopCache !== undefined) {
+                    modalContainer.scrollTop = window._changelogScrollTopCache;
+                } else {
+                    modalContainer.scrollTop = 0;
+                }
+            }
         );
     };
 
     // 3. 渲染第二層：詳細記錄
     window.renderChangelogDetail = function(logId) {
+        // ✨ 新增：在切換到詳細內容前，先把當下的捲軸高度存起來
+        const modalContainer = document.querySelector('.modal-content');
+        if (modalContainer) {
+            window._changelogScrollTopCache = modalContainer.scrollTop;
+        }
+
         const targetLog = window.cachedChangelogs.find(l => l.id === logId);
         if (!targetLog) return;
 

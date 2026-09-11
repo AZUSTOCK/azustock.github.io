@@ -37,7 +37,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install pillow rjsmin rcssmin  # 確保安裝壓縮套件
+          pip install pillow rjsmin rcssmin pymupdf  # 確保安裝壓縮套件
 
       - name: Generate API and Data
         run: |

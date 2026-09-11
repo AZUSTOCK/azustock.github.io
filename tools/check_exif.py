@@ -56,6 +56,7 @@ if __name__ == "__main__":
     tup += (os.path.join(head_dir('api'), "azu5atellite", "palindrome", "thumbnails", "thumb_basic.webp"),)
     tup += (picture_path("art", "01_azu5atellite", "01_palindrome", "basic.webp"),)
     tup += (os.path.join(DEFAULT_DIR, "art", "01_azu5atellite", "articles", "01_palindrome", "clothing", "normal.webp"),)
+    tup += (r"C:\Users\iambe\Desktop\git page\api\data\vocaloid\thumbnails\thumb_ボかロ.webp",)
     
     print("== 啟動 EXIF 數位簽章檢測 ==\n")
     for path in tup:
