@@ -133,7 +133,7 @@ def create_og_image(original_path, output_path, bg_path=None):
 def generate_pdf_thumbnail(pdf_path, output_path, max_width=800, quality=90):
     """讀取 PDF 第一頁並轉換為 WebP 縮圖"""
     try:
-        import pymupdf  # type: ignore # PyMuPDF
+        import pymupdf  # type: ignore
     except ImportError:
         print("⚠️ 未安裝 PyMuPDF，無法自動生成 PDF 縮圖。請執行: pip install PyMuPDF")
         return False

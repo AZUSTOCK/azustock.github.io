@@ -1857,14 +1857,16 @@ window.processMermaidCssVars = function(text) {
     return processed;
 };
 
+
 // ==========================================
-// ✨ 輔助函數：渲染 PDF 嵌入框架 (支援影音播放器模式)
+// ✨ 輔助函數：渲染 PDF 嵌入框架 (動態高度預覽版)
 // ==========================================
 function renderPDFIframe(href, altText, posterUrl = '') {
     let customHeight = "600px";
     const hMatch = href.match(/[?&]h=(\d+)/i);
     if (hMatch) customHeight = hMatch[1] + "px";
     
+    // ✨ 只要是觸控裝置 (手機/平板/PWA)，點擊就彈出安全操作面板
     const mobileClickHandler = `
         event.stopPropagation();
         window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');
@@ -1895,13 +1897,15 @@ function renderPDFIframe(href, altText, posterUrl = '') {
                 </button>
             </div>
         </div>
+        
+        <!-- 桌機版原生預覽區 (維持原本寫死的高度) -->
         <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
         
-        <!-- ✨ 手機版專屬：影音播放器模式的封面與開啟按鈕 -->
+        <!-- ✨ 手機版專屬：動態高度預覽圖 + 底部文字提示 -->
         <div class="pdf-mobile-cover">
             ${posterHtml}
-            <div class="pdf-play-btn-overlay">
-                ${GLOBAL_SVGS.newTab}
+            <div class="pdf-mobile-hint">
+                ${GLOBAL_SVGS.newTab} 點擊區塊以檢視或下載 PDF 檔案
             </div>
         </div>
     </div>`;

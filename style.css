@@ -2371,20 +2371,14 @@ body.is-touch-device .media-container-wrapper[data-is-broken="true"]:has(.media-
     box-shadow: 0 4px 15px var(--shadow-base) !important; /* 恢復原本預設的陰影 */
 }
 
-/* 在觸控裝置下，強制隱藏 PDF iframe 閱讀器與新分頁按鈕 */
-body.is-touch-device .pdf-iframe,
-body.is-touch-device .pdf-ext-btn { 
-    display: none !important; 
-}
-
-/* 在觸控裝置下，強制隱藏 iframe，改顯示封面預覽區 */
+/* 在觸控裝置下，強制隱藏 PDF iframe 閱讀器，顯示動態預覽圖 */
 body.is-touch-device .pdf-iframe { display: none !important; }
 body.is-touch-device .pdf-mobile-cover { display: block !important; }
 
-/* 觸控點擊回饋：按下時中央按鈕微縮變色 */
-body.is-touch-device .pdf-container:active .pdf-play-btn-overlay {
-    transform: translate(-50%, -50%) scale(0.9);
-    background: var(--accent);
+/* 觸控點擊回饋：按下時除了原本的容器微縮外，下方的提示條會亮起變色 */
+body.is-touch-device .pdf-container:active .pdf-mobile-hint {
+    background: var(--tag-bg);
+    color: var(--accent-2);
 }
 
 /* ========================================================================== */
@@ -3053,49 +3047,52 @@ body {
 .pdf-container-title, .media-container-title {
     display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);
 }
-/* ✨ 手機版 PDF 播放器封面預覽區 */
+
+/* ========================================================================== */
+/* ✨ 手機版 PDF 動態高度預覽區 (無遮擋版) */
+/* ========================================================================== */
 .pdf-mobile-cover {
-    display: none; /* 預設在桌機版隱藏 */
-    position: relative;
+    display: none; /* 桌機預設隱藏 */
     width: 100%;
-    aspect-ratio: 1 / 1.414; /* 完美的 A4 紙張比例 */
-    max-height: 55vh;
-    background: var(--box-bg);
+    background: var(--bg);
     overflow: hidden;
-    border-bottom-left-radius: 0.8rem;
-    border-bottom-right-radius: 0.8rem;
 }
 
 .pdf-poster-img {
-    width: 100%; height: 100%; object-fit: cover; display: block;
-    margin: 0 !important; border-radius: 0 !important; border: none !important;
+    width: 100%;
+    height: auto; /* ✨ 魔法在這裡：不寫死高度，讓圖片依照原比例自動往下撐開！ */
+    display: block;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
     box-shadow: none !important;
 }
 
 .pdf-poster-fallback {
-    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
-    color: var(--muted); opacity: 0.2;
+    width: 100%;
+    min-height: 200px; /* 沒有圖片時給個基本高度 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--box-bg);
+    color: var(--muted);
+    opacity: 0.3;
 }
+.pdf-poster-fallback svg { width: 64px; height: 64px; }
 
-.pdf-poster-fallback svg {
-    width: 80px; height: 80px;
-}
-
-/* 中央的開啟按鈕 (仿播放鍵設計) */
-.pdf-play-btn-overlay {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 60px; height: 60px; border-radius: 50%;
-    background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.25); color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s var(--ease-bounce), background-color 0.2s ease;
-    pointer-events: none; /* 讓點擊事件可以穿透給父容器 */
-}
-
-.pdf-play-btn-overlay svg {
-    width: 24px; height: 24px;
-    margin-left: 2px; margin-top: 2px; /* 視錯覺微調置中 */
+.pdf-mobile-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0.9rem 1rem;
+    background: var(--box-bg);
+    color: var(--accent);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: center;
+    border-top: 1px solid var(--card-border); /* 在圖片與文字間加一條優雅的分隔線 */
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 
