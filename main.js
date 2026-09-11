@@ -5138,7 +5138,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
 
             modalTopLeft.innerHTML = `
                 <div class="changelog-header-row">
-                    <button class="modal-back-btn" onclick="window.renderChangelogIndex()">
+                    <button class="modal-back-btn" onclick="window.renderChangelogIndex(true)">
                         ${GLOBAL_SVGS.arrowLeft} 返回清單
                     </button>
                     <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
@@ -5152,7 +5152,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
     }
 
     // 2. 渲染第一層：索引清單
-    window.renderChangelogIndex = function() {
+    window.renderChangelogIndex = function(restoreScroll = false) {
         switchModalContent(
             () => {
                 const modalOverlay = document.getElementById('md-modal');
@@ -5201,12 +5201,26 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 modalOverlay.classList.add('active');
                 window.lockScroll();
             },
-            () => document.querySelector('.modal-content').scrollTop = 0
+            () => {
+                const modalContainer = document.querySelector('.modal-content');
+                // ✨ 判斷是否需要恢復位置
+                if (restoreScroll && window._changelogScrollTopCache !== undefined) {
+                    modalContainer.scrollTop = window._changelogScrollTopCache;
+                } else {
+                    modalContainer.scrollTop = 0;
+                }
+            }
         );
     };
 
     // 3. 渲染第二層：詳細記錄
     window.renderChangelogDetail = function(logId) {
+        // ✨ 新增：在切換到詳細內容前，先把當下的捲軸高度存起來
+        const modalContainer = document.querySelector('.modal-content');
+        if (modalContainer) {
+            window._changelogScrollTopCache = modalContainer.scrollTop;
+        }
+
         const targetLog = window.cachedChangelogs.find(l => l.id === logId);
         if (!targetLog) return;
 

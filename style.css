@@ -901,7 +901,7 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 
 /* 卡片 Hover 互動指示器 */
 .card:hover .card-action-btn { color: var(--card-glow) !important; }
-.card:hover .card-action-arrow { transform: translate(4px, -4px) !important; } /* 讓外部連結箭頭也往右上角飛出 */
+.card:hover .card-action-arrow { transform: translate(4px, -4px) translateZ(0) !important; } /* 讓外部連結箭頭也往右上角飛出 */
 .card:hover .icon-book-closed { opacity: 0 !important; transform: scale(0.8) !important; }
 .card:hover .icon-book-open { opacity: 1 !important; transform: scale(1) !important; }
 
@@ -1866,7 +1866,7 @@ span.article-item-date {
 .markdown-body .md-video { 
     margin: 0; border: none; box-shadow: none; width: 100%; height: auto; 
     aspect-ratio: 16/9; background: #000; object-fit: contain; display: block;
-    border-bottom-left-radius: 0.8rem; border-bottom-right-radius: 0.8rem;
+    border-radius: 0;
 }
 .markdown-body .md-audio { 
     margin: 0.8rem 1.2rem; width: calc(100% - 2.4rem); border: none; 
@@ -3110,7 +3110,10 @@ body {
 /* 卡片按鈕 */
 .card-action-btn { margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease; }
 .card-action-icon-wrap { position: relative; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
-.card-action-arrow { display: flex; align-items: center; transition: transform 0.2s ease; }
+.card-action-arrow { 
+    display: flex; align-items: center; transition: transform 0.2s ease; 
+    will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); 
+}
 
 
 /* ========================================================================== */
