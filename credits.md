@@ -7,9 +7,10 @@
 * **AI** - Code Implementation
 * **風川梓** - System Architect
 
-### Data
+### Automation & Data
 * **Python** - Core Automation Pipeline
 * **Pillow** - Image Processing
+* **PyMuPDF** - PDF Parsing
 
 ### Audio & Synthesizers
 * **OpenUtau** - Vocal Synthesis Core
