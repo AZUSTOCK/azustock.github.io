@@ -18,7 +18,10 @@ const CONFIG = {
     // 🔗 資源路徑
     FAVICON_LIGHT: "https://azustock.github.io/assets/OG_dark.png",
     FAVICON_DARK: "https://azustock.github.io/assets/OG_light.png",
-    DATA_SOURCE: "./all_projects.json" 
+    DATA_SOURCE: "./all_projects.json",
+    
+    // 🐛 測試與除錯設定
+    DEBUG_FETCH_DELAY: 3000  // [測試專用] 強制延遲網路請求 (毫秒)。設定 0 即關閉延遲，正式發布請設為 0！
 };
 
 // ==========================================
@@ -1160,6 +1163,16 @@ window.toggleLoading = function(show, text = 'FETCHING_DATA...') {
         loader.classList.add('is-active');
     } else {
         loader.classList.remove('is-active');
+    }
+};
+
+// ==========================================
+// ✨ 測試用延遲引擎 (Debug Delay Engine)
+// ==========================================
+window.debugDelay = async function() {
+    if (CONFIG.DEBUG_FETCH_DELAY > 0) {
+        console.log(`[SYS_DEBUG] 強制暫停 ${CONFIG.DEBUG_FETCH_DELAY} 毫秒...`);
+        await new Promise(resolve => setTimeout(resolve, CONFIG.DEBUG_FETCH_DELAY));
     }
 };
 
@@ -3634,6 +3647,12 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
 // 打開該專案的「目錄頁面」
 // ==========================================
 window.openProjectIndex = function(projectId, restoreScroll = false) {
+    // 🔥 全域中斷防護：退回目錄時，立刻中斷任何下載！
+    if (window._activeFetcher) {
+        window._activeFetcher.abort();
+        window._activeFetcher = null;
+    }
+    if (window.toggleLoading) window.toggleLoading(false);
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !proj.articles) return;
 
@@ -4068,24 +4087,40 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     document.body.style.cursor = 'wait';
     let markdownContent = "載入失敗";
     
-    // 🔥 2. 建立中斷控制器 (Timeout 設定為 8 秒)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); 
+    // 🔥 2. 攔截前次請求
+    if (window._activeFetcher) {
+        window._activeFetcher.abort();
+    }
+    window._activeFetcher = new AbortController();
+    const controller = window._activeFetcher;
+    
+    // 🔥 3. 逾時防護
+    let isTimeout = false;
+    const timeoutId = setTimeout(() => {
+        isTimeout = true;
+        controller.abort();
+    }, 8000); 
     
     try {
-        // 🔥 將中斷訊號 (signal) 綁定給 fetch
+        await window.debugDelay();
+
         const response = await fetch(article.content_path, { signal: controller.signal });
-        clearTimeout(timeoutId); // 成功抓到資料就解除倒數定時器
+        clearTimeout(timeoutId); // 成功抓到資料就解除倒數
         
         if (!response.ok) throw new Error("Network response was not ok");
         const data = await response.json();
         markdownContent = data.content; 
     } catch (error) {
-        clearTimeout(timeoutId); // 發生任何錯誤也先解除倒數
-        console.error("無法載入文章內容:", error);
+        clearTimeout(timeoutId); 
         
+        // 🔥 4. 幽靈渲染防護
+        if (error.name === 'AbortError' && !isTimeout) {
+            console.log("[SYS] Fetching 任務已由使用者切換中斷。");
+            return; 
+        }
+
+        console.error("無法載入文章內容:", error);
         const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
-        const isTimeout = error.name === 'AbortError'; // 🔥 偵測是否為 Timeout 觸發的中斷
         
         let errTitle = '404 NOT_FOUND';
         let errMsg = '無法載入文章內容。';
@@ -4098,15 +4133,20 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             errMsg = '網路連線中斷，請檢查您的網路狀態。';
         }
         
-        // 呼叫系統錯誤畫面產生器
         markdownContent = `\n# ${article.title}\n\n${window.getSystemErrorHtml(errTitle, errMsg)}`;
     } finally {
-        // 🔥 3. 無論成功或失敗，都把游標恢復，並隱藏轉圈圈
-        document.body.style.cursor = '';
-        window.toggleLoading(false);
+        // 🔥 5. 確保目前沒有被「後續的點擊」覆蓋控制器時，才清除 UI 狀態
+        if (window._activeFetcher === controller) {
+            document.body.style.cursor = '';
+            window.toggleLoading(false);
+            window._activeFetcher = null;
+        }
     }
 
-    // ✨ 智慧判斷：如果彈窗是開著的，而且左上角已經是「文章膠囊模式 (.unified-nav-capsule)」，
+    // 🔥 終極幽靈防護：如果 Fetch 成功，但在準備渲染畫面時發現控制器被切換了，直接安靜退出！
+    if (window._activeFetcher !== null) return;
+
+    // ✨ 智慧判斷：如果彈窗是開著的... (這行以下維持原樣)
     // 代表這是「文章切換文章」，我們就把頂部列的動畫關掉！
     const isCurrentlyArticle = document.querySelector('#modal-top-left .unified-nav-capsule') !== null;
     const animateTopBar = !(modalOverlay.classList.contains('active') && isCurrentlyArticle);
@@ -4689,6 +4729,13 @@ window.goBackInHistory = function() {
 };
 
 function closeModal() {
+    // 🔥 全域中斷防護：關閉視窗時，立刻中斷任何下載！
+    if (window._activeFetcher) {
+        window._activeFetcher.abort();
+        window._activeFetcher = null;
+    }
+    if (window.toggleLoading) window.toggleLoading(false);
+
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
     
@@ -5260,24 +5307,39 @@ window.applyIndentToVerticalWrapper = function(container) {
 window.cachedCreditsText = null;
 window.showCreditsModal = async function() {
     document.body.style.cursor = 'wait'; 
+    window.toggleLoading(true, 'FETCHING_DATA...'); 
+    
+    // 🔥 攔截前次請求
+    if (window._activeFetcher) window._activeFetcher.abort();
+    window._activeFetcher = new AbortController();
+    const controller = window._activeFetcher;
+
     let mdText = "載入失敗"; let isError = false;
     
     try {
-        // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
+        await window.debugDelay();
         if (window.cachedCreditsText !== null) {
             mdText = window.cachedCreditsText;
         } else {
-            const response = await fetch(`./credits.md?v=${window.getResVersion('credits.md')}`);
+            const response = await fetch(`./credits.md?v=${window.getResVersion('credits.md')}`, { signal: controller.signal });
             if (!response.ok) throw new Error('找不到 credits.md 檔案');
             mdText = await response.text();
             window.cachedCreditsText = mdText;
         }
     } catch (error) {
+        if (error.name === 'AbortError') return; // 🔥 被中斷就安靜退出
         console.error("Credits 讀取失敗:", error);
         isError = true;
     } finally {
-        document.body.style.cursor = ''; 
+        if (window._activeFetcher === controller) {
+            document.body.style.cursor = ''; 
+            window.toggleLoading(false); 
+            window._activeFetcher = null;
+        }
     }
+
+    // 🔥 幽靈渲染防護
+    if (window._activeFetcher !== null) return;
 
     // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
     switchModalContent(
@@ -5338,12 +5400,22 @@ window.cachedChangelogs = null;
 
 window.showChangelogModal = async function(isSystemFallback = false) {
     document.body.style.cursor = 'wait';
+    window.toggleLoading(true, 'FETCHING_DATA...');
+    
+    // 🔥 攔截前次請求
+    if (window._activeFetcher) window._activeFetcher.abort();
+    window._activeFetcher = new AbortController();
+    const controller = window._activeFetcher;
+    
     let fetchError = false;
 
     try {
-        // ✨ 微型化版本檢查：獨立抓取極小的 version.json 來判定是否需要強制手動更新，保護大檔頻寬
         if (!isSystemFallback) {
-            const vRes = await fetch(`./version.json?t=${new Date().getTime()}`).catch(() => null);
+            // 🔥 第一個 Fetch 綁定 signal
+            const vRes = await fetch(`./version.json?t=${new Date().getTime()}`, { signal: controller.signal }).catch(e => {
+                if (e.name === 'AbortError') throw e; 
+                return null;
+            });
             if (vRes && vRes.ok) {
                 const vData = await vRes.json();
                 if (vData.version && vData.version !== CONFIG.VERSION) {
@@ -5369,21 +5441,31 @@ window.showChangelogModal = async function(isSystemFallback = false) {
             }
         }
 
-        // ✨ 記憶體快取補全：若系統版本一致，則使用 CDN 緩存或記憶體快取讀取日誌內容
+        await window.debugDelay();
+
         if (window.cachedChangelogs !== null) {
-            // 已有快取，不需重抓
+            // 已有快取
         } else {
-            const response = await fetch(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`);
+            // 🔥 第二個 Fetch 綁定 signal
+            const response = await fetch(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`, { signal: controller.signal });
             if (!response.ok) throw new Error('找不到 changelogs.json');
             window.cachedChangelogs = await response.json();
         }
 
     } catch (error) {
+        if (error.name === 'AbortError') return; // 🔥 被中斷就安靜退出
         console.error("日誌讀取或更新檢查失敗:", error);
         fetchError = true;
+    } finally {
+        if (window._activeFetcher === controller) {
+            document.body.style.cursor = '';
+            window.toggleLoading(false);
+            window._activeFetcher = null;
+        }
     }
-    
-    document.body.style.cursor = '';
+
+    // 🔥 幽靈渲染防護
+    if (window._activeFetcher !== null) return;
 
     // 共用標題渲染 (邏輯同步精簡)
     function renderChangelogHeader(isDetail = false, logData = null) {
@@ -5562,24 +5644,39 @@ window.switchBilingualTab = function(lang, btn) {
 window.cachedLicenseText = null;
 window.showLicenseModal = async function() {
     document.body.style.cursor = 'wait'; 
+    window.toggleLoading(true, 'FETCHING_DATA...');
+    
+    // 🔥 攔截前次請求
+    if (window._activeFetcher) window._activeFetcher.abort();
+    window._activeFetcher = new AbortController();
+    const controller = window._activeFetcher;
+
     let mdText = "載入失敗"; let isError = false;
 
     try {
-        // ✨ 記憶體快取補全：已抓過就用快取，沒抓過才使用版本號向 CDN 要求檔案
+        await window.debugDelay();
         if (window.cachedLicenseText !== null) {
             mdText = window.cachedLicenseText;
         } else {
-            const response = await fetch(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`);
+            const response = await fetch(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`, { signal: controller.signal });
             if (!response.ok) throw new Error("找不到版權檔案");
             mdText = await response.text();
             window.cachedLicenseText = mdText;
         }
     } catch (error) {
+        if (error.name === 'AbortError') return; // 🔥 被中斷就安靜退出
         console.error("版權檔案載入失敗:", error);
         isError = true;
     } finally {
-        document.body.style.cursor = ''; 
+        if (window._activeFetcher === controller) {
+            document.body.style.cursor = ''; 
+            window.toggleLoading(false); 
+            window._activeFetcher = null;
+        }
     }
+
+    // 🔥 幽靈渲染防護
+    if (window._activeFetcher !== null) return;
 
     // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
     switchModalContent(

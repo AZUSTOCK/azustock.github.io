@@ -329,7 +329,8 @@ def update_data_version():
         
     return changed_items
 
-def generate_version_json():
+# 🔥 加上 is_github_actions 參數
+def generate_version_json(is_github_actions=False):
     """從 logs 資料夾提取最新版本號 (支援以 detail.json 為主的滾動版號)，並同步寫入前端"""
     print(f"\n==========================================")
     print(f"⚙️ [系統設定] 開始同步全站版號...")
@@ -397,12 +398,21 @@ def generate_version_json():
             # 使用正則精準替換 CONFIG 中的 VERSION 數值
             new_js_content = re.sub(r'(VERSION:\s*")[^"]+(")', rf'\g<1>{latest_version}\g<2>', js_content, count=1)
             
+            # ✨ 核心魔法：只有在 GitHub Actions 雲端打包時，才強制將延遲設為 0
+            if is_github_actions:
+                new_js_content = re.sub(r'(DEBUG_FETCH_DELAY:\s*)\d+', r'\g<1>0', new_js_content, count=1)
+            
             if js_content != new_js_content:
                 with open(js_file, 'w', encoding='utf-8') as f:
                     f.write(new_js_content)
-                print(f"✅ 成功將 {js_file} 的 CONFIG.VERSION 同步更新為 {latest_version}")
+                    
+                # 依據環境印出不同的成功提示
+                if is_github_actions:
+                    print(f"✅ 成功將 {js_file} 同步更新為 {latest_version}，並自動關閉 DEBUG_FETCH_DELAY")
+                else:
+                    print(f"✅ 成功將 {js_file} 同步更新為 {latest_version} (本地開發模式，保留 DEBUG 設定)")
             else:
-                print(f"⏭️ {js_file} 版本號已是最新，無須修改。")
+                print(f"⏭️ {js_file} 設定已是最新，無須修改。")
         else:
             print("⚠️ 找不到 main.js 檔案，無法更新前端系統版本！")
 
