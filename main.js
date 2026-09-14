@@ -241,22 +241,24 @@ window.initPWAPullToRefresh = function() {
     let startY = 0;
     let isPulling = false;
     let canRefresh = false;
-    const threshold = 75; // 觸發重整的門檻 (px)
+    
+    // ✨ 優化 1：降低觸發門檻 (原本 75 -> 改為 60)，輕輕一拉即可觸發
+    const threshold = 60; 
 
-    // ✨ 核心升級：只要內文高度改變，主動觸發當下容器的捲動事件
+    // 初始化時先推播一次 Scroll 事件
     const activeContainer = window.getActiveScrollContainer();
     if (activeContainer) {
         activeContainer.dispatchEvent(new Event('scroll'));
     }
 
     document.addEventListener('touchstart', (e) => {
-        const container = getScrollContainer();
+        // ✨ 核心修復 1：將 getScrollContainer() 修正為 window.getActiveScrollContainer()
+        const container = window.getActiveScrollContainer();
         const scrollTop = container ? (container.scrollTop || window.scrollY || 0) : 0;
         
-        // 只有在畫面「最頂端」時才允許啟動下拉
         if (scrollTop <= 0) {
-            // ✨ 升級 1：改用硬體級的 screenY，免疫所有畫面跳動干擾
-            startY = e.touches[0].screenY; 
+            // ✨ 優化 2：改用 clientY，避免受手機系統介面 (如網址列伸縮) 影響導致的座標誤差
+            startY = e.touches[0].clientY; 
             isPulling = true;
             indicator.style.transition = 'none'; 
             indicator.classList.remove('is-success');
@@ -267,12 +269,11 @@ window.initPWAPullToRefresh = function() {
     document.addEventListener('touchmove', (e) => {
         if (!isPulling) return;
         
-        const container = getScrollContainer();
+        const container = window.getActiveScrollContainer();
         const currentScrollTop = container ? (container.scrollTop || window.scrollY || 0) : 0;
-        const currentY = e.touches[0].screenY;
+        const currentY = e.touches[0].clientY;
         
-        // ✨ 升級 2：如果使用者往上滑 (閱讀文章)，動態更新 startY 錨點
-        // 這樣即使滑到一半不放開直接滑回頂端，依然能無縫接軌啟動下拉重整！
+        // 如果使用者往上滑 (閱讀文章)，動態更新 startY 錨點
         if (currentScrollTop > 0) {
             startY = currentY; 
             indicator.style.transform = `translate(-50%, -100%)`;
@@ -288,7 +289,8 @@ window.initPWAPullToRefresh = function() {
             // 🚨 阻止 PWA 在 iOS/Android 上的原生橡皮筋回彈效應
             if (e.cancelable) e.preventDefault();
             
-            const dampenedDistance = Math.pow(pullDistance, 0.85); 
+            // ✨ 優化 3：改變阻力公式，改用線性係數 (0.45)，讓拉動的手感更輕盈且跟手
+            const dampenedDistance = pullDistance * 0.45; 
             const rotation = -Math.min(pullDistance * 1.5, 360);
             
             indicator.style.opacity = Math.min(pullDistance / 40, 1).toString();
@@ -307,8 +309,6 @@ window.initPWAPullToRefresh = function() {
                 indicator.classList.remove('ready');
             }
         } else {
-            // ✨ 升級 3：拔除了原本的「往上滑就直接中斷(isPulling=false)」
-            // 改為單純隱藏圖示。這樣大大提高了操作的容錯率！
             indicator.style.transform = `translate(-50%, -100%)`;
             indicator.style.opacity = '0';
             indicator.classList.remove('ready');
@@ -328,7 +328,6 @@ window.initPWAPullToRefresh = function() {
             indicator.classList.add('is-reloading');
             indicator.style.transform = `translate(-50%, 30px)`;
             
-            // 清除 JS 給的寫死旋轉角度，讓 CSS 的 @keyframes 完美無縫接管！
             const svgIcon = indicator.querySelector('svg');
             if (svgIcon) svgIcon.style.transform = ''; 
 
@@ -338,7 +337,7 @@ window.initPWAPullToRefresh = function() {
             setTimeout(() => {
                 indicator.classList.remove('is-reloading');
                 indicator.classList.add('is-success');
-                indicator.innerHTML = GLOBAL_SVGS.check; // 換上打勾圖示
+                indicator.innerHTML = GLOBAL_SVGS.check; 
                 window.triggerHaptic('success'); // 強震動提示完成
                 
                 // 3. 停頓 0.4 秒讓使用者看清楚打勾，然後才觸發真正的重整

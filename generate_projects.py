@@ -1248,7 +1248,8 @@ if __name__ == "__main__":
     generate_changelogs_json()
 
     # 2. ✨ 核心修正：有了日誌之後，再讀取它來生成 version.json 並同步版號！
-    generate_version_json()
+    # 🔥 將上方已經偵測好的 is_github_actions 變數傳進去
+    generate_version_json(is_github_actions)
 
     print(f"\n📊 [處理統計]")
     print(f"  - 專案 HTML (index)       : 共 {stats['proj_total']:>4} 個 | 新增 {stats['proj_new']:>4} 個 | 更新 {stats['proj_updated']:>4} 個 | 略過 {stats['proj_skipped']:>4} 個")
