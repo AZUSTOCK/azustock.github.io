@@ -707,6 +707,48 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .new-jump-toast svg { display: block; }
 @keyframes jump-arrow-bounce-down { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 @keyframes jump-arrow-bounce-up { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+
+/* ========================================================================== */
+/* ✨ 全域載入提示膠囊 (Global Loading Engine) */
+/* ========================================================================== */
+#sys-loader {
+    position: fixed;
+    top: max(20px, calc(var(--safe-top) + 20px));
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100000; /* 確保浮在所有遮罩之上 */
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    color: var(--accent);
+    padding: 8px 20px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 4px 15px var(--shadow-base);
+    transition: all 0.3s var(--ease-bounce);
+}
+
+#sys-loader.is-active {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+#sys-loader svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+
 /* ========================================================================== */
 /* ✨ Profile 專屬名言區塊 (內斂質感版)                                       */
 /* ========================================================================== */

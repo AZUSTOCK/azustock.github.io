@@ -74,6 +74,7 @@ const GLOBAL_SVGS = {
     errorLock: `<svg class="error-lock-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5; overflow: visible; transition: all 0.3s ease;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path class="error-lock-shackle" d="M7 11V7a5 5 0 0 1 10 0v4" style="transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: center;"></path></svg>`,
     errorAlert: `<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem; opacity: 0.5;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
     retry: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
+    spinner: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: lightbox-spin 0.8s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>`,
     warning: `<svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
     detailsArrow: `<svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>`
 };
@@ -1135,6 +1136,30 @@ window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = '
             toast.style.transform = 'translateY(-10px)';
             setTimeout(() => toast.remove(), 400);
         }, duration);
+    }
+};
+
+// ==========================================
+// ✨ 全域載入中指示器 (Global Loading Engine)
+// ==========================================
+window.toggleLoading = function(show, text = 'FETCHING_DATA...') {
+    let loader = document.getElementById('sys-loader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'sys-loader';
+        loader.innerHTML = `
+            ${GLOBAL_SVGS.spinner}
+            <span id="sys-loader-text"></span>
+        `;
+        document.body.appendChild(loader);
+    }
+    
+    if (show) {
+        document.getElementById('sys-loader-text').innerText = text;
+        void loader.offsetWidth; // 強制重繪，確保動畫順暢
+        loader.classList.add('is-active');
+    } else {
+        loader.classList.remove('is-active');
     }
 };
 
@@ -4038,26 +4063,47 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         return;
     }
     
+    // 🔥 1. 呼叫全域 UI：顯示轉圈圈膠囊
+    window.toggleLoading(true, 'FETCHING_DATA...');
     document.body.style.cursor = 'wait';
     let markdownContent = "載入失敗";
     
+    // 🔥 2. 建立中斷控制器 (Timeout 設定為 8 秒)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); 
+    
     try {
-        const response = await fetch(article.content_path);
+        // 🔥 將中斷訊號 (signal) 綁定給 fetch
+        const response = await fetch(article.content_path, { signal: controller.signal });
+        clearTimeout(timeoutId); // 成功抓到資料就解除倒數定時器
+        
         if (!response.ok) throw new Error("Network response was not ok");
         const data = await response.json();
         markdownContent = data.content; 
     } catch (error) {
+        clearTimeout(timeoutId); // 發生任何錯誤也先解除倒數
         console.error("無法載入文章內容:", error);
         
-        // 動態判斷是網路斷線還是檔案遺失
         const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
-        const errTitle = isOffline ? 'ERR_INTERNET_DISCONNECTED' : '404 NOT_FOUND';
-        const errMsg = isOffline ? '網路連線中斷，請檢查您的網路狀態。' : '無法載入文章內容。';
+        const isTimeout = error.name === 'AbortError'; // 🔥 偵測是否為 Timeout 觸發的中斷
         
-        // ✨ 使用全域共用錯誤畫面產生器，消除冗餘程式碼
+        let errTitle = '404 NOT_FOUND';
+        let errMsg = '無法載入文章內容。';
+        
+        if (isTimeout) {
+            errTitle = 'ERR_CONNECTION_TIMED_OUT';
+            errMsg = '伺服器回應逾時 (大於 8 秒)，請檢查網路連線後再試。';
+        } else if (isOffline) {
+            errTitle = 'ERR_INTERNET_DISCONNECTED';
+            errMsg = '網路連線中斷，請檢查您的網路狀態。';
+        }
+        
+        // 呼叫系統錯誤畫面產生器
         markdownContent = `\n# ${article.title}\n\n${window.getSystemErrorHtml(errTitle, errMsg)}`;
     } finally {
+        // 🔥 3. 無論成功或失敗，都把游標恢復，並隱藏轉圈圈
         document.body.style.cursor = '';
+        window.toggleLoading(false);
     }
 
     // ✨ 智慧判斷：如果彈窗是開著的，而且左上角已經是「文章膠囊模式 (.unified-nav-capsule)」，
