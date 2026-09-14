@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.9.2",          // 目前系統版本號
+    VERSION: "U1.5.9.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -240,11 +240,10 @@ window.initPWAPullToRefresh = function() {
         
         // 只有在畫面「最頂端」時才允許啟動下拉
         if (scrollTop <= 0) {
-            startY = e.touches[0].clientY;
+            // ✨ 升級 1：改用硬體級的 screenY，免疫所有畫面跳動干擾
+            startY = e.touches[0].screenY; 
             isPulling = true;
-            indicator.style.transition = 'none'; // 拖曳時關閉 CSS 過渡動畫，跟隨手指
-            
-            // 每次重新下拉時，確保圖示是重新整理的箭頭
+            indicator.style.transition = 'none'; 
             indicator.classList.remove('is-success');
             indicator.innerHTML = GLOBAL_SVGS.mermaidReload;
         }
@@ -253,32 +252,38 @@ window.initPWAPullToRefresh = function() {
     document.addEventListener('touchmove', (e) => {
         if (!isPulling) return;
         
-        const currentY = e.touches[0].clientY;
+        const container = getScrollContainer();
+        const currentScrollTop = container ? (container.scrollTop || window.scrollY || 0) : 0;
+        const currentY = e.touches[0].screenY;
+        
+        // ✨ 升級 2：如果使用者往上滑 (閱讀文章)，動態更新 startY 錨點
+        // 這樣即使滑到一半不放開直接滑回頂端，依然能無縫接軌啟動下拉重整！
+        if (currentScrollTop > 0) {
+            startY = currentY; 
+            indicator.style.transform = `translate(-50%, -100%)`;
+            indicator.style.opacity = '0';
+            indicator.classList.remove('ready');
+            return;
+        }
+
         const pullDistance = currentY - startY;
 
-        // 只有往下拉才起作用
-        if (pullDistance > 0) {
-            // 🚨 阻止 PWA 在 iOS 上的原生橡皮筋回彈效應，由我們全面接管畫面！
+        // 只有確實往下拉，且當下位於最頂端時才觸發特效
+        if (pullDistance > 0 && currentScrollTop <= 0) {
+            // 🚨 阻止 PWA 在 iOS/Android 上的原生橡皮筋回彈效應
             if (e.cancelable) e.preventDefault();
             
-            // 物理引擎：加入阻力 (Damping)，讓下拉越來越吃力，產生 Q 彈感
             const dampenedDistance = Math.pow(pullDistance, 0.85); 
-            
-            // ✨ 加上負號，讓它變成逆時針旋轉！
             const rotation = -Math.min(pullDistance * 1.5, 360);
             
             indicator.style.opacity = Math.min(pullDistance / 40, 1).toString();
-            
-            // ✨ 外層容器只做 Y 軸位移
             indicator.style.transform = `translate(-50%, calc(${dampenedDistance}px - 100%))`;
 
-            // ✨ 內部 SVG 才做旋轉 (這樣就不會跟外層的動畫打架了！)
             const svgIcon = indicator.querySelector('svg');
             if (svgIcon && !indicator.classList.contains('is-reloading')) {
                 svgIcon.style.transform = `rotate(${rotation}deg)`;
             }
 
-            // 判斷是否拉過門檻
             if (dampenedDistance >= threshold) {
                 canRefresh = true;
                 indicator.classList.add('ready');
@@ -287,9 +292,13 @@ window.initPWAPullToRefresh = function() {
                 indicator.classList.remove('ready');
             }
         } else {
-            isPulling = false; // 如果往上滑直接中斷
+            // ✨ 升級 3：拔除了原本的「往上滑就直接中斷(isPulling=false)」
+            // 改為單純隱藏圖示。這樣大大提高了操作的容錯率！
+            indicator.style.transform = `translate(-50%, -100%)`;
+            indicator.style.opacity = '0';
+            indicator.classList.remove('ready');
         }
-    }, { passive: false }); 
+    }, { passive: false });
 
     document.addEventListener('touchend', () => {
         if (!isPulling) return;
@@ -3465,7 +3474,6 @@ if (!window.modalBodyObserver) {
 function switchModalContent(updateDOMCallback, afterUpdateCallback = null, animateTopBar = true) {
     const isModalOpen = modalOverlay.classList.contains('active');
     const topLeft = document.getElementById('modal-top-left');
-    const tocMount = document.getElementById('toc-mount-point');
     const modalContainer = document.querySelector('.modal-content');
     
     if (window.indexScrollHandler && modalContainer) {
@@ -3473,57 +3481,48 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
         window.indexScrollHandler = null;
     }
     const jumpToast = document.getElementById('new-jump-toast');
-    if (jumpToast) {
-        jumpToast.classList.remove('is-visible');
-    }
+    if (jumpToast) jumpToast.classList.remove('is-visible');
 
     if (isModalOpen) {
-        const currentHeight = modalContainer.offsetHeight; 
-        modalContainer.style.height = currentHeight + 'px';
-
+        // 1. 加上淡出動畫
         modalBody.classList.add('content-fade-out');
-        
-        // ✨ 如果判斷需要動畫，才為頂端目錄列加上 fade-out 效果
-        if (animateTopBar) {
-            if (topLeft) topLeft.classList.add('content-fade-out');
+        if (animateTopBar && topLeft) {
+            topLeft.classList.add('content-fade-out');
         }
         
+        // 2. 等待 120ms 畫面完全透明
         setTimeout(() => {
+            // ✨ 核心修復：強制關閉外層容器的所有過渡動畫，並拔除寫死的高度
             modalContainer.style.transition = 'none'; 
-            updateDOMCallback();
-            void modalBody.offsetHeight; 
-            
             modalContainer.style.height = ''; 
-            const newHeight = modalContainer.offsetHeight;
-            modalContainer.style.height = currentHeight + 'px';
-            void modalContainer.offsetHeight; 
-            modalContainer.style.transition = ''; 
             
-            requestAnimationFrame(() => {
-                modalContainer.style.height = newHeight + 'px';
-                
-                // ✨ 在畫面還是透明時（fade-in 動畫前）執行捲軸跳轉，實現 0 延遲無縫切換
-                if (afterUpdateCallback) afterUpdateCallback();
+            // 執行 DOM 替換 (此時高度瞬間變化，但因為是透明的，不會有拉扯感)
+            updateDOMCallback();
+            
+            // 執行捲軸跳轉與定位 (瞬間跳轉，高度已是最新狀態，定位絕對精準)
+            if (afterUpdateCallback) afterUpdateCallback();
 
-                modalBody.classList.remove('content-fade-out'); 
-                
-                // ✨ 同步判斷移除
-                if (animateTopBar) {
-                    if (topLeft) topLeft.classList.remove('content-fade-out');
-                }
+            // 強制瀏覽器重繪 (確保 DOM 渲染與捲軸都已在這一 Frame 鎖定)
+            void modalContainer.offsetHeight; 
+            
+            // 3. 拔除淡出，開始淡入
+            modalBody.classList.remove('content-fade-out'); 
+            if (animateTopBar && topLeft) {
+                topLeft.classList.remove('content-fade-out');
+            }
 
-                setTimeout(() => { modalContainer.style.height = ''; }, 320); 
-            });
+            // 4. 等待 50ms (確保淡入開始後)，再把過渡動畫還給外層容器
+            setTimeout(() => { 
+                modalContainer.style.transition = ''; 
+            }, 50); 
         }, 120); 
     } else {
         updateDOMCallback();
-        // ✨ 如果是第一次打開，確保在 DOM 更新後立刻定位
         if (afterUpdateCallback) afterUpdateCallback();
         
         modalBody.classList.remove('content-fade-out');
         if (topLeft) topLeft.classList.remove('content-fade-out');
         
-        // ✨ 彈窗首次開啟時，強制校正視窗座標，防漏底！
         if (window.adjustModalViewports) window.adjustModalViewports();
     }
 }
@@ -3868,58 +3867,49 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             // ✨ 完美找回舊版：返回目錄時自動定位到最後閱讀的文章並觸發高光動畫
             const modalContainer = document.querySelector('.modal-content');
             if (modalContainer) {
-                requestAnimationFrame(() => {
-                    // 如果是返回操作，並且存有最後一次閱讀的 index
-                    if (restoreScroll && window.lastReadArticleIndex !== undefined) {
-                        
-                        // ✨ 1. 先無縫還原「剛進入文章前」的原始目錄捲軸位置
-                        if (window._indexScrollTopCache !== undefined) {
-                            modalContainer.scrollTop = window._indexScrollTopCache;
-                        }
-
-                        const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
-                        if (targetItem) {
-                            const topBar = document.querySelector('.modal-top-bar');
-                            const topBarHeight = topBar ? topBar.offsetHeight : 80;
-                            
-                            // ✨ 2. 捨棄受動畫縮放影響的 getBoundingClientRect，改用絕對物理座標 offsetTop
-                            let itemTop = window.getRelativeOffsetTop(targetItem, modalContainer);
-                            const itemBottom = itemTop + targetItem.offsetHeight;
-
-                            // ✨ 3. 計算容器的安全可視範圍 (相對座標)
-                            const containerHeight = modalContainer.clientHeight;
-                            const visibleTop = modalContainer.scrollTop + topBarHeight;
-                            const visibleBottom = modalContainer.scrollTop + containerHeight;
-
-                            // 判斷是否「完整」在可視範圍內
-                            const isVisible = (itemTop >= visibleTop) && (itemBottom <= visibleBottom);
-
-                            // ✨ 4. 智慧就近跳轉 (Scroll to Nearest)：免疫所有 CSS 動畫干擾
-                            if (!isVisible) {
-                                if (itemTop < visibleTop) {
-                                    // 情況 A：卡片偏上被遮住 -> 往上拉，對齊頂部並留 20px 呼吸空間
-                                    modalContainer.scrollTop = itemTop - topBarHeight - 20;
-                                    
-                                } else if (itemBottom > visibleBottom) {
-                                    // 情況 B：卡片偏下掉出畫面 -> 往下拉，讓底部剛好進來並留 20px 安全距離
-                                    let newScrollTop = itemBottom + 20 - containerHeight;
-                                    
-                                    // 🛡️ 防呆：如果這張卡片特別長，往下拉會導致頭部被導覽列蓋住，則退回「對齊頂部」
-                                    if (itemTop < newScrollTop + topBarHeight) {
-                                        newScrollTop = itemTop - topBarHeight - 40;
-                                    }
-                                    
-                                    modalContainer.scrollTop = newScrollTop;
-                                }
-                            }
-                            
-                            // ✨ 5. 無論有沒有跳轉，都給予該文章高光提示
-                            window.simulateHoverFlash(targetItem);
-                        }
-                    } else {
-                        modalContainer.scrollTop = 0;
+                // 拔除 requestAnimationFrame，讓跳轉在畫面淡入前瞬間完成！
+                if (restoreScroll && window.lastReadArticleIndex !== undefined) {
+                    
+                    // 1. 先無縫還原「剛進入文章前」的原始目錄捲軸位置 (強制瞬間跳轉 auto)
+                    if (window._indexScrollTopCache !== undefined) {
+                        modalContainer.scrollTo({ top: window._indexScrollTopCache, behavior: 'auto' });
                     }
-                });
+
+                    const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
+                    if (targetItem) {
+                        const topBar = document.querySelector('.modal-top-bar');
+                        const topBarHeight = topBar ? topBar.offsetHeight : 80;
+                        
+                        let itemTop = window.getRelativeOffsetTop(targetItem, modalContainer);
+                        const itemBottom = itemTop + targetItem.offsetHeight;
+
+                        const containerHeight = modalContainer.clientHeight;
+                        const visibleTop = modalContainer.scrollTop + topBarHeight;
+                        const visibleBottom = modalContainer.scrollTop + containerHeight;
+
+                        const isVisible = (itemTop >= visibleTop) && (itemBottom <= visibleBottom);
+
+                        // 2. 智慧就近跳轉 (強制使用 behavior: 'auto' 拒絕瀏覽器的平滑滾動干擾)
+                        if (!isVisible) {
+                            if (itemTop < visibleTop) {
+                                modalContainer.scrollTo({ top: itemTop - topBarHeight - 20, behavior: 'auto' });
+                            } else if (itemBottom > visibleBottom) {
+                                let newScrollTop = itemBottom + 20 - containerHeight;
+                                if (itemTop < newScrollTop + topBarHeight) {
+                                    newScrollTop = itemTop - topBarHeight - 40;
+                                }
+                                modalContainer.scrollTo({ top: newScrollTop, behavior: 'auto' });
+                            }
+                        }
+                        
+                        // 等畫面完全穩定浮現後，再觸發高光動畫
+                        setTimeout(() => {
+                            window.simulateHoverFlash(targetItem);
+                        }, 100);
+                    }
+                } else {
+                    modalContainer.scrollTo({ top: 0, behavior: 'auto' });
+                }
             }
         }
     ); 
@@ -4377,57 +4367,55 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             });
         },
         () => {
-            // ✨ 完全無延遲的定位邏輯 (搭載佈局偏移追蹤引擎)
+            // ✨ 完全無延遲的定位邏輯 (拔除 requestAnimationFrame 避免 1-Frame 視覺殘影)
             const modalContainer = document.querySelector('.modal-content');
             if (!modalContainer) return;
             
-            requestAnimationFrame(() => {
-                if (targetHash) {
-                    // 如果有錨點，交給共用引擎處理 (它本身已有追蹤機制)
-                    const success = window.executeAnchorScroll(targetHash, true);
-                    if (success) return; // 如果跳轉錨點成功，就不執行歷史紀錄復原
-                } 
+            if (targetHash) {
+                const success = window.executeAnchorScroll(targetHash, true);
+                if (success) return; 
+            } 
 
-                if (isFromHistory) {
-                    // ✨ 歷史復原：導入「佈局偏移追蹤引擎 (Layout Shift Chaser)」
-                    const doRestoreScroll = () => {
-                        modalContainer.scrollTop = restoreScrollTop;
-                        
-                        // 同步復原直書模式的內部捲軸
-                        if (restoreInnerScrolls && restoreInnerScrolls.length > 0) {
-                            const wrappers = modalBody.querySelectorAll('.vertical-wrapper');
-                            wrappers.forEach((w, i) => {
-                                if (restoreInnerScrolls[i]) {
-                                    w.scrollTop = restoreInnerScrolls[i].scrollTop;
-                                    w.scrollLeft = restoreInnerScrolls[i].scrollLeft;
-                                }
-                            });
-                        }
-                    };
-
-                    doRestoreScroll(); // 1. 第一次強制瞬間復原
-
-                    // 2. 建立追蹤器：對抗 Mermaid、影片、大圖片異步載入導致的高度變化
-                    let trackers = [];
-                    trackers.push(setTimeout(doRestoreScroll, 300));
-                    trackers.push(setTimeout(doRestoreScroll, 600));
-                    trackers.push(setTimeout(doRestoreScroll, 1200));
-
-                    // ✋ 防呆機制：如果使用者在載入期間 (1.2秒內) 已經開始自己滑動，立刻放棄系統追蹤
-                    const cancelTrackers = () => {
-                        trackers.forEach(clearTimeout);
-                        modalContainer.removeEventListener('wheel', cancelTrackers);
-                        modalContainer.removeEventListener('touchstart', cancelTrackers);
-                    };
+            if (isFromHistory) {
+                // ✨ 歷史復原：強制瞬間跳轉 auto
+                const doRestoreScroll = () => {
+                    modalContainer.scrollTo({ top: restoreScrollTop, behavior: 'auto' });
                     
-                    modalContainer.addEventListener('wheel', cancelTrackers, { passive: true });
-                    modalContainer.addEventListener('touchstart', cancelTrackers, { passive: true });
+                    if (restoreInnerScrolls && restoreInnerScrolls.length > 0) {
+                        const wrappers = modalBody.querySelectorAll('.vertical-wrapper');
+                        wrappers.forEach((w, i) => {
+                            if (restoreInnerScrolls[i]) {
+                                w.scrollTo({ top: restoreInnerScrolls[i].scrollTop, left: restoreInnerScrolls[i].scrollLeft, behavior: 'auto' });
+                            }
+                        });
+                    }
+                };
 
-                } else {
-                    // 全新開啟的文章，一律置頂
-                    modalContainer.scrollTop = 0;
-                }
-            });
+                doRestoreScroll(); // 1. 第一次強制瞬間復原
+
+                // ✨ 防呆修復：如果文章內容太短，根本無法滾動，就直接取消追蹤避免拉扯！
+                const maxScroll = modalContainer.scrollHeight - modalContainer.clientHeight;
+                if (maxScroll <= 0) return;
+
+                // 2. 建立佈局偏移追蹤器
+                let trackers = [];
+                trackers.push(setTimeout(doRestoreScroll, 300));
+                trackers.push(setTimeout(doRestoreScroll, 600));
+                trackers.push(setTimeout(doRestoreScroll, 1200));
+
+                const cancelTrackers = () => {
+                    trackers.forEach(clearTimeout);
+                    modalContainer.removeEventListener('wheel', cancelTrackers);
+                    modalContainer.removeEventListener('touchstart', cancelTrackers);
+                };
+                
+                modalContainer.addEventListener('wheel', cancelTrackers, { passive: true });
+                modalContainer.addEventListener('touchstart', cancelTrackers, { passive: true });
+
+            } else {
+                // 全新開啟的文章，一律置頂
+                modalContainer.scrollTo({ top: 0, behavior: 'auto' });
+            }
         },
         animateTopBar
     ); 

@@ -3385,15 +3385,20 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 /* ✨ PWA 全域狀態列防護盾 (極淨版：統一變數與圖層降級)                           */
 /* ========================================================================== */
 @media (display-mode: standalone) {
+    /* ✨ 加上這一段：徹底封印瀏覽器原生的全畫面橡皮筋回彈效應，讓 JS 100% 接管畫面！ */
+    html, body {
+        overscroll-behavior-y: none;
+    }
+    
     body::after {
         content: '';
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
-        height: var(--safe-top); /* 統一使用全域變數 */
+        height: var(--safe-top);
         background-color: var(--bg);
-        z-index: 900; /* ✨ 降為 900：專心擋主頁，不干擾彈窗與 Lightbox 的毛玻璃 */
+        z-index: 900; 
         pointer-events: none;
     }
 }
