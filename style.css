@@ -3145,9 +3145,9 @@ body {
 /* ✨ 新增：PDF 縮圖載入中 (含重試) 的狀態 */
 /* ========================================================================== */
 .pdf-poster-img.is-loading {
-    aspect-ratio: unset !important; /* 拔除全域 img.is-loading 預設的 1/1 比例 */
-    height: 310px !important;       /* 精準鎖定高度，完美對齊 Fallback 失敗介面的高度 (~310px) */
     max-height: none !important;
+    width: 100% !important;
+    height: auto !important;
 }
 
 /* Fallback 容器：完美還原為原始的文字與膠囊排版 */

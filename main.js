@@ -789,6 +789,43 @@ window.getRelativeOffsetTop = function(element, container) {
     return itemTop;
 };
 
+// ✨ 智慧定位預判引擎：在離開清單前，預先計算並快取最佳的返回捲軸位置
+window.calculateIdealScrollCache = function(containerId, targetItemId, currentCache) {
+    const container = document.getElementById(containerId);
+    if (!container) return currentCache || 0;
+    
+    // 為了計算精準座標，如果容器處於隱藏狀態，暫時打開它的物理佈局
+    const wasHidden = container.style.display === 'none';
+    if (wasHidden) {
+        container.style.visibility = 'hidden';
+        container.style.display = 'block';
+    }
+    
+    let finalScroll = currentCache || 0;
+    const targetItem = document.getElementById(targetItemId);
+    
+    if (targetItem) {
+        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
+        const itemTop = window.getRelativeOffsetTop(targetItem, container);
+        const itemBottom = itemTop + targetItem.offsetHeight;
+        const containerHeight = container.clientHeight || window.innerHeight;
+        
+        // 判斷目標是否超出現在的捲軸可視範圍，並進行微調
+        if (itemTop < finalScroll + topBarHeight) {
+            finalScroll = itemTop - topBarHeight - 15;
+        } else if (itemBottom > finalScroll + containerHeight) {
+            finalScroll = itemBottom - containerHeight + 15;
+        }
+    }
+    
+    if (wasHidden) {
+        container.style.display = 'none';
+        container.style.visibility = '';
+    }
+    
+    return Math.max(0, finalScroll);
+};
+
 // ✨ 獲取當下啟用的獨立捲動容器
 window.getActiveScrollContainer = function() {
     const viewIndex = document.getElementById('view-index');
@@ -2045,7 +2082,7 @@ window.reloadPdfContainer = function(btn) {
 // ==========================================
 // ✨ 輔助函數：渲染 PDF 嵌入框架 (動態高度預覽版)
 // ==========================================
-function renderPDFIframe(href, altText, posterUrl = '') {
+function renderPDFIframe(href, altText, posterUrl = '', ar = '') {
     let customHeight = "600px";
     const hMatch = href.match(/[?&]h=(\d+)/i);
     if (hMatch) customHeight = hMatch[1] + "px";
@@ -2057,8 +2094,10 @@ function renderPDFIframe(href, altText, posterUrl = '') {
         window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');
     `;
 
+    // 🔥 替換 posterHtml，動態套用比例
+    const coverStyle = ar ? ` style="aspect-ratio: ${ar}; width: 100%; height: auto;"` : '';
     const posterHtml = posterUrl 
-        ? `<img src="${posterUrl}" class="pdf-poster-img is-loading" alt="PDF Cover" onload="this.classList.remove('is-loading')" onerror="window.handlePdfPosterError(this)">` 
+        ? `<img src="${posterUrl}" class="pdf-poster-img is-loading" alt="PDF Cover" onload="this.classList.remove('is-loading')" onerror="window.handlePdfPosterError(this)"${coverStyle}>` 
         : '';
 
     // 若沒有設定圖片封面，預設直接顯示 Fallback
@@ -2126,12 +2165,16 @@ function renderPDFIframe(href, altText, posterUrl = '') {
 // ==========================================
 // ✨ 輔助函數：渲染影音標籤 (Video / Audio)
 // ==========================================
-function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle) {
+function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle, ar = '') {
     const displayTitle = altText || imgTitle || (isVideo ? '影片播放' : '音樂播放');
     const iconSvg = isVideo ? GLOBAL_SVGS.videoIcon : GLOBAL_SVGS.audioIcon;
     const posterAttr = (isVideo && posterUrl) ? ` poster="${posterUrl}"` : '';
+    // 🔥 如果有算好的比例就用，沒有的話影片預設回退到 16/9
+    const aspectStyle = ar ? ` style="aspect-ratio: ${ar}; width: 100%;"` : (isVideo ? ` style="aspect-ratio: 16/9; width: 100%;"` : '');
+    
+    // 🔥 注入 aspectStyle 到 video 標籤裡
     const mediaTag = isVideo 
-        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video"><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
+        ? `<video preload="metadata" controls playsinline${posterAttr} class="md-video"${aspectStyle}><source src="${cleanMediaUrl}" type="video/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援影片標籤。</video>`
         : `<audio preload="metadata" controls class="md-audio"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
 
     // ✨ 影音專屬：重載腳本 (加上時間戳防快取)
@@ -2170,8 +2213,17 @@ renderer.image = function(token_or_href, title, text) {
     
     if (!href) return '';
 
-    // ✨ 將海報 (Poster) 參數的解析邏輯提前，讓 PDF 與影音共用！
-    const decodedHref = href.replace(/%23/g, '#');
+    let decodedHref = href.replace(/%23/g, '#');
+    
+    // 🔥 新增：擷取並分離 &ar= 參數
+    let ar = '';
+    const arMatch = decodedHref.match(/&ar=([0-9.]+)/);
+    if (arMatch) {
+        ar = arMatch[1];
+        // 從原本的網址中剔除這個參數，以免干擾後續解析
+        decodedHref = decodedHref.replace(/&ar=[0-9.]+/, '');
+    }
+
     let cleanMediaUrl = decodedHref;
     let posterUrl = '';
     if (decodedHref.includes('#poster=')) {
@@ -2181,26 +2233,29 @@ renderer.image = function(token_or_href, title, text) {
     
     const pureUrlForExt = cleanMediaUrl.split('?')[0];
 
-    // 1. 攔截 PDF (把 cleanMediaUrl 跟 posterUrl 傳進去)
-    if (pureUrlForExt.match(/\.pdf$/i)) return renderPDFIframe(cleanMediaUrl, altText, posterUrl);
+    // 1. 攔截 PDF (🔥 補上 ar 參數)
+    if (pureUrlForExt.match(/\.pdf$/i)) return renderPDFIframe(cleanMediaUrl, altText, posterUrl, ar);
 
-    // 2. 攔截影音
+    // 2. 攔截影音 (🔥 補上 ar 參數)
     const isVideo = pureUrlForExt.match(/\.(mp4|webm|ogg)$/i);
     const isAudio = pureUrlForExt.match(/\.(mp3|wav)$/i);
-    
     if (isVideo || isAudio) {
         const ext = pureUrlForExt.split('.').pop().toLowerCase();
-        return renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle);
+        return renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitle, ar);
     }
 
     // 3. 一般圖片
-    let srcUrl = href, fullUrl = href;
-    if (href.includes('#full=')) {
-        const parts = href.split('#full=');
+    let srcUrl = decodedHref, fullUrl = decodedHref;
+    if (decodedHref.includes('#full=')) {
+        const parts = decodedHref.split('#full=');
         srcUrl = parts[0]; fullUrl = parts[1];
     }
 
-    const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
+    // 🔥 新增：動態生成 aspect-ratio 的 inline style
+    const aspectStyle = ar ? `style="aspect-ratio: ${ar}; width: 100%; height: auto;" ` : '';
+
+    // 🔥 替換 imgTag，注入 aspectStyle
+    const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" ${aspectStyle}loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
     const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
     const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
@@ -3633,11 +3688,9 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 viewIndex.innerHTML = `<div id="article-list-container" style="transition: opacity 0.2s ease;"></div>`;
             }
             
-            // ✨ 目錄模式：恢復進度條並綁定到 viewIndex
-            const topBar = document.querySelector('.modal-top-bar');
-            if (viewIndex && topBar) {
-                window.initProgressBar(topBar, viewIndex, 'top', 'reading-progress-bar');
-            }
+            // ✨ 目錄模式：隱藏閱讀進度條
+            const progressBar = document.getElementById('reading-progress-bar');
+            if (progressBar) progressBar.style.display = 'none';
 
             const shareBtn = document.getElementById('index-share-btn');
             if (shareBtn) {
@@ -3904,29 +3957,12 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const viewIndex = document.getElementById('view-index'); 
             if (viewIndex) {
                 if (restoreScroll && window._indexScrollTopCache !== undefined) {
-                    // 1. 先瞬間還原最初的捲軸位置
+                    // ✨ 瞬間套用預先計算好的最佳捲軸位置
                     viewIndex.scrollTo({ top: window._indexScrollTopCache, behavior: 'auto' });
                     
                     const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
                     if (targetItem) {
-                        setTimeout(() => { 
-                            // ✨ 智慧定位：檢查剛讀完的這篇文章，是否超出了現在的畫面？
-                            const containerRect = viewIndex.getBoundingClientRect();
-                            const itemRect = targetItem.getBoundingClientRect();
-                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
-
-                            // 如果被頂部的毛玻璃蓋住，或是已經跑到底部外面
-                            if (itemRect.top < containerRect.top + topBarHeight || itemRect.bottom > containerRect.bottom) {
-                                const scrollOffset = itemRect.top - containerRect.top - topBarHeight - 40;
-                                viewIndex.scrollTo({
-                                    top: viewIndex.scrollTop + scrollOffset,
-                                    behavior: 'smooth'
-                                });
-                            }
-                            
-                            // 稍微延遲一下再閃爍高光，配合捲動動畫的時間
-                            setTimeout(() => window.simulateHoverFlash(targetItem), 200);
-                        }, 100);
+                        setTimeout(() => window.simulateHoverFlash(targetItem), 150);
                     }
                 } else {
                     viewIndex.scrollTo({ top: 0, behavior: 'auto' });
@@ -3984,11 +4020,14 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     }));
                 }
             }
-        }
+        } // ✨ 補回這顆遺失的括號！
+        
         window.historyStack.push({ projectId, articleIndex, scrollTop: 0, innerScrolls: [] });
     }
 
     window.lastReadArticleIndex = articleIndex;
+    // ✨ 進入文章的瞬間，預先計算並快取好返回目錄時的最佳捲軸位置
+    window._indexScrollTopCache = window.calculateIdealScrollCache('view-index', `article-item-${articleIndex}`, window._indexScrollTopCache);
     
     // ✨ 新增：敏感內容攔截 (改用全域變數檢查)
     if ((proj.is_sensitive || article.is_sensitive) && window._hasAgreedSensitiveContent !== true) {
@@ -4015,23 +4054,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         const errTitle = isOffline ? 'ERR_INTERNET_DISCONNECTED' : '404 NOT_FOUND';
         const errMsg = isOffline ? '網路連線中斷，請檢查您的網路狀態。' : '無法載入文章內容。';
         
-        markdownContent = `
-# ${article.title}
-
-<div class="sys-error-layout">
-    <svg class="sys-error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-        <line x1="12" y1="9" x2="12" y2="13"></line>
-        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-    </svg>
-    <div class="media-error-title" style="font-size: 1.2rem; margin-bottom: 0.5rem;">
-        ${errTitle}
-    </div>
-    <div class="sys-error-desc">
-        ${errMsg}
-    </div>
-</div>
-        `.trim();
+        // ✨ 使用全域共用錯誤畫面產生器，消除冗餘程式碼
+        markdownContent = `\n# ${article.title}\n\n${window.getSystemErrorHtml(errTitle, errMsg)}`;
     } finally {
         document.body.style.cursor = '';
     }
@@ -4409,7 +4433,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             } 
 
             if (isFromHistory) {
-                // ✨ 歷史紀錄還原：只要在 DOM 替換時瞬間設定一次即可，拔除會造成畫面拉扯的追蹤引擎！
+                // ✨ 歷史紀錄還原：只要瞬間設定一次即可，拔除會造成畫面拉扯的冗餘追蹤器
                 viewArticle.scrollTo({ top: restoreScrollTop, behavior: 'auto' }); 
                 
                 if (restoreInnerScrolls && restoreInnerScrolls.length > 0) {
@@ -4621,6 +4645,13 @@ window.goBackInHistory = function() {
 function closeModal() {
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
+    
+    // ✨ 關閉 Modal 時，精準拔除 Jump Toast 捲動監聽器，防止 Memory Leak
+    if (window.indexScrollHandler) {
+        const viewIndex = document.getElementById('view-index');
+        if (viewIndex) viewIndex.removeEventListener('scroll', window.indexScrollHandler);
+        window.indexScrollHandler = null;
+    }
     
     // ✨ 延遲 300 毫秒解鎖，配合 Modal 的 opacity: 0.3s 動畫
     setTimeout(() => window.unlockScroll(), 300); 
@@ -5374,9 +5405,9 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                         let activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
                         let badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
 
-                        // 1. 在 li 加上 data-status 屬性，並移除寫死的 style
+                        // 1. 在 li 加上 data-status 與 ID 屬性
                         listHTML += `
-                            <li class="article-li is-highlight changelog-list-item" data-status="${activeStatus}">
+                            <li id="changelog-item-${log.id}" class="article-li is-highlight changelog-list-item" data-status="${activeStatus}">
                                 <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${log.id}')">
                                     <div class="article-item-icon-wrap">
                                         <div class="article-item-fallback changelog-item-icon">${GLOBAL_SVGS.docIconLg}</div>
@@ -5402,9 +5433,14 @@ window.showChangelogModal = async function(isSystemFallback = false) {
             () => {
                 const viewArticle = document.getElementById('view-article');
                 if (viewArticle) {
-                    // ✨ 判斷是否需要恢復位置
                     if (restoreScroll && window._changelogScrollTopCache !== undefined) {
+                        // ✨ 瞬間套用預先計算好的最佳捲軸位置
                         viewArticle.scrollTo({ top: window._changelogScrollTopCache, behavior: 'auto' });
+                        
+                        const targetItem = document.getElementById(`changelog-item-${window.lastReadChangelogId}`);
+                        if (targetItem) {
+                            setTimeout(() => window.simulateHoverFlash(targetItem), 150);
+                        }
                     } else {
                         viewArticle.scrollTo({ top: 0, behavior: 'auto' });
                     }
@@ -5415,11 +5451,14 @@ window.showChangelogModal = async function(isSystemFallback = false) {
 
     // 3. 渲染第二層：詳細記錄
     window.renderChangelogDetail = function(logId) {
-        // ✨ 新增：在切換到詳細內容前，先把當下的捲軸高度存起來
         const viewArticle = document.getElementById('view-article');
-        if (viewArticle) {
+        if (viewArticle && window._changelogScrollTopCache === undefined) {
             window._changelogScrollTopCache = viewArticle.scrollTop;
         }
+        window.lastReadChangelogId = logId; 
+        
+        // ✨ 在 DOM 被替換前，預先計算好返回時的最佳位置
+        window._changelogScrollTopCache = window.calculateIdealScrollCache('view-article', `changelog-item-${logId}`, window._changelogScrollTopCache);
 
         const targetLog = window.cachedChangelogs.find(l => l.id === logId);
         if (!targetLog) return;
@@ -5614,50 +5653,26 @@ window.scrollToAnchor = function(event, hash) {
 };
 
 // ==========================================
-// ✨ 獨立打包：終極精準捲動引擎 (動態追蹤定位版 + 物理座標)
+// ✨ 獨立打包：終極精準捲動引擎 (物理座標版)
 // ==========================================
-window.executeAnchorScroll = function(hash, forceInstantFirst = false, disableTrackers = false) {
+window.executeAnchorScroll = function(hash, forceInstantFirst = false) {
     const activeContainer = window.getActiveScrollContainer(); 
     if (!activeContainer) return false;
 
     const targetEl = window.findAnchorElement(hash);
     if (!targetEl) return null;
 
-    const doScroll = (isSmooth = true) => {
-        // ✨ 完全還原你原本的變數與參數！
-        const topBar = document.querySelector('.modal-top-bar');
-        const topBarHeight = topBar ? topBar.offsetHeight : 80;
-        
-        // 捨棄受動畫縮放影響的 getBoundingClientRect，改用絕對物理座標 offsetTop
-        let itemTop = window.getRelativeOffsetTop(targetEl, activeContainer);
-        
-        // 完全還原你原本的 - 7 參數
-        const targetScrollTop = itemTop - topBarHeight - 7; 
-        
-        if (Math.abs(activeContainer.scrollTop - targetScrollTop) > 2) {
-            activeContainer.scrollTo({ 
-                top: targetScrollTop, 
-                behavior: isSmooth ? 'smooth' : 'auto' 
-            });
-        }
-    };
-
-    doScroll(!forceInstantFirst);
-
-    if (!disableTrackers) {
-        let trackers = [];
-        trackers.push(setTimeout(() => doScroll(true), 300));
-        trackers.push(setTimeout(() => doScroll(true), 600));
-        trackers.push(setTimeout(() => doScroll(true), 1200));
-
-        const cancelTrackers = () => {
-            trackers.forEach(clearTimeout);
-            activeContainer.removeEventListener('wheel', cancelTrackers);
-            activeContainer.removeEventListener('touchstart', cancelTrackers);
-        };
-        
-        activeContainer.addEventListener('wheel', cancelTrackers, { passive: true });
-        activeContainer.addEventListener('touchstart', cancelTrackers, { passive: true });
+    // ✨ 簡化版捲動引擎，移除會造成跳動的冗餘追蹤器
+    const topBar = document.querySelector('.modal-top-bar');
+    const topBarHeight = topBar ? topBar.offsetHeight : 80;
+    let itemTop = window.getRelativeOffsetTop(targetEl, activeContainer);
+    const targetScrollTop = itemTop - topBarHeight - 7; 
+    
+    if (Math.abs(activeContainer.scrollTop - targetScrollTop) > 2) {
+        activeContainer.scrollTo({ 
+            top: targetScrollTop, 
+            behavior: forceInstantFirst ? 'auto' : 'smooth' 
+        });
     }
 
     let highlightEl = targetEl;
