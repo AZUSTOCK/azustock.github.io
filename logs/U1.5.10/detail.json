@@ -1,6 +1,6 @@
 {
-  "version": "U1.5.9.3",
-  "date": "2026-",
-  "status": "",
-  "description": ""
+  "version": "U1.5.10",
+  "date": "2026-09-14",
+  "status": "STABLE",
+  "description": "分割modal-body、細節與自動化修正等"
 }
