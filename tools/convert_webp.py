@@ -1,6 +1,7 @@
 import os
 import glob
 from PIL import Image
+from datetime import datetime
 
 # ✨ 魔法路徑：自動從 tools 資料夾往上一層找到 projects
 DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'projects'))
@@ -11,7 +12,19 @@ DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'pro
 MAX_SIZE = (1920, 1920) 
 RATIO = 0.8
 AUTHOR_NAME = "風川梓 (Azustock)"
-COPYRIGHT_TEXT = f"Copyright (c) 2026 {AUTHOR_NAME}. All rights reserved."
+
+def get_copyright_exif(img):
+    """產生帶有專屬版權宣告的 EXIF 數位簽章位元組"""
+    current_year = datetime.now().year
+    copyright_text = f"Copyright (c) {current_year} {AUTHOR_NAME}. All rights reserved."
+    
+    clean_exif = img.getexif()
+    clean_exif.clear() 
+    clean_exif[40093] = (AUTHOR_NAME + '\x00').encode('utf-16le')
+    clean_exif[40092] = (copyright_text + '\x00').encode('utf-16le')
+    clean_exif[315] = "Azustock" 
+    
+    return clean_exif.tobytes()
 # ==========================================
 
 def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode=None, max_size=MAX_SIZE, ratio=RATIO):
@@ -83,14 +96,8 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
                 else:
                     clean_img.thumbnail(max_size, Image.Resampling.LANCZOS)
                 
-                clean_exif = clean_img.getexif()
-                clean_exif.clear() 
-                
-                clean_exif[40093] = (AUTHOR_NAME + '\x00').encode('utf-16le')
-                clean_exif[40092] = (COPYRIGHT_TEXT + '\x00').encode('utf-16le')
-                clean_exif[315] = "Azustock" 
-                
-                exif_bytes = clean_exif.tobytes()
+                # 🔥 統一呼叫共用版權函式
+                exif_bytes = get_copyright_exif(clean_img)
 
                 clean_img.save(webp_path, "webp", quality=quality, exif=exif_bytes)
             
@@ -123,31 +130,20 @@ def generate_cover_thumbnail(src_path, dest_path, max_width=320, quality=80):
         
     try:
         with Image.open(src_path) as img:
-            # 確保圖片為 RGB 模式 (處理帶有透明度的 PNG 轉 WebP)
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGBA")
             elif img.mode != "RGB":
                 img = img.convert("RGB")
 
-            # 如果圖片寬度大於限制，進行等比例縮放
             if img.width > max_width:
                 ratio = max_width / img.width
                 new_size = (max_width, int(img.height * ratio))
-                # 使用 LANCZOS 演算法確保縮小後的畫質平滑
                 img = img.resize(new_size, Image.Resampling.LANCZOS)
             
-            # ✨ 核心修復：為所有縮圖注入 EXIF 數位版權簽章
-            clean_exif = img.getexif()
-            clean_exif.clear() 
-            clean_exif[40093] = (AUTHOR_NAME + '\x00').encode('utf-16le')
-            clean_exif[40092] = (COPYRIGHT_TEXT + '\x00').encode('utf-16le')
-            clean_exif[315] = "Azustock" 
-            exif_bytes = clean_exif.tobytes()
+            # 🔥 統一呼叫共用版權函式
+            exif_bytes = get_copyright_exif(img)
 
-            # 確保 API 目標資料夾存在
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-            
-            # 儲存為 WebP (加上 exif 參數！)
             img.save(dest_path, "WEBP", quality=quality, exif=exif_bytes)
             return True
             

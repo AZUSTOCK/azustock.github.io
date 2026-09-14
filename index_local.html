@@ -126,7 +126,11 @@
         </div>
       </div>
       
-      <div id="modal-body" class="markdown-body"></div>
+      <!-- ✨ 雙獨立容器架構：實現 DOM 緩存與無縫切換 -->
+      <div id="modal-body">
+        <div id="view-index" class="markdown-body" style="display: none;"></div>
+        <div id="view-article" class="markdown-body" style="display: none;"></div>
+      </div>
     </div>
   </div>
 

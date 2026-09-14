@@ -707,6 +707,48 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .new-jump-toast svg { display: block; }
 @keyframes jump-arrow-bounce-down { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
 @keyframes jump-arrow-bounce-up { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+
+/* ========================================================================== */
+/* ✨ 全域載入提示膠囊 (Global Loading Engine) */
+/* ========================================================================== */
+#sys-loader {
+    position: fixed;
+    top: max(20px, calc(var(--safe-top) + 20px));
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 100000; /* 確保浮在所有遮罩之上 */
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    color: var(--accent);
+    padding: 8px 20px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 4px 15px var(--shadow-base);
+    transition: all 0.3s var(--ease-bounce);
+}
+
+#sys-loader.is-active {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+#sys-loader svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+
 /* ========================================================================== */
 /* ✨ Profile 專屬名言區塊 (內斂質感版)                                       */
 /* ========================================================================== */
@@ -3145,9 +3187,9 @@ body {
 /* ✨ 新增：PDF 縮圖載入中 (含重試) 的狀態 */
 /* ========================================================================== */
 .pdf-poster-img.is-loading {
-    aspect-ratio: unset !important; /* 拔除全域 img.is-loading 預設的 1/1 比例 */
-    height: 310px !important;       /* 精準鎖定高度，完美對齊 Fallback 失敗介面的高度 (~310px) */
     max-height: none !important;
+    width: 100% !important;
+    height: auto !important;
 }
 
 /* Fallback 容器：完美還原為原始的文字與膠囊排版 */
@@ -3400,5 +3442,73 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         background-color: var(--bg);
         z-index: 900; 
         pointer-events: none;
+    }
+}
+
+
+/* ========================================================================== */
+/* ✨ 獨立捲軸與高度動態分配引擎 (Flexbox Magic) - 毛玻璃穿透版 */
+/* ========================================================================== */
+
+/* 1. 外層容器：取消 padding，讓內部捲動能完全貼合邊緣（包含底部穿透） */
+.modal-content {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;  /* 確保圓角裁切生效 */
+    position: relative !important; 
+    padding: 0 !important; /* ✨ 拔除外層的牆壁，讓下方也能穿透 */
+}
+
+/* 2. 頂部導覽列：絕對定位浮在最上層，並補回左右 padding */
+.modal-top-bar {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: 0 !important; 
+    padding: 1.5rem 3rem 1.2rem 3rem !important; 
+    width: 100%;
+    box-sizing: border-box;
+    z-index: 1060 !important; 
+}
+
+/* 3. 中間容器：撐滿高度 */
+#modal-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important; 
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+}
+
+/* 4. 獨立捲軸容器：使用 CSS 變數動態閃避 TopBar，並加上 Bottom Padding */
+#view-index, #view-article {
+    position: relative !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: auto !important;
+    -webkit-overflow-scrolling: touch;
+    
+    /* ✨ 上方：接收 JS 動態算出的真實高度，加上 15px 緩衝區 */
+    padding-top: calc(var(--top-bar-height, 80px) + 15px) !important; 
+    
+    /* ✨ 左右與下方：把原本外層的 Padding 下放進來，滑到最底下就不會貼壁 */
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+    padding-bottom: 3rem !important; 
+}
+
+/* 📱 手機版版面微調 */
+@media (max-width: 700px) {
+    .modal-top-bar {
+        padding: 1.5rem 1.5rem 1.2rem 1.5rem !important;
+    }
+    #view-index, #view-article {
+        padding-top: calc(var(--top-bar-height, 80px) + 15px) !important; 
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        padding-bottom: 2.5rem !important;
     }
 }

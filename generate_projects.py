@@ -5,7 +5,7 @@ import time
 import hashlib
 from PIL import Image
 from datetime import datetime, timedelta
-from tools.convert_webp import convert_to_webp_with_protection, generate_cover_thumbnail
+from tools.convert_webp import convert_to_webp_with_protection, generate_cover_thumbnail, get_copyright_exif
 from tools.update_paths import update_extensions_to_webp
 import rjsmin # type: ignore
 import rcssmin # type: ignore
@@ -75,6 +75,16 @@ def minify_assets():
 # ==========================================
 # 🛠️ 輔助系統 (Helper Functions)
 # ==========================================
+def get_copyright_exif(img):
+    """產生帶有專屬版權宣告的 EXIF 數位簽章位元組"""
+    current_year = datetime.now().year
+    clean_exif = img.getexif()
+    clean_exif.clear()
+    clean_exif[40093] = ("風川梓 (Azustock)" + '\x00').encode('utf-16le') # 作者 Author
+    clean_exif[40092] = (f"Copyright (c) {current_year} 風川梓 (Azustock). All rights reserved." + '\x00').encode('utf-16le') # 註解/版權宣告
+    clean_exif[315] = "Azustock" # 軟體/建立者
+    return clean_exif.tobytes()
+
 def get_file_status(source_paths, target_path, force_overwrite=False):
     if not os.path.exists(target_path):
         return 'NEW'
@@ -118,12 +128,9 @@ def create_og_image(original_path, output_path, bg_path=None):
         bg.paste(img, (x, y), img)
         
         final_img = bg.convert("RGB")
-        clean_exif = final_img.getexif()
-        clean_exif.clear()
-        clean_exif[40093] = ("風川梓 (Azustock)" + '\x00').encode('utf-16le')
-        clean_exif[40092] = ("Copyright (c) 2026 風川梓 (Azustock). All rights reserved." + '\x00').encode('utf-16le')
-        clean_exif[315] = "Azustock"
-        exif_bytes = clean_exif.tobytes()
+        
+        # 🔥 呼叫全域版權共用函式
+        exif_bytes = get_copyright_exif(final_img)
         
         final_img.save(output_path, "WEBP", quality=90, exif=exif_bytes)
         return True
@@ -131,8 +138,8 @@ def create_og_image(original_path, output_path, bg_path=None):
         print(f"⚠️ 生成 OG 圖片失敗 {original_path}: {e}")
         return False
 
-def generate_pdf_thumbnail(pdf_path, output_path, max_width=800, quality=90):
-    """讀取 PDF 第一頁並轉換為 WebP 縮圖"""
+def generate_pdf_thumbnail(pdf_path, output_path, max_width=1600, quality=90):
+    """讀取 PDF 第一頁並轉換為高畫質 WebP 縮圖"""
     try:
         import pymupdf  # type: ignore
     except ImportError:
@@ -145,32 +152,27 @@ def generate_pdf_thumbnail(pdf_path, output_path, max_width=800, quality=90):
             return False
         page = doc.load_page(0)  # 讀取第一頁 (Index 0)
         
-        # 矩陣縮放 2 倍以提高解析度 (讓文字邊緣更銳利)
-        pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2))
+        # 🔥 畫質躍升：矩陣縮放 4 倍以進行超取樣 (Super Sampling)，確保 Retina 銳利度
+        pix = page.get_pixmap(matrix=pymupdf.Matrix(4, 4))
         
         # 將 PyMuPDF 的 pixmap 轉為 PIL Image 格式
         mode = "RGBA" if pix.alpha else "RGB"
         img = Image.frombytes(mode, [pix.width, pix.height], pix.samples)
         
-        # ✨ 防呆：PDF 通常是透明背景，直接轉 RGB 會變全黑，所以強制墊上一層白底！
+        # ✨ 防呆：PDF 通常是透明背景，強制墊上一層白底
         if mode == "RGBA":
             bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img, mask=img.split()[3]) # 使用 Alpha 通道作為遮罩
+            bg.paste(img, mask=img.split()[3]) 
             img = bg
         
-        # 調整尺寸
+        # 調整尺寸 (max_width 從 800 提升至 1600)
         if img.width > max_width:
             ratio = max_width / img.width
             new_size = (max_width, int(img.height * ratio))
             img = img.resize(new_size, Image.Resampling.LANCZOS)
             
-        # ✨ 寫入數位簽章 (EXIF Metadata)
-        clean_exif = img.getexif()
-        clean_exif.clear()
-        clean_exif[40093] = ("風川梓 (Azustock)" + '\x00').encode('utf-16le') # 作者 Author
-        clean_exif[40092] = ("Copyright (c) 2026 風川梓 (Azustock). All rights reserved." + '\x00').encode('utf-16le') # 註解/版權宣告
-        clean_exif[315] = "Azustock" # 軟體/建立者
-        exif_bytes = clean_exif.tobytes()
+        # 🔥 呼叫全域版權共用函式
+        exif_bytes = get_copyright_exif(img)
             
         # 轉存為 WebP (無縫夾帶 EXIF 數位簽章)
         img.save(output_path, "WEBP", quality=quality, exif=exif_bytes)
@@ -327,7 +329,8 @@ def update_data_version():
         
     return changed_items
 
-def generate_version_json():
+# 🔥 加上 is_github_actions 參數
+def generate_version_json(is_github_actions=False):
     """從 logs 資料夾提取最新版本號 (支援以 detail.json 為主的滾動版號)，並同步寫入前端"""
     print(f"\n==========================================")
     print(f"⚙️ [系統設定] 開始同步全站版號...")
@@ -395,12 +398,21 @@ def generate_version_json():
             # 使用正則精準替換 CONFIG 中的 VERSION 數值
             new_js_content = re.sub(r'(VERSION:\s*")[^"]+(")', rf'\g<1>{latest_version}\g<2>', js_content, count=1)
             
+            # ✨ 核心魔法：只有在 GitHub Actions 雲端打包時，才強制將延遲設為 0
+            if is_github_actions:
+                new_js_content = re.sub(r'(DEBUG_FETCH_DELAY:\s*)\d+', r'\g<1>0', new_js_content, count=1)
+            
             if js_content != new_js_content:
                 with open(js_file, 'w', encoding='utf-8') as f:
                     f.write(new_js_content)
-                print(f"✅ 成功將 {js_file} 的 CONFIG.VERSION 同步更新為 {latest_version}")
+                    
+                # 依據環境印出不同的成功提示
+                if is_github_actions:
+                    print(f"✅ 成功將 {js_file} 同步更新為 {latest_version}，並自動關閉 DEBUG_FETCH_DELAY")
+                else:
+                    print(f"✅ 成功將 {js_file} 同步更新為 {latest_version} (本地開發模式，保留 DEBUG 設定)")
             else:
-                print(f"⏭️ {js_file} 版本號已是最新，無須修改。")
+                print(f"⏭️ {js_file} 設定已是最新，無須修改。")
         else:
             print("⚠️ 找不到 main.js 檔案，無法更新前端系統版本！")
 
@@ -854,10 +866,19 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
                                         orig_url_t = get_hash_url(local_main_path, main_url)
                                         
+                                        # 🔥 新增這段：取得原始圖片的長寬比
+                                        ar_str = ""
+                                        try:
+                                            with Image.open(local_main_path) as tmp_img:
+                                                ar_str = f"&ar={round(tmp_img.width / tmp_img.height, 4)}"
+                                        except Exception:
+                                            pass
+                                        
+                                        # 替換下方原本的 return，將 ar_str 串接進去
                                         if '#full=' in final_stamped_url:
-                                            return f"![{alt_text}]({thumb_url}#{final_stamped_url.split('#', 1)[1]}{title_str})"
+                                            return f"![{alt_text}]({thumb_url}#{final_stamped_url.split('#', 1)[1]}{ar_str}{title_str})"
                                         else:
-                                            return f"![{alt_text}]({thumb_url}#full={orig_url_t}{title_str})"
+                                            return f"![{alt_text}]({thumb_url}#full={orig_url_t}{ar_str}{title_str})"
                                             
                                     # ==========================================
                                     # ✨ PDF 自動生成縮圖與 Poster 注入引擎
@@ -896,7 +917,17 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             # ✨ 如果檔案成功產出，自動將生成的路徑加上 #poster= 塞進網址裡
                                             if os.path.exists(thumb_local_path):
                                                 thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
-                                                final_stamped_url += f"#poster={thumb_url}"
+                                                
+                                                # 🔥 新增這段：讀取生成的 PDF 縮圖，取得長寬比
+                                                ar_str = ""
+                                                try:
+                                                    with Image.open(thumb_local_path) as tmp_img:
+                                                        ar_str = f"&ar={round(tmp_img.width / tmp_img.height, 4)}"
+                                                except Exception:
+                                                    pass
+                                                    
+                                                # 替換這行，將 ar_str 串接進去
+                                                final_stamped_url += f"#poster={thumb_url}{ar_str}"
 
                                     return f"![{alt_text}]({final_stamped_url}{title_str})"
                                         
@@ -1217,7 +1248,8 @@ if __name__ == "__main__":
     generate_changelogs_json()
 
     # 2. ✨ 核心修正：有了日誌之後，再讀取它來生成 version.json 並同步版號！
-    generate_version_json()
+    # 🔥 將上方已經偵測好的 is_github_actions 變數傳進去
+    generate_version_json(is_github_actions)
 
     print(f"\n📊 [處理統計]")
     print(f"  - 專案 HTML (index)       : 共 {stats['proj_total']:>4} 個 | 新增 {stats['proj_new']:>4} 個 | 更新 {stats['proj_updated']:>4} 個 | 略過 {stats['proj_skipped']:>4} 個")
