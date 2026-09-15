@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azustock 視覺化精準切圖工具</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --accent: #38bdf8;
+            --border: #334155;
+            --crop-box: rgba(239, 68, 68, 0.4);
+            --crop-border: #ef4444;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* 頂部工具列 */
+        .toolbar {
+            background-color: var(--card);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+        }
+
+        .input-group { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.95rem; }
+        
+        input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-family: monospace;
+            font-size: 1rem;
+        }
+
+        input[type="file"] {
+            font-size: 0.95rem;
+            color: var(--text);
+        }
+        
+        /* 檔案上傳按鈕美化 */
+        input[type="file"]::file-selector-button {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-right: 10px;
+        }
+        input[type="file"]::file-selector-button:hover { background: var(--border); }
+
+        .btn-crop {
+            background-color: var(--accent);
+            color: #020617;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-left: auto;
+        }
+        .btn-crop:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4); }
+
+        /* 工作區與圖片 */
+        .workspace {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            background: var(--card);
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        #target-img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            cursor: crosshair; /* 十字游標方便瞄準 */
+        }
+
+        /* 裁切預覽框 */
+        #crop-box {
+            position: absolute;
+            border: 2px dashed var(--crop-border);
+            background-color: var(--crop-box);
+            pointer-events: none; /* 讓滑鼠可以穿透點擊圖片 */
+            display: none;
+            box-sizing: border-box;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); /* 四周變暗凸顯裁切區 */
+        }
+
+        /* 右下角浮動資訊列 */
+        .status-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            color: var(--accent);
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar">
+        <div class="input-group">
+            <input type="file" id="upload" accept="image/*">
+        </div>
+        
+        <div class="input-group">
+            中心 X: <input type="number" id="cx" value="1024">
+        </div>
+        <div class="input-group">
+            中心 Y: <input type="number" id="cy" value="800">
+        </div>
+        <div class="input-group" style="margin-left: 10px;">
+            切圖 寬: <input type="number" id="cw" value="1100">
+        </div>
+        <div class="input-group">
+            切圖 高: <input type="number" id="ch" value="1100">
+        </div>
+
+        <button class="btn-crop" id="btn-crop">✂️ 裁切並下載</button>
+    </div>
+
+    <div class="workspace" id="workspace">
+        <img id="target-img" src="" alt="請先上傳圖片">
+        <div id="crop-box"></div>
+    </div>
+
+    <div class="status-panel" id="status">
+        等待上傳圖片...
+    </div>
+
+    <script>
+        const upload = document.getElementById('upload');
+        const img = document.getElementById('target-img');
+        const cropBox = document.getElementById('crop-box');
+        const status = document.getElementById('status');
+        
+        const cxIn = document.getElementById('cx');
+        const cyIn = document.getElementById('cy');
+        const cwIn = document.getElementById('cw');
+        const chIn = document.getElementById('ch');
+        const btnCrop = document.getElementById('btn-crop');
+
+        let naturalW = 0, naturalH = 0;
+
+        // 1. 處理圖片上傳
+        upload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            // 釋放舊的記憶體
+            if(img.src && img.src.startsWith('blob:')) {
+                URL.revokeObjectURL(img.src);
+            }
+            
+            img.src = URL.createObjectURL(file);
+            img.alt = "";
+        });
+
+        // 2. 圖片載入完成後初始化尺寸
+        img.onload = () => {
+            naturalW = img.naturalWidth;
+            naturalH = img.naturalHeight;
+            updateBox(); // 畫出紅色預覽框
+        };
+
+        // 計算真實像素與畫面上縮放大小的比例
+        function getScale() {
+            if(!naturalW) return 1;
+            return naturalW / img.clientWidth;
+        }
+
+        // 3. 滑鼠移動：顯示真實像素座標
+        img.addEventListener('mousemove', (e) => {
+            if(!naturalW) return;
+            const scale = getScale();
+            const rect = img.getBoundingClientRect();
+            
+            // 計算在真實圖片上的像素位置
+            const x = Math.round((e.clientX - rect.left) * scale);
+            const y = Math.round((e.clientY - rect.top) * scale);
+            
+            status.innerHTML = `原圖: ${naturalW} x ${naturalH} <br> 游標: X: ${x} , Y: ${y}`;
+        });
+
+        // 4. 滑鼠點擊：快速設定中心點
+        img.addEventListener('click', (e) => {
+            if(!naturalW) return;
+            const scale = getScale();
+            const rect = img.getBoundingClientRect();
+            
+            const x = Math.round((e.clientX - rect.left) * scale);
+            const y = Math.round((e.clientY - rect.top) * scale);
+            
+            cxIn.value = x;
+            cyIn.value = y;
+            updateBox(); // 更新紅色預覽框
+        });
+
+        // 5. 監聽輸入框變更，即時更新預覽框
+        [cxIn, cyIn, cwIn, chIn].forEach(input => {
+            input.addEventListener('input', updateBox);
+        });
+
+        // 更新紅色預覽框位置的引擎
+        function updateBox() {
+            if(!naturalW) return;
+            cropBox.style.display = 'block';
+            
+            const scale = getScale();
+            const cx = parseFloat(cxIn.value) || 0;
+            const cy = parseFloat(cyIn.value) || 0;
+            const cw = parseFloat(cwIn.value) || 0;
+            const ch = parseFloat(chIn.value) || 0;
+
+            // 將真實像素的裁切寬高，轉換為「畫面上縮放後」的 CSS 寬高與位置
+            const renderWidth = cw / scale;
+            const renderHeight = ch / scale;
+            const renderLeft = (cx - cw/2) / scale;
+            const renderTop = (cy - ch/2) / scale;
+
+            cropBox.style.left = renderLeft + 'px';
+            cropBox.style.top = renderTop + 'px';
+            cropBox.style.width = renderWidth + 'px';
+            cropBox.style.height = renderHeight + 'px';
+        }
+
+        // 6. 核心裁切與下載邏輯
+        btnCrop.addEventListener('click', () => {
+            if(!naturalW) { 
+                alert("請先在左上角選擇並上傳圖片！"); 
+                return; 
+            }
+            
+            const cx = parseFloat(cxIn.value) || 0;
+            const cy = parseFloat(cyIn.value) || 0;
+            const cw = parseFloat(cwIn.value) || 0;
+            const ch = parseFloat(chIn.value) || 0;
+
+            // 建立虛擬 Canvas 作為切圖板
+            const canvas = document.createElement('canvas');
+            canvas.width = cw;
+            canvas.height = ch;
+            const ctx = canvas.getContext('2d');
+            
+            // 計算左上角起始點
+            const startX = cx - cw/2;
+            const startY = cy - ch/2;
+
+            // 將原圖的指定區塊畫到 Canvas 上
+            ctx.drawImage(
+                img, 
+                startX, startY, cw, ch, // 來源裁切範圍 (sx, sy, sWidth, sHeight)
+                0, 0, cw, ch            // 畫在 Canvas 的位置與大小 (dx, dy, dWidth, dHeight)
+            );
+            
+            // 將 Canvas 轉換為圖片並觸發下載
+            const link = document.createElement('a');
+            link.download = `cropped_${cx}_${cy}_${cw}x${ch}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+</body>
+</html>

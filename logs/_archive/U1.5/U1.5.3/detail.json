@@ -1,0 +1,6 @@
+{
+  "version": "U1.5.3",
+  "date": "2026-08-16",
+  "status": "PATCH",
+  "description": "新增快取破壞機制，修復滾動、UI、影音問題等"
+}
