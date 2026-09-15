@@ -3638,6 +3638,9 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
     const topLeft = document.getElementById('modal-top-left');
     const modalContainer = document.querySelector('.modal-content');
     
+    // 🔥 在每次切換正常內容時，確保拔除錯誤畫面的專屬窄視窗屬性
+    if (modalContainer) modalContainer.classList.remove('is-sys-error-mode');
+    
     if (window.indexScrollHandler) {
         const viewIndex = document.getElementById('view-index');
         if (viewIndex) viewIndex.removeEventListener('scroll', window.indexScrollHandler);
@@ -5127,6 +5130,10 @@ function show404Modal(title, message) {
     const modalBody = viewArticle || document.getElementById('modal-body');
     const modalTopLeft = document.getElementById('modal-top-left');
     const tocMountPoint = document.getElementById('toc-mount-point');
+    
+    // 🔥 抓取 Modal 容器並強制縮小寬度
+    const modalContainer = modalOverlay.querySelector('.modal-content');
+    if (modalContainer) modalContainer.classList.add('is-sys-error-mode');
 
     if (modalTopLeft) modalTopLeft.innerHTML = `<span style="color: var(--muted); font-weight: 600; font-family: monospace; letter-spacing: 0.05em;">SYSTEM_ERROR</span>`;
     if (tocMountPoint) tocMountPoint.innerHTML = '';

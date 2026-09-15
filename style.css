@@ -302,6 +302,8 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* 讓軌道完全隱形，這樣不管是淺色或深色模式，軌道都會直接透出網頁底色 */
 ::-webkit-scrollbar-track { 
     background: transparent !important; 
+    /* ✨ 加上這行魔法：讓捲軸的活動範圍提早結束，完美避開右下角的圓角裁切！ */
+    margin-bottom: 1.2rem; 
 }
 ::-webkit-scrollbar-thumb { 
     background-color: var(--scrollbar-thumb); 
@@ -3469,17 +3471,15 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     padding: 0 !important; /* ✨ 拔除外層的牆壁，讓下方也能穿透 */
 }
 
-/* 2. 頂部導覽列：絕對定位浮在最上層，並補回左右 padding */
+/* 2. 頂部導覽列：作為獨立的 Flex 列，避免覆蓋內容捲軸 */
 .modal-top-bar {
-    position: absolute !important;
-    top: 0;
-    left: 0;
-    right: 0;
+    position: relative !important;
     margin: 0 !important; 
     padding: 1.5rem 3rem 1.2rem 3rem !important; 
     width: 100%;
     box-sizing: border-box;
     z-index: 1060 !important; 
+    flex-shrink: 0 !important;
 }
 
 /* 3. 中間容器：撐滿高度 */
@@ -3491,7 +3491,6 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     height: auto !important;
 }
 
-/* 4. 獨立捲軸容器：使用 CSS 變數動態閃避 TopBar，並加上 Bottom Padding */
 #view-index, #view-article {
     position: relative !important;
     flex: 1 1 auto !important;
@@ -3500,23 +3499,22 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     overflow-x: hidden !important;
     height: auto !important;
     -webkit-overflow-scrolling: touch;
+    box-sizing: border-box !important;
     
-    /* ✨ 上方：接收 JS 動態算出的真實高度，加上 15px 緩衝區 */
-    padding-top: calc(var(--top-bar-height, 80px) + 15px) !important; 
+    width: 100% !important;
+    margin: 0 !important;
     
-    /* ✨ 左右與下方：把原本外層的 Padding 下放進來，滑到最底下就不會貼壁 */
+    /* TopBar 已經參與 Flex 排版，這裡只保留文章本身的上方留白。 */
+    padding-top: 25px !important; 
+    
     padding-left: 3rem !important;
     padding-right: 3rem !important;
     padding-bottom: 3rem !important; 
 }
-
-/* 📱 手機版版面微調 */
+/* 📱 手機版微調 */
 @media (max-width: 700px) {
-    .modal-top-bar {
-        padding: 1.5rem 1.5rem 1.2rem 1.5rem !important;
-    }
     #view-index, #view-article {
-        padding-top: calc(var(--top-bar-height, 80px) + 15px) !important; 
+        padding-top: 10px !important; 
         padding-left: 1.5rem !important;
         padding-right: 1.5rem !important;
         padding-bottom: 2.5rem !important;
