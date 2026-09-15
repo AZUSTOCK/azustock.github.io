@@ -775,7 +775,6 @@ window.getSystemErrorHtml = function(title, msg) {
 };
 
 
-
 window.triggerSystemUpdate = function(targetVersion) {
     closeModal();
     sessionStorage.setItem('sys_reboot_count', '1');
@@ -844,6 +843,101 @@ window.getActiveScrollContainer = function() {
     if (viewIndex && viewIndex.style.display !== 'none') return viewIndex;
     if (viewArticle && viewArticle.style.display !== 'none') return viewArticle;
     return document.querySelector('.modal-content'); // 容錯機制
+};
+
+// ==========================================
+// ✨ 6. 全域安全 Fetch 防護網 (包含 UI 鎖定、逾時與幽靈渲染防護)
+// ==========================================
+window.safeFetchWithGuard = async function(url, options = {}) {
+    if (window._activeFetcher) window._activeFetcher.abort();
+    window._activeFetcher = new AbortController();
+    const controller = window._activeFetcher;
+
+    window.toggleLoading(true, options.loadingText || 'FETCHING_DATA...');
+    document.body.style.cursor = 'wait';
+
+    let isTimeout = false;
+    const timeoutId = setTimeout(() => { isTimeout = true; controller.abort(); }, 8000);
+
+    try {
+        await window.debugDelay();
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) throw new Error('Fetch failed');
+        const data = await (options.isJson ? res.json() : res.text());
+        return { success: true, data, controller };
+    } catch (error) {
+        clearTimeout(timeoutId);
+        const aborted = error.name === 'AbortError' && !isTimeout;
+        const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
+        return { success: false, aborted, isTimeout, isOffline, error, controller };
+    } finally {
+        if (window._activeFetcher === controller) {
+            document.body.style.cursor = '';
+            window.toggleLoading(false);
+            window._activeFetcher = null;
+        }
+    }
+};
+
+// ==========================================
+// ✨ 7. PDF 專用隱形重試載入器 (Background Image Retry Engine)
+// ==========================================
+window.executePdfImageRetry = function(img, retryUrl) {
+    const coverDiv = img.closest('.pdf-mobile-cover');
+    const fallback = coverDiv.querySelector('.pdf-fallback-wrapper');
+    const floatBtn = coverDiv.querySelector('.pdf-floating-btn');
+    const brokenIcon = fallback ? fallback.querySelector('.pdf-status-icon.broken') : null;
+    const loadingIcon = fallback ? fallback.querySelector('.pdf-status-icon.loading') : null;
+    const hintOverlay = coverDiv.querySelector('.pdf-first-time-overlay');
+
+    if (brokenIcon) brokenIcon.style.display = 'none';
+    if (loadingIcon) loadingIcon.style.display = 'block';
+
+    const bgImg = new Image();
+    bgImg.onload = function() {
+        img.src = retryUrl;
+        img.style.display = 'block';
+        img.classList.remove('is-loading');
+        if (floatBtn) floatBtn.style.display = '';
+        if (fallback) fallback.style.display = 'none';
+        
+        if (hintOverlay && sessionStorage.getItem('sys_pdf_hint_seen') !== 'true') {
+            hintOverlay.style.display = 'flex';
+        }
+        
+        if (brokenIcon) brokenIcon.style.display = 'block';
+        if (loadingIcon) loadingIcon.style.display = 'none';
+    };
+    bgImg.onerror = function() {
+        img.dataset.isPermanentBroken = 'true';
+        if (brokenIcon) brokenIcon.style.display = 'block';
+        if (loadingIcon) loadingIcon.style.display = 'none';
+    };
+    setTimeout(() => { bgImg.src = retryUrl; }, 500);
+};
+
+// ==========================================
+// ✨ 8. 網格置中捲動演算法 (Grid Item Centering Engine)
+// ==========================================
+window.scrollContainerByItem = function(container, itemSelector, direction) {
+    const items = Array.from(container.querySelectorAll(itemSelector)).filter(el => el.offsetWidth > 0);
+    if (!items.length) return;
+
+    const containerCenter = container.getBoundingClientRect().left + container.clientWidth / 2;
+    let targetItem = null;
+
+    if (direction > 0) { // 向右尋找
+        targetItem = items.find(el => (el.getBoundingClientRect().left + el.clientWidth / 2) > containerCenter + 20);
+    } else { // 向左尋找
+        for (let i = items.length - 1; i >= 0; i--) {
+            if ((items[i].getBoundingClientRect().left + items[i].clientWidth / 2) < containerCenter - 20) {
+                targetItem = items[i];
+                break;
+            }
+        }
+    }
+    if (targetItem) targetItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 };
 
 
@@ -2064,33 +2158,8 @@ window.handlePdfPosterError = function(img) {
         const sep = origSrc.includes('?') ? '&' : '?';
         const retryUrl = origSrc + sep + 'retry=' + new Date().getTime();
         
-        if (brokenIcon) brokenIcon.style.display = 'none';
-        if (loadingIcon) loadingIcon.style.display = 'block';
-
-        const bgImg = new Image();
-        bgImg.onload = function() {
-            // 🎉 背景重試成功！瞬間切回封面圖版面
-            img.src = retryUrl;
-            img.style.display = 'block';
-            if (floatBtn) floatBtn.style.display = '';
-            if (fallback) fallback.style.display = 'none';
-            
-            // 🔥 如果圖片復活了，且使用者還沒看過遮罩，就把它恢復顯示
-            if (hintOverlay && sessionStorage.getItem('sys_pdf_hint_seen') !== 'true') {
-                hintOverlay.style.display = 'flex';
-            }
-            
-            if (brokenIcon) brokenIcon.style.display = 'block';
-            if (loadingIcon) loadingIcon.style.display = 'none';
-        };
-        bgImg.onerror = function() {
-            // ❌ 背景重試依然失敗：遮罩保持隱藏，永遠顯示 Fallback
-            img.dataset.isPermanentBroken = 'true';
-            if (brokenIcon) brokenIcon.style.display = 'block';
-            if (loadingIcon) loadingIcon.style.display = 'none';
-        };
-        
-        setTimeout(() => { bgImg.src = retryUrl; }, 500);
+        // 🔥 直接呼叫共用引擎
+        window.executePdfImageRetry(img, retryUrl);
     } else {
         img.dataset.isPermanentBroken = 'true';
         if (brokenIcon) brokenIcon.style.display = 'block';
@@ -2129,35 +2198,8 @@ window.reloadPdfContainer = function(btn) {
         const isBroken = fallback && window.getComputedStyle(fallback).display !== 'none';
 
         if (isBroken) {
-            const brokenIcon = fallback.querySelector('.pdf-status-icon.broken');
-            const loadingIcon = fallback.querySelector('.pdf-status-icon.loading');
-            
-            if (brokenIcon) brokenIcon.style.display = 'none';
-            if (loadingIcon) loadingIcon.style.display = 'block';
-
-            const bgImg = new Image();
-            bgImg.onload = function() {
-                img.src = retryUrl;
-                img.style.display = 'block';
-                img.classList.remove('is-loading');
-                if (floatBtn) floatBtn.style.display = '';
-                if (fallback) fallback.style.display = 'none';
-                
-                // 🔥 如果圖片復活了，且使用者還沒看過遮罩，就把它恢復顯示
-                if (hintOverlay && sessionStorage.getItem('sys_pdf_hint_seen') !== 'true') {
-                    hintOverlay.style.display = 'flex';
-                }
-                
-                if (brokenIcon) brokenIcon.style.display = 'block';
-                if (loadingIcon) loadingIcon.style.display = 'none';
-            };
-            bgImg.onerror = function() {
-                img.dataset.isPermanentBroken = 'true';
-                if (brokenIcon) brokenIcon.style.display = 'block';
-                if (loadingIcon) loadingIcon.style.display = 'none';
-            };
-            bgImg.src = retryUrl;
-
+            // 🔥 直接呼叫共用引擎
+            window.executePdfImageRetry(img, retryUrl);
         } else {
             if (fallback) fallback.style.display = 'none';
             img.style.display = 'block';
@@ -3313,55 +3355,11 @@ async function loadProjects() {
             
             if (grid && hintRight && hintLeft) {
                 window.initScrollHints(grid, hintLeft, hintRight);
-                
                 // ==========================================
                 // ✨ 將向右與向左按鈕的點擊行為，升級為「畫廊置中模式」(過濾隱藏卡片)
                 // ==========================================
-                
-                // 1. 向右滾動 (下一張置中)
-                hintRight.addEventListener('click', () => {
-                    // ✨ 核心修復：加上 .filter(card => card.offsetWidth > 0)，直接剔除隱形的機密卡片
-                    const cards = Array.from(grid.querySelectorAll('.card')).filter(card => card.offsetWidth > 0); 
-                    if (!cards.length) return;
-
-                    const containerCenter = grid.getBoundingClientRect().left + grid.clientWidth / 2;
-                    
-                    let targetCard = null;
-                    for (const card of cards) {
-                        const cardCenter = card.getBoundingClientRect().left + card.clientWidth / 2;
-                        if (cardCenter > containerCenter + 20) { 
-                            targetCard = card;
-                            break;
-                        }
-                    }
-                    
-                    if (targetCard) {
-                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    }
-                });
-
-                // 2. 向左滾動 (上一張置中)
-                hintLeft.addEventListener('click', () => {
-                    // ✨ 核心修復：加上 .filter(card => card.offsetWidth > 0)
-                    const cards = Array.from(grid.querySelectorAll('.card')).filter(card => card.offsetWidth > 0);
-                    if (!cards.length) return;
-
-                    const containerCenter = grid.getBoundingClientRect().left + grid.clientWidth / 2;
-                    
-                    let targetCard = null;
-                    for (let i = cards.length - 1; i >= 0; i--) {
-                        const card = cards[i];
-                        const cardCenter = card.getBoundingClientRect().left + card.clientWidth / 2;
-                        if (cardCenter < containerCenter - 20) { 
-                            targetCard = card;
-                            break;
-                        }
-                    }
-                    
-                    if (targetCard) {
-                        targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                    }
-                });
+                hintRight.addEventListener('click', () => window.scrollContainerByItem(grid, '.card', 1));
+                hintLeft.addEventListener('click', () => window.scrollContainerByItem(grid, '.card', -1));
             }
             if (grid && grid.children.length === 0) document.getElementById(`${cat.id}-section`).style.display = 'none';
         });
@@ -4139,69 +4137,29 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         return;
     }
     
-    // 🔥 1. 呼叫全域 UI：顯示轉圈圈膠囊
-    window.toggleLoading(true, 'FETCHING_DATA...');
-    document.body.style.cursor = 'wait';
     let markdownContent = "載入失敗";
-    
-    // 🔥 2. 攔截前次請求
-    if (window._activeFetcher) {
-        window._activeFetcher.abort();
+    const fetchResult = await window.safeFetchWithGuard(article.content_path, { isJson: true });
+
+    if (fetchResult.aborted) {
+        console.log("[SYS] Fetching 任務已由使用者切換中斷。");
+        return;
     }
-    window._activeFetcher = new AbortController();
-    const controller = window._activeFetcher;
-    
-    // 🔥 3. 逾時防護
-    let isTimeout = false;
-    const timeoutId = setTimeout(() => {
-        isTimeout = true;
-        controller.abort();
-    }, 8000); 
-    
-    try {
-        await window.debugDelay();
 
-        const response = await fetch(article.content_path, { signal: controller.signal });
-        clearTimeout(timeoutId); // 成功抓到資料就解除倒數
-        
-        if (!response.ok) throw new Error("Network response was not ok");
-        const data = await response.json();
-        markdownContent = data.content; 
-    } catch (error) {
-        clearTimeout(timeoutId); 
-        
-        // 🔥 4. 幽靈渲染防護
-        if (error.name === 'AbortError' && !isTimeout) {
-            console.log("[SYS] Fetching 任務已由使用者切換中斷。");
-            return; 
-        }
-
-        console.error("無法載入文章內容:", error);
-        const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
-        
+    if (fetchResult.success) {
+        markdownContent = fetchResult.data.content;
+    } else {
+        console.error("無法載入文章內容:", fetchResult.error);
         let errTitle = '404 NOT_FOUND';
         let errMsg = '無法載入文章內容。';
-        
-        if (isTimeout) {
-            errTitle = 'ERR_CONNECTION_TIMED_OUT';
-            errMsg = '伺服器回應逾時 (大於 8 秒)，請檢查網路連線後再試。';
-        } else if (isOffline) {
-            errTitle = 'ERR_INTERNET_DISCONNECTED';
-            errMsg = '網路連線中斷，請檢查您的網路狀態。';
+        if (fetchResult.isTimeout) {
+            errTitle = 'ERR_CONNECTION_TIMED_OUT'; errMsg = '伺服器回應逾時 (大於 8 秒)，請檢查網路連線後再試。';
+        } else if (fetchResult.isOffline) {
+            errTitle = 'ERR_INTERNET_DISCONNECTED'; errMsg = '網路連線中斷，請檢查您的網路狀態。';
         }
-        
         markdownContent = `\n# ${article.title}\n\n${window.getSystemErrorHtml(errTitle, errMsg)}`;
-    } finally {
-        // 🔥 5. 確保目前沒有被「後續的點擊」覆蓋控制器時，才清除 UI 狀態
-        if (window._activeFetcher === controller) {
-            document.body.style.cursor = '';
-            window.toggleLoading(false);
-            window._activeFetcher = null;
-        }
     }
-
-    // 🔥 終極幽靈防護：如果 Fetch 成功，但在準備渲染畫面時發現控制器被切換了，直接安靜退出！
-    if (window._activeFetcher !== null) return;
+    
+    if (window._activeFetcher !== null) return; // 幽靈渲染防護
 
     // ✨ 智慧判斷：如果彈窗是開著的... (這行以下維持原樣)
     // 代表這是「文章切換文章」，我們就把頂部列的動畫關掉！
@@ -5403,31 +5361,23 @@ window.showCreditsModal = async function() {
     const controller = window._activeFetcher;
 
     let mdText = "載入失敗"; let isError = false;
-    
-    try {
-        await window.debugDelay();
-        if (window.cachedCreditsText !== null) {
-            mdText = window.cachedCreditsText;
-        } else {
-            const response = await fetch(`./credits.md?v=${window.getResVersion('credits.md')}`, { signal: controller.signal });
-            if (!response.ok) throw new Error('找不到 credits.md 檔案');
-            mdText = await response.text();
+
+    if (window.cachedCreditsText !== null) {
+        mdText = window.cachedCreditsText;
+    } else {
+        const fetchResult = await window.safeFetchWithGuard(`./credits.md?v=${window.getResVersion('credits.md')}`, { isJson: false });
+        if (fetchResult.aborted) return; // 被中斷就安靜退出
+        
+        if (fetchResult.success) {
+            mdText = fetchResult.data;
             window.cachedCreditsText = mdText;
-        }
-    } catch (error) {
-        if (error.name === 'AbortError') return; // 🔥 被中斷就安靜退出
-        console.error("Credits 讀取失敗:", error);
-        isError = true;
-    } finally {
-        if (window._activeFetcher === controller) {
-            document.body.style.cursor = ''; 
-            window.toggleLoading(false); 
-            window._activeFetcher = null;
+        } else {
+            console.error("Credits 讀取失敗:", fetchResult.error);
+            isError = true;
         }
     }
 
-    // 🔥 幽靈渲染防護
-    if (window._activeFetcher !== null) return;
+    if (window._activeFetcher !== null) return; // 幽靈渲染防護
 
     // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
     switchModalContent(
@@ -5511,20 +5461,21 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                     sessionStorage.setItem('sys_intent', 'changelog');
                     sessionStorage.removeItem('sys_reboot_count');
 
-                    document.body.insertAdjacentHTML('beforeend', `
-                    <div style="position:fixed; inset:0; background:var(--bg); z-index:99999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:var(--accent); cursor: wait;">
-                        <div style="font-family: 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; letter-spacing: 0.1em; text-shadow: 0 0 10px var(--glow-1);">>_ MANUAL_OVERRIDE : UPDATE</div>
-                            <div style="font-family: 'Courier New', monospace; font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Local: ${CONFIG.VERSION} | Remote: ${vData.version}</div>
-                            <div class="loading-text" style="font-size: 1.1rem;">FETCHING_AND_REBOOTING</div>
-                        </div>
-                    `);
+                    // 🔥 直接呼叫共用過場畫面引擎
+                    window.showSystemRebootScreen(
+                        'MANUAL_OVERRIDE : UPDATE', 
+                        CONFIG.VERSION, 
+                        vData.version, 
+                        'FETCHING_AND_REBOOTING', 
+                        true
+                    );
                     
                     setTimeout(() => {
                         const newUrl = new URL(window.location.href);
                         newUrl.searchParams.set('v', new Date().getTime());
                         window.location.replace(newUrl.toString());
                     }, 1800);
-                    return; 
+                    return;
                 }
             }
         }
@@ -5741,30 +5692,22 @@ window.showLicenseModal = async function() {
 
     let mdText = "載入失敗"; let isError = false;
 
-    try {
-        await window.debugDelay();
-        if (window.cachedLicenseText !== null) {
-            mdText = window.cachedLicenseText;
-        } else {
-            const response = await fetch(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`, { signal: controller.signal });
-            if (!response.ok) throw new Error("找不到版權檔案");
-            mdText = await response.text();
+    if (window.cachedLicenseText !== null) {
+        mdText = window.cachedLicenseText;
+    } else {
+        const fetchResult = await window.safeFetchWithGuard(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`, { isJson: false });
+        if (fetchResult.aborted) return; // 被中斷就安靜退出
+        
+        if (fetchResult.success) {
+            mdText = fetchResult.data;
             window.cachedLicenseText = mdText;
-        }
-    } catch (error) {
-        if (error.name === 'AbortError') return; // 🔥 被中斷就安靜退出
-        console.error("版權檔案載入失敗:", error);
-        isError = true;
-    } finally {
-        if (window._activeFetcher === controller) {
-            document.body.style.cursor = ''; 
-            window.toggleLoading(false); 
-            window._activeFetcher = null;
+        } else {
+            console.error("版權檔案載入失敗:", fetchResult.error);
+            isError = true;
         }
     }
 
-    // 🔥 幽靈渲染防護
-    if (window._activeFetcher !== null) return;
+    if (window._activeFetcher !== null) return; // 幽靈渲染防護
 
     // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
     switchModalContent(
