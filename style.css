@@ -879,18 +879,29 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 main section { position: relative; scroll-margin-top: 100px; --sec-color: var(--accent); }
 main section h2 { font-size: 1.6rem; margin-bottom: 1.2rem; padding-left: 1.2rem; border-left: none !important; margin-left: 0; position: relative; display: inline-flex !important; }
 main section h2::before { content: ''; position: absolute; left: 0; top: 10%; bottom: 10%; width: 4px; background: var(--sec-color); border-radius: 4px; }
-main section::before { content: ''; position: absolute; top: -10px; right: 20px; width: 250px; height: 250px; max-height: calc(100% - 20px); max-width: 40vw; opacity: 0.08; z-index: 0; pointer-events: none; background-color: var(--sec-color); /* ✨ 原本又臭又長的 mask 設定，用一行簡寫完美解決！ */ -webkit-mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; transform: rotate(-10deg) scale(1); transition: transform 0.6s var(--ease-smooth), opacity 0.6s ease; }
-main section:hover::before { transform: rotate(0deg) scale(1.1); opacity: 0.25; animation: none !important;}
-main section::after { content: ''; position: absolute; top: -24px; bottom: -24px; left: -24px; right: -24px; border-radius: 20px; pointer-events: none; z-index: 0; opacity: 0; }
-/* 原本的區塊光暈動畫 */
-@keyframes target-section-glow-expand { 
-    0%, 100% { opacity: 0; transform: scale(0.98); } 
-    30% { opacity: 1; transform: scale(1); background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent); } 
+main section::before { 
+    content: ''; position: absolute; top: -10px; right: 20px; width: 250px; height: 250px; max-height: calc(100% - 20px); max-width: 40vw; opacity: 0.08; z-index: 0; pointer-events: none; background-color: var(--sec-color); -webkit-mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; transform: rotate(-10deg) scale(1); 
+    /* ✨ 統一只用 transition 處理所有狀態切換 */
+    transition: transform 0.6s var(--ease-smooth), opacity 0.6s ease; 
 }
-main section:target::after, main section.force-target::after { animation: target-section-glow-expand 3s var(--ease-smooth); }
-@keyframes watermark-target-bump { 
-    0%, 100% { transform: rotate(-10deg) scale(1); opacity: 0.08; } 
-    30% { transform: rotate(0deg) scale(1.1); opacity: 0.25; } 
+
+main section::after { 
+    content: ''; position: absolute; top: -24px; bottom: -24px; left: -24px; right: -24px; border-radius: 20px; pointer-events: none; z-index: 0; 
+    opacity: 0; transform: scale(0.98);
+    transition: opacity 0.6s var(--ease-smooth), transform 0.6s var(--ease-smooth), background-color 0.6s ease, box-shadow 0.6s ease; 
+}
+
+/* ✨ 核心魔法：讓 hover 跟 force-target 共用完全一模一樣的狀態！ */
+/* 這樣一來，即使 force-target 被 JS 移除了，只要滑鼠還 hover 在上面，樣式就能「無縫接軌」不發生任何閃爍！ */
+main section:hover::before, main section.force-target::before { 
+    transform: rotate(0deg) scale(1.1); 
+    opacity: 0.25; 
+}
+
+main section:hover::after, main section.force-target::after { 
+    opacity: 1; transform: scale(1); 
+    background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); 
+    box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent); 
 }
 main section:target::before, main section.force-target::before { animation: watermark-target-bump 3s var(--ease-smooth); }
 main section:nth-of-type(5n+1) { --sec-color: var(--group-c1); }
@@ -3514,7 +3525,7 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     }
     #view-index, #view-article {
         /* ✨ 手機版的上方間距也適度補回 */
-        padding-top: 1.5rem !important; 
+        padding-top: 1rem !important; 
         
         padding-left: 1.5rem !important;
         padding-right: 1.5rem !important; 
