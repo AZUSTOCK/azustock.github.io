@@ -1893,7 +1893,19 @@ span.article-item-date {
     /* ✨ 新增這行外框，這條線會自動適應深淺色模式，完美勾勒出圖片邊界 */
     border: 1px solid var(--card-border); 
 }
-.markdown-body img.is-loading, .markdown-body img.is-broken { width: 100%; min-height: 200px; max-height: 450px; aspect-ratio: 1 / 1; object-fit: cover; }
+.markdown-body img.is-loading, .markdown-body img.is-broken { 
+    width: 100%; 
+    height: auto; 
+}
+
+/* 🔥 當「沒有」被 JS 算好比例時，才啟用強制裁切與高度限制 (防呆機制) */
+.markdown-body img.is-loading:not([style*="aspect-ratio"]), 
+.markdown-body img.is-broken:not([style*="aspect-ratio"]) { 
+    min-height: 200px; 
+    max-height: 450px; 
+    aspect-ratio: 16 / 9; 
+    object-fit: cover; 
+}
 .markdown-body img[alt="center"] { width: 75%; max-width: 600px; }
 .markdown-body img[alt="center"].is-loading, .markdown-body img[alt="center"].is-broken { aspect-ratio: 4 / 3; }
 /* 替換原本的 float 圖片設定 */
@@ -2001,8 +2013,6 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 /* ✨ 拔除原生捲軸，改為固定高度與隱藏溢出，讓矩陣拖曳取代醜陋的捲軸 */
 .mermaid-wrapper { 
     width: 100%; 
-    height: 60vh; 
-    max-height: 500px;
     overflow: hidden; 
     padding: 1.5rem; 
     box-sizing: border-box; 
@@ -2025,17 +2035,13 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
     flex: 1; 
 }
 
-/* ✨ 核心修復 2：讓 mermaid 容器置中，並強制阻斷全站行高污染 */
+/* 🔥 1. 從 flex 改為 block，徹底消除 Flexbox 在窄螢幕帶來的擠壓干擾 */
 .mermaid { 
-    display: flex; 
-    align-items: center;
-    justify-content: center;
+    display: block; 
+    margin: 0 auto; /* 置中 */
     width: 100%;
-    height: 100%;
     transform-origin: center center;
     transition: transform 0.15s var(--ease-smooth); 
-    
-    /* 強制壓回標準行高，防止文字被推出版面 */
     line-height: 1.2 !important; 
 }
 
@@ -2044,19 +2050,23 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
     line-height: inherit !important;
 }
 
+/* 🔥 新增：強制節點文字不准因為螢幕變窄而自動擠壓斷行，確保比例完美 */
+.mermaid .nodeLabel, 
+.mermaid .edgeLabel {
+    white-space: nowrap !important;
+}
+
 /* ✨ 核心修復 3：解放 foreignObject，徹底防堵中文字尾端被物理裁切！ */
 .mermaid foreignObject {
     overflow: visible !important;
 }
 
-/* 限制 SVG 不能超過父容器，這樣 scale(1) 就永遠等同於「適應螢幕」！ */
+/* 🔥 2. 讓 SVG 像 iframe/圖片 一樣，100% 服從父容器算好的 aspect-ratio，絕不變形 */
 .mermaid svg { 
+    width: 100% !important; 
+    height: 100% !important; 
     max-width: 100% !important; 
-    max-height: 100% !important; 
-    width: auto !important; 
-    height: auto !important; 
     overflow: visible !important; 
-    /* 補上一點安全內距，防止圖表最邊緣的線條被切到 */
     padding: 4px;
 }
 

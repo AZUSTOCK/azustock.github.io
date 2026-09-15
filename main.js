@@ -731,21 +731,29 @@ window.downloadViaBlob = async function(url, filename, isNewTab = false) {
 window.triggerSecureDownload = async function(url, filename, isNewTab = false) {
     window.triggerHaptic('light');
     
-    // ✨ PWA 與手機版都會顯示載入提示，提升網路不穩時的體驗
-    if (window.showSystemToast) {
-        const actionText = isNewTab ? '開啟中' : '下載中';
-        const iconSvg = isNewTab ? GLOBAL_SVGS.newTab : GLOBAL_SVGS.jumpDown;
-        const toastTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;">${iconSvg} ${actionText}</span>`;
-        
-        window.showSystemToast(toastTitle, '正在取得檔案，請稍候...', filename || '處理中...', 3000, 'success');
-    }
+    // 🔥 1. 啟用全域轉圈圈膠囊！在背景拉取檔案時鎖定狀態，防止使用者以為當機
+    const actionText = isNewTab ? 'OPENING_FILE...' : 'DOWNLOADING...';
+    window.toggleLoading(true, actionText); 
     
     const success = await window.downloadViaBlob(url, filename, isNewTab);
     
+    // 🔥 2. 拉取完成後，立刻關閉轉圈圈膠囊
+    window.toggleLoading(false); 
+    
     if (success) {
         window.triggerHaptic('success');
+        // 🔥 3. 補上成功提示，明確告知下載已完成
+        const iconSvg = isNewTab ? GLOBAL_SVGS.newTab : GLOBAL_SVGS.jumpDown;
+        const toastTitle = `<span style="display: inline-flex; align-items: center; gap: 6px;">${iconSvg} 處理完成</span>`;
+        if (window.showSystemToast) {
+            window.showSystemToast(toastTitle, isNewTab ? '檔案已準備就緒' : '下載成功', filename, 4000, 'success');
+        }
     } else {
-        window.open(url, '_blank'); // 失敗則退回原生開啟
+        // 🔥 4. 下載失敗時，給予明確的錯誤提示並退回原生瀏覽器開啟
+        if (window.showSystemToast) {
+            window.showSystemToast('ERROR', '處理失敗', '將嘗試使用瀏覽器原生開啟...', 4000, 'error');
+        }
+        window.open(url, '_blank'); 
     }
 };
 
@@ -1172,6 +1180,47 @@ window.debugDelay = async function() {
     if (CONFIG.DEBUG_FETCH_DELAY > 0) {
         console.log(`[SYS_DEBUG] 強制暫停 ${CONFIG.DEBUG_FETCH_DELAY} 毫秒...`);
         await new Promise(resolve => setTimeout(resolve, CONFIG.DEBUG_FETCH_DELAY));
+    }
+};
+
+// ==========================================
+// ✨ Mermaid 自適應比例引擎 (動態 Aspect-Ratio)
+// ==========================================
+window.applyMermaidAspectRatio = function(mermaidDiv) {
+    const svg = mermaidDiv.querySelector('svg');
+    const wrapper = mermaidDiv.closest('.mermaid-wrapper');
+    if (!svg || !wrapper) return;
+
+    const viewBox = svg.getAttribute('viewBox');
+    if (viewBox) {
+        const [, , w, h] = viewBox.split(' ').map(Number);
+        const targetAr = w / h; // ✨ 100% 忠於圖表真實內容的完美長寬比
+
+        // 🔥 1. 將真實比例賦予外層，讓它如同圖片一般完美等比縮放
+        wrapper.style.aspectRatio = targetAr.toFixed(4);
+        wrapper.style.width = '100%';
+        wrapper.style.height = 'auto';
+        wrapper.style.maxHeight = 'none';
+
+        // 🔥 2. 處理自訂高度參數 (?h=)
+        const customH = wrapper.getAttribute('data-custom-height');
+        if (customH) {
+            // 如果使用者有指定高度，我們把它當作「最大高度限制 (max-height)」
+            // 這樣在電腦大螢幕上不會無限放大，在手機上又能完美等比例縮小！
+            wrapper.style.maxHeight = `${customH}px`;
+        }
+
+        // 🔥 3. 讓內部容器填滿外層比例框
+        mermaidDiv.style.width = '100%';
+        mermaidDiv.style.height = '100%';
+
+        // 🔥 4. 解放 SVG 本體：拔除 Mermaid 寫死的絕對像素，讓它完全服從液態排版！
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.maxWidth = '100%';
+        svg.style.display = 'block';
     }
 };
 
@@ -1724,6 +1773,12 @@ window.handleOrientationChange = function() {
 document.addEventListener('DOMContentLoaded', () => {
     window.adjustModalViewports();
 
+    // 🔥 核心修復：動態注入 CSS 規則！
+    // 只要處於觸控裝置狀態，就徹底解除 Mermaid 區塊的防滑動封印，讓手指能順利上下捲動網頁！
+    const touchFixStyle = document.createElement('style');
+    touchFixStyle.innerHTML = `body.is-touch-device .mermaid-wrapper { touch-action: auto !important; }`;
+    document.head.appendChild(touchFixStyle);
+
     // 綁定視窗動態追蹤 (支援轉向、調整大小時重新計算)
     window.addEventListener('resize', () => {
         // ✨ 使用 requestAnimationFrame 讓 resize 時的計算更平滑，不卡頓
@@ -1969,17 +2024,13 @@ if (sessionStorage.getItem('sys_pdf_hint_seen') === 'true') {
 }
 
 window.dismissPdfHint = function() {
-    if (sessionStorage.getItem('sys_pdf_hint_seen') !== 'true') {
-        // 1. 寫入 Session 記憶，並為整個網頁掛上隱藏標籤
-        sessionStorage.setItem('sys_pdf_hint_seen', 'true');
-        document.documentElement.classList.add('pdf-hint-dismissed');
-        
-        // 2. 讓當下被點擊的那張遮罩有「平滑淡出」的效果
-        document.querySelectorAll('.pdf-first-time-overlay').forEach(el => {
-            el.style.opacity = '0';
-            setTimeout(() => el.remove(), 400); 
-        });
-    }
+    // 🔥 拔除 if 檢查，無論如何只要函式觸發就銷毀畫面上的遮罩！
+    sessionStorage.setItem('sys_pdf_hint_seen', 'true');
+    document.documentElement.classList.add('pdf-hint-dismissed');
+    document.querySelectorAll('.pdf-first-time-overlay').forEach(el => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 400); 
+    });
 };
 
 // ==========================================
@@ -1993,15 +2044,17 @@ window.handlePdfPosterError = function(img) {
     const fallback = coverDiv.querySelector('.pdf-fallback-wrapper');
     const brokenIcon = fallback ? fallback.querySelector('.pdf-status-icon.broken') : null;
     const loadingIcon = fallback ? fallback.querySelector('.pdf-status-icon.loading') : null;
+    const hintOverlay = coverDiv.querySelector('.pdf-first-time-overlay'); // 🔥 抓取遮罩
 
     // 1. 紀錄原始網址供重試使用
     if (!img.dataset.retrySrc) img.dataset.retrySrc = img.src;
 
-    // 2. 發生錯誤時，立刻切換至 Fallback 降級版面 (徹底隱藏原生破圖圖示)
+    // 2. 發生錯誤時，立刻切換至 Fallback 降級版面
     img.style.display = 'none';
     img.classList.remove('is-loading');
     if (floatBtn) floatBtn.style.display = 'none';
     if (fallback) fallback.style.display = 'flex';
+    if (hintOverlay) hintOverlay.style.display = 'none'; // 🔥 第一時間強制隱藏遮罩，防止重疊！
 
     // 3. 背景隱形重試機制：最多重試 1 次
     let retryCount = parseInt(img.dataset.retryCount || '0');
@@ -2011,11 +2064,9 @@ window.handlePdfPosterError = function(img) {
         const sep = origSrc.includes('?') ? '&' : '?';
         const retryUrl = origSrc + sep + 'retry=' + new Date().getTime();
         
-        // 自動重試中：將 Fallback 中間的圖示切換為 Loading 圓圈
         if (brokenIcon) brokenIcon.style.display = 'none';
         if (loadingIcon) loadingIcon.style.display = 'block';
 
-        // 創建一個隱形的 Image 物件在背景偷偷載入
         const bgImg = new Image();
         bgImg.onload = function() {
             // 🎉 背景重試成功！瞬間切回封面圖版面
@@ -2024,21 +2075,23 @@ window.handlePdfPosterError = function(img) {
             if (floatBtn) floatBtn.style.display = '';
             if (fallback) fallback.style.display = 'none';
             
-            // 將圖示狀態復原，以備未來使用
+            // 🔥 如果圖片復活了，且使用者還沒看過遮罩，就把它恢復顯示
+            if (hintOverlay && sessionStorage.getItem('sys_pdf_hint_seen') !== 'true') {
+                hintOverlay.style.display = 'flex';
+            }
+            
             if (brokenIcon) brokenIcon.style.display = 'block';
             if (loadingIcon) loadingIcon.style.display = 'none';
         };
         bgImg.onerror = function() {
-            // ❌ 背景重試依然失敗：標記為永久失效，將圖示切回「破圖相框」
+            // ❌ 背景重試依然失敗：遮罩保持隱藏，永遠顯示 Fallback
             img.dataset.isPermanentBroken = 'true';
             if (brokenIcon) brokenIcon.style.display = 'block';
             if (loadingIcon) loadingIcon.style.display = 'none';
         };
         
-        // 等待 500ms 後再發出請求，完美錯開 CI 打包與 CDN 快取的時間差
         setTimeout(() => { bgImg.src = retryUrl; }, 500);
     } else {
-        // 重試次數用盡
         img.dataset.isPermanentBroken = 'true';
         if (brokenIcon) brokenIcon.style.display = 'block';
         if (loadingIcon) loadingIcon.style.display = 'none';
@@ -2064,8 +2117,8 @@ window.reloadPdfContainer = function(btn) {
         const coverDiv = container.querySelector('.pdf-mobile-cover');
         const fallback = coverDiv.querySelector('.pdf-fallback-wrapper');
         const floatBtn = coverDiv.querySelector('.pdf-floating-btn');
+        const hintOverlay = coverDiv.querySelector('.pdf-first-time-overlay'); // 🔥 抓取遮罩
 
-        // 解除永久失效封印
         delete img.dataset.isPermanentBroken;
         img.dataset.retryCount = '0';
         
@@ -2073,32 +2126,32 @@ window.reloadPdfContainer = function(btn) {
         const sep = origSrc.includes('?') ? '&' : '?';
         const retryUrl = origSrc + sep + 'manual_retry=' + new Date().getTime();
 
-        // 判斷當下是否處於「破圖 Fallback」畫面
         const isBroken = fallback && window.getComputedStyle(fallback).display !== 'none';
 
         if (isBroken) {
-            // ✨ 如果在破圖狀態下按重整：不動版面，只將中間的破圖 SVG 切換為 Loading 圓圈
             const brokenIcon = fallback.querySelector('.pdf-status-icon.broken');
             const loadingIcon = fallback.querySelector('.pdf-status-icon.loading');
             
             if (brokenIcon) brokenIcon.style.display = 'none';
             if (loadingIcon) loadingIcon.style.display = 'block';
 
-            // 啟動隱形重試引擎
             const bgImg = new Image();
             bgImg.onload = function() {
-                // 成功了，瞬間切回封面圖
                 img.src = retryUrl;
                 img.style.display = 'block';
                 img.classList.remove('is-loading');
                 if (floatBtn) floatBtn.style.display = '';
                 if (fallback) fallback.style.display = 'none';
                 
+                // 🔥 如果圖片復活了，且使用者還沒看過遮罩，就把它恢復顯示
+                if (hintOverlay && sessionStorage.getItem('sys_pdf_hint_seen') !== 'true') {
+                    hintOverlay.style.display = 'flex';
+                }
+                
                 if (brokenIcon) brokenIcon.style.display = 'block';
                 if (loadingIcon) loadingIcon.style.display = 'none';
             };
             bgImg.onerror = function() {
-                // 失敗了，切回破圖圖示
                 img.dataset.isPermanentBroken = 'true';
                 if (brokenIcon) brokenIcon.style.display = 'block';
                 if (loadingIcon) loadingIcon.style.display = 'none';
@@ -2106,7 +2159,6 @@ window.reloadPdfContainer = function(btn) {
             bgImg.src = retryUrl;
 
         } else {
-            // ✨ 如果原本是正常圖片，按重整就恢復成系統原本的 loading 掃光狀態
             if (fallback) fallback.style.display = 'none';
             img.style.display = 'block';
             img.classList.add('is-loading');
@@ -2124,21 +2176,28 @@ function renderPDFIframe(href, altText, posterUrl = '', ar = '') {
     const hMatch = href.match(/[?&]h=(\d+)/i);
     if (hMatch) customHeight = hMatch[1] + "px";
     
-    // 點擊事件：如果首次引導遮罩存在，順便將其消除
+    const safeAltText = altText ? altText.replace(/'/g, "\\'") : "Document.pdf";
+    
+    // 🔥 修復 1：點擊事件升級！只有在遮罩「真的存在且沒被隱藏」時，才觸發銷毀與紀錄
     const mobileClickHandler = `
         event.stopPropagation();
-        if(window.dismissPdfHint) window.dismissPdfHint();
-        window.showPdfActionModal('${href}', '${altText || "Document.pdf"}');
+        const overlay = this.querySelector('.pdf-first-time-overlay');
+        if(overlay && window.getComputedStyle(overlay).display !== 'none' && window.dismissPdfHint) {
+            window.dismissPdfHint();
+        }
+        window.showPdfActionModal('${href}', '${safeAltText}');
     `;
 
-    // 🔥 替換 posterHtml，動態套用比例
     const coverStyle = ar ? ` style="aspect-ratio: ${ar}; width: 100%; height: auto;"` : '';
+    const iframeStyle = `height: ${customHeight}; width: 100%; border: none; display: block; background: var(--bg);`;
+
     const posterHtml = posterUrl 
         ? `<img src="${posterUrl}" class="pdf-poster-img is-loading" alt="PDF Cover" onload="this.classList.remove('is-loading')" onerror="window.handlePdfPosterError(this)"${coverStyle}>` 
         : '';
 
-    // 若沒有設定圖片封面，預設直接顯示 Fallback
-    const fallbackStyle = posterUrl ? 'display: none;' : 'display: flex;';
+    // 🔥 修復 2：讓 Fallback 錯誤頁面框框也完美繼承算好的長寬比例！
+    const fallbackArStyle = ar ? ` aspect-ratio: ${ar}; width: 100%; height: auto;` : '';
+    const fallbackStyle = (posterUrl ? 'display: none;' : 'display: flex;') + fallbackArStyle;
 
     // ✨ 準備三種 SVG 圖示，確保它們的尺寸完全一致 (64x64)，這樣切換時就絕對不會位移！
     const genericDocSvg = GLOBAL_SVGS.docIconLg.replace('width="20" height="20"', 'class="pdf-status-icon generic" width="64" height="64" style="opacity: 0.5; margin-bottom: 1.2rem;"');
@@ -2188,7 +2247,7 @@ function renderPDFIframe(href, altText, posterUrl = '', ar = '') {
             </div>
         </div>
         
-        <iframe class="pdf-iframe" src="${href}" width="100%" height="${customHeight}" style="border: none; display: block; background: var(--bg);">您的瀏覽器不支援 PDF 嵌入。</iframe>
+        <iframe class="pdf-iframe" src="${href}" style="${iframeStyle}">您的瀏覽器不支援 PDF 嵌入。</iframe>
         
         <div class="pdf-mobile-cover">
             ${posterHtml}
@@ -2311,22 +2370,15 @@ const originalCodeRenderer = renderer.code.bind(renderer);
 renderer.code = function(token_or_code, language, isEscaped) {
     const lang = typeof token_or_code === 'object' ? token_or_code.lang : language;
     
-    // 抓取「完全沒有處理過」的原文
     let rawText = typeof token_or_code === 'object' ? token_or_code.text : token_or_code;
 
     if (lang && lang.startsWith('mermaid')) {
-        
-        // ✨ 魔法 1：從快取讀取獨立檔案中的全域樣式並注入
         const globalMermaidClasses = window.cachedMermaidStyles || '';
         if (globalMermaidClasses) {
-            // 偵測如果是流程圖 (graph 或 flowchart)，就在宣告後自動換行並注入樣式
             rawText = rawText.replace(/^(graph\s+[A-Za-z]+|flowchart\s+[A-Za-z]+)/im, `$1\n${globalMermaidClasses}\n`);
         }
 
-        // 將注入完樣式的原文編碼並鎖在 data-original-text 裡當作備份
         const encodedText = encodeURIComponent(rawText);
-        
-        // 使用翻譯蒟蒻，將原文裡的 var() 與 rgba 轉成 Hex 色碼
         const processedText = window.processMermaidCssVars(rawText);
 
         let chartTitle = "流程圖 (Flowchart)";
@@ -2339,6 +2391,14 @@ renderer.code = function(token_or_code, language, isEscaped) {
             chartTitle = window._lastMarkdownHeadings[window._lastMarkdownHeadings.length - 1];
         }
 
+        // 🔥 解析自訂高度 (例如：?h=800) 並塞入 data 屬性，交給渲染後端計算
+        let customHeightAttr = "";
+        const hMatch = fullLang.match(/[?&]h=(\d+)/i);
+        if (hMatch) {
+            customHeightAttr = ` data-custom-height="${hMatch[1]}"`;
+        }
+
+        // ✨ 完整歸還你的工具列與按鈕 HTML！請完整覆蓋原本 return 的這整段：
         return `
         <div class="mermaid-container" data-zoom="1" data-x="0" data-y="0">
             <div class="mermaid-toolbar" onclick="event.stopPropagation();">
@@ -2355,21 +2415,18 @@ renderer.code = function(token_or_code, language, isEscaped) {
                     </button>
                     <button class="mermaid-btn" onclick="window.zoomMermaid(this, 'reset')" data-tooltip="初始狀態">${GLOBAL_SVGS.mermaidReset}</button>
                     
-                    <!-- ✨ 這條線會被觸控裝置隱藏 (解決圖片中多出來的那條線) -->
                     <div class="action-btn-divider desktop-only"></div>
                     
-                    <!-- 重新整理按鈕 -->
                     <button class="mermaid-btn" onclick="window.reloadMermaid(this)" data-tooltip="重新整理">${GLOBAL_SVGS.mermaidReload}</button>
-                    
                     <button class="mermaid-btn desktop-only" data-tooltip="下載" onclick="window.downloadMermaidPNG(this)">${GLOBAL_SVGS.download}</button>
                     
-                    <!-- ✨ 這條線沒有 desktop-only，所以在觸控裝置上會完美保留在「重整」與「全螢幕」之間 -->
                     <div style="width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; align-self: center;"></div>
                     
                     <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
-            <div class="mermaid-wrapper">
+            <!-- 🔥 帶有等比縮放引擎的 Wrapper -->
+            <div class="mermaid-wrapper"${customHeightAttr}>
                 <div class="mermaid" data-original-text="${encodedText}">${processedText}</div>
             </div>
         </div>`;
@@ -2718,11 +2775,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (window.mermaid) {
             window.mermaid.initialize({
-                startOnLoad: false,
-                theme: theme === 'dark' ? 'dark' : 'default',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-                securityLevel: 'loose' 
-            });
+            startOnLoad: false,
+            theme: currentTheme === 'dark' ? 'dark' : 'default', 
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
+            securityLevel: 'loose',
+            useMaxWidth: false // 🔥 解除原生寬度限制，確保產出的 viewBox 比例最完美
+        });
             
             const mermaidEls = document.querySelectorAll('.mermaid');
             if (mermaidEls.length > 0) {
@@ -4240,19 +4298,27 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             let mermaidRetryCount = 0;
             const renderMermaid = () => {
                 if (window.mermaid) {
-                    // ✨ 核心修復 1：每次渲染圖表前，強制擷取當下的深淺色主題並重新設定
                     const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
                     window.mermaid.initialize({
                         startOnLoad: false,
-                        theme: currentTheme === 'dark' ? 'dark' : 'default', // 完美同步主題
+                        theme: currentTheme === 'dark' ? 'dark' : 'default', 
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-                        securityLevel: 'loose'
+                        securityLevel: 'loose',
+                        useMaxWidth: false // 🔥 確保原生比例不被瀏覽器擠壓
                     });
 
                     document.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
                     window.mermaid.run({ querySelector: '.mermaid' })
                     .catch(e => console.warn('Mermaid 語法錯誤:', e))
-                    .finally(() => window.initMermaidDrag());
+                    .finally(() => {
+                        // 🔥 渲染完畢後，為每個圖表注入自適應比例
+                        document.querySelectorAll('.mermaid').forEach(el => {
+                            window.applyMermaidAspectRatio(el);
+                        });
+                        // 確保容器沒有初始化標記，進行首次綁定
+                        document.querySelectorAll('.mermaid-container').forEach(c => c.classList.remove('drag-initialized'));
+                        window.initMermaidDrag();
+                    });
                 } else if (mermaidRetryCount < 10) {
                     mermaidRetryCount++;
                     setTimeout(renderMermaid, 300);
@@ -4881,45 +4947,65 @@ window.zoomMermaid = function(btn, action) {
 };
 
 // ==========================================
-// ✨ Mermaid 重新整理引擎 (主動重繪)
+// ✨ Mermaid 重新整理引擎 (主動重繪 + 瞬間歸零防跑版)
 // ==========================================
 window.reloadMermaid = function(btn) {
     const container = btn.closest('.mermaid-container');
+    const wrapper = container.querySelector('.mermaid-wrapper');
     const mermaidDiv = container.querySelector('.mermaid');
-    if (!mermaidDiv) return;
+    if (!mermaidDiv || !wrapper) return;
 
-    // 重置縮放與平移狀態
+    // 1. 重置數據狀態
     container.dataset.zoom = 1;
     container.dataset.x = 0;
     container.dataset.y = 0;
     
-    // 加上載入中的透明度特效
+    // 🔥 2. 核心防跑版修復：鎖定外層 Wrapper 的實際尺寸！
+    const rect = wrapper.getBoundingClientRect();
+    wrapper.style.minHeight = `${rect.height}px`;
+    
+    // 強制「瞬間」歸零，拔除所有 CSS 動畫過渡
+    mermaidDiv.style.transition = 'none';
+    mermaidDiv.style.transform = 'translate(0px, 0px) scale(1)';
+    
+    // 強制瀏覽器立刻重繪 (Reflow)
+    void mermaidDiv.offsetWidth; 
     mermaidDiv.style.opacity = '0.3';
     
-    // 給 UI 緩衝時間，再執行重繪
     setTimeout(() => {
-        // 從隱藏屬性抓回最乾淨的原始語法
         const originalText = decodeURIComponent(mermaidDiv.getAttribute('data-original-text') || '');
         if (originalText) {
-            // 拔除已處理標記，強制讓 Mermaid 把它當成新的
             mermaidDiv.removeAttribute('data-processed');
             mermaidDiv.innerHTML = window.processMermaidCssVars(originalText);
-            mermaidDiv.style.transform = 'translate(0px, 0px) scale(1)';
             
-            // 重新呼叫底層渲染
             if (window.mermaid) {
-                window.mermaid.run({ querySelector: '.mermaid' })
+                // 為了不干擾畫面上其他圖表，給它一個暫時的 ID 來精準鎖定重繪
+                const tempId = 'mermaid-reload-' + Date.now();
+                mermaidDiv.id = tempId;
+
+                window.mermaid.run({ querySelector: `#${tempId}` })
                     .catch(e => console.warn('Mermaid reload failed:', e))
                     .finally(() => {
+                        // 🔥 3. 核心修復：先解除 minHeight 的鎖定，再套用動態比例！
+                        // 這樣才能讓 applyMermaidAspectRatio 順利接管並撐開容器
+                        wrapper.style.minHeight = ''; 
+                        window.applyMermaidAspectRatio(mermaidDiv);
+                        
                         mermaidDiv.style.opacity = '1';
-                        // 重新綁定拖曳功能
+                        mermaidDiv.style.transition = 'transform 0.15s var(--ease-smooth)';
+                        mermaidDiv.removeAttribute('id'); 
+                        
+                        // 🔥 4. 強制解除拖曳引擎的鎖定標記，並重新初始化
+                        container.classList.remove('drag-initialized');
                         window.initMermaidDrag();
                     });
             }
         } else {
             mermaidDiv.style.opacity = '1';
+            mermaidDiv.style.transition = 'transform 0.15s var(--ease-smooth)';
+            wrapper.style.minHeight = '';
         }
-    }, 150);
+    }, 50); 
 };
 
 // ✨ 全新：完美偽裝成 Lightbox 的 Mermaid 全螢幕引擎
@@ -4979,8 +5065,11 @@ window.fullscreenMermaid = function(btn) {
 // ==========================================
 window.initMermaidDrag = function() {
     document.querySelectorAll('.mermaid-container').forEach(container => {
-        if (container.dataset.engineInit) return;
-        container.dataset.engineInit = 'true';
+        // 🔥 修復 1：移除 dataset.engineInit 的直接 return 阻斷
+        // 改為判斷是否已經有我們自定義的標記，如果有，代表已經綁定過了，跳過。
+        // 但我們允許在「重整」時強制重新綁定（因為重整時我們會手動清除這個標記）
+        if (container.classList.contains('drag-initialized')) return;
+        container.classList.add('drag-initialized');
 
         const wrapper = container.querySelector('.mermaid-wrapper');
         const mermaidDiv = container.querySelector('.mermaid');
