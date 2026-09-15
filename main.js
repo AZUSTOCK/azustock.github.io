@@ -3984,25 +3984,20 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         modalContainer.addEventListener('scroll', window.indexScrollHandler); 
                         setTimeout(window.indexScrollHandler, 100);
 
-                       jumpToast.onclick = () => {
+                        jumpToast.onclick = () => {
                             if (!targetArticle) return;
-                            const finalTarget = targetArticle; 
                             
-                            const topBar = document.querySelector('.modal-top-bar');
-                            const topBarHeight = topBar ? topBar.offsetHeight : 80;
-                            const targetRect = finalTarget.getBoundingClientRect();
-                            
-                            // ✨ 改為抓取 modalContainer 的邊界與滑動
-                            const containerRect = modalContainer.getBoundingClientRect(); 
-                            const scrollOffset = targetRect.top - containerRect.top - topBarHeight - 40;
-
-                            modalContainer.scrollTo({ 
-                                top: modalContainer.scrollTop + scrollOffset,
-                                behavior: 'smooth'
-                            });
-                            
+                            // 1. 捲動到最接近的那篇新文章，並置中
+                            targetArticle.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             jumpToast.classList.remove('is-visible'); 
-                            setTimeout(() => { window.simulateHoverFlash(finalTarget); }, 500);
+                            
+                            // 2. ✨ 終極 UX：讓這個清單內「所有」的新文章同時觸發高光特效！
+                            setTimeout(() => { 
+                                newArticles.forEach(article => {
+                                    // 延長發光時間到 1200 毫秒，讓使用者有足夠時間看清楚哪些是新的
+                                    window.simulateHoverFlash(article, 1200); 
+                                });
+                            }, 400); // 在捲動快要到達時 (400ms) 提早亮起
                         };
                     } else {
                         jumpToast.classList.remove('is-visible');
