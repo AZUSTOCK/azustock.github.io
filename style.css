@@ -3459,64 +3459,63 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 
 /* ========================================================================== */
-/* ✨ 獨立捲軸與高度動態分配引擎 (Flexbox Magic) - 毛玻璃穿透版 */
+/* ✨ 獨立捲軸與高度動態分配引擎 (Sticky 毛玻璃 + 原生完美卷軸版) */
 /* ========================================================================== */
 
-/* 1. 外層容器：取消 padding，讓內部捲動能完全貼合邊緣（包含底部穿透） */
+/* 1. 外層容器：拿回「捲動權」！ */
 .modal-content {
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;  /* 確保圓角裁切生效 */
-    position: relative !important; 
-    padding: 0 !important; /* ✨ 拔除外層的牆壁，讓下方也能穿透 */
+    /* 恢復讓外層負責捲動，卷軸就會出現在最外側邊緣 */
+    overflow-y: auto !important; 
+    overflow-x: hidden !important; 
+    padding: 0 !important; 
+    display: block !important; /* 拔除 Flex，恢復原生流動，排版最穩 */
 }
 
-/* 2. 頂部導覽列：作為獨立的 Flex 列，避免覆蓋內容捲軸 */
+/* 2. 頂部導覽列：改回 Sticky (黏性定位) */
 .modal-top-bar {
-    position: relative !important;
+    position: sticky !important; /* ✨ 關鍵：黏在頂部，內文會自動鑽到它底下產生毛玻璃效果 */
+    top: 0;
+    left: 0;
+    right: 0;
     margin: 0 !important; 
     padding: 1.5rem 3rem 1.2rem 3rem !important; 
     width: 100%;
     box-sizing: border-box;
     z-index: 1060 !important; 
-    flex-shrink: 0 !important;
 }
 
-/* 3. 中間容器：撐滿高度 */
+/* 3. 中間容器：單純的包裝盒 */
 #modal-body {
-    flex: 1 1 auto !important;
-    min-height: 0 !important; 
-    display: flex !important;
-    flex-direction: column !important;
+    display: block !important;
     height: auto !important;
 }
 
+/* 4. 獨立雙容器：放棄內部捲動，把高度釋放給外層 */
 #view-index, #view-article {
     position: relative !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    overflow: visible !important; /* ✨ 關鍵：不准自己捲動，讓外層的 modal-content 捲！ */
     height: auto !important;
-    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
     box-sizing: border-box !important;
     
-    width: 100% !important;
-    margin: 0 !important;
-    
-    /* TopBar 已經參與 Flex 排版，這裡只保留文章本身的上方留白。 */
-    padding-top: 25px !important; 
+    /* 因為上方已經有 Sticky 的工具列佔位了，這裡只需要一點點微調間距，不用再閃避 80px */
+    padding-top: 0.5rem !important; 
     
     padding-left: 3rem !important;
     padding-right: 3rem !important;
     padding-bottom: 3rem !important; 
+    margin: 0 !important;
 }
+
 /* 📱 手機版微調 */
 @media (max-width: 700px) {
+    .modal-top-bar {
+        padding: 1.5rem 1.5rem 1.2rem 1.5rem !important;
+    }
     #view-index, #view-article {
-        padding-top: 10px !important; 
+        padding-top: 0.5rem !important; 
         padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
+        padding-right: 1.5rem !important; 
         padding-bottom: 2.5rem !important;
     }
 }

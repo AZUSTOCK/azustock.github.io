@@ -838,11 +838,9 @@ window.calculateIdealScrollCache = function(containerId, targetItemId, currentCa
 
 // ✨ 獲取當下啟用的獨立捲動容器
 window.getActiveScrollContainer = function() {
-    const viewIndex = document.getElementById('view-index');
-    const viewArticle = document.getElementById('view-article');
-    if (viewIndex && viewIndex.style.display !== 'none') return viewIndex;
-    if (viewArticle && viewArticle.style.display !== 'none') return viewArticle;
-    return document.querySelector('.modal-content'); // 容錯機制
+    // ✨ 核心神修復：因為我們把捲動權還給外層的 Modal 了，
+    // 現在不論是在目錄還是文章，捲動的永遠都是 .modal-content！
+    return document.querySelector('.modal-content'); 
 };
 
 // ==========================================
