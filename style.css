@@ -390,8 +390,8 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 /* ✨ 2. 當滑鼠 Hover 到「返回」、「X 按鈕」或「背景遮罩 (黑區)」時：警告標示解除武裝 (變黯淡、無陰影、稍微縮小) */
-.modal-content:has(#sensitive-decline-btn:hover, #sensitive-close-x:hover) #sensitive-warning-svg,
-#sensitive-modal-overlay:hover:not(:has(.modal-content:hover)) #sensitive-warning-svg {
+.sensitive-modal-content:has(#sensitive-decline-btn:hover, #sensitive-close-x:hover) #sensitive-warning-svg,
+#sensitive-modal-overlay:hover:not(:has(.sensitive-modal-content:hover)) #sensitive-warning-svg {
     stroke: var(--muted);
     filter: none;
     transform: scale(0.9);
@@ -399,7 +399,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 /* ✨ 3. 當滑鼠 Hover 到「前往」時：警告標示危險升級 (放大、光暈爆發) */
-.modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-svg {
+.sensitive-modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-svg {
     stroke: var(--error-color);
     filter: drop-shadow(0 0 25px var(--error-color)); /* 陰影變得更亮更狂暴 */
     transform: scale(1.15);
@@ -3498,8 +3498,8 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     width: 100% !important;
     box-sizing: border-box !important;
     
-    /* 因為上方已經有 Sticky 的工具列佔位了，這裡只需要一點點微調間距，不用再閃避 80px */
-    padding-top: 0.5rem !important; 
+    /* ✨ 補回 TopBar 失去的下方 margin 空間，讓內容往下推，保持完美呼吸感 */
+    padding-top: 1.3rem !important; 
     
     padding-left: 3rem !important;
     padding-right: 3rem !important;
@@ -3513,7 +3513,9 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         padding: 1.5rem 1.5rem 1.2rem 1.5rem !important;
     }
     #view-index, #view-article {
-        padding-top: 0.5rem !important; 
+        /* ✨ 手機版的上方間距也適度補回 */
+        padding-top: 1.5rem !important; 
+        
         padding-left: 1.5rem !important;
         padding-right: 1.5rem !important; 
         padding-bottom: 2.5rem !important;

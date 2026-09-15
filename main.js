@@ -802,6 +802,7 @@ window.getRelativeOffsetTop = function(element, container) {
 // ✨ 智慧定位預判引擎：在離開清單前，預先計算並快取最佳的返回捲軸位置
 window.calculateIdealScrollCache = function(containerId, targetItemId, currentCache) {
     const container = document.getElementById(containerId);
+    const scroller = window.getActiveScrollContainer() || container; // ✨ 加上這行，取得真正的捲動層
     if (!container) return currentCache || 0;
     
     // 為了計算精準座標，如果容器處於隱藏狀態，暫時打開它的物理佈局
@@ -816,9 +817,9 @@ window.calculateIdealScrollCache = function(containerId, targetItemId, currentCa
     
     if (targetItem) {
         const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
-        const itemTop = window.getRelativeOffsetTop(targetItem, container);
+        const itemTop = window.getRelativeOffsetTop(targetItem, scroller); // ✨ 改為 scroller
         const itemBottom = itemTop + targetItem.offsetHeight;
-        const containerHeight = container.clientHeight || window.innerHeight;
+        const containerHeight = scroller.clientHeight || window.innerHeight; // ✨ 改為 scroller
         
         // 判斷目標是否超出現在的捲軸可視範圍，並進行微調
         if (itemTop < finalScroll + topBarHeight) {
@@ -3640,8 +3641,8 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
     if (modalContainer) modalContainer.classList.remove('is-sys-error-mode');
     
     if (window.indexScrollHandler) {
-        const viewIndex = document.getElementById('view-index');
-        if (viewIndex) viewIndex.removeEventListener('scroll', window.indexScrollHandler);
+        // ✨ 核心修復 1：改為從 modalContainer 移除捲動監聽，徹底消滅殘影！
+        if (modalContainer) modalContainer.removeEventListener('scroll', window.indexScrollHandler);
         window.indexScrollHandler = null;
     }
     const jumpToast = document.getElementById('new-jump-toast');
@@ -3935,25 +3936,23 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     }
 
                     if (window.indexScrollHandler) {
-                        viewIndex.removeEventListener('scroll', window.indexScrollHandler); // ✨ 改用 viewIndex
+                        modalContainer.removeEventListener('scroll', window.indexScrollHandler); // ✨ 改為 modalContainer
                         window.indexScrollHandler = null;
                     }
 
                     if (newArticles.length > 0) {
                         let targetArticle = null;
-                        
-                        // ✨ 效能優化：把高度查詢拉出 scroll 事件，避免每秒 60 次的重繪地獄
                         const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
                         
                         window.indexScrollHandler = () => {
-                            const containerRect = viewIndex.getBoundingClientRect(); 
+                            // ✨ 改為抓取 modalContainer 的邊界
+                            const containerRect = modalContainer.getBoundingClientRect(); 
 
                             let countAbove = 0, countVisible = 0, countBelow = 0;
                             let closestAbove = null, closestBelow = null;
 
                             newArticles.forEach(article => {
                                 const rect = article.getBoundingClientRect();
-                                // ✨ 判斷是否被上方毛玻璃遮住
                                 if (rect.top < containerRect.top + topBarHeight) {
                                     countAbove++;
                                     closestAbove = article; 
@@ -3981,24 +3980,24 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             }
                         };
                         
-                        viewIndex.addEventListener('scroll', window.indexScrollHandler); 
+                        // ✨ 改為監聽 modalContainer
+                        modalContainer.addEventListener('scroll', window.indexScrollHandler); 
                         setTimeout(window.indexScrollHandler, 100);
 
                        jumpToast.onclick = () => {
                             if (!targetArticle) return;
                             const finalTarget = targetArticle; 
                             
-                            // ✨ 完全還原你原本的變數與參數！
                             const topBar = document.querySelector('.modal-top-bar');
                             const topBarHeight = topBar ? topBar.offsetHeight : 80;
                             const targetRect = finalTarget.getBoundingClientRect();
-                            const containerRect = viewIndex.getBoundingClientRect(); 
                             
-                            // 完全還原你原本的 - 40 參數
+                            // ✨ 改為抓取 modalContainer 的邊界與滑動
+                            const containerRect = modalContainer.getBoundingClientRect(); 
                             const scrollOffset = targetRect.top - containerRect.top - topBarHeight - 40;
 
-                            viewIndex.scrollTo({ 
-                                top: viewIndex.scrollTop + scrollOffset,
+                            modalContainer.scrollTo({ 
+                                top: modalContainer.scrollTop + scrollOffset,
                                 behavior: 'smooth'
                             });
                             
@@ -4054,18 +4053,15 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             window.lockScroll(); 
         },
         () => {
-            const viewIndex = document.getElementById('view-index'); 
-            if (viewIndex) {
+            const modalContainer = document.querySelector('.modal-content'); 
+            if (modalContainer) {
                 if (restoreScroll && window._indexScrollTopCache !== undefined) {
-                    // ✨ 瞬間套用預先計算好的最佳捲軸位置
-                    viewIndex.scrollTo({ top: window._indexScrollTopCache, behavior: 'auto' });
+                    modalContainer.scrollTo({ top: window._indexScrollTopCache, behavior: 'auto' });
                     
                     const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
-                    if (targetItem) {
-                        setTimeout(() => window.simulateHoverFlash(targetItem), 150);
-                    }
+                    if (targetItem) setTimeout(() => window.simulateHoverFlash(targetItem), 150);
                 } else {
-                    viewIndex.scrollTo({ top: 0, behavior: 'auto' });
+                    modalContainer.scrollTo({ top: 0, behavior: 'auto' });
                 }
             }
         }
@@ -4534,8 +4530,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             });
         },
         () => {
-            const viewArticle = document.getElementById('view-article'); // ✨ 目標改為 viewArticle
-            if (!viewArticle) return;
+            const modalContainer = document.querySelector('.modal-content');
+            if (!modalContainer) return;
             
             if (targetHash) {
                 const success = window.executeAnchorScroll(targetHash, true);
@@ -4543,8 +4539,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             } 
 
             if (isFromHistory) {
-                // ✨ 歷史紀錄還原：只要瞬間設定一次即可，拔除會造成畫面拉扯的冗餘追蹤器
-                viewArticle.scrollTo({ top: restoreScrollTop, behavior: 'auto' }); 
+                modalContainer.scrollTo({ top: restoreScrollTop, behavior: 'auto' }); 
                 
                 if (restoreInnerScrolls && restoreInnerScrolls.length > 0) {
                     const wrappers = document.querySelectorAll('#view-article .vertical-wrapper');
@@ -4555,7 +4550,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     });
                 }
             } else {
-                viewArticle.scrollTo({ top: 0, behavior: 'auto' }); // 全新開啟則置頂
+                modalContainer.scrollTo({ top: 0, behavior: 'auto' });
             }
         },
         animateTopBar
@@ -4765,13 +4760,23 @@ function closeModal() {
     
     // ✨ 關閉 Modal 時，精準拔除 Jump Toast 捲動監聽器，防止 Memory Leak
     if (window.indexScrollHandler) {
-        const viewIndex = document.getElementById('view-index');
-        if (viewIndex) viewIndex.removeEventListener('scroll', window.indexScrollHandler);
+        // ✨ 核心修復 2：改為從 modal-content 移除捲動監聽
+        const modalContainer = document.querySelector('.modal-content');
+        if (modalContainer) modalContainer.removeEventListener('scroll', window.indexScrollHandler);
         window.indexScrollHandler = null;
     }
     
     // ✨ 延遲 300 毫秒解鎖，配合 Modal 的 opacity: 0.3s 動畫
-    setTimeout(() => window.unlockScroll(), 300); 
+    setTimeout(() => {
+        window.unlockScroll();
+        
+        // ✨ 終極修復：在視窗完全隱形後，默默把捲軸推回頂部，並清除所有跳轉快取！
+        // 這樣下次開啟任何頁面時，絕對是從 0 乾淨開始，不會閃爍殘影。
+        const modalContainer = document.querySelector('.modal-content');
+        if (modalContainer) modalContainer.scrollTo({ top: 0, behavior: 'auto' });
+        window._indexScrollTopCache = 0;
+        window._changelogScrollTopCache = 0;
+    }, 300); 
 
     const jumpToast = document.getElementById('new-jump-toast');
     if (jumpToast) jumpToast.classList.remove('is-visible');
@@ -5286,7 +5291,7 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
 
     // ✨ 移除內層與按鈕的 title
     overlay.innerHTML = `
-        <div class="modal-content sensitive-modal-content">
+        <div class="sensitive-modal-content" style="background: var(--card); border: 1px solid var(--card-border); border-radius: 1.1rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
             <button id="sensitive-close-x" class="sensitive-close-btn">
                 ${GLOBAL_SVGS.closeX}
             </button>
@@ -5357,13 +5362,12 @@ window.applyIndentToVerticalWrapper = function(container) {
 // ==========================================
 window.cachedCreditsText = null;
 window.showCreditsModal = async function() {
-    document.body.style.cursor = 'wait'; 
-    window.toggleLoading(true, 'FETCHING_DATA...'); 
-    
-    // 🔥 攔截前次請求
-    if (window._activeFetcher) window._activeFetcher.abort();
-    window._activeFetcher = new AbortController();
-    const controller = window._activeFetcher;
+    // 🔥 全域中斷防護：開啟新畫面時，立刻中斷並清理前一個還在跑的請求
+    if (window._activeFetcher) {
+        window._activeFetcher.abort();
+        window._activeFetcher = null;
+    }
+    window.toggleLoading(false);
 
     let mdText = "載入失敗"; let isError = false;
 
@@ -5603,18 +5607,14 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 window.lockScroll();
             },
             () => {
-                const viewArticle = document.getElementById('view-article');
-                if (viewArticle) {
+                const modalContainer = document.querySelector('.modal-content');
+                if (modalContainer) {
                     if (restoreScroll && window._changelogScrollTopCache !== undefined) {
-                        // ✨ 瞬間套用預先計算好的最佳捲軸位置
-                        viewArticle.scrollTo({ top: window._changelogScrollTopCache, behavior: 'auto' });
-                        
+                        modalContainer.scrollTo({ top: window._changelogScrollTopCache, behavior: 'auto' });
                         const targetItem = document.getElementById(`changelog-item-${window.lastReadChangelogId}`);
-                        if (targetItem) {
-                            setTimeout(() => window.simulateHoverFlash(targetItem), 150);
-                        }
+                        if (targetItem) setTimeout(() => window.simulateHoverFlash(targetItem), 150);
                     } else {
-                        viewArticle.scrollTo({ top: 0, behavior: 'auto' });
+                        modalContainer.scrollTo({ top: 0, behavior: 'auto' });
                     }
                 }
             }
@@ -5654,9 +5654,11 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                     window.initProgressBar(topBar, viewArticle, 'top', 'reading-progress-bar');
                 }
             },
+            // 替換這一段
             () => {
-                const targetEl = document.getElementById('view-article');
-                if (targetEl) targetEl.scrollTo({ top: 0, behavior: 'auto' });
+                // 動畫結束後確保畫面在最頂端
+                const modalContainer = document.querySelector('.modal-content');
+                if (modalContainer) modalContainer.scrollTo({ top: 0, behavior: 'auto' });
             }
         );
     };
@@ -5687,13 +5689,12 @@ window.switchBilingualTab = function(lang, btn) {
 // ==========================================
 window.cachedLicenseText = null;
 window.showLicenseModal = async function() {
-    document.body.style.cursor = 'wait'; 
-    window.toggleLoading(true, 'FETCHING_DATA...');
-    
-    // 🔥 攔截前次請求
-    if (window._activeFetcher) window._activeFetcher.abort();
-    window._activeFetcher = new AbortController();
-    const controller = window._activeFetcher;
+    // 🔥 全域中斷防護：開啟新畫面時，立刻中斷並清理前一個還在跑的請求
+    if (window._activeFetcher) {
+        window._activeFetcher.abort();
+        window._activeFetcher = null;
+    }
+    window.toggleLoading(false);
 
     let mdText = "載入失敗"; let isError = false;
 
