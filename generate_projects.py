@@ -811,28 +811,35 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     fixed_url = url.replace('./', real_path)
                                     main_url = fixed_url.split('#')[0]
                                     
-                                    # ✨ 關鍵修復：把 query 參數 (例如 ?h=450) 先濾掉，再拿去取副檔名與檢查實體檔案
                                     clean_local_url = main_url.split('?')[0]
                                     local_main_path = os.path.normpath(clean_local_url)
                                     ext = os.path.splitext(local_main_path)[1].lower()
                                     
-                                    # ✨ 將 .pdf 加入白名單，讓它能進入後續的處理流程
                                     valid_media_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg', '.mp4', '.webm', '.ogg', '.mp3', '.wav', '.pdf'}
                                     if ext not in valid_media_exts:
                                         return f"![{alt_text}]({fixed_url}{title_str})"
                                         
                                     parts = fixed_url.split('#')
                                     stamped_parts = []
+                                    poster_ar_str = "" # 🔥 新增變數：用來儲存影片/PDF的自訂封面比例
+                                    
                                     for p in parts:
                                         if p.startswith('poster='):
                                             p_path = p[7:]
                                             stamped_parts.append(f"poster={get_hash_url(os.path.normpath(p_path), p_path)}")
+                                            # 🔥 嘗試讀取 poster 的長寬比
+                                            try:
+                                                with Image.open(os.path.normpath(p_path)) as tmp_img:
+                                                    poster_ar_str = f"&ar={round(tmp_img.width / tmp_img.height, 4)}"
+                                            except Exception:
+                                                pass
                                         elif p.startswith('full='):
                                             p_path = p[5:]
                                             stamped_parts.append(f"full={get_hash_url(os.path.normpath(p_path), p_path)}")
                                         else:
                                             stamped_parts.append(get_hash_url(os.path.normpath(p), p))
                                             
+                                    # 🚨 就是這行剛剛不見了！一定要把它組合回來：
                                     final_stamped_url = '#'.join(stamped_parts)
                                     
                                     valid_image_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'}
@@ -845,7 +852,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
-                                        # ✨ 內文縮圖 Hash 判定
                                         inline_status, img_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, overwrite_thumb)
                                         current_hashes[local_main_path] = img_hash
                                         
@@ -866,7 +872,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
                                         orig_url_t = get_hash_url(local_main_path, main_url)
                                         
-                                        # 🔥 新增這段：取得原始圖片的長寬比
+                                        # 🔥 取得一般圖片的長寬比
                                         ar_str = ""
                                         try:
                                             with Image.open(local_main_path) as tmp_img:
@@ -874,29 +880,22 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         except Exception:
                                             pass
                                         
-                                        # 替換下方原本的 return，將 ar_str 串接進去
                                         if '#full=' in final_stamped_url:
                                             return f"![{alt_text}]({thumb_url}#{final_stamped_url.split('#', 1)[1]}{ar_str}{title_str})"
                                         else:
                                             return f"![{alt_text}]({thumb_url}#full={orig_url_t}{ar_str}{title_str})"
                                             
-                                    # ==========================================
-                                    # ✨ PDF 自動生成縮圖與 Poster 注入引擎
-                                    # ==========================================
-                                    if ext == '.pdf' and os.path.exists(local_main_path):
-                                        # 如果 Markdown 中沒有手動寫 #poster=，我們就自己產！
+                                    elif ext == '.pdf' and os.path.exists(local_main_path):
                                         if '#poster=' not in final_stamped_url:
-                                            stats["pdf_thumb_total"] += 1 # ✨ 替換為 PDF 獨立計數
+                                            stats["pdf_thumb_total"] += 1 
                                             clean_url = main_url.replace(real_path, '')
                                             safe_name = clean_url.replace('/', '_').replace('\\', '_')
                                             thumb_dir = os.path.join(art_dir, "thumbnails")
                                             os.makedirs(thumb_dir, exist_ok=True)
                                             
-                                            # 自動命名封面圖為 thumb_檔名.webp
                                             thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                             thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                             
-                                            # 透過 Hash 快取判定是否需要重新產生 (✨ 替換為 overwrite_pdf_thumb)
                                             inline_status, pdf_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, overwrite_pdf_thumb)
                                             current_hashes[local_main_path] = pdf_hash
                                             
@@ -914,11 +913,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                                 
                                             valid_api_files.add(os.path.abspath(thumb_local_path))
                                             
-                                            # ✨ 如果檔案成功產出，自動將生成的路徑加上 #poster= 塞進網址裡
                                             if os.path.exists(thumb_local_path):
                                                 thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
                                                 
-                                                # 🔥 新增這段：讀取生成的 PDF 縮圖，取得長寬比
                                                 ar_str = ""
                                                 try:
                                                     with Image.open(thumb_local_path) as tmp_img:
@@ -926,10 +923,16 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                                 except Exception:
                                                     pass
                                                     
-                                                # 替換這行，將 ar_str 串接進去
                                                 final_stamped_url += f"#poster={thumb_url}{ar_str}"
+                                        else:
+                                            # 如果使用者手動指定了封面，把剛剛算好的 poster_ar_str 接上去
+                                            final_stamped_url += poster_ar_str
 
-                                    return f"![{alt_text}]({final_stamped_url}{title_str})"
+                                        return f"![{alt_text}]({final_stamped_url}{title_str})"
+                                            
+                                    else:
+                                        # 影片或音樂，把 poster_ar_str 接到網址上
+                                        return f"![{alt_text}]({final_stamped_url}{poster_ar_str}{title_str})"
                                         
                                 return f"![{alt_text}]({url_part})"
                                 

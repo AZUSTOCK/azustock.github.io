@@ -302,6 +302,8 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* 讓軌道完全隱形，這樣不管是淺色或深色模式，軌道都會直接透出網頁底色 */
 ::-webkit-scrollbar-track { 
     background: transparent !important; 
+    /* ✨ 加上這行魔法：讓捲軸的活動範圍提早結束，完美避開右下角的圓角裁切！ */
+    margin-bottom: 1.2rem; 
 }
 ::-webkit-scrollbar-thumb { 
     background-color: var(--scrollbar-thumb); 
@@ -388,8 +390,8 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 /* ✨ 2. 當滑鼠 Hover 到「返回」、「X 按鈕」或「背景遮罩 (黑區)」時：警告標示解除武裝 (變黯淡、無陰影、稍微縮小) */
-.modal-content:has(#sensitive-decline-btn:hover, #sensitive-close-x:hover) #sensitive-warning-svg,
-#sensitive-modal-overlay:hover:not(:has(.modal-content:hover)) #sensitive-warning-svg {
+.sensitive-modal-content:has(#sensitive-decline-btn:hover, #sensitive-close-x:hover) #sensitive-warning-svg,
+#sensitive-modal-overlay:hover:not(:has(.sensitive-modal-content:hover)) #sensitive-warning-svg {
     stroke: var(--muted);
     filter: none;
     transform: scale(0.9);
@@ -397,7 +399,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 /* ✨ 3. 當滑鼠 Hover 到「前往」時：警告標示危險升級 (放大、光暈爆發) */
-.modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-svg {
+.sensitive-modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-svg {
     stroke: var(--error-color);
     filter: drop-shadow(0 0 25px var(--error-color)); /* 陰影變得更亮更狂暴 */
     transform: scale(1.15);
@@ -877,18 +879,29 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 main section { position: relative; scroll-margin-top: 100px; --sec-color: var(--accent); }
 main section h2 { font-size: 1.6rem; margin-bottom: 1.2rem; padding-left: 1.2rem; border-left: none !important; margin-left: 0; position: relative; display: inline-flex !important; }
 main section h2::before { content: ''; position: absolute; left: 0; top: 10%; bottom: 10%; width: 4px; background: var(--sec-color); border-radius: 4px; }
-main section::before { content: ''; position: absolute; top: -10px; right: 20px; width: 250px; height: 250px; max-height: calc(100% - 20px); max-width: 40vw; opacity: 0.08; z-index: 0; pointer-events: none; background-color: var(--sec-color); /* ✨ 原本又臭又長的 mask 設定，用一行簡寫完美解決！ */ -webkit-mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; transform: rotate(-10deg) scale(1); transition: transform 0.6s var(--ease-smooth), opacity 0.6s ease; }
-main section:hover::before { transform: rotate(0deg) scale(1.1); opacity: 0.25; animation: none !important;}
-main section::after { content: ''; position: absolute; top: -24px; bottom: -24px; left: -24px; right: -24px; border-radius: 20px; pointer-events: none; z-index: 0; opacity: 0; }
-/* 原本的區塊光暈動畫 */
-@keyframes target-section-glow-expand { 
-    0%, 100% { opacity: 0; transform: scale(0.98); } 
-    30% { opacity: 1; transform: scale(1); background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent); } 
+main section::before { 
+    content: ''; position: absolute; top: -10px; right: 20px; width: 250px; height: 250px; max-height: calc(100% - 20px); max-width: 40vw; opacity: 0.08; z-index: 0; pointer-events: none; background-color: var(--sec-color); -webkit-mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; mask: var(--custom-watermark, var(--svg-watermark-default)) no-repeat right top / contain; transform: rotate(-10deg) scale(1); 
+    /* ✨ 統一只用 transition 處理所有狀態切換 */
+    transition: transform 0.6s var(--ease-smooth), opacity 0.6s ease; 
 }
-main section:target::after, main section.force-target::after { animation: target-section-glow-expand 3s var(--ease-smooth); }
-@keyframes watermark-target-bump { 
-    0%, 100% { transform: rotate(-10deg) scale(1); opacity: 0.08; } 
-    30% { transform: rotate(0deg) scale(1.1); opacity: 0.25; } 
+
+main section::after { 
+    content: ''; position: absolute; top: -24px; bottom: -24px; left: -24px; right: -24px; border-radius: 20px; pointer-events: none; z-index: 0; 
+    opacity: 0; transform: scale(0.98);
+    transition: opacity 0.6s var(--ease-smooth), transform 0.6s var(--ease-smooth), background-color 0.6s ease, box-shadow 0.6s ease; 
+}
+
+/* ✨ 核心魔法：讓 hover 跟 force-target 共用完全一模一樣的狀態！ */
+/* 這樣一來，即使 force-target 被 JS 移除了，只要滑鼠還 hover 在上面，樣式就能「無縫接軌」不發生任何閃爍！ */
+main section:hover::before, main section.force-target::before { 
+    transform: rotate(0deg) scale(1.1); 
+    opacity: 0.25; 
+}
+
+main section:hover::after, main section.force-target::after { 
+    opacity: 1; transform: scale(1); 
+    background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); 
+    box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent); 
 }
 main section:target::before, main section.force-target::before { animation: watermark-target-bump 3s var(--ease-smooth); }
 main section:nth-of-type(5n+1) { --sec-color: var(--group-c1); }
@@ -1893,7 +1906,19 @@ span.article-item-date {
     /* ✨ 新增這行外框，這條線會自動適應深淺色模式，完美勾勒出圖片邊界 */
     border: 1px solid var(--card-border); 
 }
-.markdown-body img.is-loading, .markdown-body img.is-broken { width: 100%; min-height: 200px; max-height: 450px; aspect-ratio: 1 / 1; object-fit: cover; }
+.markdown-body img.is-loading, .markdown-body img.is-broken { 
+    width: 100%; 
+    height: auto; 
+}
+
+/* 🔥 當「沒有」被 JS 算好比例時，才啟用強制裁切與高度限制 (防呆機制) */
+.markdown-body img.is-loading:not([style*="aspect-ratio"]), 
+.markdown-body img.is-broken:not([style*="aspect-ratio"]) { 
+    min-height: 200px; 
+    max-height: 450px; 
+    aspect-ratio: 16 / 9; 
+    object-fit: cover; 
+}
 .markdown-body img[alt="center"] { width: 75%; max-width: 600px; }
 .markdown-body img[alt="center"].is-loading, .markdown-body img[alt="center"].is-broken { aspect-ratio: 4 / 3; }
 /* 替換原本的 float 圖片設定 */
@@ -2001,8 +2026,6 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 /* ✨ 拔除原生捲軸，改為固定高度與隱藏溢出，讓矩陣拖曳取代醜陋的捲軸 */
 .mermaid-wrapper { 
     width: 100%; 
-    height: 60vh; 
-    max-height: 500px;
     overflow: hidden; 
     padding: 1.5rem; 
     box-sizing: border-box; 
@@ -2025,17 +2048,13 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
     flex: 1; 
 }
 
-/* ✨ 核心修復 2：讓 mermaid 容器置中，並強制阻斷全站行高污染 */
+/* 🔥 1. 從 flex 改為 block，徹底消除 Flexbox 在窄螢幕帶來的擠壓干擾 */
 .mermaid { 
-    display: flex; 
-    align-items: center;
-    justify-content: center;
+    display: block; 
+    margin: 0 auto; /* 置中 */
     width: 100%;
-    height: 100%;
     transform-origin: center center;
     transition: transform 0.15s var(--ease-smooth); 
-    
-    /* 強制壓回標準行高，防止文字被推出版面 */
     line-height: 1.2 !important; 
 }
 
@@ -2044,19 +2063,23 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
     line-height: inherit !important;
 }
 
+/* 🔥 新增：強制節點文字不准因為螢幕變窄而自動擠壓斷行，確保比例完美 */
+.mermaid .nodeLabel, 
+.mermaid .edgeLabel {
+    white-space: nowrap !important;
+}
+
 /* ✨ 核心修復 3：解放 foreignObject，徹底防堵中文字尾端被物理裁切！ */
 .mermaid foreignObject {
     overflow: visible !important;
 }
 
-/* 限制 SVG 不能超過父容器，這樣 scale(1) 就永遠等同於「適應螢幕」！ */
+/* 🔥 2. 讓 SVG 像 iframe/圖片 一樣，100% 服從父容器算好的 aspect-ratio，絕不變形 */
 .mermaid svg { 
+    width: 100% !important; 
+    height: 100% !important; 
     max-width: 100% !important; 
-    max-height: 100% !important; 
-    width: auto !important; 
-    height: auto !important; 
     overflow: visible !important; 
-    /* 補上一點安全內距，防止圖表最邊緣的線條被切到 */
     padding: 4px;
 }
 
@@ -3447,21 +3470,21 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 
 /* ========================================================================== */
-/* ✨ 獨立捲軸與高度動態分配引擎 (Flexbox Magic) - 毛玻璃穿透版 */
+/* ✨ 獨立捲軸與高度動態分配引擎 (Sticky 毛玻璃 + 原生完美卷軸版) */
 /* ========================================================================== */
 
-/* 1. 外層容器：取消 padding，讓內部捲動能完全貼合邊緣（包含底部穿透） */
+/* 1. 外層容器：拿回「捲動權」！ */
 .modal-content {
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;  /* 確保圓角裁切生效 */
-    position: relative !important; 
-    padding: 0 !important; /* ✨ 拔除外層的牆壁，讓下方也能穿透 */
+    /* 恢復讓外層負責捲動，卷軸就會出現在最外側邊緣 */
+    overflow-y: auto !important; 
+    overflow-x: hidden !important; 
+    padding: 0 !important; 
+    display: block !important; /* 拔除 Flex，恢復原生流動，排版最穩 */
 }
 
-/* 2. 頂部導覽列：絕對定位浮在最上層，並補回左右 padding */
+/* 2. 頂部導覽列：改回 Sticky (黏性定位) */
 .modal-top-bar {
-    position: absolute !important;
+    position: sticky !important; /* ✨ 關鍵：黏在頂部，內文會自動鑽到它底下產生毛玻璃效果 */
     top: 0;
     left: 0;
     right: 0;
@@ -3472,43 +3495,40 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     z-index: 1060 !important; 
 }
 
-/* 3. 中間容器：撐滿高度 */
+/* 3. 中間容器：單純的包裝盒 */
 #modal-body {
-    flex: 1 1 auto !important;
-    min-height: 0 !important; 
-    display: flex !important;
-    flex-direction: column !important;
+    display: block !important;
     height: auto !important;
 }
 
-/* 4. 獨立捲軸容器：使用 CSS 變數動態閃避 TopBar，並加上 Bottom Padding */
+/* 4. 獨立雙容器：放棄內部捲動，把高度釋放給外層 */
 #view-index, #view-article {
     position: relative !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    overflow: visible !important; /* ✨ 關鍵：不准自己捲動，讓外層的 modal-content 捲！ */
     height: auto !important;
-    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    box-sizing: border-box !important;
     
-    /* ✨ 上方：接收 JS 動態算出的真實高度，加上 15px 緩衝區 */
-    padding-top: calc(var(--top-bar-height, 80px) + 15px) !important; 
+    /* ✨ 補回 TopBar 失去的下方 margin 空間，讓內容往下推，保持完美呼吸感 */
+    padding-top: 1.3rem !important; 
     
-    /* ✨ 左右與下方：把原本外層的 Padding 下放進來，滑到最底下就不會貼壁 */
     padding-left: 3rem !important;
     padding-right: 3rem !important;
     padding-bottom: 3rem !important; 
+    margin: 0 !important;
 }
 
-/* 📱 手機版版面微調 */
+/* 📱 手機版微調 */
 @media (max-width: 700px) {
     .modal-top-bar {
         padding: 1.5rem 1.5rem 1.2rem 1.5rem !important;
     }
     #view-index, #view-article {
-        padding-top: calc(var(--top-bar-height, 80px) + 15px) !important; 
+        /* ✨ 手機版的上方間距也適度補回 */
+        padding-top: 1rem !important; 
+        
         padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important;
+        padding-right: 1.5rem !important; 
         padding-bottom: 2.5rem !important;
     }
 }
