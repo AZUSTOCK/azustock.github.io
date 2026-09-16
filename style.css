@@ -943,16 +943,59 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .card h3 { margin-top: 0.1rem; margin-bottom: 0.8rem; font-size: 1.2rem; font-weight: 700; line-height: 1.2; }
 .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.6rem; }
 
-/* 卡片狀態與圖釘 */
+
+/* ==========================================
+   ✨ 共用圖釘系統 (一般圖釘與機密圖釘)
+   ========================================== */
+.card-pin, .modal-pin, .card-secret-pin, .modal-secret-pin { 
+    position: absolute; border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+    will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); 
+    transition: transform 0.4s var(--ease-smooth), box-shadow 0.4s ease; 
+}
+.card-secret-pin svg, .modal-secret-pin svg { overflow: visible; }
+
+/* 🔵 一般圖釘外觀 */
+.card-pin, .modal-pin { background: var(--accent-2); color: var(--card); }
+.card-pin { top: -14px; right: -14px; width: 34px; height: 34px; box-shadow: 0 4px 10px rgba(0,0,0,0.15), 0 0 8px var(--accent-2); z-index: 10; }
+.modal-pin { top: -12px; left: -12px; width: 24px; height: 24px; box-shadow: 0 0 8px var(--accent-2); z-index: 1; }
+
+/* 🔴 機密圖釘外觀 */
+.card-secret-pin, .modal-secret-pin { background: var(--error-color); color: #fff; }
+.card-secret-pin { top: -14px; left: -14px; width: 34px; height: 34px; box-shadow: 0 4px 10px rgba(0,0,0,0.15), 0 0 8px var(--error-color); z-index: 10; }
+.modal-secret-pin { top: -12px; right: -12px; width: 24px; height: 24px; box-shadow: 0 0 8px var(--error-color); z-index: 1; }
+
+/* ✨ 彈跳方向與陰影 (依據卡片與目錄位置設定角度) */
+/* ==========================================
+   ✨ 權限解密互動：Hover 時扣環「暴力彈出並斷開」
+   ========================================== */
+.secret-shackle { 
+    transition: transform 0.4s var(--ease-bounce);
+    /* 🚨 核心修復：強制鎖死 SVG 的物理中心座標，防止 Safari 把它甩出螢幕外 */
+    transform-origin: 12px 12px; 
+}
+
+/* 👉 專案卡片 (左上角)：向「左上」彈出，並向「左」傾斜 (-12deg) */
+.card:hover .secret-shackle { 
+    transform: translateY(-6px) translateX(-2px) rotate(-12deg); 
+}
+
+/* 👉 文章清單 (右上角)：向「右上」彈出，並向「右」傾斜 (12deg) */
+.modal-content a:hover .secret-shackle,
+.article-li.simulate-hover a .secret-shackle { 
+    transform: translateY(-6px) translateX(2px) rotate(12deg); 
+}
+.card:hover .card-pin, .modal-content a:hover .modal-secret-pin, .article-li.simulate-hover a .modal-secret-pin { transform: scale(1.15) rotate(8deg) translate(10%, -10%); }
+.card:hover .card-secret-pin, .modal-content a:hover .modal-pin { transform: scale(1.15) rotate(-8deg) translate(-10%, -10%); }
+
+.card:hover .card-pin { box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--accent-2); }
+.modal-content a:hover .modal-pin { box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--accent-2); }
+.card:hover .card-secret-pin { box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--error-color); }
+.modal-content a:hover .modal-secret-pin, .article-li.simulate-hover a .modal-secret-pin { box-shadow: 0 4px 10px rgba(0,0,0,0.2), 0 0 10px var(--error-color); }
+
 .card.highlighted { border-color: var(--accent-2) !important; box-shadow: 0 0 15px var(--accent-2); z-index: 10; position: relative; }
 .card.highlighted:hover { transform: translateY(-6px) translateZ(0); box-shadow: 0 8px 25px var(--accent-2); }
 @keyframes card-bump { 0% { translate: 0 0; } 50% { translate: 0 -12px; } 100% { translate: 0 0; } }
 .card.highlighted.jump-bump { z-index: 20; animation: card-bump 0.6s var(--ease-smooth); }
-.card-pin, .modal-pin { position: absolute; background: var(--accent-2); color: var(--card); border-radius: 50%; display: flex; align-items: center; justify-content: center; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); transition: transform 0.4s var(--ease-smooth), box-shadow 0.4s ease; }
-.card-pin { top: -14px; right: -14px; width: 34px; height: 34px; box-shadow: 0 4px 10px rgba(0,0,0,0.15), 0 0 8px var(--accent-2); z-index: 10; }
-.modal-pin { top: -12px; left: -12px; width: 24px; height: 24px; box-shadow: 0 0 8px var(--accent-2); z-index: 1; }
-.card:hover .card-pin, .modal-content a:hover .modal-pin { transform: scale(1.15) rotate(8deg) translate(10%, -10%); box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--accent-2); }
-.modal-content a:hover .modal-pin { transform: scale(1.15) rotate(-8deg) translate(-10%, -10%); }
 
 /* 卡片 Hover 互動指示器 */
 .card:hover .card-action-btn { color: var(--card-glow) !important; }
@@ -1032,10 +1075,6 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .modal-back-btn.history-back-btn { border-color: var(--accent-2); color: var(--accent-2); }
 .modal-back-btn.history-back-btn:hover { background-color: var(--accent-2); border-color: var(--accent-2); color: var(--card); }
 
-.modal-close-btn { pointer-events: auto !important; background: var(--glass-bg); backdrop-filter: blur(8px); border: 1px solid var(--card-border); border-radius: 50%; width: 36px; height: 36px; display: flex; justify-content: center; align-items: center; color: var(--muted); font-size: 1.5rem; cursor: pointer; transition: all 0.3s var(--ease-smooth); flex-shrink: 0; }
-.modal-close-btn:hover { color: var(--error-color); border-color: var(--error-color); box-shadow: 0 0 10px var(--error-shadow); }
-.modal-close-btn svg { display: block; transition: transform 0.4s var(--ease-smooth); transform-origin: center center; }
-.modal-close-btn:hover svg { transform: rotate(90deg); }
 
 /* ✨ 統一所有的圓形工具按鈕樣式 (包含 T 與 X) */
 .modal-close-btn, .modal-tool-btn { 
@@ -1051,7 +1090,6 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--glow-1); 
 }
 .modal-close-btn svg, .modal-tool-btn svg { display: block; transition: transform 0.4s var(--ease-smooth); transform-origin: center center; }
-.modal-close-btn:hover svg { transform: rotate(90deg); }
 .modal-tool-btn:hover svg { transform: scale(1.15); }
 
 
@@ -1429,12 +1467,27 @@ span.article-item-date {
    ✨ 摺疊區塊 (Details / Accordion) 排版
    ========================================== */
 .md-details {
-    margin: 1.5rem 0;
+    margin: 1.5rem -1rem; /* 只有外層向外擴張 */
     background: var(--bg);
     transition: all 0.3s var(--ease-smooth);
 }
+
+.md-details summary { 
+    list-style: none; 
+    border-bottom: 2px solid var(--card-border);
+    /* ✨ 1. 將 padding 交給 summary，讓 Hover 背景色與底線能左右撐滿 */
+    padding: 0rem 1rem; 
+    cursor: pointer;
+    /* 順便用 flex 讓左側箭頭跟文字完美置中 */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .md-details-content {
     background: var(--glass-bg);
+    /* ✨ 2. 內容區塊也加上 padding，讓裡面的文字跟外部排版切齊 */
+    padding: 1rem;
 }
 
 /* Hover 時的高亮互動 */
@@ -1444,8 +1497,7 @@ span.article-item-date {
 }
 
 .md-details summary::-webkit-details-marker { display: none; }
-.md-details summary { list-style: none; border-bottom: 2px solid var(--card-border);}
-.md-details .details-icon { color: var(--accent); }
+.md-details .details-icon { color: var(--accent); transition: transform 0.3s var(--ease-smooth); }
 .md-details[open] .details-icon { transform: rotate(90deg); color: var(--accent-2); }
 .md-details-content > *:first-child { margin-top: 0; }
 .md-details-content > *:last-child { margin-bottom: 0; }
@@ -1485,11 +1537,25 @@ span.article-item-date {
     border-bottom-right-radius: 0.6rem;
     border-right: 1px solid var(--card-border);
     border-bottom: 1px solid var(--card-border);
-    /* ✨ 移除了手動設定的左上角圓角，由外層 wrapper 自動裁切防溢出 */
     text-transform: uppercase;
     letter-spacing: 0.05em;
     z-index: 5;
+    
+    /* 桌機版預設留 100px 給右邊的 Copy 按鈕 */
+    max-width: calc(100% - 100px); 
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    
+    /* ✨ 加上這行：讓 padding 也算在 max-width 裡面，徹底防止撐破重疊！ */
+    box-sizing: border-box; 
 }
+
+/* ✨ 隱藏 Chrome/Safari/Edge 的橫向捲軸 */
+.markdown-body .code-lang-label::-webkit-scrollbar {
+    display: none;
+}
+
 
 /* 右上角：純外框複製按鈕 (仿 share-link-btn 樣式) */
 .markdown-body .code-copy-btn {
@@ -2386,6 +2452,23 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
         padding: 0 !important;
         justify-content: center !important;
     }
+
+    /* ✨ 手機版隱藏複製按鈕的文字，並縮為方形圖示按鈕 */
+    .markdown-body .code-copy-btn {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        justify-content: center;
+    }
+    
+    .markdown-body .code-copy-btn .copy-text {
+        display: none;
+    }
+
+    /* ✨ 配合縮小的按鈕，釋放更多空間給語言標籤 */
+    .markdown-body .code-lang-label {
+        max-width: calc(100% - 50px);
+    }
 }
 
 /* 8-2. 針對非常小的手機螢幕 (max-width: 500px) */
@@ -2596,76 +2679,6 @@ body.system-override-active .sys-hidden-tag {
     display: inline-flex !important;
 }
 
-/* 3. 機密圖釘 (SVG) - 行為與原生圖釘完全一致 */
-.card-secret-pin, .modal-secret-pin { 
-    position: absolute; 
-    background: var(--error-color); 
-    color: #fff; 
-    border-radius: 50%; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    will-change: transform; 
-    -webkit-backface-visibility: hidden; 
-    backface-visibility: hidden; 
-    transform: translateZ(0); 
-    transition: transform 0.4s var(--ease-smooth), box-shadow 0.4s ease; 
-}
-
-/* 卡片上的機密圖釘 (放在左上角) */
-.card-secret-pin { 
-    top: -14px; 
-    left: -14px; 
-    width: 34px; 
-    height: 34px; 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15), 0 0 8px var(--error-color); 
-    z-index: 10; 
-}
-
-/* 文章清單上的機密圖釘 (放在右上角) */
-.modal-secret-pin { 
-    top: -12px; 
-    right: -12px; 
-    width: 24px; 
-    height: 24px; 
-    box-shadow: 0 0 8px var(--error-color); 
-    z-index: 1; 
-}
-
-/* 讓 SVG 允許內容溢出，避免扣環彈飛時被切斷 */
-.card-secret-pin svg, 
-.modal-secret-pin svg {
-    overflow: visible;
-}
-
-/* 4. 圖釘的 Hover 跳動特效 (對應方向) */
-.card:hover .card-secret-pin { 
-    transform: scale(1.15) rotate(-8deg) translate(-10%, -10%); 
-    box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--error-color); 
-}
-.modal-content a:hover .modal-secret-pin, 
-.article-li.simulate-hover a .modal-secret-pin { 
-    transform: scale(1.15) rotate(8deg) translate(10%, -10%); 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2), 0 0 10px var(--error-color); 
-}
-
-/* 5. 權限解密互動：Hover 時扣環「暴力彈出並斷開」 */
-.secret-shackle { 
-    /* 加上彈簧般的貝茲曲線，讓它彈出去時有 Q 彈的清脆感 */
-    transition: transform 0.4s var(--ease-bounce);
-    transform-origin: center;
-}
-
-/* 👉 專案卡片 (左上角)：向「左上」彈出，並向「左」傾斜 (-12deg) */
-.card:hover .secret-shackle { 
-    transform: translateY(-6px) translateX(-2px) rotate(-12deg); 
-}
-
-/* 👉 文章清單 (右上角)：向「右上」彈出，並向「右」傾斜 (12deg) */
-.modal-content a:hover .secret-shackle,
-.article-li.simulate-hover a .secret-shackle { 
-    transform: translateY(-6px) translateX(2px) rotate(12deg); 
-}
 
 /* ========================================================================== */
 /* 🔓 第十一層：403 錯誤畫面隱藏解鎖彩蛋 (Admin Trigger)                       */
@@ -3019,6 +3032,12 @@ body {
     padding: 3rem 2rem; 
     opacity: 1; 
     position: relative;
+    /* ✨ 直接在這裡加上背景與邊框，跟著系統主題切換 */
+    background: var(--card); 
+    border: 1px solid var(--card-border); 
+    border-radius: 1.1rem; 
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    transition: background-color 0.5s ease, border-color 0.5s ease;
 }
 .sensitive-close-btn {
     position: absolute; 
@@ -3531,4 +3550,23 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         padding-right: 1.5rem !important; 
         padding-bottom: 2.5rem !important;
     }
+}
+
+/* ========================================================================== */
+/* ✨ 從 JS 抽離出的共用 UI 樣式 (Decoupled Styles) */
+/* ========================================================================== */
+
+/* Mermaid 全螢幕大圖克隆體 */
+.lightbox-mermaid-clone {
+    pointer-events: auto;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px var(--shadow-base);
+    max-height: 90vh;
+    max-width: 90vw;
+    background-color: var(--card); /* 淺色模式預設 */
+    transition: background-color 0.5s ease;
+}
+[data-theme="dark"] .lightbox-mermaid-clone {
+    background-color: var(--bg); /* 深色模式自動切換 */
 }

@@ -118,14 +118,18 @@ import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs').then(
     // 第一個地方 (約在上方動態引入 import 的區塊) 和 第二個地方 (約在 applyTheme 函數內)
     // 請將這兩處的 initialize 都改成這樣：
     window.mermaid.initialize({
-        startOnLoad: false,
-        theme: currentTheme === 'dark' ? 'dark' : 'default', // (第二個地方這裡會是 theme: theme === 'dark' ? ...)
-        
-        // ✨ 核心修復：拔除容易算錯寬度的 'inherit'，直接給予精準的系統中文字體，讓 Mermaid 完美計算方塊寬度！
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-        
-        securityLevel: 'loose'
-    });
+    startOnLoad: false,
+    theme: currentTheme === 'dark' ? 'dark' : 'default',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
+    securityLevel: 'loose',
+    useMaxWidth: false,
+
+    // ✨ 請務必補上這一段：強制四周留白 25px，並使用純向量繪製標籤外框，保證文字絕對不被裁切！
+    flowchart: { 
+        padding: 15,
+        htmlLabels: false 
+    }
+});
 }).catch(err => console.error("Mermaid 引擎載入失敗:", err));
 
 // 共用函數：自動判斷物件屬性並回傳對應的 HTML 徽章 (✨ 支援互斥與優先級)
@@ -1018,10 +1022,15 @@ window.renderAllMermaidCharts = function(rootElement = document, onComplete = nu
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
         window.mermaid.initialize({
             startOnLoad: false,
-            theme: currentTheme === 'dark' ? 'dark' : 'default',
+            theme: currentTheme === 'dark' ? 'dark' : 'default', 
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
             securityLevel: 'loose',
-            useMaxWidth: false
+            useMaxWidth: false,
+            // ✨ 務必把這段補進去這兩個地方！
+            flowchart: { 
+                padding: 15,
+                htmlLabels: false 
+            }
         });
 
         rootElement.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
@@ -2617,8 +2626,8 @@ renderer.code = function(token_or_code, language, isEscaped) {
 
     return `
     <div class="code-block-wrapper" style="position: relative;">
-        <!-- 設定 max-width 避免檔名太長蓋到複製按鈕，過長會自動變成 ... -->
-        <div class="code-lang-label" style="max-width: calc(100% - 100px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${fileName || cleanLang}">${labelContent}</div>
+        <!-- ✨ 拔除 title 屬性，就不會有系統預設的 tooltip 跑出來了 -->
+        <div class="code-lang-label">${labelContent}</div>
         <button class="code-copy-btn" onclick="window.copyCodeBlock(this)">
             ${copyIcon} <span class="copy-text">Copy</span>
         </button>
@@ -2942,7 +2951,12 @@ document.addEventListener('DOMContentLoaded', () => {
             theme: currentTheme === 'dark' ? 'dark' : 'default', 
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
             securityLevel: 'loose',
-            useMaxWidth: false // 🔥 解除原生寬度限制，確保產出的 viewBox 比例最完美
+            useMaxWidth: false,
+            // ✨ 務必把這段補進去這兩個地方！
+            flowchart: { 
+                padding: 15,
+                htmlLabels: false 
+            }
         });
             
             const mermaidEls = document.querySelectorAll('.mermaid');
@@ -4959,20 +4973,11 @@ window.fullscreenMermaid = function(btn) {
         lightboxWrapper.appendChild(customContainer);
     }
 
-    // 2. 完美克隆圖表，並上色保護
+    // 2. 完美克隆圖表，並掛上 CSS 類別
     const clonedMermaid = mermaidDiv.cloneNode(true);
     clonedMermaid.id = 'lightbox-active-mermaid';
-    clonedMermaid.style.transform = 'translate(0px, 0px) scale(1)';
-    clonedMermaid.style.pointerEvents = 'auto'; // 讓它能被點擊/拖曳
-    
-    // 強制加上背景色，否則透明黑底會看不見黑色字
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-    clonedMermaid.style.backgroundColor = currentTheme === 'dark' ? 'var(--bg)' : 'var(--card)';
-    clonedMermaid.style.padding = '20px';
-    clonedMermaid.style.borderRadius = '12px';
-    clonedMermaid.style.boxShadow = '0 10px 40px var(--shadow-base)';
-    clonedMermaid.style.maxHeight = '90vh';
-    clonedMermaid.style.maxWidth = '90vw';
+    clonedMermaid.className = 'lightbox-mermaid-clone'; // ✨ 只用這一行取代下面所有 style
+    clonedMermaid.style.transform = 'translate(0px, 0px) scale(1)'; // 座標初始化仍須 JS
     
     customContainer.innerHTML = '';
     customContainer.appendChild(clonedMermaid);
@@ -5258,8 +5263,9 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     document.addEventListener('keydown', escListener);
 
     // ✨ 移除內層與按鈕的 title
+    // ✨ 拔除 inline style，改用 .sensitive-modal-box 類別
     overlay.innerHTML = `
-        <div class="sensitive-modal-content" style="background: var(--card); border: 1px solid var(--card-border); border-radius: 1.1rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+        <div class="sensitive-modal-content">
             <button id="sensitive-close-x" class="sensitive-close-btn">
                 ${GLOBAL_SVGS.closeX}
             </button>
@@ -5326,37 +5332,33 @@ window.applyIndentToVerticalWrapper = function(container) {
 };
 
 // ==========================================
-// ✨ 隱藏彩蛋：動態讀取 credits.md (整合平滑動畫版)
+// ✨ 系統級 Markdown 彈窗共用引擎 (Credits, License, Privacy 等)
 // ==========================================
-window.cachedCreditsText = null;
-window.showCreditsModal = async function() {
-    // 🔥 全域中斷防護：開啟新畫面時，立刻中斷並清理前一個還在跑的請求
-    if (window._activeFetcher) {
-        window._activeFetcher.abort();
-        window._activeFetcher = null;
-    }
+window.cachedMarkdownFiles = {}; // 統一管理快取
+
+window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cacheKey, extraHtml = '') {
+    if (window._activeFetcher) { window._activeFetcher.abort(); window._activeFetcher = null; }
     window.toggleLoading(false);
 
     let mdText = "載入失敗"; let isError = false;
 
-    if (window.cachedCreditsText !== null) {
-        mdText = window.cachedCreditsText;
+    if (window.cachedMarkdownFiles[cacheKey]) {
+        mdText = window.cachedMarkdownFiles[cacheKey];
     } else {
-        const fetchResult = await window.safeFetchWithGuard(`./credits.md?v=${window.getResVersion('credits.md')}`, { isJson: false });
-        if (fetchResult.aborted) return; // 被中斷就安靜退出
+        const fetchResult = await window.safeFetchWithGuard(`${fetchUrl}?v=${window.getResVersion(cacheKey)}`, { isJson: false });
+        if (fetchResult.aborted) return;
         
         if (fetchResult.success) {
             mdText = fetchResult.data;
-            window.cachedCreditsText = mdText;
+            window.cachedMarkdownFiles[cacheKey] = mdText;
         } else {
-            console.error("Credits 讀取失敗:", fetchResult.error);
+            console.error(`${title} 載入失敗:`, fetchResult.error);
             isError = true;
         }
     }
 
-    if (window._activeFetcher !== null) return; // 幽靈渲染防護
+    if (window._activeFetcher !== null) return;
 
-    // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
     switchModalContent(
         () => {
             const modalOverlay = document.getElementById('md-modal');
@@ -5365,50 +5367,62 @@ window.showCreditsModal = async function() {
             if (viewIndex) viewIndex.style.display = 'none';
             if (viewArticle) viewArticle.style.display = 'block';
             const modalBody = viewArticle || document.getElementById('modal-body');
+            
+            if (document.getElementById('toc-mount-point')) document.getElementById('toc-mount-point').innerHTML = '';
+            
             const modalTopLeft = document.getElementById('modal-top-left');
-            const tocMountPoint = document.getElementById('toc-mount-point');
-            
-            if (tocMountPoint) tocMountPoint.innerHTML = '';
-            
             if (modalTopLeft) {
                 modalTopLeft.innerHTML = `
                     <div class="index-header-container">
-                        <h1 class="index-header-title">Credits</h1>
+                        <h1 class="index-header-title">${title}</h1>
                         <div class="index-header-actions">
-                            <span class="article-count-badge">Acknowledgments</span>
+                            <span class="article-count-badge">${badgeText}</span>
                         </div>
                     </div>
                 `;
             }
 
             if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入致謝名單。');
+                modalBody.innerHTML = window.getSystemErrorHtml('System Error', `無法載入 ${title} 檔案。`);
             } else {
+                // ✨ 核心修改：將 ${extraHtml} 移到 .markdown-body 的上方！
+                // 同時微調 markdown-body 的 marginTop，讓它與上方按鈕保持完美間距
                 modalBody.innerHTML = `
-                    <div class="credits-markdown-wrapper markdown-body" style="margin-top: -0.5rem;">
+                    ${extraHtml}
+                    <div class="markdown-body" style="margin-top: 0; padding-bottom: 2rem;">
                         ${marked.parse(mdText)}
                     </div>
                 `;
             }
-            
-            // ✨ 核心修復：閱讀進度條改為監聽真正的捲動容器 modalContainer
+
             const modalContainer = document.querySelector('.modal-content');
             const topBar = document.querySelector('.modal-top-bar');
-            if (modalContainer && topBar) {
-                window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
-            }
+            if (modalContainer && topBar) window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
 
-            // 開啟 Modal 並鎖定捲軸
             modalOverlay.classList.add('active');
             window.lockScroll();
         },
         () => {
-            // ✨ 動畫結束後，確保將外層真正的捲動容器歸零
             const modalContainer = document.querySelector('.modal-content');
             if (modalContainer) modalContainer.scrollTo({ top: 0, behavior: 'auto' });
         }
     );
 };
+
+// ✨ 使用時只需呼叫一行，乾淨俐落！
+window.showCreditsModal = () => window.showSystemMarkdownModal('Credits', 'Acknowledgments', './credits.md', 'credits.md');
+
+window.showLicenseModal = () => window.showSystemMarkdownModal(
+    'License & Copyright', 
+    'important', 
+    './COPYRIGHT.md', 
+    'COPYRIGHT.md', 
+    `<div id="bilingual-switcher"><div class="lang-tabs">
+        <button class="lang-btn active" onclick="window.switchBilingualTab('zh', this)">中文版</button>
+        <button class="lang-btn" onclick="window.switchBilingualTab('en', this)">English</button>
+        <button class="lang-btn" onclick="window.switchBilingualTab('ja', this)">日本語</button>
+    </div></div>`
+);
 
 // ==========================================
 // ✨ 升級版系統日誌：支援兩層式架構、平滑動畫過場，與「手動強制更新檢查」！
@@ -5657,105 +5671,6 @@ window.switchBilingualTab = function(lang, btn) {
     btn.classList.add('active');
 };
 
-// ==========================================
-// ⚖️ 版權與授權條款 Modal 引擎
-// ==========================================
-window.cachedLicenseText = null;
-window.showLicenseModal = async function() {
-    // 🔥 全域中斷防護：開啟新畫面時，立刻中斷並清理前一個還在跑的請求
-    if (window._activeFetcher) {
-        window._activeFetcher.abort();
-        window._activeFetcher = null;
-    }
-    window.toggleLoading(false);
-
-    let mdText = "載入失敗"; let isError = false;
-
-    if (window.cachedLicenseText !== null) {
-        mdText = window.cachedLicenseText;
-    } else {
-        const fetchResult = await window.safeFetchWithGuard(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`, { isJson: false });
-        if (fetchResult.aborted) return; // 被中斷就安靜退出
-        
-        if (fetchResult.success) {
-            mdText = fetchResult.data;
-            window.cachedLicenseText = mdText;
-        } else {
-            console.error("版權檔案載入失敗:", fetchResult.error);
-            isError = true;
-        }
-    }
-
-    if (window._activeFetcher !== null) return; // 幽靈渲染防護
-
-    // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
-    switchModalContent(
-        () => {
-            const modalOverlay = document.getElementById('md-modal'); // ✨ 修正：正確抓取 md-modal
-            const viewIndex = document.getElementById('view-index');
-            const viewArticle = document.getElementById('view-article');
-            if (viewIndex) viewIndex.style.display = 'none';
-            if (viewArticle) viewArticle.style.display = 'block';
-            const modalBody = viewArticle || document.getElementById('modal-body');
-            const modalTopLeft = document.getElementById('modal-top-left');
-            const tocMountPoint = document.getElementById('toc-mount-point');
-
-            // 清空右上角目錄按鈕
-            if (tocMountPoint) tocMountPoint.innerHTML = '';
-
-            // 設定左上角精緻的標題 Header
-            if (modalTopLeft) {
-                modalTopLeft.innerHTML = `
-                    <div class="index-header-container">
-                        <h1 class="index-header-title">License & Copyright</h1>
-                        <div class="index-header-actions">
-                            <span class="article-count-badge">important</span>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // 處理內容渲染
-            if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版權聲明檔案。');
-            } else {
-                modalBody.innerHTML = `
-                    <div class="markdown-body" style="margin-top: -0.5rem; padding-bottom: 2rem;">
-                        ${marked.parse(mdText)}
-                    </div>
-                `;
-            }
-
-            // ✨ 自動注入多語系切換按鈕 (更新為支援三語的簡潔寫法)
-            const switcher = modalBody.querySelector('#bilingual-switcher');
-            if (switcher) {
-                switcher.innerHTML = `
-                    <div class="lang-tabs">
-                        <button class="lang-btn active" onclick="window.switchBilingualTab('zh', this)">中文版</button>
-                        <button class="lang-btn" onclick="window.switchBilingualTab('en', this)">English</button>
-                        <button class="lang-btn" onclick="window.switchBilingualTab('ja', this)">日本語</button>
-                    </div>
-                `;
-            }
-
-            // ✨ 核心修復：閱讀進度條改為監聽真正的捲動容器 modalContainer
-            const modalContainer = document.querySelector('.modal-content');
-            const topBar = document.querySelector('.modal-top-bar');
-            if (modalContainer && topBar) {
-                window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
-            }
-
-            // 開啟 Modal 並鎖定背景捲軸
-            modalOverlay.classList.add('active');
-            window.lockScroll();
-        },
-        () => {
-            // ✨ 動畫結束後，確保將外層真正的捲動容器歸零
-            const modalContainer = document.querySelector('.modal-content');
-            if (modalContainer) modalContainer.scrollTo({ top: 0, behavior: 'auto' });
-        }
-    );
-};
 
 // ==========================================
 // ✨ 文章內部錨點平滑跳轉引擎 (強化模糊比對與防呆)
