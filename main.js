@@ -939,6 +939,126 @@ window.scrollContainerByItem = function(container, itemSelector, direction) {
     if (targetItem) targetItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 };
 
+// ==========================================
+// ✨ 全域智慧跳轉提示引擎 (Jump Toast Engine)
+// ==========================================
+window.initJumpToast = function(container, itemSelector) {
+    if (!container) return;
+
+    const newArticles = Array.from(container.querySelectorAll(itemSelector))
+        .filter(el => el.querySelector('.status-badge[data-status="NEW"]'));
+    
+    const modalOverlay = document.getElementById('md-modal');
+    let jumpToast = document.getElementById('new-jump-toast');
+    if (!jumpToast && modalOverlay) {
+        jumpToast = document.createElement('button');
+        jumpToast.id = 'new-jump-toast';
+        jumpToast.className = 'new-jump-toast';
+        modalOverlay.appendChild(jumpToast);
+    }
+
+    if (window.indexScrollHandler) {
+        container.removeEventListener('scroll', window.indexScrollHandler);
+        window.indexScrollHandler = null;
+    }
+
+    if (newArticles.length > 0 && jumpToast) {
+        let targetArticle = null;
+        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
+        
+        window.indexScrollHandler = () => {
+            const containerRect = container.getBoundingClientRect(); 
+            let countAbove = 0, countVisible = 0, countBelow = 0;
+            let closestAbove = null, closestBelow = null;
+
+            newArticles.forEach(article => {
+                const rect = article.getBoundingClientRect();
+                if (rect.top < containerRect.top + topBarHeight) {
+                    countAbove++; closestAbove = article; 
+                } else if (rect.bottom > containerRect.bottom + 20) {
+                    countBelow++; if (!closestBelow) closestBelow = article; 
+                } else {
+                    countVisible++;
+                }
+            });
+
+            if (countBelow > 0) {
+                targetArticle = closestBelow;
+                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpDown} ${countVisible > 0 ? '下方還有' : '發現'} ${countBelow} 篇新內容`;
+                jumpToast.classList.add('is-visible');
+            } else if (countAbove > 0) {
+                targetArticle = closestAbove;
+                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpUp} ${countVisible > 0 ? '上方還有' : '發現'} ${countAbove} 篇新內容`;
+                jumpToast.classList.add('is-visible');
+            } else {
+                targetArticle = null; jumpToast.classList.remove('is-visible');
+            }
+        };
+        
+        container.addEventListener('scroll', window.indexScrollHandler, { passive: true });
+        setTimeout(window.indexScrollHandler, 100);
+
+        jumpToast.onclick = () => {
+            if (!targetArticle) return;
+            targetArticle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            jumpToast.classList.remove('is-visible'); 
+            setTimeout(() => { newArticles.forEach(article => window.simulateHoverFlash(article, 1200)); }, 400);
+        };
+    } else if (jumpToast) {
+        jumpToast.classList.remove('is-visible');
+    }
+};
+
+// ==========================================
+// ✨ 全域 Mermaid 渲染引擎 (自動修復大小自適應與高度裁切)
+// ==========================================
+window._mermaidRetryCount = 0;
+window.renderAllMermaidCharts = function(rootElement = document, onComplete = null) {
+    if (window.mermaid) {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        window.mermaid.initialize({
+            startOnLoad: false,
+            theme: currentTheme === 'dark' ? 'dark' : 'default',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
+            securityLevel: 'loose',
+            useMaxWidth: false
+        });
+
+        rootElement.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
+        
+        // 支援局部重繪，避免重繪時干擾其他圖表
+        let queryTarget = '.mermaid';
+        if (rootElement.classList && rootElement.classList.contains('mermaid-container')) {
+            const tempId = 'mermaid-reload-' + Date.now();
+            const mDiv = rootElement.querySelector('.mermaid');
+            if (mDiv) { mDiv.id = tempId; queryTarget = `#${tempId}`; }
+        }
+
+        window.mermaid.run({ querySelector: queryTarget })
+        .catch(e => console.warn('Mermaid 語法錯誤:', e))
+        .finally(() => {
+            // ✨ 核心修復：強制 SVG 補上 height: auto，解決大小自適應錯亂
+            rootElement.querySelectorAll('.mermaid svg').forEach(svg => {
+                svg.style.maxWidth = '100%'; svg.style.height = 'auto';
+            });
+            rootElement.querySelectorAll('.mermaid').forEach(el => window.applyMermaidAspectRatio(el));
+            rootElement.querySelectorAll('.mermaid-container').forEach(c => c.classList.remove('drag-initialized'));
+            window.initMermaidDrag();
+            
+            if (queryTarget.startsWith('#')) {
+                const mDiv = document.querySelector(queryTarget);
+                if(mDiv) mDiv.removeAttribute('id');
+            }
+            if (onComplete) onComplete();
+        });
+    } else if (window._mermaidRetryCount < 10) {
+        window._mermaidRetryCount++;
+        setTimeout(() => window.renderAllMermaidCharts(rootElement, onComplete), 300);
+    } else {
+        console.warn("Mermaid 引擎載入超時，放棄渲染。");
+    }
+};
+
 
 // ==========================================
 // ✨ 共用捲軸陰影提示系統 (Scroll Hints Engine)
@@ -1277,44 +1397,46 @@ window.debugDelay = async function() {
 };
 
 // ==========================================
-// ✨ Mermaid 自適應比例引擎 (動態 Aspect-Ratio)
+// ✨ Mermaid 自適應比例引擎 (支援動態 Max-Height 與強制高度拖曳)
 // ==========================================
 window.applyMermaidAspectRatio = function(mermaidDiv) {
     const svg = mermaidDiv.querySelector('svg');
     const wrapper = mermaidDiv.closest('.mermaid-wrapper');
-    if (!svg || !wrapper) return;
+    const container = mermaidDiv.closest('.mermaid-container');
+    if (!svg || !wrapper || !container) return;
 
-    const viewBox = svg.getAttribute('viewBox');
-    if (viewBox) {
-        const [, , w, h] = viewBox.split(' ').map(Number);
-        const targetAr = w / h; // ✨ 100% 忠於圖表真實內容的完美長寬比
-
-        // 🔥 1. 將真實比例賦予外層，讓它如同圖片一般完美等比縮放
-        wrapper.style.aspectRatio = targetAr.toFixed(4);
-        wrapper.style.width = '100%';
-        wrapper.style.height = 'auto';
+    const customH = wrapper.getAttribute('data-custom-height');
+    
+    // 🔥 拔除錯誤的 aspectRatio 設定，讓 Padding 空間真正釋放！
+    // 讓高度回歸自然流動 (auto)，瀏覽器會自動包覆 SVG 並完美保留 1.5rem 的上下左右留白。
+    wrapper.style.aspectRatio = 'auto';
+    wrapper.style.width = '100%';
+    wrapper.style.height = 'auto';
+    wrapper.style.overflow = 'hidden'; 
+    
+    if (customH) {
+        // 如果有指定 h，將其作為最大高度限制
+        // 👉 在手機上：自然高度若小於 customH，完美等比縮放。
+        // 👉 在大螢幕：自然高度若超過 customH，高度被鎖死，轉為可拖曳的視窗。
+        wrapper.style.maxHeight = `${customH}px`;
+    } else {
         wrapper.style.maxHeight = 'none';
-
-        // 🔥 2. 處理自訂高度參數 (?h=)
-        const customH = wrapper.getAttribute('data-custom-height');
-        if (customH) {
-            // 如果使用者有指定高度，我們把它當作「最大高度限制 (max-height)」
-            // 這樣在電腦大螢幕上不會無限放大，在手機上又能完美等比例縮小！
-            wrapper.style.maxHeight = `${customH}px`;
-        }
-
-        // 🔥 3. 讓內部容器填滿外層比例框
-        mermaidDiv.style.width = '100%';
-        mermaidDiv.style.height = '100%';
-
-        // 🔥 4. 解放 SVG 本體：拔除 Mermaid 寫死的絕對像素，讓它完全服從液態排版！
-        svg.removeAttribute('width');
-        svg.removeAttribute('height');
-        svg.style.width = '100%';
-        svg.style.height = '100%';
-        svg.style.maxWidth = '100%';
-        svg.style.display = 'block';
     }
+
+    // 內部圖表維持 100% 寬度自然流動
+    mermaidDiv.style.width = '100%';
+    mermaidDiv.style.height = 'auto';
+    mermaidDiv.style.transform = `translate(0px, 0px) scale(1)`;
+    container.dataset.x = 0; 
+    container.dataset.y = 0; 
+
+    // 解放 SVG 本體：拔除 Mermaid 寫死的絕對像素
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    svg.style.maxWidth = 'none'; 
+    svg.style.display = 'block';
 };
 
 // ==========================================
@@ -2466,8 +2588,8 @@ renderer.code = function(token_or_code, language, isEscaped) {
                     <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
-            <!-- 🔥 帶有等比縮放引擎的 Wrapper -->
-            <div class="mermaid-wrapper"${customHeightAttr}>
+            <!-- 🔥 帶有等比縮放引擎的 Wrapper，並加入內距與 normal 行高防止文字撐破畫布 -->
+            <div class="mermaid-wrapper" style="padding: 1.5rem; line-height: normal;"${customHeightAttr}>
                 <div class="mermaid" data-original-text="${encodedText}">${processedText}</div>
             </div>
         </div>`;
@@ -3923,87 +4045,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 }
                 window.renderTocMenu(menuItems, '系列分群');
                 
-                const initJumpToast = () => {
-                    const newArticles = Array.from(listContainer.querySelectorAll('.article-li'))
-                        .filter(li => li.querySelector('.status-badge[data-status="NEW"]'));
-                    
-                    let jumpToast = document.getElementById('new-jump-toast');
-                    if (!jumpToast) {
-                        jumpToast = document.createElement('button');
-                        jumpToast.id = 'new-jump-toast';
-                        jumpToast.className = 'new-jump-toast';
-                        modalOverlay.appendChild(jumpToast);
-                    }
-
-                    if (window.indexScrollHandler) {
-                        modalContainer.removeEventListener('scroll', window.indexScrollHandler); // ✨ 改為 modalContainer
-                        window.indexScrollHandler = null;
-                    }
-
-                    if (newArticles.length > 0) {
-                        let targetArticle = null;
-                        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
-                        
-                        window.indexScrollHandler = () => {
-                            // ✨ 改為抓取 modalContainer 的邊界
-                            const containerRect = modalContainer.getBoundingClientRect(); 
-
-                            let countAbove = 0, countVisible = 0, countBelow = 0;
-                            let closestAbove = null, closestBelow = null;
-
-                            newArticles.forEach(article => {
-                                const rect = article.getBoundingClientRect();
-                                if (rect.top < containerRect.top + topBarHeight) {
-                                    countAbove++;
-                                    closestAbove = article; 
-                                } else if (rect.bottom > containerRect.bottom + 20) {
-                                    countBelow++;
-                                    if (!closestBelow) closestBelow = article; 
-                                } else {
-                                    countVisible++;
-                                }
-                            });
-
-                            if (countBelow > 0) {
-                                targetArticle = closestBelow;
-                                const prefix = countVisible > 0 ? '下方還有' : '發現';
-                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpDown} ${prefix} ${countBelow} 篇新內容`;
-                                jumpToast.classList.add('is-visible');
-                            } else if (countAbove > 0) {
-                                targetArticle = closestAbove;
-                                const prefix = countVisible > 0 ? '上方還有' : '發現';
-                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpUp} ${prefix} ${countAbove} 篇新內容`;
-                                jumpToast.classList.add('is-visible');
-                            } else {
-                                targetArticle = null;
-                                jumpToast.classList.remove('is-visible');
-                            }
-                        };
-                        
-                        // ✨ 改為監聽 modalContainer
-                        modalContainer.addEventListener('scroll', window.indexScrollHandler); 
-                        setTimeout(window.indexScrollHandler, 100);
-
-                        jumpToast.onclick = () => {
-                            if (!targetArticle) return;
-                            
-                            // 1. 捲動到最接近的那篇新文章，並置中
-                            targetArticle.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            jumpToast.classList.remove('is-visible'); 
-                            
-                            // 2. ✨ 終極 UX：讓這個清單內「所有」的新文章同時觸發高光特效！
-                            setTimeout(() => { 
-                                newArticles.forEach(article => {
-                                    // 延長發光時間到 1200 毫秒，讓使用者有足夠時間看清楚哪些是新的
-                                    window.simulateHoverFlash(article, 1200); 
-                                });
-                            }, 400); // 在捲動快要到達時 (400ms) 提早亮起
-                        };
-                    } else {
-                        jumpToast.classList.remove('is-visible');
-                    }
-                };
-                initJumpToast();
+                // ✨ 呼叫全域智慧跳轉提示引擎
+                window.initJumpToast(modalContainer, '.article-li');
             };
 
             const updateSortBtnUI = () => {
@@ -4245,38 +4288,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 }
             });
 
-            let mermaidRetryCount = 0;
-            const renderMermaid = () => {
-                if (window.mermaid) {
-                    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-                    window.mermaid.initialize({
-                        startOnLoad: false,
-                        theme: currentTheme === 'dark' ? 'dark' : 'default', 
-                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-                        securityLevel: 'loose',
-                        useMaxWidth: false // 🔥 確保原生比例不被瀏覽器擠壓
-                    });
-
-                    document.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
-                    window.mermaid.run({ querySelector: '.mermaid' })
-                    .catch(e => console.warn('Mermaid 語法錯誤:', e))
-                    .finally(() => {
-                        // 🔥 渲染完畢後，為每個圖表注入自適應比例
-                        document.querySelectorAll('.mermaid').forEach(el => {
-                            window.applyMermaidAspectRatio(el);
-                        });
-                        // 確保容器沒有初始化標記，進行首次綁定
-                        document.querySelectorAll('.mermaid-container').forEach(c => c.classList.remove('drag-initialized'));
-                        window.initMermaidDrag();
-                    });
-                } else if (mermaidRetryCount < 10) {
-                    mermaidRetryCount++;
-                    setTimeout(renderMermaid, 300);
-                } else {
-                    console.warn("Mermaid 引擎載入超時，放棄渲染。");
-                }
-            };
-            renderMermaid();
+            // ✨ 呼叫全域 Mermaid 渲染引擎 (取代原本 30 幾行的 renderMermaid 函數)
+            window.renderAllMermaidCharts(activeView);
 
             const firstH1 = activeView.querySelector('h1');
             if (firstH1) {
@@ -4430,30 +4443,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 new ResizeObserver(originalCheckScroll).observe(gallery);
                 setTimeout(originalCheckScroll, 150);
 
-                const scrollOneItem = (direction) => {
-                    const figures = Array.from(gallery.querySelectorAll('figure'));
-                    if (figures.length === 0) return;
-                    const containerCenter = gallery.getBoundingClientRect().left + gallery.clientWidth / 2;
-                    let closestIndex = 0;
-                    let minDistance = Infinity;
-
-                    figures.forEach((figure, index) => {
-                        const distance = Math.abs(containerCenter - (figure.getBoundingClientRect().left + figure.offsetWidth / 2));
-                        if (distance < minDistance) { minDistance = distance; closestIndex = index; }
-                    });
-
-                    let targetIndex = Math.max(0, Math.min(closestIndex + direction, figures.length - 1));
-                    let scrollAmount = (figures[targetIndex].getBoundingClientRect().left + figures[targetIndex].offsetWidth / 2) - containerCenter;
-
-                    const maxScrollLeft = gallery.scrollWidth - gallery.clientWidth;
-                    if (direction > 0 && scrollAmount > maxScrollLeft - gallery.scrollLeft) scrollAmount = maxScrollLeft - gallery.scrollLeft;
-                    else if (direction < 0 && Math.abs(scrollAmount) > gallery.scrollLeft) scrollAmount = -gallery.scrollLeft;
-
-                    gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-                };
-
-                hintRight.addEventListener('click', () => scrollOneItem(1));
-                hintLeft.addEventListener('click', () => scrollOneItem(-1));
+                // ✨ 直接呼叫共用水平捲動置中引擎 (取代原本 20 幾行的 scrollOneItem 邏輯)
+                hintRight.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', 1));
+                hintLeft.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', -1));
             });
 
             activeView.querySelectorAll('figure').forEach(figure => {
@@ -4934,28 +4926,12 @@ window.reloadMermaid = function(btn) {
             mermaidDiv.removeAttribute('data-processed');
             mermaidDiv.innerHTML = window.processMermaidCssVars(originalText);
             
-            if (window.mermaid) {
-                // 為了不干擾畫面上其他圖表，給它一個暫時的 ID 來精準鎖定重繪
-                const tempId = 'mermaid-reload-' + Date.now();
-                mermaidDiv.id = tempId;
-
-                window.mermaid.run({ querySelector: `#${tempId}` })
-                    .catch(e => console.warn('Mermaid reload failed:', e))
-                    .finally(() => {
-                        // 🔥 3. 核心修復：先解除 minHeight 的鎖定，再套用動態比例！
-                        // 這樣才能讓 applyMermaidAspectRatio 順利接管並撐開容器
-                        wrapper.style.minHeight = ''; 
-                        window.applyMermaidAspectRatio(mermaidDiv);
-                        
-                        mermaidDiv.style.opacity = '1';
-                        mermaidDiv.style.transition = 'transform 0.15s var(--ease-smooth)';
-                        mermaidDiv.removeAttribute('id'); 
-                        
-                        // 🔥 4. 強制解除拖曳引擎的鎖定標記，並重新初始化
-                        container.classList.remove('drag-initialized');
-                        window.initMermaidDrag();
-                    });
-            }
+            // ✨ 直接呼叫全域引擎，利用 onComplete 進行完美收尾！
+            window.renderAllMermaidCharts(container, () => {
+                wrapper.style.minHeight = ''; 
+                mermaidDiv.style.opacity = '1';
+                mermaidDiv.style.transition = 'transform 0.15s var(--ease-smooth)';
+            });
         } else {
             mermaidDiv.style.opacity = '1';
             mermaidDiv.style.transition = 'transform 0.15s var(--ease-smooth)';
