@@ -78,7 +78,7 @@
 ## 5. 程式碼與圖表引擎 (Code & Mermaid)
 
 ### 程式碼區塊
-```javascript [main.js]
+```javascript [this-is-a-very-long-name.js]
 console.log("檔案名稱會在左上角顯示！");
 ```
 
@@ -111,7 +111,7 @@ graph TD
     B -->|否| D[檢查 CSS 與 JS 修正]
 ```
 
-```mermaid[顏色&樣式測試] ?h=300
+```mermaid[顏色&樣式測試]
 flowchart LR
     
     Start((開始)):::base --> Check{狀態確認}:::base

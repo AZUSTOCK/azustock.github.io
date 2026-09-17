@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.11",          // 目前系統版本號
+    VERSION: "U1.5.12",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -118,14 +118,18 @@ import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs').then(
     // 第一個地方 (約在上方動態引入 import 的區塊) 和 第二個地方 (約在 applyTheme 函數內)
     // 請將這兩處的 initialize 都改成這樣：
     window.mermaid.initialize({
-        startOnLoad: false,
-        theme: currentTheme === 'dark' ? 'dark' : 'default', // (第二個地方這裡會是 theme: theme === 'dark' ? ...)
-        
-        // ✨ 核心修復：拔除容易算錯寬度的 'inherit'，直接給予精準的系統中文字體，讓 Mermaid 完美計算方塊寬度！
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-        
-        securityLevel: 'loose'
-    });
+    startOnLoad: false,
+    theme: currentTheme === 'dark' ? 'dark' : 'default',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
+    securityLevel: 'loose',
+    useMaxWidth: false,
+
+    // ✨ 請務必補上這一段：強制四周留白 25px，並使用純向量繪製標籤外框，保證文字絕對不被裁切！
+    flowchart: { 
+        padding: 15,
+        htmlLabels: false 
+    }
+});
 }).catch(err => console.error("Mermaid 引擎載入失敗:", err));
 
 // 共用函數：自動判斷物件屬性並回傳對應的 HTML 徽章 (✨ 支援互斥與優先級)
@@ -419,6 +423,23 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     } else {
         window.openProjectIndex(project.id); 
     }
+};
+
+// ✅ 1. 新增此共用函式到全域區 (Global Helpers)
+window.updateRouteState = function(projectId, articleId = null, targetHash = null) {
+    const cleanPath = window.getCleanBasePath();
+    
+    // ✨ 修改：加入 !== null 的嚴格判斷，防止 articleId 為 0 時失效
+    const spaUrl = articleId !== null 
+        ? `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleId}${targetHash || ''}`
+        : `${window.location.origin}${cleanPath}?p=${projectId}`;
+        
+    const shareUrl = articleId !== null
+        ? `${window.location.origin}${cleanPath}api/${projectId}/${articleId}/index.html`
+        : `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
+
+    window.history.replaceState({ path: spaUrl }, '', spaUrl);
+    return shareUrl; 
 };
 
 window.getArticleSequence = function(projectId) {
@@ -939,6 +960,131 @@ window.scrollContainerByItem = function(container, itemSelector, direction) {
     if (targetItem) targetItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 };
 
+// ==========================================
+// ✨ 全域智慧跳轉提示引擎 (Jump Toast Engine)
+// ==========================================
+window.initJumpToast = function(container, itemSelector) {
+    if (!container) return;
+
+    const newArticles = Array.from(container.querySelectorAll(itemSelector))
+        .filter(el => el.querySelector('.status-badge[data-status="NEW"]'));
+    
+    const modalOverlay = document.getElementById('md-modal');
+    let jumpToast = document.getElementById('new-jump-toast');
+    if (!jumpToast && modalOverlay) {
+        jumpToast = document.createElement('button');
+        jumpToast.id = 'new-jump-toast';
+        jumpToast.className = 'new-jump-toast';
+        modalOverlay.appendChild(jumpToast);
+    }
+
+    if (window.indexScrollHandler) {
+        container.removeEventListener('scroll', window.indexScrollHandler);
+        window.indexScrollHandler = null;
+    }
+
+    if (newArticles.length > 0 && jumpToast) {
+        let targetArticle = null;
+        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
+        
+        window.indexScrollHandler = () => {
+            const containerRect = container.getBoundingClientRect(); 
+            let countAbove = 0, countVisible = 0, countBelow = 0;
+            let closestAbove = null, closestBelow = null;
+
+            newArticles.forEach(article => {
+                const rect = article.getBoundingClientRect();
+                if (rect.top < containerRect.top + topBarHeight) {
+                    countAbove++; closestAbove = article; 
+                } else if (rect.bottom > containerRect.bottom + 20) {
+                    countBelow++; if (!closestBelow) closestBelow = article; 
+                } else {
+                    countVisible++;
+                }
+            });
+
+            if (countBelow > 0) {
+                targetArticle = closestBelow;
+                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpDown} ${countVisible > 0 ? '下方還有' : '發現'} ${countBelow} 篇新內容`;
+                jumpToast.classList.add('is-visible');
+            } else if (countAbove > 0) {
+                targetArticle = closestAbove;
+                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpUp} ${countVisible > 0 ? '上方還有' : '發現'} ${countAbove} 篇新內容`;
+                jumpToast.classList.add('is-visible');
+            } else {
+                targetArticle = null; jumpToast.classList.remove('is-visible');
+            }
+        };
+        
+        container.addEventListener('scroll', window.indexScrollHandler, { passive: true });
+        setTimeout(window.indexScrollHandler, 100);
+
+        jumpToast.onclick = () => {
+            if (!targetArticle) return;
+            targetArticle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            jumpToast.classList.remove('is-visible'); 
+            setTimeout(() => { newArticles.forEach(article => window.simulateHoverFlash(article, 1200)); }, 400);
+        };
+    } else if (jumpToast) {
+        jumpToast.classList.remove('is-visible');
+    }
+};
+
+// ==========================================
+// ✨ 全域 Mermaid 渲染引擎 (自動修復大小自適應與高度裁切)
+// ==========================================
+window._mermaidRetryCount = 0;
+window.renderAllMermaidCharts = function(rootElement = document, onComplete = null) {
+    if (window.mermaid) {
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        window.mermaid.initialize({
+            startOnLoad: false,
+            theme: currentTheme === 'dark' ? 'dark' : 'default', 
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
+            securityLevel: 'loose',
+            useMaxWidth: false,
+            // ✨ 務必把這段補進去這兩個地方！
+            flowchart: { 
+                padding: 15,
+                htmlLabels: false 
+            }
+        });
+
+        rootElement.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
+        
+        // 支援局部重繪，避免重繪時干擾其他圖表
+        let queryTarget = '.mermaid';
+        if (rootElement.classList && rootElement.classList.contains('mermaid-container')) {
+            const tempId = 'mermaid-reload-' + Date.now();
+            const mDiv = rootElement.querySelector('.mermaid');
+            if (mDiv) { mDiv.id = tempId; queryTarget = `#${tempId}`; }
+        }
+
+        window.mermaid.run({ querySelector: queryTarget })
+        .catch(e => console.warn('Mermaid 語法錯誤:', e))
+        .finally(() => {
+            // ✨ 核心修復：強制 SVG 補上 height: auto，解決大小自適應錯亂
+            rootElement.querySelectorAll('.mermaid svg').forEach(svg => {
+                svg.style.maxWidth = '100%'; svg.style.height = 'auto';
+            });
+            rootElement.querySelectorAll('.mermaid').forEach(el => window.applyMermaidAspectRatio(el));
+            rootElement.querySelectorAll('.mermaid-container').forEach(c => c.classList.remove('drag-initialized'));
+            window.initMermaidDrag();
+            
+            if (queryTarget.startsWith('#')) {
+                const mDiv = document.querySelector(queryTarget);
+                if(mDiv) mDiv.removeAttribute('id');
+            }
+            if (onComplete) onComplete();
+        });
+    } else if (window._mermaidRetryCount < 10) {
+        window._mermaidRetryCount++;
+        setTimeout(() => window.renderAllMermaidCharts(rootElement, onComplete), 300);
+    } else {
+        console.warn("Mermaid 引擎載入超時，放棄渲染。");
+    }
+};
+
 
 // ==========================================
 // ✨ 共用捲軸陰影提示系統 (Scroll Hints Engine)
@@ -1277,44 +1423,46 @@ window.debugDelay = async function() {
 };
 
 // ==========================================
-// ✨ Mermaid 自適應比例引擎 (動態 Aspect-Ratio)
+// ✨ Mermaid 自適應比例引擎 (支援動態 Max-Height 與強制高度拖曳)
 // ==========================================
 window.applyMermaidAspectRatio = function(mermaidDiv) {
     const svg = mermaidDiv.querySelector('svg');
     const wrapper = mermaidDiv.closest('.mermaid-wrapper');
-    if (!svg || !wrapper) return;
+    const container = mermaidDiv.closest('.mermaid-container');
+    if (!svg || !wrapper || !container) return;
 
-    const viewBox = svg.getAttribute('viewBox');
-    if (viewBox) {
-        const [, , w, h] = viewBox.split(' ').map(Number);
-        const targetAr = w / h; // ✨ 100% 忠於圖表真實內容的完美長寬比
-
-        // 🔥 1. 將真實比例賦予外層，讓它如同圖片一般完美等比縮放
-        wrapper.style.aspectRatio = targetAr.toFixed(4);
-        wrapper.style.width = '100%';
-        wrapper.style.height = 'auto';
+    const customH = wrapper.getAttribute('data-custom-height');
+    
+    // 🔥 拔除錯誤的 aspectRatio 設定，讓 Padding 空間真正釋放！
+    // 讓高度回歸自然流動 (auto)，瀏覽器會自動包覆 SVG 並完美保留 1.5rem 的上下左右留白。
+    wrapper.style.aspectRatio = 'auto';
+    wrapper.style.width = '100%';
+    wrapper.style.height = 'auto';
+    wrapper.style.overflow = 'hidden'; 
+    
+    if (customH) {
+        // 如果有指定 h，將其作為最大高度限制
+        // 👉 在手機上：自然高度若小於 customH，完美等比縮放。
+        // 👉 在大螢幕：自然高度若超過 customH，高度被鎖死，轉為可拖曳的視窗。
+        wrapper.style.maxHeight = `${customH}px`;
+    } else {
         wrapper.style.maxHeight = 'none';
-
-        // 🔥 2. 處理自訂高度參數 (?h=)
-        const customH = wrapper.getAttribute('data-custom-height');
-        if (customH) {
-            // 如果使用者有指定高度，我們把它當作「最大高度限制 (max-height)」
-            // 這樣在電腦大螢幕上不會無限放大，在手機上又能完美等比例縮小！
-            wrapper.style.maxHeight = `${customH}px`;
-        }
-
-        // 🔥 3. 讓內部容器填滿外層比例框
-        mermaidDiv.style.width = '100%';
-        mermaidDiv.style.height = '100%';
-
-        // 🔥 4. 解放 SVG 本體：拔除 Mermaid 寫死的絕對像素，讓它完全服從液態排版！
-        svg.removeAttribute('width');
-        svg.removeAttribute('height');
-        svg.style.width = '100%';
-        svg.style.height = '100%';
-        svg.style.maxWidth = '100%';
-        svg.style.display = 'block';
     }
+
+    // 內部圖表維持 100% 寬度自然流動
+    mermaidDiv.style.width = '100%';
+    mermaidDiv.style.height = 'auto';
+    mermaidDiv.style.transform = `translate(0px, 0px) scale(1)`;
+    container.dataset.x = 0; 
+    container.dataset.y = 0; 
+
+    // 解放 SVG 本體：拔除 Mermaid 寫死的絕對像素
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    svg.style.maxWidth = 'none'; 
+    svg.style.display = 'block';
 };
 
 // ==========================================
@@ -2348,6 +2496,9 @@ renderer.image = function(token_or_href, title, text) {
     const altText = typeof token_or_href === 'object' ? token_or_href.text : text;
     const imgTitle = typeof token_or_href === 'object' ? token_or_href.title : title; 
     
+    // ✨ 加上這行：將 alt 轉為小寫並去除空白，防止大小寫判定失敗
+    const cleanAlt = (altText || '').trim().toLowerCase();
+
     if (!href) return '';
 
     let decodedHref = href.replace(/%23/g, '#');
@@ -2397,11 +2548,11 @@ renderer.image = function(token_or_href, title, text) {
     const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
     if (imgTitle) {
-        let figureClass = (altText === 'float-right' || altText === 'float-left') ? ` class="${altText}"` : '';
+        let figureClass = (cleanAlt === 'float-right' || cleanAlt === 'float-left') ? ` class="${cleanAlt}"` : '';
         return `<figure${figureClass}>${imgTag}<figcaption>${imgTitle}${zoomBtnHtml}</figcaption></figure>`;
     } else {
-        if (altText === 'icon' || altText === 'badge') return imgTag;
-        let figureClass = 'no-caption' + ((altText === 'float-right' || altText === 'float-left') ? ` ${altText}` : '');
+        if (cleanAlt === 'icon' || cleanAlt === 'badge') return imgTag;
+        let figureClass = 'no-caption' + ((cleanAlt === 'float-right' || cleanAlt === 'float-left') ? ` ${cleanAlt}` : '');
         return `<figure class="${figureClass}">${imgTag}${floatingZoomBtnHtml}</figure>`;
     }
 };
@@ -2466,8 +2617,8 @@ renderer.code = function(token_or_code, language, isEscaped) {
                     <button class="mermaid-btn" onclick="window.fullscreenMermaid(this)" data-tooltip="放大檢視">${GLOBAL_SVGS.mermaidFull}</button>
                 </div>
             </div>
-            <!-- 🔥 帶有等比縮放引擎的 Wrapper -->
-            <div class="mermaid-wrapper"${customHeightAttr}>
+            <!-- 🔥 帶有等比縮放引擎的 Wrapper，並加入內距與 normal 行高防止文字撐破畫布 -->
+            <div class="mermaid-wrapper" style="padding: 1.5rem; line-height: normal;"${customHeightAttr}>
                 <div class="mermaid" data-original-text="${encodedText}">${processedText}</div>
             </div>
         </div>`;
@@ -2495,8 +2646,8 @@ renderer.code = function(token_or_code, language, isEscaped) {
 
     return `
     <div class="code-block-wrapper" style="position: relative;">
-        <!-- 設定 max-width 避免檔名太長蓋到複製按鈕，過長會自動變成 ... -->
-        <div class="code-lang-label" style="max-width: calc(100% - 100px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${fileName || cleanLang}">${labelContent}</div>
+        <!-- ✨ 拔除 title 屬性，就不會有系統預設的 tooltip 跑出來了 -->
+        <div class="code-lang-label">${labelContent}</div>
         <button class="code-copy-btn" onclick="window.copyCodeBlock(this)">
             ${copyIcon} <span class="copy-text">Copy</span>
         </button>
@@ -2812,18 +2963,23 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (prefersLight) initialTheme = 'light';
 
     function applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
 
-        if (window.mermaid) {
-            window.mermaid.initialize({
+    if (window.mermaid) {
+        window.mermaid.initialize({
             startOnLoad: false,
-            theme: currentTheme === 'dark' ? 'dark' : 'default', 
+            // ✨ 核心修復：將 currentTheme 改為傳進來的 theme
+            theme: theme === 'dark' ? 'dark' : 'default', 
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
             securityLevel: 'loose',
-            useMaxWidth: false // 🔥 解除原生寬度限制，確保產出的 viewBox 比例最完美
+            useMaxWidth: false,
+            flowchart: { 
+                padding: 15,
+                htmlLabels: false 
+            }
         });
-            
-            const mermaidEls = document.querySelectorAll('.mermaid');
+        
+        const mermaidEls = document.querySelectorAll('.mermaid');
             if (mermaidEls.length > 0) {
                 mermaidEls.forEach(el => {
                     // 取出含有 var() 的備份原文
@@ -3035,44 +3191,26 @@ async function loadProjects() {
         // ✨ 建立狀態時間驗證引擎
         const nowMs = new Date().getTime();
         const expireMs = CONFIG.TAG_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
-        
-        // 1. 處理「一般狀態」的過期 (例如 NEW, UPDATED 超過期限就消失)
-        const evaluateStatus = (val) => {
+        // 1. 共用過期驗證函式 (您目前已經有的)
+        const evaluateExpiration = (val, type = 'status') => {
             if (val === true || String(val).toLowerCase() === 'true') return true; 
             if (typeof val === 'string') {
-                const cleanVal = val.trim(); // ✨ 容錯：自動消除前後空白
-                // ✨ 容錯：支援單數月份與日期 (\d{1,2})
+                const cleanVal = val.trim(); 
                 if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(cleanVal)) {
-                    const tagDate = new Date(cleanVal.replace(/-/g, '/')).getTime();
-                    return !isNaN(tagDate) && (nowMs - tagDate <= expireMs);
+                    const targetDate = new Date(cleanVal.replace(/-/g, '/')).getTime();
+                    if (isNaN(targetDate)) return !!val;
+                    return type === 'hidden' ? nowMs < targetDate : (nowMs - targetDate) <= expireMs;
                 }
             }
             return !!val; 
         };
 
-        // ✨ 1.5 處理「機密隱藏」的解封 (例如 HIDDEN，時間還沒到就隱藏，時間到了就公開)
-        const evaluateHidden = (val) => {
-            if (val === true || String(val).toLowerCase() === 'true') return true; 
-            if (typeof val === 'string') {
-                const cleanVal = val.trim(); // ✨ 容錯：自動消除前後空白
-                if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(cleanVal)) {
-                    const unsealDate = new Date(cleanVal.replace(/-/g, '/')).getTime();
-                    // 只要現在時間「小於」解封日，就保持隱藏 (true)
-                    // 到了解封日當天或之後，就變成公開 (false)
-                    return !isNaN(unsealDate) && (nowMs < unsealDate);
-                }
-            }
-            return !!val; 
-        };
-
-        // 2. 處理「標籤陣列」的過期 (例如 "tags": ["NEW: 2026-09-08"])
+        // ✨ 請將這整段補回來：處理「標籤陣列」的過期過濾器
         const parseAndFilterTags = (tags) => {
             if (!tags || !Array.isArray(tags)) return [];
             let validTags = [];
             tags.forEach(tag => {
-                const strTag = String(tag).trim(); // ✨ 容錯：強制轉字串並消除空白
-                
-                // ✨ 容錯升級：允許冒號後方有空格 (\s*)，並支援單數月份與日期 (\d{1,2})
+                const strTag = String(tag).trim(); 
                 const match = strTag.match(/^(NEW|UPDATED|LATEST|FEATURE):\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})$/i);
                 
                 if (match) {
@@ -3088,13 +3226,14 @@ async function loadProjects() {
             return validTags;
         };
 
-       // 智慧狀態推導與全域標籤冒泡
-        const flatStatusList = window.STATUS_LIST.flat(); 
+        const flatStatusList = window.STATUS_LIST.flat();
+
+        // 往下是您原本的 projects.forEach 區塊 (維持不變)
         projects.forEach(p => {
             ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
-                if (p[k] !== undefined) p[k] = evaluateStatus(p[k]);
+                if (p[k] !== undefined) p[k] = evaluateExpiration(p[k], 'status');
             });
-            if (p.is_hidden !== undefined) p.is_hidden = evaluateHidden(p.is_hidden);
+            if (p.is_hidden !== undefined) p.is_hidden = evaluateExpiration(p.is_hidden, 'hidden');
             p.tags = parseAndFilterTags(p.tags);
 
             let isAllUpdated = p.is_updated;
@@ -3103,9 +3242,11 @@ async function loadProjects() {
             if (p.articles && p.articles.length > 0) {
                 p.articles.forEach(art => {
                     ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
-                        if (art[k] !== undefined) art[k] = evaluateStatus(art[k]);
+                        // ✨ 換成新的 evaluateExpiration
+                        if (art[k] !== undefined) art[k] = evaluateExpiration(art[k], 'status');
                     });
-                    if (art.is_hidden !== undefined) art.is_hidden = evaluateHidden(art.is_hidden);
+                    // ✨ 換成新的 evaluateExpiration
+                    if (art.is_hidden !== undefined) art.is_hidden = evaluateExpiration(art.is_hidden, 'hidden');
                     art.tags = parseAndFilterTags(art.tags);
                 });
 
@@ -3747,10 +3888,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const isUnlocked = document.body.classList.contains('system-override-active');
             const visibleCount = proj.articles.filter(a => isUnlocked || !a.is_hidden).length;
 
-            const cleanPath = window.getCleanBasePath();
-            const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}`;
-            window.history.replaceState({ path: spaUrl }, '', spaUrl);
-            const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
+            const shareUrl = window.updateRouteState(projectId);
 
             // 2. 將目錄標題與功能按鈕直接注入 modal-top-left (完全還原原始樣式)
             document.getElementById('modal-top-left').innerHTML = `
@@ -3848,27 +3986,46 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                         let groupColor = groupData.color;
                         let themeClass = '';
-                        let customStyle = '';
-
-                        // ✨ The Logic: Use classes for highlight groups, inline styles ONLY for custom hex colors
+                        let customStyle = ''; // ✨ 1. 補回這行宣告！
+                        
                         if (groupData.highlight) {
                             const groupNum = (colorIndex % 5) + 1;
                             themeClass = ` group-color-${groupNum}`;
                             colorIndex++; 
                         } else if (groupColor) {
-                            // If they provided a specific hardcoded hex color
-                            customStyle = ` style="--current-group-color: ${groupColor};"`;
+                            // ✨ 2. 補回這行，讓群組底下的文章也能吃到專屬顏色！
+                            customStyle = ` style="--current-group-color: ${groupColor};"`; 
                         }
 
                         const topMargin = isFirstGroup ? '0rem' : '1.8rem';
 
+                        // ✨ 3. 處理 Group Header 專屬的合併 Style
+                        let inlineStyles = ``;
+                        if (groupColor && !groupData.highlight) {
+                            inlineStyles += ` --current-group-color: ${groupColor};`;
+                        }
+
                         // ✨ 加上專屬 ID 供漢堡選單跳轉定位
                         const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
                         
+                        // ✨ 判斷該群組是否有縮圖
+                        let groupCoverHtml = '';
+                        if (groupData.cover_image) {
+                            // ✨ 新增外層包裝盒 .group-header-cover-wrapper
+                            groupCoverHtml = `
+                            <div class="group-header-cover-wrapper">
+                                <img src="${groupData.cover_image}" alt="Group Cover" class="group-header-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">
+                            </div>`;
+                        }
+
+                        // ✨ 4. 渲染 HTML，套用 themeClass 與 inlineStyles
                         html += `
-                            <div id="${safeGroupId}" class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
-                                <div class="group-header-title${themeClass}"${customStyle}>${groupData.title || groupId}</div>
-                                ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
+                            <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
+                                <div class="group-header-text">
+                                    <div class="group-header-title">${groupData.title || groupId}</div>
+                                    ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
+                                </div>
+                                ${groupCoverHtml}
                             </div>
                             <ul class="article-list-ul">
                         `;
@@ -3885,7 +4042,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         const topMargin = isFirstGroup ? '0rem' : '1.5rem';
                         // ✨ 未分群區塊也加上 ID
                         html += `<ul id="group-ungrouped" class="article-list-ul" style="margin-top:${topMargin};">`;
-                        html += `<ul class="article-list-ul" style="margin-top:${topMargin};">`;
                         
                         ungrouped.forEach(({art, idx}) => { 
                             html += generateLi(art, idx, false);
@@ -3923,87 +4079,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 }
                 window.renderTocMenu(menuItems, '系列分群');
                 
-                const initJumpToast = () => {
-                    const newArticles = Array.from(listContainer.querySelectorAll('.article-li'))
-                        .filter(li => li.querySelector('.status-badge[data-status="NEW"]'));
-                    
-                    let jumpToast = document.getElementById('new-jump-toast');
-                    if (!jumpToast) {
-                        jumpToast = document.createElement('button');
-                        jumpToast.id = 'new-jump-toast';
-                        jumpToast.className = 'new-jump-toast';
-                        modalOverlay.appendChild(jumpToast);
-                    }
-
-                    if (window.indexScrollHandler) {
-                        modalContainer.removeEventListener('scroll', window.indexScrollHandler); // ✨ 改為 modalContainer
-                        window.indexScrollHandler = null;
-                    }
-
-                    if (newArticles.length > 0) {
-                        let targetArticle = null;
-                        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
-                        
-                        window.indexScrollHandler = () => {
-                            // ✨ 改為抓取 modalContainer 的邊界
-                            const containerRect = modalContainer.getBoundingClientRect(); 
-
-                            let countAbove = 0, countVisible = 0, countBelow = 0;
-                            let closestAbove = null, closestBelow = null;
-
-                            newArticles.forEach(article => {
-                                const rect = article.getBoundingClientRect();
-                                if (rect.top < containerRect.top + topBarHeight) {
-                                    countAbove++;
-                                    closestAbove = article; 
-                                } else if (rect.bottom > containerRect.bottom + 20) {
-                                    countBelow++;
-                                    if (!closestBelow) closestBelow = article; 
-                                } else {
-                                    countVisible++;
-                                }
-                            });
-
-                            if (countBelow > 0) {
-                                targetArticle = closestBelow;
-                                const prefix = countVisible > 0 ? '下方還有' : '發現';
-                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpDown} ${prefix} ${countBelow} 篇新內容`;
-                                jumpToast.classList.add('is-visible');
-                            } else if (countAbove > 0) {
-                                targetArticle = closestAbove;
-                                const prefix = countVisible > 0 ? '上方還有' : '發現';
-                                jumpToast.innerHTML = `${GLOBAL_SVGS.jumpUp} ${prefix} ${countAbove} 篇新內容`;
-                                jumpToast.classList.add('is-visible');
-                            } else {
-                                targetArticle = null;
-                                jumpToast.classList.remove('is-visible');
-                            }
-                        };
-                        
-                        // ✨ 改為監聽 modalContainer
-                        modalContainer.addEventListener('scroll', window.indexScrollHandler); 
-                        setTimeout(window.indexScrollHandler, 100);
-
-                        jumpToast.onclick = () => {
-                            if (!targetArticle) return;
-                            
-                            // 1. 捲動到最接近的那篇新文章，並置中
-                            targetArticle.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            jumpToast.classList.remove('is-visible'); 
-                            
-                            // 2. ✨ 終極 UX：讓這個清單內「所有」的新文章同時觸發高光特效！
-                            setTimeout(() => { 
-                                newArticles.forEach(article => {
-                                    // 延長發光時間到 1200 毫秒，讓使用者有足夠時間看清楚哪些是新的
-                                    window.simulateHoverFlash(article, 1200); 
-                                });
-                            }, 400); // 在捲動快要到達時 (400ms) 提早亮起
-                        };
-                    } else {
-                        jumpToast.classList.remove('is-visible');
-                    }
-                };
-                initJumpToast();
+                // ✨ 呼叫全域智慧跳轉提示引擎
+                window.initJumpToast(modalContainer, '.article-li');
             };
 
             const updateSortBtnUI = () => {
@@ -4097,14 +4174,14 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         }
 
         if (window.historyStack.length > 0) {
-            // ✨ 使用更穩定的動態容器判定
             const activeContainer = window.getActiveScrollContainer();
             if (activeContainer) {
                 window.historyStack[window.historyStack.length - 1].scrollTop = activeContainer.scrollTop;
                 
-                // 只有在文章容器內才需要記錄直書捲軸
-                if (activeContainer.id === 'view-article') {
-                    const wrappers = document.querySelectorAll('#view-article .vertical-wrapper');
+                // ✨ 修正：改由判斷 view-article 是否存在且顯示中，來記錄內部的直書捲軸
+                const viewArticle = document.getElementById('view-article');
+                if (viewArticle && viewArticle.style.display !== 'none') {
+                    const wrappers = viewArticle.querySelectorAll('.vertical-wrapper');
                     window.historyStack[window.historyStack.length - 1].innerScrolls = Array.from(wrappers).map(w => ({
                         scrollTop: w.scrollTop,
                         scrollLeft: w.scrollLeft
@@ -4214,14 +4291,20 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             const generateNavBtn = (item, type) => {
                 const isPrev = type === 'prev';
                 const iconSvg = isPrev ? GLOBAL_SVGS.chevronLeft : GLOBAL_SVGS.chevronRight;
-                const text = isPrev ? '上一篇' : '下一篇';
+                const text = isPrev ? '上一篇' : '下一篇'; 
                 
                 if (!item) {
                     return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled>${iconSvg}</button>` };
                 }
                 
+                // ✨ 單純防護 HTML 結構，將標題完整傳給 data-tooltip
+                const tooltipText = item.art.title.replace(/"/g, '&quot;');
+                
                 const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `${iconSvg} ${text}` : `${text} ${iconSvg}`}</div><div class="nav-title">${item.art.title}</div></a>`;
-                const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${text}">${iconSvg}</button>`;
+                
+                // 將 tooltipText 完整塞入
+                const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${tooltipText}">${iconSvg}</button>`;
+                
                 return { cardHtml, btnHtml };
             };
 
@@ -4245,38 +4328,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 }
             });
 
-            let mermaidRetryCount = 0;
-            const renderMermaid = () => {
-                if (window.mermaid) {
-                    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-                    window.mermaid.initialize({
-                        startOnLoad: false,
-                        theme: currentTheme === 'dark' ? 'dark' : 'default', 
-                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-                        securityLevel: 'loose',
-                        useMaxWidth: false // 🔥 確保原生比例不被瀏覽器擠壓
-                    });
-
-                    document.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
-                    window.mermaid.run({ querySelector: '.mermaid' })
-                    .catch(e => console.warn('Mermaid 語法錯誤:', e))
-                    .finally(() => {
-                        // 🔥 渲染完畢後，為每個圖表注入自適應比例
-                        document.querySelectorAll('.mermaid').forEach(el => {
-                            window.applyMermaidAspectRatio(el);
-                        });
-                        // 確保容器沒有初始化標記，進行首次綁定
-                        document.querySelectorAll('.mermaid-container').forEach(c => c.classList.remove('drag-initialized'));
-                        window.initMermaidDrag();
-                    });
-                } else if (mermaidRetryCount < 10) {
-                    mermaidRetryCount++;
-                    setTimeout(renderMermaid, 300);
-                } else {
-                    console.warn("Mermaid 引擎載入超時，放棄渲染。");
-                }
-            };
-            renderMermaid();
+            // ✨ 呼叫全域 Mermaid 渲染引擎 (取代原本 30 幾行的 renderMermaid 函數)
+            window.renderAllMermaidCharts(activeView);
 
             const firstH1 = activeView.querySelector('h1');
             if (firstH1) {
@@ -4310,12 +4363,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     rightGroup.appendChild(tagContainer);
                 }
 
-                // ✨ 替換這三行，把 targetHash 加回去
-                const cleanPath = window.getCleanBasePath();
+                // ✅ 【替換為這 2 行】：
                 const articleSlug = article.id || articleIndex;
-                const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleSlug}${targetHash || ''}`;
-                window.history.replaceState({ path: spaUrl }, '', spaUrl);
-                const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/${articleSlug}/index.html`;
+                const shareUrl = window.updateRouteState(projectId, articleSlug, targetHash);
 
                 // ✨ 替換這兩行，將文章內的複製按鈕升級為無氣泡的響應式
                 const shareBtn = document.createElement('button');
@@ -4331,8 +4381,44 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
+            // ✨ 新增：動態生成群組標籤 (Group Badge) 邏輯
+            let groupHtml = '';
+            if (article.group && proj.groups && proj.groups[article.group]) {
+                const groupData = proj.groups[article.group];
+                let themeClass = '';
+                let customStyle = '';
 
-            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
+                // 為了確保顏色與目錄頁完全一致，重跑一次目錄的顏色推導邏輯
+                if (groupData.highlight) {
+                    let colorIndex = 0;
+                    for (const [gId, gData] of Object.entries(proj.groups)) {
+                        const groupArticles = flatSequence.filter(item => item.art.group === gId);
+                        if (groupArticles.length === 0) continue; // 略過無文章或隱藏的群組
+                        
+                        if (gId === article.group) {
+                            const groupNum = (colorIndex % 5) + 1;
+                            themeClass = ` group-color-${groupNum}`;
+                            break;
+                        }
+                        if (gData.highlight) colorIndex++;
+                    }
+                } else if (groupData.color) {
+                    customStyle = ` style="color: ${groupData.color};"`;
+                }
+
+                const groupTitle = groupData.title || article.group;
+                groupHtml = `<div class="article-group-label${themeClass}"${customStyle}>${groupTitle}</div>`;
+            }
+
+            // ✨ 修改：將標籤與膠囊用 top-nav-stack 垂直疊加
+            topLeft.innerHTML = `
+                <div class="top-nav-stack">
+                    ${groupHtml}
+                    <div class="unified-nav-capsule">
+                        <button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}
+                    </div>
+                </div>
+            `;
 
             const tocMount = document.getElementById('toc-mount-point');
             let tocWrapper = tocMount.querySelector('.toc-wrapper'); // 尋找既有的選單
@@ -4430,93 +4516,48 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 new ResizeObserver(originalCheckScroll).observe(gallery);
                 setTimeout(originalCheckScroll, 150);
 
-                const scrollOneItem = (direction) => {
-                    const figures = Array.from(gallery.querySelectorAll('figure'));
-                    if (figures.length === 0) return;
-                    const containerCenter = gallery.getBoundingClientRect().left + gallery.clientWidth / 2;
-                    let closestIndex = 0;
-                    let minDistance = Infinity;
-
-                    figures.forEach((figure, index) => {
-                        const distance = Math.abs(containerCenter - (figure.getBoundingClientRect().left + figure.offsetWidth / 2));
-                        if (distance < minDistance) { minDistance = distance; closestIndex = index; }
-                    });
-
-                    let targetIndex = Math.max(0, Math.min(closestIndex + direction, figures.length - 1));
-                    let scrollAmount = (figures[targetIndex].getBoundingClientRect().left + figures[targetIndex].offsetWidth / 2) - containerCenter;
-
-                    const maxScrollLeft = gallery.scrollWidth - gallery.clientWidth;
-                    if (direction > 0 && scrollAmount > maxScrollLeft - gallery.scrollLeft) scrollAmount = maxScrollLeft - gallery.scrollLeft;
-                    else if (direction < 0 && Math.abs(scrollAmount) > gallery.scrollLeft) scrollAmount = -gallery.scrollLeft;
-
-                    gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-                };
-
-                hintRight.addEventListener('click', () => scrollOneItem(1));
-                hintLeft.addEventListener('click', () => scrollOneItem(-1));
+                // ✨ 直接呼叫共用水平捲動置中引擎 (取代原本 20 幾行的 scrollOneItem 邏輯)
+                hintRight.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', 1));
+                hintLeft.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', -1));
             });
 
+            // ✅ 【將原本的 figure 迴圈內部重構為】：
             activeView.querySelectorAll('figure').forEach(figure => {
                 const figcaption = figure.querySelector('figcaption');
                 const img = figure.querySelector('img');
-                
-                // ✨ 偵測這張圖片是否在畫廊裡面
                 const isGallery = figure.closest('.gallery') !== null;
                 
+                // 共用按鈕生成器
+                const createZoomBtn = (isFloating) => {
+                    const btn = document.createElement('button');
+                    btn.className = isFloating ? 'zoom-btn floating' : 'zoom-btn';
+                    if (isFloating) btn.setAttribute('data-tooltip', '放大檢視');
+                    btn.innerHTML = GLOBAL_SVGS.zoomIcon;
+                    btn.onclick = (e) => { e.stopPropagation(); window.openLightbox(btn, e); };
+                    return btn;
+                };
+
                 if (isGallery) {
-                    // ==========================================
-                    // 📁 畫廊內的圖片 (維持原樣，點擊切換標題)
-                    // ==========================================
                     if (figcaption) {
                         figure.style.cursor = 'pointer'; 
                         figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
-                        
                         if (img && !figcaption.querySelector('.zoom-btn')) {
-                            const zoomBtn = document.createElement('button');
-                            zoomBtn.className = 'zoom-btn';
-                            zoomBtn.innerHTML = GLOBAL_SVGS.zoomIcon;
-                            zoomBtn.onclick = (event) => {
-                                event.stopPropagation();
-                                window.openLightbox(zoomBtn, event);
-                            };
-                            figcaption.appendChild(zoomBtn);
+                            figcaption.appendChild(createZoomBtn(false));
                         }
                     }
                 } else {
-                    // ==========================================
-                    // 🖼️ 畫廊外的獨立圖片 (支援圖片點擊與 CSS 連動)
-                    // ==========================================
                     figure.classList.add('standalone-figure'); 
-                    
                     if (img) {
                         img.style.cursor = 'pointer';
-                        
-                        // 讓點擊圖片本體直接觸發大圖預覽
-                        img.addEventListener('click', (event) => {
-                            event.stopPropagation();
-                            window.openLightbox(img, event);
-                        });
+                        img.addEventListener('click', (e) => { e.stopPropagation(); window.openLightbox(img, e); });
 
-                        // ✨ 自動補全機制：拯救手寫 HTML 缺失的放大鏡按鈕
-                        const existingBtn = figure.querySelector('.zoom-btn');
-                        if (!existingBtn) {
-                            const zoomBtn = document.createElement('button');
-                            zoomBtn.setAttribute('data-tooltip', '放大檢視');
-                            zoomBtn.innerHTML = GLOBAL_SVGS.zoomIcon;
-                            
-                            zoomBtn.onclick = (event) => {
-                                event.stopPropagation();
-                                window.openLightbox(zoomBtn, event);
-                            };
-
+                        if (!figure.querySelector('.zoom-btn')) {
+                            const isFloating = !figcaption;
+                            const zoomBtn = createZoomBtn(isFloating);
                             if (figcaption) {
-                                // 情況 A：有圖說的 HTML，把放大鏡塞進 figcaption 裡
-                                zoomBtn.className = 'zoom-btn';
                                 figcaption.appendChild(zoomBtn);
                             } else {
-                                // 情況 B：無圖說的 HTML，把放大鏡設定為懸浮樣式，並確保 figure 有對應的 class
                                 figure.classList.add('no-caption');
-                                zoomBtn.className = 'zoom-btn floating';
                                 figure.appendChild(zoomBtn);
                             }
                         }
@@ -4537,15 +4578,29 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 modalContainer.scrollTo({ top: restoreScrollTop, behavior: 'auto' }); 
                 
                 if (restoreInnerScrolls && restoreInnerScrolls.length > 0) {
-                    const wrappers = document.querySelectorAll('#view-article .vertical-wrapper');
-                    wrappers.forEach((w, i) => {
-                        if (restoreInnerScrolls[i]) {
-                            w.scrollTo({ top: restoreInnerScrolls[i].scrollTop, left: restoreInnerScrolls[i].scrollLeft, behavior: 'auto' });
-                        }
-                    });
+                    // ✨ 加上微幅延遲，等待直書排版與 DOM 結構完全穩定後再還原位置
+                    setTimeout(() => {
+                        const wrappers = document.querySelectorAll('#view-article .vertical-wrapper');
+                        wrappers.forEach((w, i) => {
+                            if (restoreInnerScrolls[i]) {
+                                w.scrollTo({ 
+                                    top: restoreInnerScrolls[i].scrollTop, 
+                                    left: restoreInnerScrolls[i].scrollLeft, 
+                                    behavior: 'auto' 
+                                });
+                            }
+                        });
+                    }, 60);
                 }
             } else {
+                // ✨ 開啟新文章：主容器與直書容器全部強制歸零
                 modalContainer.scrollTo({ top: 0, behavior: 'auto' });
+                
+                // 加上微幅延遲，確保新生成的 DOM 佈局完成後徹底拔除瀏覽器的自動記憶
+                setTimeout(() => {
+                    const wrappers = document.querySelectorAll('#view-article .vertical-wrapper');
+                    wrappers.forEach(w => w.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+                }, 10);
             }
         },
         animateTopBar
@@ -4934,28 +4989,12 @@ window.reloadMermaid = function(btn) {
             mermaidDiv.removeAttribute('data-processed');
             mermaidDiv.innerHTML = window.processMermaidCssVars(originalText);
             
-            if (window.mermaid) {
-                // 為了不干擾畫面上其他圖表，給它一個暫時的 ID 來精準鎖定重繪
-                const tempId = 'mermaid-reload-' + Date.now();
-                mermaidDiv.id = tempId;
-
-                window.mermaid.run({ querySelector: `#${tempId}` })
-                    .catch(e => console.warn('Mermaid reload failed:', e))
-                    .finally(() => {
-                        // 🔥 3. 核心修復：先解除 minHeight 的鎖定，再套用動態比例！
-                        // 這樣才能讓 applyMermaidAspectRatio 順利接管並撐開容器
-                        wrapper.style.minHeight = ''; 
-                        window.applyMermaidAspectRatio(mermaidDiv);
-                        
-                        mermaidDiv.style.opacity = '1';
-                        mermaidDiv.style.transition = 'transform 0.15s var(--ease-smooth)';
-                        mermaidDiv.removeAttribute('id'); 
-                        
-                        // 🔥 4. 強制解除拖曳引擎的鎖定標記，並重新初始化
-                        container.classList.remove('drag-initialized');
-                        window.initMermaidDrag();
-                    });
-            }
+            // ✨ 直接呼叫全域引擎，利用 onComplete 進行完美收尾！
+            window.renderAllMermaidCharts(container, () => {
+                wrapper.style.minHeight = ''; 
+                mermaidDiv.style.opacity = '1';
+                mermaidDiv.style.transition = 'transform 0.15s var(--ease-smooth)';
+            });
         } else {
             mermaidDiv.style.opacity = '1';
             mermaidDiv.style.transition = 'transform 0.15s var(--ease-smooth)';
@@ -4983,20 +5022,11 @@ window.fullscreenMermaid = function(btn) {
         lightboxWrapper.appendChild(customContainer);
     }
 
-    // 2. 完美克隆圖表，並上色保護
+    // 2. 完美克隆圖表，並掛上 CSS 類別
     const clonedMermaid = mermaidDiv.cloneNode(true);
     clonedMermaid.id = 'lightbox-active-mermaid';
-    clonedMermaid.style.transform = 'translate(0px, 0px) scale(1)';
-    clonedMermaid.style.pointerEvents = 'auto'; // 讓它能被點擊/拖曳
-    
-    // 強制加上背景色，否則透明黑底會看不見黑色字
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-    clonedMermaid.style.backgroundColor = currentTheme === 'dark' ? 'var(--bg)' : 'var(--card)';
-    clonedMermaid.style.padding = '20px';
-    clonedMermaid.style.borderRadius = '12px';
-    clonedMermaid.style.boxShadow = '0 10px 40px var(--shadow-base)';
-    clonedMermaid.style.maxHeight = '90vh';
-    clonedMermaid.style.maxWidth = '90vw';
+    clonedMermaid.className = 'lightbox-mermaid-clone'; // ✨ 只用這一行取代下面所有 style
+    clonedMermaid.style.transform = 'translate(0px, 0px) scale(1)'; // 座標初始化仍須 JS
     
     customContainer.innerHTML = '';
     customContainer.appendChild(clonedMermaid);
@@ -5282,8 +5312,9 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     document.addEventListener('keydown', escListener);
 
     // ✨ 移除內層與按鈕的 title
+    // ✨ 拔除 inline style，改用 .sensitive-modal-box 類別
     overlay.innerHTML = `
-        <div class="sensitive-modal-content" style="background: var(--card); border: 1px solid var(--card-border); border-radius: 1.1rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+        <div class="sensitive-modal-content">
             <button id="sensitive-close-x" class="sensitive-close-btn">
                 ${GLOBAL_SVGS.closeX}
             </button>
@@ -5350,37 +5381,33 @@ window.applyIndentToVerticalWrapper = function(container) {
 };
 
 // ==========================================
-// ✨ 隱藏彩蛋：動態讀取 credits.md (整合平滑動畫版)
+// ✨ 系統級 Markdown 彈窗共用引擎 (Credits, License, Privacy 等)
 // ==========================================
-window.cachedCreditsText = null;
-window.showCreditsModal = async function() {
-    // 🔥 全域中斷防護：開啟新畫面時，立刻中斷並清理前一個還在跑的請求
-    if (window._activeFetcher) {
-        window._activeFetcher.abort();
-        window._activeFetcher = null;
-    }
+window.cachedMarkdownFiles = {}; // 統一管理快取
+
+window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cacheKey, extraHtml = '') {
+    if (window._activeFetcher) { window._activeFetcher.abort(); window._activeFetcher = null; }
     window.toggleLoading(false);
 
     let mdText = "載入失敗"; let isError = false;
 
-    if (window.cachedCreditsText !== null) {
-        mdText = window.cachedCreditsText;
+    if (window.cachedMarkdownFiles[cacheKey]) {
+        mdText = window.cachedMarkdownFiles[cacheKey];
     } else {
-        const fetchResult = await window.safeFetchWithGuard(`./credits.md?v=${window.getResVersion('credits.md')}`, { isJson: false });
-        if (fetchResult.aborted) return; // 被中斷就安靜退出
+        const fetchResult = await window.safeFetchWithGuard(`${fetchUrl}?v=${window.getResVersion(cacheKey)}`, { isJson: false });
+        if (fetchResult.aborted) return;
         
         if (fetchResult.success) {
             mdText = fetchResult.data;
-            window.cachedCreditsText = mdText;
+            window.cachedMarkdownFiles[cacheKey] = mdText;
         } else {
-            console.error("Credits 讀取失敗:", fetchResult.error);
+            console.error(`${title} 載入失敗:`, fetchResult.error);
             isError = true;
         }
     }
 
-    if (window._activeFetcher !== null) return; // 幽靈渲染防護
+    if (window._activeFetcher !== null) return;
 
-    // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
     switchModalContent(
         () => {
             const modalOverlay = document.getElementById('md-modal');
@@ -5389,50 +5416,62 @@ window.showCreditsModal = async function() {
             if (viewIndex) viewIndex.style.display = 'none';
             if (viewArticle) viewArticle.style.display = 'block';
             const modalBody = viewArticle || document.getElementById('modal-body');
+            
+            if (document.getElementById('toc-mount-point')) document.getElementById('toc-mount-point').innerHTML = '';
+            
             const modalTopLeft = document.getElementById('modal-top-left');
-            const tocMountPoint = document.getElementById('toc-mount-point');
-            
-            if (tocMountPoint) tocMountPoint.innerHTML = '';
-            
             if (modalTopLeft) {
                 modalTopLeft.innerHTML = `
                     <div class="index-header-container">
-                        <h1 class="index-header-title">Credits</h1>
+                        <h1 class="index-header-title">${title}</h1>
                         <div class="index-header-actions">
-                            <span class="article-count-badge">Acknowledgments</span>
+                            <span class="article-count-badge">${badgeText}</span>
                         </div>
                     </div>
                 `;
             }
 
             if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入致謝名單。');
+                modalBody.innerHTML = window.getSystemErrorHtml('System Error', `無法載入 ${title} 檔案。`);
             } else {
+                // ✨ 核心修改：將 ${extraHtml} 移到 .markdown-body 的上方！
+                // 同時微調 markdown-body 的 marginTop，讓它與上方按鈕保持完美間距
                 modalBody.innerHTML = `
-                    <div class="credits-markdown-wrapper markdown-body" style="margin-top: -0.5rem;">
+                    ${extraHtml}
+                    <div class="markdown-body" style="margin-top: 0; padding-bottom: 2rem;">
                         ${marked.parse(mdText)}
                     </div>
                 `;
             }
-            
-            // ✨ 核心修復：閱讀進度條改為監聽真正的捲動容器 modalContainer
+
             const modalContainer = document.querySelector('.modal-content');
             const topBar = document.querySelector('.modal-top-bar');
-            if (modalContainer && topBar) {
-                window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
-            }
+            if (modalContainer && topBar) window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
 
-            // 開啟 Modal 並鎖定捲軸
             modalOverlay.classList.add('active');
             window.lockScroll();
         },
         () => {
-            // ✨ 動畫結束後，確保將外層真正的捲動容器歸零
             const modalContainer = document.querySelector('.modal-content');
             if (modalContainer) modalContainer.scrollTo({ top: 0, behavior: 'auto' });
         }
     );
 };
+
+// ✨ 使用時只需呼叫一行，乾淨俐落！
+window.showCreditsModal = () => window.showSystemMarkdownModal('Credits', 'Acknowledgments', './credits.md', 'credits.md');
+
+window.showLicenseModal = () => window.showSystemMarkdownModal(
+    'License & Copyright', 
+    'important', 
+    './COPYRIGHT.md', 
+    'COPYRIGHT.md', 
+    `<div id="bilingual-switcher"><div class="lang-tabs">
+        <button class="lang-btn active" onclick="window.switchBilingualTab('zh', this)">中文版</button>
+        <button class="lang-btn" onclick="window.switchBilingualTab('en', this)">English</button>
+        <button class="lang-btn" onclick="window.switchBilingualTab('ja', this)">日本語</button>
+    </div></div>`
+);
 
 // ==========================================
 // ✨ 升級版系統日誌：支援兩層式架構、平滑動畫過場，與「手動強制更新檢查」！
@@ -5681,105 +5720,6 @@ window.switchBilingualTab = function(lang, btn) {
     btn.classList.add('active');
 };
 
-// ==========================================
-// ⚖️ 版權與授權條款 Modal 引擎
-// ==========================================
-window.cachedLicenseText = null;
-window.showLicenseModal = async function() {
-    // 🔥 全域中斷防護：開啟新畫面時，立刻中斷並清理前一個還在跑的請求
-    if (window._activeFetcher) {
-        window._activeFetcher.abort();
-        window._activeFetcher = null;
-    }
-    window.toggleLoading(false);
-
-    let mdText = "載入失敗"; let isError = false;
-
-    if (window.cachedLicenseText !== null) {
-        mdText = window.cachedLicenseText;
-    } else {
-        const fetchResult = await window.safeFetchWithGuard(`./COPYRIGHT.md?v=${window.getResVersion('COPYRIGHT.md')}`, { isJson: false });
-        if (fetchResult.aborted) return; // 被中斷就安靜退出
-        
-        if (fetchResult.success) {
-            mdText = fetchResult.data;
-            window.cachedLicenseText = mdText;
-        } else {
-            console.error("版權檔案載入失敗:", fetchResult.error);
-            isError = true;
-        }
-    }
-
-    if (window._activeFetcher !== null) return; // 幽靈渲染防護
-
-    // 2. 資料備妥後，呼叫系統共用的動畫切換引擎
-    switchModalContent(
-        () => {
-            const modalOverlay = document.getElementById('md-modal'); // ✨ 修正：正確抓取 md-modal
-            const viewIndex = document.getElementById('view-index');
-            const viewArticle = document.getElementById('view-article');
-            if (viewIndex) viewIndex.style.display = 'none';
-            if (viewArticle) viewArticle.style.display = 'block';
-            const modalBody = viewArticle || document.getElementById('modal-body');
-            const modalTopLeft = document.getElementById('modal-top-left');
-            const tocMountPoint = document.getElementById('toc-mount-point');
-
-            // 清空右上角目錄按鈕
-            if (tocMountPoint) tocMountPoint.innerHTML = '';
-
-            // 設定左上角精緻的標題 Header
-            if (modalTopLeft) {
-                modalTopLeft.innerHTML = `
-                    <div class="index-header-container">
-                        <h1 class="index-header-title">License & Copyright</h1>
-                        <div class="index-header-actions">
-                            <span class="article-count-badge">important</span>
-                        </div>
-                    </div>
-                `;
-            }
-
-            // 處理內容渲染
-            if (isError) {
-                modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版權聲明檔案。');
-            } else {
-                modalBody.innerHTML = `
-                    <div class="markdown-body" style="margin-top: -0.5rem; padding-bottom: 2rem;">
-                        ${marked.parse(mdText)}
-                    </div>
-                `;
-            }
-
-            // ✨ 自動注入多語系切換按鈕 (更新為支援三語的簡潔寫法)
-            const switcher = modalBody.querySelector('#bilingual-switcher');
-            if (switcher) {
-                switcher.innerHTML = `
-                    <div class="lang-tabs">
-                        <button class="lang-btn active" onclick="window.switchBilingualTab('zh', this)">中文版</button>
-                        <button class="lang-btn" onclick="window.switchBilingualTab('en', this)">English</button>
-                        <button class="lang-btn" onclick="window.switchBilingualTab('ja', this)">日本語</button>
-                    </div>
-                `;
-            }
-
-            // ✨ 核心修復：閱讀進度條改為監聽真正的捲動容器 modalContainer
-            const modalContainer = document.querySelector('.modal-content');
-            const topBar = document.querySelector('.modal-top-bar');
-            if (modalContainer && topBar) {
-                window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
-            }
-
-            // 開啟 Modal 並鎖定背景捲軸
-            modalOverlay.classList.add('active');
-            window.lockScroll();
-        },
-        () => {
-            // ✨ 動畫結束後，確保將外層真正的捲動容器歸零
-            const modalContainer = document.querySelector('.modal-content');
-            if (modalContainer) modalContainer.scrollTo({ top: 0, behavior: 'auto' });
-        }
-    );
-};
 
 // ==========================================
 // ✨ 文章內部錨點平滑跳轉引擎 (強化模糊比對與防呆)
