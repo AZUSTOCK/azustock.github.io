@@ -651,13 +651,40 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive']:
                 val = proj_data.get(key) or proj_data.get(key.upper())
                 if val is not None: clean_proj_data[f'is_{key}' if key != 'pinned' else 'pinned'] = val
-            if proj_data.get('groups'): clean_proj_data['groups'] = proj_data.get('groups')
+            # 假設這是在解析專案 detail.json 與 groups 的地方
+            if proj_data.get('groups'):
+                processed_groups = {}
+                for g_id, g_info in proj_data['groups'].items():
+                    group_obj = dict(g_info) # 複製一份原本的設定（如 title, color 等）
+                    
+                    # 檢查該 group 是否有設定 cover 圖片
+                    g_cover = g_info.get('cover')
+                    if g_cover:
+                        g_cover_local_path = os.path.normpath(os.path.join(proj_path, g_cover))
+                        if os.path.exists(g_cover_local_path):
+                            # 在 api 目錄下建立該專案的 thumbnails 資料夾
+                            thumb_dir = os.path.join(API_DIR, proj_id, "thumbnails")
+                            os.makedirs(thumb_dir, exist_ok=True)
+                            
+                            safe_name = g_cover.replace('/', '_').replace('\\', '_')
+                            thumb_filename = f"group_thumb_{os.path.splitext(safe_name)[0]}.webp"
+                            thumb_local_path = os.path.join(thumb_dir, thumb_filename)
+                            
+                            # 利用現有的縮圖生成工具壓縮並轉為 WebP
+                            generate_cover_thumbnail(g_cover_local_path, thumb_local_path, max_width=200, quality=85)
+                            valid_api_files.add(os.path.abspath(thumb_local_path))
+                            
+                            # 賦予帶有 Hash 的安全網址給前端
+                            group_obj['cover_image'] = get_hash_url(thumb_local_path, f"./api/{proj_id}/thumbnails/{thumb_filename}")
+                    
+                    processed_groups[g_id] = group_obj
+                clean_proj_data['groups'] = processed_groups
             
             proj_cover = proj_data.get('cover')
             if proj_cover:
                 clean_proj_data['cover_image'] = f"{proj_path.replace(os.sep, '/')}/{proj_cover}"
                 
-            proj_data = clean_proj_data 
+            proj_data = clean_proj_data
             articles = []
 
             proj_id = clean_proj_title
@@ -1024,6 +1051,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             art_desc = meta_desc if meta_desc else proj_desc
                             og_local_path = os.path.join(art_dir, "og.webp")
                             
+                            # ✨ 【新增】抓取文章群組的預設封面 (若有的話)
+                            art_group = sub_data.get('group')
+                            group_cover_url = None
+                            if 'groups' in proj_data and art_group and art_group in proj_data['groups']:
+                                # 讀取 detail.json 中 group 的 cover 屬性
+                                g_cover = proj_data['groups'][art_group].get('cover') 
+                                if g_cover:
+                                    group_cover_url = f"{BASE_URL}/{proj_path.replace(os.sep, '/')}/{g_cover}"
+                            
                             if meta_cover:
                                 stats["og_total"] += 1
                                 local_cover_path = os.path.join(item_path, meta_cover)
@@ -1070,7 +1106,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     
                                 valid_api_files.add(os.path.abspath(art_thumb_local_path))
                             else:
-                                art_img = proj_img
+                                # ✨ 【修改】執行 SEO OG 分享圖繼承：群組封面 -> 專案封面 
+                                # (註：若專案也無封面，proj_img 原本就已經會自動退回全站預設的 assets/og.png，防護網十分堅固！)
+                                art_img = group_cover_url if group_cover_url else proj_img
                                 
                             art_target_url = f"/?p={proj_id}&a={art_id}"
                             art_share_url = f"{BASE_URL}/api/{proj_id}/{art_id}/index.html"

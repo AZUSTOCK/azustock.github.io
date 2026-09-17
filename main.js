@@ -2963,23 +2963,23 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (prefersLight) initialTheme = 'light';
 
     function applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-theme', theme);
 
-        if (window.mermaid) {
-            window.mermaid.initialize({
+    if (window.mermaid) {
+        window.mermaid.initialize({
             startOnLoad: false,
-            theme: currentTheme === 'dark' ? 'dark' : 'default', 
+            // ✨ 核心修復：將 currentTheme 改為傳進來的 theme
+            theme: theme === 'dark' ? 'dark' : 'default', 
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
             securityLevel: 'loose',
             useMaxWidth: false,
-            // ✨ 務必把這段補進去這兩個地方！
             flowchart: { 
                 padding: 15,
                 htmlLabels: false 
             }
         });
-            
-            const mermaidEls = document.querySelectorAll('.mermaid');
+        
+        const mermaidEls = document.querySelectorAll('.mermaid');
             if (mermaidEls.length > 0) {
                 mermaidEls.forEach(el => {
                     // 取出含有 var() 的備份原文
@@ -3986,27 +3986,46 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                         let groupColor = groupData.color;
                         let themeClass = '';
-                        let customStyle = '';
-
-                        // ✨ The Logic: Use classes for highlight groups, inline styles ONLY for custom hex colors
+                        let customStyle = ''; // ✨ 1. 補回這行宣告！
+                        
                         if (groupData.highlight) {
                             const groupNum = (colorIndex % 5) + 1;
                             themeClass = ` group-color-${groupNum}`;
                             colorIndex++; 
                         } else if (groupColor) {
-                            // If they provided a specific hardcoded hex color
-                            customStyle = ` style="--current-group-color: ${groupColor};"`;
+                            // ✨ 2. 補回這行，讓群組底下的文章也能吃到專屬顏色！
+                            customStyle = ` style="--current-group-color: ${groupColor};"`; 
                         }
 
                         const topMargin = isFirstGroup ? '0rem' : '1.8rem';
 
+                        // ✨ 3. 處理 Group Header 專屬的合併 Style
+                        let inlineStyles = ``;
+                        if (groupColor && !groupData.highlight) {
+                            inlineStyles += ` --current-group-color: ${groupColor};`;
+                        }
+
                         // ✨ 加上專屬 ID 供漢堡選單跳轉定位
                         const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
                         
+                        // ✨ 判斷該群組是否有縮圖
+                        let groupCoverHtml = '';
+                        if (groupData.cover_image) {
+                            // ✨ 新增外層包裝盒 .group-header-cover-wrapper
+                            groupCoverHtml = `
+                            <div class="group-header-cover-wrapper">
+                                <img src="${groupData.cover_image}" alt="Group Cover" class="group-header-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">
+                            </div>`;
+                        }
+
+                        // ✨ 4. 渲染 HTML，套用 themeClass 與 inlineStyles
                         html += `
-                            <div id="${safeGroupId}" class="group-header" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
-                                <div class="group-header-title${themeClass}"${customStyle}>${groupData.title || groupId}</div>
-                                ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
+                            <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
+                                <div class="group-header-text">
+                                    <div class="group-header-title">${groupData.title || groupId}</div>
+                                    ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
+                                </div>
+                                ${groupCoverHtml}
                             </div>
                             <ul class="article-list-ul">
                         `;

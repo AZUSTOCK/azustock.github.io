@@ -1,27 +1,35 @@
 ## refactor
-1. main section animation
-2. Jump Toast
+1. Move tooltip text-overflow logic to CSS
+2. Consolidate expiration checks into unified `evaluateExpiration` function
+3. Extract URL routing logic into a shared `window.updateRouteState` helper
+4. Extract zoom button generation into a reusable `createZoomBtn` helper
 
 ## add
-1. Jump Toast simulateHoverFlash
+1. Group Badge in Modal Top Bar
+2. Show article titles in next/prev capsule-btn tooltips
+3. Centralize TAG_EXPIRE_DAYS configuration in main.js
+4. Implement Group Cover image inheritance and rendering logic
+5. group thumbnail
 
 ## change / update
-1. `reading-progress-bar` back to `.modal-content`
-2. PDF, mermaid section behavior
+1. Code section UI
+2. Horizontal scroll support for long code-lang-label
+3. Update .md-details CSS styling
+4. Responsive UI for narrow screens in main.js & style.css
+5. Upgrade Group Header UI layout (Inline Float Right style)
 
 ## adjust
-1. padding-top in `#view-index` `#view-article`
-2. narrow & extract `main.js`
+1. code-lang-label width and padding
 
 ## fix
-1. Jump Toast Memory Leak & in-article error
-2. License & Credits open error
-3. SPA scroll error
-4. closeModal memory leak
+1. Mermaid UI
+2. Scroll position restoration issues
+3. Case-sensitivity issue for ![icon]
+4. Restore missing `parseAndFilterTags` function causing FETCHING DATA ERROR
+5. Fix duplicate `<ul>` tag rendering issue for ungrouped articles
+6. Fix `articleId=0` falsy evaluation in routing function
+7. applyTheme
 
 ## remove
-1. @keyframes target-section-glow-expand
-2. Jump Toast locate algorithm
-
-## notice
-1. Scroll Authority back to `.modal-content`
+1. Native title attribute from code-lang-label
+2. Redundant CSS declarations for Group Header

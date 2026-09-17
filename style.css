@@ -93,20 +93,80 @@
 .group-color-4 { --current-group-color: var(--group-c4); --c-text: var(--c4-text); }
 .group-color-5 { --current-group-color: var(--group-c5); --c-text: var(--c5-text); }
 
-/* Apply to Group Header Titles */
-.group-header-title[class*="group-color-"] { 
-    color: var(--current-group-color); 
-    border-bottom-color: var(--current-group-color); 
+/* ==========================================
+   ✨ 系列群組標題 (高度隨內部自適應修復版)
+   ========================================== */
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* ✨ 1. 垂直置中，不強制拉伸 */
+    border-bottom: none; 
+    padding-bottom: 0;
+    transition: color 0.5s ease;
+    height: auto !important; /* ✨ 2. 強制高度隨內部元素自適應 */
 }
 
-/* Base style for group header titles */
+.group-header-text {
+    flex: 1;
+    min-width: 0; 
+    display: block; /* ✨ 3. 拔除 Flex，回歸純區塊，高度完全由內部文字決定 */
+    margin: 0;
+    padding-bottom: 0.3rem;
+    margin-top: 0.4rem;
+}
+
 .group-header-title { 
-    font-size: 0.75rem; 
+    font-size: 0.8rem; 
     letter-spacing: 0.15em; 
-    border-bottom: 1px solid var(--divider-line); /* Default border */
-    color: var(--accent); /* Default color */
-    padding-bottom: 0.3rem; 
-    transition: color 0.5s ease, border-bottom-color 0.5s ease;
+    font-weight: 700;
+    color: var(--current-group-color, var(--accent)); 
+    border-bottom: 1px solid var(--current-group-color, var(--accent)); /* ✨ 確保底線同步備用色 */
+    padding-bottom: 0.4rem; 
+    margin: 0; /* ✨ 歸零外距防撐破 */
+    line-height: 1.4; /* ✨ 鎖定行高，防止繼承到過大的文字間距 */
+    transition: color 0.5s ease, border-bottom-color 0.5s ease; 
+}
+
+.group-header-desc { 
+    font-size: 0.85rem; 
+    color: var(--muted); 
+    margin: 0.4rem 0 0 0; /* ✨ 鎖定精準間距 */
+    line-height: 1.4; 
+}
+
+/* ✨ 外層直角方框：負責群組專屬高光色與透明間隙 */
+.group-header-cover-wrapper {
+    display: inline-block;
+    flex-shrink: 0;
+    align-self: center;
+    margin: 0 !important;
+    
+    /* 這裡的 padding 就是內外框之間的「透明間隙」 */
+    padding: 2px; 
+    
+    /* 直角的外層群組主題色 */
+    border: 2px solid var(--current-group-color, var(--accent)); 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+/* ✨ 內層圖片本體：負責 8px 圓角與透明灰細框 */
+.group-header-cover {
+    width: 44px !important; 
+    height: 44px !important; 
+    min-width: 44px !important; 
+    min-height: 44px !important; 
+    max-width: 44px !important; 
+    max-height: 44px !important; 
+    aspect-ratio: 1/1 !important;
+    object-fit: cover;
+    
+    /* 完全同步 .article-item-cover 的樣式 */
+    border-radius: 8px !important; 
+    border: 1px solid var(--card-border) !important; 
+    
+    display: block;
+    margin: 0 !important; 
+    box-shadow: none !important; /* 陰影已經交給外層了 */
 }
 
 /* Fallback Icon Color */
