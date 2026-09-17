@@ -4361,8 +4361,44 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
+            // ✨ 新增：動態生成群組標籤 (Group Badge) 邏輯
+            let groupHtml = '';
+            if (article.group && proj.groups && proj.groups[article.group]) {
+                const groupData = proj.groups[article.group];
+                let themeClass = '';
+                let customStyle = '';
 
-            topLeft.innerHTML = `<div class="unified-nav-capsule"><button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}</div>`;
+                // 為了確保顏色與目錄頁完全一致，重跑一次目錄的顏色推導邏輯
+                if (groupData.highlight) {
+                    let colorIndex = 0;
+                    for (const [gId, gData] of Object.entries(proj.groups)) {
+                        const groupArticles = flatSequence.filter(item => item.art.group === gId);
+                        if (groupArticles.length === 0) continue; // 略過無文章或隱藏的群組
+                        
+                        if (gId === article.group) {
+                            const groupNum = (colorIndex % 5) + 1;
+                            themeClass = ` group-color-${groupNum}`;
+                            break;
+                        }
+                        if (gData.highlight) colorIndex++;
+                    }
+                } else if (groupData.color) {
+                    customStyle = ` style="color: ${groupData.color};"`;
+                }
+
+                const groupTitle = groupData.title || article.group;
+                groupHtml = `<div class="article-group-label${themeClass}"${customStyle}>${groupTitle}</div>`;
+            }
+
+            // ✨ 修改：將標籤與膠囊用 top-nav-stack 垂直疊加
+            topLeft.innerHTML = `
+                <div class="top-nav-stack">
+                    ${groupHtml}
+                    <div class="unified-nav-capsule">
+                        <button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}
+                    </div>
+                </div>
+            `;
 
             const tocMount = document.getElementById('toc-mount-point');
             let tocWrapper = tocMount.querySelector('.toc-wrapper'); // 尋找既有的選單

@@ -1250,6 +1250,34 @@ span.article-item-date {
 .nav-card:hover { background: var(--tag-bg); border-color: var(--accent-2); transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
 .nav-card:hover .nav-label, .nav-card:hover .nav-title { color: var(--accent-2); }
 
+/* ==========================================
+   ✨ 文章頂部左側：群組標籤與導覽膠囊垂直堆疊
+   ========================================== */
+.top-nav-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px; /* 控制小字與膠囊之間的距離 */
+    justify-content: center;
+}
+
+.article-group-label {
+    font-family: 'Courier New', monospace; /* 使用 monospace 更有系統感 */
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--muted); /* 預設文字顏色 */
+    text-transform: uppercase;
+    line-height: 1;
+    padding-left: 0.8rem; /* 稍微往右推，視覺上對齊下方膠囊內的文字 */
+}
+
+/* 如果有分配到高光群組色，直接套用並帶點微弱的光暈 */
+.article-group-label[class*="group-color-"] {
+    color: var(--current-group-color);
+    text-shadow: 0 0 8px color-mix(in srgb, var(--current-group-color) 30%, transparent);
+}
+
 .unified-nav-capsule { display: inline-flex; align-items: center; height: 36px; border: 1px solid var(--accent); border-radius: 999px; background: transparent; box-sizing: border-box; transition: all 0.3s var(--ease-smooth); }
 .capsule-btn { 
     display: inline-flex; align-items: center; justify-content: center; height: 100%; 
