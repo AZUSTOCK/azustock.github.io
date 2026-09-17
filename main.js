@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.11",          // 目前系統版本號
+    VERSION: "U1.5.11.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -423,6 +423,23 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     } else {
         window.openProjectIndex(project.id); 
     }
+};
+
+// ✅ 1. 新增此共用函式到全域區 (Global Helpers)
+window.updateRouteState = function(projectId, articleId = null, targetHash = null) {
+    const cleanPath = window.getCleanBasePath();
+    
+    // ✨ 修改：加入 !== null 的嚴格判斷，防止 articleId 為 0 時失效
+    const spaUrl = articleId !== null 
+        ? `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleId}${targetHash || ''}`
+        : `${window.location.origin}${cleanPath}?p=${projectId}`;
+        
+    const shareUrl = articleId !== null
+        ? `${window.location.origin}${cleanPath}api/${projectId}/${articleId}/index.html`
+        : `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
+
+    window.history.replaceState({ path: spaUrl }, '', spaUrl);
+    return shareUrl; 
 };
 
 window.getArticleSequence = function(projectId) {
@@ -3174,44 +3191,26 @@ async function loadProjects() {
         // ✨ 建立狀態時間驗證引擎
         const nowMs = new Date().getTime();
         const expireMs = CONFIG.TAG_EXPIRE_DAYS * 24 * 60 * 60 * 1000;
-        
-        // 1. 處理「一般狀態」的過期 (例如 NEW, UPDATED 超過期限就消失)
-        const evaluateStatus = (val) => {
+        // 1. 共用過期驗證函式 (您目前已經有的)
+        const evaluateExpiration = (val, type = 'status') => {
             if (val === true || String(val).toLowerCase() === 'true') return true; 
             if (typeof val === 'string') {
-                const cleanVal = val.trim(); // ✨ 容錯：自動消除前後空白
-                // ✨ 容錯：支援單數月份與日期 (\d{1,2})
+                const cleanVal = val.trim(); 
                 if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(cleanVal)) {
-                    const tagDate = new Date(cleanVal.replace(/-/g, '/')).getTime();
-                    return !isNaN(tagDate) && (nowMs - tagDate <= expireMs);
+                    const targetDate = new Date(cleanVal.replace(/-/g, '/')).getTime();
+                    if (isNaN(targetDate)) return !!val;
+                    return type === 'hidden' ? nowMs < targetDate : (nowMs - targetDate) <= expireMs;
                 }
             }
             return !!val; 
         };
 
-        // ✨ 1.5 處理「機密隱藏」的解封 (例如 HIDDEN，時間還沒到就隱藏，時間到了就公開)
-        const evaluateHidden = (val) => {
-            if (val === true || String(val).toLowerCase() === 'true') return true; 
-            if (typeof val === 'string') {
-                const cleanVal = val.trim(); // ✨ 容錯：自動消除前後空白
-                if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(cleanVal)) {
-                    const unsealDate = new Date(cleanVal.replace(/-/g, '/')).getTime();
-                    // 只要現在時間「小於」解封日，就保持隱藏 (true)
-                    // 到了解封日當天或之後，就變成公開 (false)
-                    return !isNaN(unsealDate) && (nowMs < unsealDate);
-                }
-            }
-            return !!val; 
-        };
-
-        // 2. 處理「標籤陣列」的過期 (例如 "tags": ["NEW: 2026-09-08"])
+        // ✨ 請將這整段補回來：處理「標籤陣列」的過期過濾器
         const parseAndFilterTags = (tags) => {
             if (!tags || !Array.isArray(tags)) return [];
             let validTags = [];
             tags.forEach(tag => {
-                const strTag = String(tag).trim(); // ✨ 容錯：強制轉字串並消除空白
-                
-                // ✨ 容錯升級：允許冒號後方有空格 (\s*)，並支援單數月份與日期 (\d{1,2})
+                const strTag = String(tag).trim(); 
                 const match = strTag.match(/^(NEW|UPDATED|LATEST|FEATURE):\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})$/i);
                 
                 if (match) {
@@ -3227,13 +3226,14 @@ async function loadProjects() {
             return validTags;
         };
 
-       // 智慧狀態推導與全域標籤冒泡
-        const flatStatusList = window.STATUS_LIST.flat(); 
+        const flatStatusList = window.STATUS_LIST.flat();
+
+        // 往下是您原本的 projects.forEach 區塊 (維持不變)
         projects.forEach(p => {
             ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
-                if (p[k] !== undefined) p[k] = evaluateStatus(p[k]);
+                if (p[k] !== undefined) p[k] = evaluateExpiration(p[k], 'status');
             });
-            if (p.is_hidden !== undefined) p.is_hidden = evaluateHidden(p.is_hidden);
+            if (p.is_hidden !== undefined) p.is_hidden = evaluateExpiration(p.is_hidden, 'hidden');
             p.tags = parseAndFilterTags(p.tags);
 
             let isAllUpdated = p.is_updated;
@@ -3242,9 +3242,11 @@ async function loadProjects() {
             if (p.articles && p.articles.length > 0) {
                 p.articles.forEach(art => {
                     ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
-                        if (art[k] !== undefined) art[k] = evaluateStatus(art[k]);
+                        // ✨ 換成新的 evaluateExpiration
+                        if (art[k] !== undefined) art[k] = evaluateExpiration(art[k], 'status');
                     });
-                    if (art.is_hidden !== undefined) art.is_hidden = evaluateHidden(art.is_hidden);
+                    // ✨ 換成新的 evaluateExpiration
+                    if (art.is_hidden !== undefined) art.is_hidden = evaluateExpiration(art.is_hidden, 'hidden');
                     art.tags = parseAndFilterTags(art.tags);
                 });
 
@@ -3886,10 +3888,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const isUnlocked = document.body.classList.contains('system-override-active');
             const visibleCount = proj.articles.filter(a => isUnlocked || !a.is_hidden).length;
 
-            const cleanPath = window.getCleanBasePath();
-            const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}`;
-            window.history.replaceState({ path: spaUrl }, '', spaUrl);
-            const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/index.html`;
+            const shareUrl = window.updateRouteState(projectId);
 
             // 2. 將目錄標題與功能按鈕直接注入 modal-top-left (完全還原原始樣式)
             document.getElementById('modal-top-left').innerHTML = `
@@ -4024,7 +4023,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         const topMargin = isFirstGroup ? '0rem' : '1.5rem';
                         // ✨ 未分群區塊也加上 ID
                         html += `<ul id="group-ungrouped" class="article-list-ul" style="margin-top:${topMargin};">`;
-                        html += `<ul class="article-list-ul" style="margin-top:${topMargin};">`;
                         
                         ungrouped.forEach(({art, idx}) => { 
                             html += generateLi(art, idx, false);
@@ -4346,12 +4344,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     rightGroup.appendChild(tagContainer);
                 }
 
-                // ✨ 替換這三行，把 targetHash 加回去
-                const cleanPath = window.getCleanBasePath();
+                // ✅ 【替換為這 2 行】：
                 const articleSlug = article.id || articleIndex;
-                const spaUrl = `${window.location.origin}${cleanPath}?p=${projectId}&a=${articleSlug}${targetHash || ''}`;
-                window.history.replaceState({ path: spaUrl }, '', spaUrl);
-                const shareUrl = `${window.location.origin}${cleanPath}api/${projectId}/${articleSlug}/index.html`;
+                const shareUrl = window.updateRouteState(projectId, articleSlug, targetHash);
 
                 // ✨ 替換這兩行，將文章內的複製按鈕升級為無氣泡的響應式
                 const shareBtn = document.createElement('button');
@@ -4507,67 +4502,43 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 hintLeft.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', -1));
             });
 
+            // ✅ 【將原本的 figure 迴圈內部重構為】：
             activeView.querySelectorAll('figure').forEach(figure => {
                 const figcaption = figure.querySelector('figcaption');
                 const img = figure.querySelector('img');
-                
-                // ✨ 偵測這張圖片是否在畫廊裡面
                 const isGallery = figure.closest('.gallery') !== null;
                 
+                // 共用按鈕生成器
+                const createZoomBtn = (isFloating) => {
+                    const btn = document.createElement('button');
+                    btn.className = isFloating ? 'zoom-btn floating' : 'zoom-btn';
+                    if (isFloating) btn.setAttribute('data-tooltip', '放大檢視');
+                    btn.innerHTML = GLOBAL_SVGS.zoomIcon;
+                    btn.onclick = (e) => { e.stopPropagation(); window.openLightbox(btn, e); };
+                    return btn;
+                };
+
                 if (isGallery) {
-                    // ==========================================
-                    // 📁 畫廊內的圖片 (維持原樣，點擊切換標題)
-                    // ==========================================
                     if (figcaption) {
                         figure.style.cursor = 'pointer'; 
                         figure.addEventListener('click', () => figure.classList.toggle('hide-caption'));
-                        
                         if (img && !figcaption.querySelector('.zoom-btn')) {
-                            const zoomBtn = document.createElement('button');
-                            zoomBtn.className = 'zoom-btn';
-                            zoomBtn.innerHTML = GLOBAL_SVGS.zoomIcon;
-                            zoomBtn.onclick = (event) => {
-                                event.stopPropagation();
-                                window.openLightbox(zoomBtn, event);
-                            };
-                            figcaption.appendChild(zoomBtn);
+                            figcaption.appendChild(createZoomBtn(false));
                         }
                     }
                 } else {
-                    // ==========================================
-                    // 🖼️ 畫廊外的獨立圖片 (支援圖片點擊與 CSS 連動)
-                    // ==========================================
                     figure.classList.add('standalone-figure'); 
-                    
                     if (img) {
                         img.style.cursor = 'pointer';
-                        
-                        // 讓點擊圖片本體直接觸發大圖預覽
-                        img.addEventListener('click', (event) => {
-                            event.stopPropagation();
-                            window.openLightbox(img, event);
-                        });
+                        img.addEventListener('click', (e) => { e.stopPropagation(); window.openLightbox(img, e); });
 
-                        // ✨ 自動補全機制：拯救手寫 HTML 缺失的放大鏡按鈕
-                        const existingBtn = figure.querySelector('.zoom-btn');
-                        if (!existingBtn) {
-                            const zoomBtn = document.createElement('button');
-                            zoomBtn.setAttribute('data-tooltip', '放大檢視');
-                            zoomBtn.innerHTML = GLOBAL_SVGS.zoomIcon;
-                            
-                            zoomBtn.onclick = (event) => {
-                                event.stopPropagation();
-                                window.openLightbox(zoomBtn, event);
-                            };
-
+                        if (!figure.querySelector('.zoom-btn')) {
+                            const isFloating = !figcaption;
+                            const zoomBtn = createZoomBtn(isFloating);
                             if (figcaption) {
-                                // 情況 A：有圖說的 HTML，把放大鏡塞進 figcaption 裡
-                                zoomBtn.className = 'zoom-btn';
                                 figcaption.appendChild(zoomBtn);
                             } else {
-                                // 情況 B：無圖說的 HTML，把放大鏡設定為懸浮樣式，並確保 figure 有對應的 class
                                 figure.classList.add('no-caption');
-                                zoomBtn.className = 'zoom-btn floating';
                                 figure.appendChild(zoomBtn);
                             }
                         }
