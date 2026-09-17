@@ -226,10 +226,10 @@ def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwr
 # ==========================================
 # ⏰ 時間戳過期偵測引擎 (Expiration Checker)
 # ==========================================
-def check_expiration_reminders(item_title, item_type, data_dict, detail_path):
+def check_expiration_reminders(item_title, item_type, data_dict, detail_path, days= 14):
     """檢查 JSON 內的日期標籤或屬性是否過期，並印出黃色警告提醒"""
     now = datetime.now()
-    expire_delta = timedelta(days=14) # 與前端 JS 的 TAG_EXPIRE_DAYS 保持一致
+    expire_delta = timedelta(days=days) # 與前端 JS 的 TAG_EXPIRE_DAYS 保持一致
     
     # 1. 檢查 Tags (例如 "NEW:2026-08-01")
     tags = data_dict.get('tags') or data_dict.get('TAGS')
@@ -240,7 +240,7 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path):
                 try:
                     dt = datetime.strptime(match.group(2).replace('-', '/'), "%Y/%m/%d")
                     if now - dt > expire_delta:
-                        expiration_l.append(f"\033[93m  ⏰ [標籤過期] {item_type} '{item_title}' 的 '{t}' 已過 14 天，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
+                        expiration_l.append(f"\033[93m  ⏰ [標籤過期] {item_type} '{item_title}' 的 '{t}' 已過 {days} 天，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
                 except Exception:
                     pass
     
@@ -255,7 +255,7 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path):
                         expiration_l.append(f"\033[92m  🔓 [解封提醒] {item_type} '{item_title}' 的隱藏期限 '{val}' 已到期(現已公開)，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
                 else:
                     if now - dt > expire_delta:
-                        expiration_l.append(f"\033[93m  ⏰ [狀態過期] {item_type} '{item_title}' 的 '{key}: {val}' 已過 14 天，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
+                        expiration_l.append(f"\033[93m  ⏰ [狀態過期] {item_type} '{item_title}' 的 '{key}: {val}' 已過 {days} 天，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
             except Exception:
                 pass
 

@@ -2479,6 +2479,9 @@ renderer.image = function(token_or_href, title, text) {
     const altText = typeof token_or_href === 'object' ? token_or_href.text : text;
     const imgTitle = typeof token_or_href === 'object' ? token_or_href.title : title; 
     
+    // ✨ 加上這行：將 alt 轉為小寫並去除空白，防止大小寫判定失敗
+    const cleanAlt = (altText || '').trim().toLowerCase();
+
     if (!href) return '';
 
     let decodedHref = href.replace(/%23/g, '#');
@@ -2528,11 +2531,11 @@ renderer.image = function(token_or_href, title, text) {
     const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
     if (imgTitle) {
-        let figureClass = (altText === 'float-right' || altText === 'float-left') ? ` class="${altText}"` : '';
+        let figureClass = (cleanAlt === 'float-right' || cleanAlt === 'float-left') ? ` class="${cleanAlt}"` : '';
         return `<figure${figureClass}>${imgTag}<figcaption>${imgTitle}${zoomBtnHtml}</figcaption></figure>`;
     } else {
-        if (altText === 'icon' || altText === 'badge') return imgTag;
-        let figureClass = 'no-caption' + ((altText === 'float-right' || altText === 'float-left') ? ` ${altText}` : '');
+        if (cleanAlt === 'icon' || cleanAlt === 'badge') return imgTag;
+        let figureClass = 'no-caption' + ((cleanAlt === 'float-right' || cleanAlt === 'float-left') ? ` ${cleanAlt}` : '');
         return `<figure class="${figureClass}">${imgTag}${floatingZoomBtnHtml}</figure>`;
     }
 };
@@ -4154,14 +4157,14 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         }
 
         if (window.historyStack.length > 0) {
-            // ✨ 使用更穩定的動態容器判定
             const activeContainer = window.getActiveScrollContainer();
             if (activeContainer) {
                 window.historyStack[window.historyStack.length - 1].scrollTop = activeContainer.scrollTop;
                 
-                // 只有在文章容器內才需要記錄直書捲軸
-                if (activeContainer.id === 'view-article') {
-                    const wrappers = document.querySelectorAll('#view-article .vertical-wrapper');
+                // ✨ 修正：改由判斷 view-article 是否存在且顯示中，來記錄內部的直書捲軸
+                const viewArticle = document.getElementById('view-article');
+                if (viewArticle && viewArticle.style.display !== 'none') {
+                    const wrappers = viewArticle.querySelectorAll('.vertical-wrapper');
                     window.historyStack[window.historyStack.length - 1].innerScrolls = Array.from(wrappers).map(w => ({
                         scrollTop: w.scrollTop,
                         scrollLeft: w.scrollLeft
@@ -4543,15 +4546,29 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 modalContainer.scrollTo({ top: restoreScrollTop, behavior: 'auto' }); 
                 
                 if (restoreInnerScrolls && restoreInnerScrolls.length > 0) {
-                    const wrappers = document.querySelectorAll('#view-article .vertical-wrapper');
-                    wrappers.forEach((w, i) => {
-                        if (restoreInnerScrolls[i]) {
-                            w.scrollTo({ top: restoreInnerScrolls[i].scrollTop, left: restoreInnerScrolls[i].scrollLeft, behavior: 'auto' });
-                        }
-                    });
+                    // ✨ 加上微幅延遲，等待直書排版與 DOM 結構完全穩定後再還原位置
+                    setTimeout(() => {
+                        const wrappers = document.querySelectorAll('#view-article .vertical-wrapper');
+                        wrappers.forEach((w, i) => {
+                            if (restoreInnerScrolls[i]) {
+                                w.scrollTo({ 
+                                    top: restoreInnerScrolls[i].scrollTop, 
+                                    left: restoreInnerScrolls[i].scrollLeft, 
+                                    behavior: 'auto' 
+                                });
+                            }
+                        });
+                    }, 60);
                 }
             } else {
+                // ✨ 開啟新文章：主容器與直書容器全部強制歸零
                 modalContainer.scrollTo({ top: 0, behavior: 'auto' });
+                
+                // 加上微幅延遲，確保新生成的 DOM 佈局完成後徹底拔除瀏覽器的自動記憶
+                setTimeout(() => {
+                    const wrappers = document.querySelectorAll('#view-article .vertical-wrapper');
+                    wrappers.forEach(w => w.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+                }, 10);
             }
         },
         animateTopBar

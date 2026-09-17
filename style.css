@@ -1992,8 +1992,32 @@ span.article-item-date {
 .markdown-body img[alt="float-left"], .markdown-body figure.float-left { float: left; width: 40%; max-width: 280px; margin: 0.5rem 1.5rem 1.5rem 0; position: relative; z-index: 10; }
 .markdown-body img[alt="float-right"].is-loading, .markdown-body img[alt="float-right"].is-broken, .markdown-body img[alt="float-left"].is-loading, .markdown-body img[alt="float-left"].is-broken { min-height: 150px; max-height: 300px; aspect-ratio: 1 / 1; }
 .markdown-body img[alt="full"] { width: 100%; max-width: none; border-radius: 0; }
-.markdown-body img[alt="icon"] { display: inline-block; width: 48px; height: 48px; margin: 0 0.5rem; vertical-align: middle; box-shadow: none; border-radius: 0; }
-.markdown-body img[alt="icon"].is-loading, .markdown-body img[alt="icon"].is-broken { min-height: 48px; aspect-ratio: 1 / 1; }
+/* ✨ 保護小圖示與 Badge，確保在載入中也不會被放大為 100% */
+.markdown-body img[alt="icon" i] { 
+    display: inline-block !important; 
+    width: 48px !important; 
+    height: 48px !important; 
+    min-height: unset !important; /* 蓋掉 is-loading 的 200px */
+    margin: 0 0.5rem; 
+    vertical-align: middle; 
+    box-shadow: none; 
+    border-radius: 0; 
+}
+.markdown-body img[alt="icon" i].is-loading, 
+.markdown-body img[alt="icon" i].is-broken { 
+    aspect-ratio: 1 / 1; 
+}
+
+.markdown-body img[alt="badge" i] { 
+    display: inline-block !important; 
+    width: auto !important; 
+    height: auto !important; 
+    min-height: unset !important; 
+    margin: 0 0.2rem; 
+    vertical-align: -3px; 
+    box-shadow: none; 
+    border-radius: 4px; 
+}
 .markdown-body figure img { margin: 0 !important; width: 100% !important; }
 .markdown-body figure figcaption { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 0.6rem; line-height: 1.4; }
 .markdown-body .md-video { 
