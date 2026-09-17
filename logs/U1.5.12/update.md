@@ -10,6 +10,7 @@
 3. Centralize TAG_EXPIRE_DAYS configuration in main.js
 4. Implement Group Cover image inheritance and rendering logic
 5. group thumbnail
+6. force update folder logic in generate_projects.py
 
 ## change / update
 1. Code section UI

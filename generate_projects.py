@@ -538,7 +538,8 @@ def generate_changelogs_json():
 # ==========================================
 # 🚀 主生成器邏輯
 # ==========================================
-def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_thumb=False, overwrite_pdf_thumb=False):
+def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_thumb=False, overwrite_pdf_thumb=False, target_folders=None):
+    if target_folders is None: target_folders = set()
     base_dir = 'projects'
     output_data = {"categories": [], "projects": []}
     BASE_URL = "https://azustock.github.io"
@@ -623,7 +624,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             proj_detail_path = os.path.join(proj_path, 'detail.json')
             proj_data = load_detail_json(proj_detail_path)
             default_proj_order, clean_proj_title = parse_folder_meta(proj_folder)
+
+            # ✨ 檢查此專案是否在強制更新名單中 (支援輸入完整資料夾名 或 去除編號的乾淨名稱)
+            is_proj_targeted = bool(target_folders and (proj_folder in target_folders or clean_proj_title in target_folders))
             
+            # ✨ 動態產生該專案的複寫 Flag
+            p_overwrite_json = overwrite_json or is_proj_targeted
+            p_overwrite_og = overwrite_og or is_proj_targeted
+            p_overwrite_thumb = overwrite_thumb or is_proj_targeted
+
             # ✨ 呼叫過期檢查引擎 (專案層級)
             check_expiration_reminders(proj_data.get('title', clean_proj_title), "專案", proj_data, proj_detail_path)
             
@@ -699,7 +708,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             thumb_filename = f"group_thumb_{os.path.splitext(safe_name)[0]}.webp"
                             thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                             
-                            g_thumb_status, g_thumb_hash = check_hash_status(g_cover_local_path, thumb_local_path, proj_cache, f'g_thumb_{g_id}', overwrite_thumb)
+                            g_thumb_status, g_thumb_hash = check_hash_status(g_cover_local_path, thumb_local_path, proj_cache, f'g_thumb_{g_id}', p_overwrite_thumb)
                             current_proj_hashes[f'g_thumb_{g_id}'] = g_thumb_hash
                             
                             if g_thumb_status in ('NEW', 'UPDATED'):
@@ -721,7 +730,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             og_filename = f"group_og_{os.path.splitext(safe_name)[0]}.webp"
                             og_local_path = os.path.join(proj_api_dir, og_filename)
                             
-                            g_og_status, g_og_hash = check_hash_status(g_cover_local_path, og_local_path, proj_cache, f'g_og_{g_id}', overwrite_og)
+                            g_og_status, g_og_hash = check_hash_status(g_cover_local_path, og_local_path, proj_cache, f'g_og_{g_id}', p_overwrite_og)
                             current_proj_hashes[f'g_og_{g_id}'] = g_og_hash
                             
                             if g_og_status in ('NEW', 'UPDATED'):
@@ -760,7 +769,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 stats["og_total"] += 1
                 local_proj_cover = clean_proj_data['cover_image']
                 
-                og_status, og_hash = check_hash_status(local_proj_cover, proj_og_local_path, proj_cache, 'og_cover', overwrite_og)
+                og_status, og_hash = check_hash_status(local_proj_cover, proj_og_local_path, proj_cache, 'og_cover', p_overwrite_og)
                 current_proj_hashes['og_cover'] = og_hash
                 
                 if og_status in ('NEW', 'UPDATED'):
@@ -782,7 +791,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 proj_thumb_local_path = os.path.join(proj_api_dir, proj_thumb_filename)
                 stats["thumb_total"] += 1 
                 
-                thumb_status, thumb_hash = check_hash_status(local_proj_cover, proj_thumb_local_path, proj_cache, 'thumb_cover', overwrite_thumb)
+                thumb_status, thumb_hash = check_hash_status(local_proj_cover, proj_thumb_local_path, proj_cache, 'thumb_cover', p_overwrite_thumb)
                 current_proj_hashes['thumb_cover'] = thumb_hash
                 
                 if thumb_status in ('NEW', 'UPDATED'):
@@ -805,7 +814,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             proj_html_path = os.path.join(proj_api_dir, "index.html")
             
             # ✨ 處理專案 HTML
-            proj_html_status, detail_hash = check_hash_status(proj_detail_path, proj_html_path, proj_cache, 'detail', overwrite_json)
+            proj_html_status, detail_hash = check_hash_status(proj_detail_path, proj_html_path, proj_cache, 'detail', p_overwrite_json)
             current_proj_hashes['detail'] = detail_hash
             
             # ✨ 確保專案 OG 圖更新時，HTML 內的圖片路徑會同步帶上 Hash
@@ -849,7 +858,16 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     art_detail_path = os.path.join(item_path, 'detail.json')
                     sub_data = load_detail_json(art_detail_path)
                     default_art_order, clean_art_title = parse_folder_meta(item)
+
+                    # ✨ 檢查此文章是否在強制更新名單中 (如果父專案被指定，底下的子文章也會連帶強制更新！)
+                    is_art_targeted = bool(target_folders and (item in target_folders or clean_art_title in target_folders))
                     
+                    # ✨ 動態產生該文章的複寫 Flag
+                    a_overwrite_json = p_overwrite_json or is_art_targeted
+                    a_overwrite_og = p_overwrite_og or is_art_targeted
+                    a_overwrite_thumb = p_overwrite_thumb or is_art_targeted
+                    a_overwrite_pdf = overwrite_pdf_thumb or is_proj_targeted or is_art_targeted
+
                     meta_title = sub_data.get('title', clean_art_title)
                     meta_desc = sub_data.get('description')
                     meta_order = sub_data.get('order', default_art_order)
@@ -953,7 +971,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
-                                        inline_status, img_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, overwrite_thumb)
+                                        inline_status, img_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, a_overwrite_thumb)
                                         current_hashes[local_main_path] = img_hash
                                         
                                         if inline_status in ('NEW', 'UPDATED'):
@@ -997,7 +1015,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                             thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                             
-                                            inline_status, pdf_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, overwrite_pdf_thumb)
+                                            inline_status, pdf_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, a_overwrite_pdf)
                                             current_hashes[local_main_path] = pdf_hash
                                             
                                             if inline_status in ('NEW', 'UPDATED'):
@@ -1065,7 +1083,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
                                         # ✨ 內文縮圖 Hash 判定
-                                        inline_status, img_hash = check_hash_status(local_img_path, thumb_local_path, art_cache, local_img_path, overwrite_thumb)
+                                        inline_status, img_hash = check_hash_status(local_img_path, thumb_local_path, art_cache, local_img_path, a_overwrite_thumb)
                                         current_hashes[local_img_path] = img_hash
                                         
                                         if inline_status in ('NEW', 'UPDATED'):
@@ -1091,7 +1109,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
                             # ✨ 處理 Markdown 轉 JSON (透過 Hash)
                             stats["json_total"] += 1
-                            json_status, md_hash = check_hash_status(md_file_path, content_filepath, art_cache, 'md_source', overwrite_json)
+                            json_status, md_hash = check_hash_status(md_file_path, content_filepath, art_cache, 'md_source', a_overwrite_json)
                             current_hashes['md_source'] = md_hash
                             
                             if json_status in ('NEW', 'UPDATED'):
@@ -1123,7 +1141,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 bg_image_path = os.path.join("assets", "og.png")
                                 
                                 # ✨ 文章 OG Hash 判定
-                                art_og_status, og_src_hash = check_hash_status(local_cover_path, og_local_path, art_cache, 'og_cover', overwrite_og)
+                                art_og_status, og_src_hash = check_hash_status(local_cover_path, og_local_path, art_cache, 'og_cover', a_overwrite_og)
                                 current_hashes['og_cover'] = og_src_hash
                                 
                                 # ✨ 修正 1：改用 art_og_status 獨立判定。只要有丟新圖片，就觸發 OG 生成！
@@ -1146,7 +1164,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 stats["thumb_total"] += 1
                                 
                                 # ✨ 文章封面縮圖 Hash 判定
-                                art_thumb_status, thumb_src_hash = check_hash_status(local_cover_path, art_thumb_local_path, art_cache, 'thumb_cover', overwrite_thumb)
+                                art_thumb_status, thumb_src_hash = check_hash_status(local_cover_path, art_thumb_local_path, art_cache, 'thumb_cover', a_overwrite_thumb)
                                 current_hashes['thumb_cover'] = thumb_src_hash
                                 
                                 if art_thumb_status in ('NEW', 'UPDATED'):
@@ -1173,7 +1191,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             art_html_path = os.path.join(art_dir, "index.html")
 
                             # ✨ 文章 HTML Hash 判定
-                            art_html_status, art_detail_hash = check_hash_status(art_detail_path, art_html_path, art_cache, 'art_detail', overwrite_json)
+                            art_html_status, art_detail_hash = check_hash_status(art_detail_path, art_html_path, art_cache, 'art_detail', a_overwrite_json)
                             current_hashes['art_detail'] = art_detail_hash
                             
                             # ✨ 智慧判斷：如果文章有自己的封面，才重新獲取 Hash；否則沿用已經帶有 Hash 的繼承網址
@@ -1334,8 +1352,9 @@ if __name__ == "__main__":
     overwrite_json = False
     overwrite_og = False
     overwrite_thumb = False
-    overwrite_pdf_thumb = False  # ✨ 補上這一行：設定預設值
-
+    overwrite_pdf_thumb = False
+    target_folders = set() # ✨ 新增：目標資料夾集合
+    
     if is_github_actions:
         print("\n🤖 [CI/CD 模式] 偵測到 GitHub Actions 環境。")
         print("   -> 自動停用互動提問，啟用【全域智慧跳過】以加速佈署流程 (僅更新修改過的檔案)。\n")
@@ -1344,15 +1363,12 @@ if __name__ == "__main__":
         print("  [1] 全域智慧跳過 (遇到舊檔且無修改則跳過，速度最快 - 預設)")
         print("  [2] 全域強制複寫 (重新處理所有檔案與縮圖)")
         print("  [3] 自訂義 (針對各項處理分別選擇)")
+        print("  [4] 🎯 指定資料夾強制更新 (僅強制重刷特定專案或文章)")
         
-        choice = input("請選擇 [1, 2 或 3] (預設 1): ").strip()
+        choice = input("請選擇 [1, 2, 3 或 4] (預設 1): ").strip()
         
         if choice == '2':
-            overwrite_webp = True
-            overwrite_json = True
-            overwrite_og = True
-            overwrite_thumb = True
-            overwrite_pdf_thumb = True # ✨ 新增
+            overwrite_webp = overwrite_json = overwrite_og = overwrite_thumb = overwrite_pdf_thumb = True
         elif choice == '3':
             print("\n-- 自訂義細項設定 --")
             w_choice = input("  [A] 處理選項 (1/5): 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
@@ -1369,15 +1385,21 @@ if __name__ == "__main__":
 
             p_choice = input("  [E] 處理選項 (5/5): PDF 封面預覽縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_pdf_thumb = (p_choice == '2')
+        elif choice == '4':
+            targets = input("\n🎯 請輸入要強制更新的資料夾名稱 (多個以空白分隔，如 '02_mind 24_create'): ").strip()
+            if targets:
+                target_folders = set(targets.split())
+                # ✨ 新增：明確印出即將強制更新的目標
+                print(f"\n🎯 [指定更新模式] 將強制重刷以下項目及其內容: {', '.join(target_folders)}")
 
     convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
     
     print(f"\n==========================================")
     print(f"📦 [第二階段] 開始解析 Markdown 並打包 JSON 資料庫...")
     print(f"==========================================")
-    # ✨ 在傳遞參數時補上 overwrite_pdf_thumb
-    generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb, overwrite_pdf_thumb=overwrite_pdf_thumb)
-    
+    # ✨ 將 target_folders 傳遞給打包引擎
+    generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb, overwrite_pdf_thumb=overwrite_pdf_thumb, target_folders=target_folders)
+
     # 1. 先產生最新的 changelogs.json
     generate_changelogs_json()
 
