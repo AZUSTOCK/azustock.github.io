@@ -12,6 +12,7 @@ import rcssmin # type: ignore
 
 # 準備一個 Set 來記錄所有合法的 API 檔案絕對路徑，用於最後的清理階段
 valid_api_files = set()
+protected_api_dirs = set()
 
 expiration_l = []
 
@@ -22,8 +23,10 @@ stats = {
     "json_total": 0, "json_new": 0, "json_updated": 0, "json_skipped": 0,       
     "og_total": 0,   "og_new": 0,   "og_updated": 0,   "og_skipped": 0,         
     "thumb_total": 0, "thumb_new": 0, "thumb_updated": 0, "thumb_skipped": 0,    
+    "group_og_total": 0, "group_og_new": 0, "group_og_updated": 0, "group_og_skipped": 0,       # ✨ 新增群組 OG
+    "group_thumb_total": 0, "group_thumb_new": 0, "group_thumb_updated": 0, "group_thumb_skipped": 0, # ✨ 新增群組縮圖
     "inline_thumb_total": 0, "inline_thumb_new": 0, "inline_thumb_updated": 0, "inline_thumb_skipped": 0,
-    "pdf_thumb_total": 0, "pdf_thumb_new": 0, "pdf_thumb_updated": 0, "pdf_thumb_skipped": 0 # ✨ 新增 PDF 專屬統計
+    "pdf_thumb_total": 0, "pdf_thumb_new": 0, "pdf_thumb_updated": 0, "pdf_thumb_skipped": 0 
 }
 
 SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED', 'WIP', 'OC'}
@@ -288,13 +291,15 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
 CACHE_FILE = '.build_cache.json'
 
 def get_file_hash(filepath):
-    """計算單一檔案的 MD5 Hash (無視作業系統換行符號差異)"""
+    """計算單一檔案的 MD5 Hash (安全二進位讀取)"""
     if not os.path.exists(filepath): return ""
     hasher = hashlib.md5()
-    # ✨ 改以文字模式讀取，統一替換換行符號
-    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-        content = f.read().replace('\r\n', '\n')
-        hasher.update(content.encode('utf-8'))
+    with open(filepath, 'rb') as f:
+        content = f.read()
+        # 只有 Markdown 或是 JSON 才需要替換換行符號 (防止跨平台 hash 跑掉)
+        if filepath.endswith('.md') or filepath.endswith('.json'):
+            content = content.replace(b'\r\n', b'\n')
+        hasher.update(content)
     return hasher.hexdigest()[:8]
 
 def get_dir_hash(dirpath):
@@ -651,32 +656,89 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive']:
                 val = proj_data.get(key) or proj_data.get(key.upper())
                 if val is not None: clean_proj_data[f'is_{key}' if key != 'pinned' else 'pinned'] = val
-            # 假設這是在解析專案 detail.json 與 groups 的地方
+
+            # ✨ 1. 將專案變數初始化往上移，解決原本 proj_id 尚未定義的重大 Bug
+            proj_id = clean_proj_title
+            proj_title = proj_data.get('title', clean_proj_title)
+            proj_desc = proj_data.get('description', '查看專案內容')
+            
+            proj_api_dir = os.path.join(API_DIR, str(proj_id))
+            os.makedirs(proj_api_dir, exist_ok=True)
+            
+            bg_image_path = os.path.join("assets", "og_base.png")
+            proj_meta_path = os.path.join(proj_api_dir, "meta.json")
+            
+            proj_cache = {}
+            if os.path.exists(proj_meta_path):
+                try:
+                    with open(proj_meta_path, 'r', encoding='utf-8') as f:
+                        proj_cache = json.load(f)
+                except Exception: pass
+            current_proj_hashes = {}
+            proj_needs_update = False
+
+            # ✨ 2. 處理群組縮圖與「群組專屬 OG 圖」
             if proj_data.get('groups'):
                 processed_groups = {}
                 for g_id, g_info in proj_data['groups'].items():
-                    group_obj = dict(g_info) # 複製一份原本的設定（如 title, color 等）
+                    group_obj = dict(g_info)
                     
-                    # 檢查該 group 是否有設定 cover 圖片
                     g_cover = g_info.get('cover')
                     if g_cover:
                         g_cover_local_path = os.path.normpath(os.path.join(proj_path, g_cover))
                         if os.path.exists(g_cover_local_path):
-                            # 在 api 目錄下建立該專案的 thumbnails 資料夾
                             thumb_dir = os.path.join(API_DIR, proj_id, "thumbnails")
                             os.makedirs(thumb_dir, exist_ok=True)
                             
-                            safe_name = g_cover.replace('/', '_').replace('\\', '_')
+                            # ✨ 核心修正：使用 os.path.basename 徹底拔除帶有的路徑 (如 ./ 或資料夾名稱)，只留純檔名與副檔名
+                            base_cover_name = os.path.basename(g_cover)
+                            safe_name = base_cover_name.replace('/', '_').replace('\\', '_')
+                            
+                            # (A) 生成群組縮圖 (加上 Hash 判斷防呆與統計)
+                            stats["group_thumb_total"] += 1
                             thumb_filename = f"group_thumb_{os.path.splitext(safe_name)[0]}.webp"
                             thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                             
-                            # 利用現有的縮圖生成工具壓縮並轉為 WebP
-                            generate_cover_thumbnail(g_cover_local_path, thumb_local_path, max_width=200, quality=85)
-                            valid_api_files.add(os.path.abspath(thumb_local_path))
+                            g_thumb_status, g_thumb_hash = check_hash_status(g_cover_local_path, thumb_local_path, proj_cache, f'g_thumb_{g_id}', overwrite_thumb)
+                            current_proj_hashes[f'g_thumb_{g_id}'] = g_thumb_hash
                             
-                            # 賦予帶有 Hash 的安全網址給前端
+                            if g_thumb_status in ('NEW', 'UPDATED'):
+                                proj_needs_update = True
+                                if generate_cover_thumbnail(g_cover_local_path, thumb_local_path, max_width=200, quality=85):
+                                    print_conversion("🖼️ [群組縮圖]", g_cover_local_path, thumb_local_path, context=f"{proj_id} / {g_id}")
+                                    if g_thumb_status == 'NEW': stats["group_thumb_new"] += 1
+                                    else: stats["group_thumb_updated"] += 1
+                                else:
+                                    stats["group_thumb_skipped"] += 1
+                            else:
+                                stats["group_thumb_skipped"] += 1
+                                
+                            valid_api_files.add(os.path.abspath(thumb_local_path))
                             group_obj['cover_image'] = get_hash_url(thumb_local_path, f"./api/{proj_id}/thumbnails/{thumb_filename}")
-                    
+                            
+                            # (B) ✨ 生成群組專屬 OG 分享圖 (加上統計)
+                            stats["group_og_total"] += 1
+                            og_filename = f"group_og_{os.path.splitext(safe_name)[0]}.webp"
+                            og_local_path = os.path.join(proj_api_dir, og_filename)
+                            
+                            g_og_status, g_og_hash = check_hash_status(g_cover_local_path, og_local_path, proj_cache, f'g_og_{g_id}', overwrite_og)
+                            current_proj_hashes[f'g_og_{g_id}'] = g_og_hash
+                            
+                            if g_og_status in ('NEW', 'UPDATED'):
+                                proj_needs_update = True
+                                if create_og_image(g_cover_local_path, og_local_path, bg_image_path):
+                                    print_conversion("🖼️ [群組OG圖]", g_cover_local_path, og_local_path, context=f"{proj_id} / {g_id}")
+                                    if g_og_status == 'NEW': stats["group_og_new"] += 1
+                                    else: stats["group_og_updated"] += 1
+                                else:
+                                    stats["group_og_skipped"] += 1
+                            else:
+                                stats["group_og_skipped"] += 1
+                                
+                            valid_api_files.add(os.path.abspath(og_local_path))
+                            # 儲存 1200x630 的完美 OG 網址 (✨ 加上 Hash)
+                            group_obj['og_image'] = get_hash_url(og_local_path, f"{BASE_URL}/api/{proj_id}/{og_filename}")
+        
                     processed_groups[g_id] = group_obj
                 clean_proj_data['groups'] = processed_groups
             
@@ -687,29 +749,13 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             proj_data = clean_proj_data
             articles = []
 
-            proj_id = clean_proj_title
-            proj_title = proj_data.get('title', clean_proj_title)
-            proj_desc = proj_data.get('description', '查看專案內容')
-            
-            proj_api_dir = os.path.join(API_DIR, str(proj_id))
-            os.makedirs(proj_api_dir, exist_ok=True)
-            
+            # 3. 處理專案封面與 OG 圖...
             proj_og_filename = "og.webp"
             proj_og_local_path = os.path.join(proj_api_dir, proj_og_filename)
-            bg_image_path = os.path.join("assets", "og_base.png")
             
-            # ✨ 讀取專案層級的快取
-            proj_meta_path = os.path.join(proj_api_dir, "meta.json")
-            proj_cache = {}
-            if os.path.exists(proj_meta_path):
-                try:
-                    with open(proj_meta_path, 'r', encoding='utf-8') as f:
-                        proj_cache = json.load(f)
-                except Exception: pass
-            current_proj_hashes = {}
-            proj_needs_update = False
+            # 🚨 刪除了重複宣告的 proj_cache 與 proj_needs_update，保護上方的群組快取 🚨
             
-            # ✨ 處理專案 OG 圖片
+            # ✨ 處理專案 OG 圖片與縮圖
             if 'cover_image' in clean_proj_data:
                 stats["og_total"] += 1
                 local_proj_cover = clean_proj_data['cover_image']
@@ -751,7 +797,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     stats["thumb_skipped"] += 1
                     
                 valid_api_files.add(os.path.abspath(proj_thumb_local_path))
-
             else:
                 proj_img = f"{BASE_URL}/assets/og.png"
 
@@ -763,12 +808,18 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             proj_html_status, detail_hash = check_hash_status(proj_detail_path, proj_html_path, proj_cache, 'detail', overwrite_json)
             current_proj_hashes['detail'] = detail_hash
             
+            # ✨ 確保專案 OG 圖更新時，HTML 內的圖片路徑會同步帶上 Hash
+            if 'cover_image' in clean_proj_data:
+                proj_img_hashed = get_hash_url(proj_og_local_path, proj_img) if os.path.exists(proj_og_local_path) else get_hash_url(local_proj_cover, proj_img)
+            else:
+                proj_img_hashed = get_hash_url("assets/og.png", proj_img) if os.path.exists("assets/og.png") else proj_img
+
             if proj_html_status in ('NEW', 'UPDATED') or proj_needs_update:
                 proj_needs_update = True
                 with open(proj_html_path, "w", encoding="utf-8") as f:
                     f.write(html_template.format(
                         title=proj_title, description=proj_desc, 
-                        image=proj_img, target_url=proj_target_url, share_url=proj_share_url
+                        image=proj_img_hashed, target_url=proj_target_url, share_url=proj_share_url
                     ))
                 if proj_html_status == 'NEW': stats["proj_new"] += 1
                 else: stats["proj_updated"] += 1
@@ -1051,14 +1102,20 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             art_desc = meta_desc if meta_desc else proj_desc
                             og_local_path = os.path.join(art_dir, "og.webp")
                             
-                            # ✨ 【新增】抓取文章群組的預設封面 (若有的話)
+                            # ✨ 【修復】精準繼承文章群組的專屬 OG 封面
                             art_group = sub_data.get('group')
+                            
+                            # ✨ 智慧偵測：若文章沒明確指定 group，找出該專案的「預設群組」
+                            if not art_group and 'groups' in proj_data:
+                                for g_id, g_info in proj_data['groups'].items():
+                                    if g_info.get('default'):
+                                        art_group = g_id
+                                        break
+                                        
                             group_cover_url = None
                             if 'groups' in proj_data and art_group and art_group in proj_data['groups']:
-                                # 讀取 detail.json 中 group 的 cover 屬性
-                                g_cover = proj_data['groups'][art_group].get('cover') 
-                                if g_cover:
-                                    group_cover_url = f"{BASE_URL}/{proj_path.replace(os.sep, '/')}/{g_cover}"
+                                # 讀取剛剛在上方處理好的完美 1200x630 OG 圖網址！
+                                group_cover_url = proj_data['groups'][art_group].get('og_image')
                             
                             if meta_cover:
                                 stats["og_total"] += 1
@@ -1069,6 +1126,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 art_og_status, og_src_hash = check_hash_status(local_cover_path, og_local_path, art_cache, 'og_cover', overwrite_og)
                                 current_hashes['og_cover'] = og_src_hash
                                 
+                                # ✨ 修正 1：改用 art_og_status 獨立判定。只要有丟新圖片，就觸發 OG 生成！
                                 if art_og_status in ('NEW', 'UPDATED'):
                                     art_needs_update = True
                                     if create_og_image(local_cover_path, og_local_path, bg_image_path):
@@ -1107,8 +1165,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 valid_api_files.add(os.path.abspath(art_thumb_local_path))
                             else:
                                 # ✨ 【修改】執行 SEO OG 分享圖繼承：群組封面 -> 專案封面 
-                                # (註：若專案也無封面，proj_img 原本就已經會自動退回全站預設的 assets/og.png，防護網十分堅固！)
-                                art_img = group_cover_url if group_cover_url else proj_img
+                                # (使用已經帶有 Hash 的 proj_img_hashed 進行兜底)
+                                art_img = group_cover_url if group_cover_url else proj_img_hashed
                                 
                             art_target_url = f"/?p={proj_id}&a={art_id}"
                             art_share_url = f"{BASE_URL}/api/{proj_id}/{art_id}/index.html"
@@ -1118,12 +1176,19 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             art_html_status, art_detail_hash = check_hash_status(art_detail_path, art_html_path, art_cache, 'art_detail', overwrite_json)
                             current_hashes['art_detail'] = art_detail_hash
                             
-                            if art_html_status in ('NEW', 'UPDATED') or art_needs_update:
+                            # ✨ 智慧判斷：如果文章有自己的封面，才重新獲取 Hash；否則沿用已經帶有 Hash 的繼承網址
+                            if meta_cover:
+                                art_img_hashed = get_hash_url(og_local_path, art_img) if os.path.exists(og_local_path) else get_hash_url(local_cover_path, art_img)
+                            else:
+                                art_img_hashed = art_img
+
+                            # ✨ 終極連動：只要文章自身有變 (art_needs_update)，或是專案/群組有變 (proj_needs_update)，HTML 都要重刷！
+                            if art_html_status in ('NEW', 'UPDATED') or art_needs_update or proj_needs_update:
                                 art_needs_update = True
                                 with open(art_html_path, "w", encoding="utf-8") as f:
                                     f.write(html_template.format(
                                         title=f"{art_title} | {proj_title}", description=art_desc, 
-                                        image=art_img, target_url=art_target_url, share_url=art_share_url
+                                        image=art_img_hashed, target_url=art_target_url, share_url=art_share_url
                                     ))
                                 if art_html_status == 'NEW': stats["art_new"] += 1
                                 else: stats["art_updated"] += 1
@@ -1174,20 +1239,16 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 val = sub_data.get(key) or sub_data.get(key.upper())
                                 if val is not None: article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = val
 
-                            if 'groups' in proj_data:
-                                art_group = sub_data.get('group')
-                                default_group = None
-                                for g_id, g_info in proj_data['groups'].items():
-                                    if g_info.get('default'):
-                                        default_group = g_id
-                                if art_group and art_group in proj_data['groups']:
-                                    article_obj['group'] = art_group
-                                else:
-                                    article_obj['group'] = default_group
+                            # ✨ 智慧群組繼承：直接使用上方 (第 545 行) 已經判定好的 art_group (包含預設群組)
+                            if 'groups' in proj_data and art_group:
+                                article_obj['group'] = art_group
 
                             articles.append(article_obj)
                         except Exception as e:
-                            print(f"⚠️ Error reading Markdown {md_file_path}: {e}")
+                            print(f"⚠️ 處理文章失敗 {md_file_path}: {e}")
+                            # ✨ 當文章處理失敗時，將該文章的 api 資料夾加入保護白名單，防止誤刪
+                            if 'art_dir' in locals():
+                                protected_api_dirs.add(os.path.abspath(art_dir))
 
             if articles:
                 def article_sort(x):
@@ -1240,6 +1301,14 @@ def cleanup_old_api_files(api_dir="api"):
     deleted_dirs = 0
     
     for root, dirs, files in os.walk(api_dir, topdown=False):
+        current_root_abs = os.path.abspath(root)
+        
+        # ✨ 檢查當前目錄是否受到保護 (受保護資料夾的子目錄也一併保護)
+        is_protected = any(current_root_abs.startswith(p_dir) for p_dir in protected_api_dirs)
+        
+        if is_protected:
+            continue
+            
         for name in files:
             file_path = os.path.abspath(os.path.join(root, name))
             if file_path not in valid_api_files:
@@ -1249,11 +1318,12 @@ def cleanup_old_api_files(api_dir="api"):
                 
         for name in dirs:
             dir_path = os.path.join(root, name)
+            # ✨ 只有在資料夾真的為空時才刪除
             if not os.listdir(dir_path):
                 os.rmdir(dir_path)
                 deleted_dirs += 1
                 print(f"📁 刪除空資料夾: {os.path.relpath(dir_path)}")
-                
+            
     print(f"✅ 清理完成！共刪除 {deleted_files} 個檔案, {deleted_dirs} 個資料夾。")
 
 
@@ -1285,20 +1355,20 @@ if __name__ == "__main__":
             overwrite_pdf_thumb = True # ✨ 新增
         elif choice == '3':
             print("\n-- 自訂義細項設定 --")
-            w_choice = input("  [A] 第一階段(1/5): 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            w_choice = input("  [A] 處理選項 (1/5): 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_webp = (w_choice == '2')
             
-            j_choice = input("  [B] 第二階段(2/5): Markdown轉JSON與HTML [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            j_choice = input("  [B] 處理選項 (2/5): Markdown轉JSON與HTML [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_json = (j_choice == '2')
             
-            o_choice = input("  [C] 第二階段(3/5): OG 分享圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            o_choice = input("  [C] 處理選項 (3/5): OG 分享圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_og = (o_choice == '2')
             
-            t_choice = input("  [D] 第二階段(4/5): 封面與內文圖片縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            t_choice = input("  [D] 處理選項 (4/5): 封面與內文圖片縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_thumb = (t_choice == '2')
 
-            p_choice = input("  [E] 第二階段(5/5): PDF 封面預覽縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
-            overwrite_pdf_thumb = (p_choice == '2') # ✨ 新增
+            p_choice = input("  [E] 處理選項 (5/5): PDF 封面預覽縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+            overwrite_pdf_thumb = (p_choice == '2')
 
     convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
     
@@ -1319,11 +1389,16 @@ if __name__ == "__main__":
     print(f"  - 專案 HTML (index)       : 共 {stats['proj_total']:>4} 個 | 新增 {stats['proj_new']:>4} 個 | 更新 {stats['proj_updated']:>4} 個 | 略過 {stats['proj_skipped']:>4} 個")
     print(f"  - 文章 HTML (index)       : 共 {stats['art_total']:>4} 個 | 新增 {stats['art_new']:>4} 個 | 更新 {stats['art_updated']:>4} 個 | 略過 {stats['art_skipped']:>4} 個")
     print(f"  - 內文 JSON (contents)    : 共 {stats['json_total']:>4} 個 | 新增 {stats['json_new']:>4} 個 | 更新 {stats['json_updated']:>4} 個 | 略過 {stats['json_skipped']:>4} 個")
-    print(f"  - 分享圖 (OG webp)        : 共 {stats['og_total']:>4} 張 | 新增 {stats['og_new']:>4} 張 | 更新 {stats['og_updated']:>4} 張 | 略過 {stats['og_skipped']:>4} 張")
-    print(f"  - 封面縮圖 (cover_thumb)  : 共 {stats['thumb_total']:>4} 張 | 新增 {stats['thumb_new']:>4} 張 | 更新 {stats['thumb_updated']:>4} 張 | 略過 {stats['thumb_skipped']:>4} 張")
-    print(f"  - 內文縮圖 (inline_thumb) : 共 {stats['inline_thumb_total']:>4} 張 | 新增 {stats['inline_thumb_new']:>4} 張 | 更新 {stats['inline_thumb_updated']:>4} 張 | 略過 {stats['inline_thumb_skipped']:>4} 張")
-    print(f"  - PDF 預覽圖 (pdf_thumb)  : 共 {stats['pdf_thumb_total']:>4} 張 | 新增 {stats['pdf_thumb_new']:>4} 張 | 更新 {stats['pdf_thumb_updated']:>4} 張 | 略過 {stats['pdf_thumb_skipped']:>4} 張") # ✨ 新增
     
+    # ✨ 明確標示這兩項是「專案與文章」的
+    print(f"  - 專案與文章 OG 圖        : 共 {stats['og_total']:>4} 張 | 新增 {stats['og_new']:>4} 張 | 更新 {stats['og_updated']:>4} 張 | 略過 {stats['og_skipped']:>4} 張")
+    print(f"  - 專案與文章封面縮圖      : 共 {stats['thumb_total']:>4} 張 | 新增 {stats['thumb_new']:>4} 張 | 更新 {stats['thumb_updated']:>4} 張 | 略過 {stats['thumb_skipped']:>4} 張")
+    
+    print(f"  - 群組分享圖 (group_og)   : 共 {stats['group_og_total']:>4} 張 | 新增 {stats['group_og_new']:>4} 張 | 更新 {stats['group_og_updated']:>4} 張 | 略過 {stats['group_og_skipped']:>4} 張")
+    print(f"  - 群組縮圖 (group_thumb)  : 共 {stats['group_thumb_total']:>4} 張 | 新增 {stats['group_thumb_new']:>4} 張 | 更新 {stats['group_thumb_updated']:>4} 張 | 略過 {stats['group_thumb_skipped']:>4} 張")
+    print(f"  - 內文縮圖 (inline_thumb) : 共 {stats['inline_thumb_total']:>4} 張 | 新增 {stats['inline_thumb_new']:>4} 張 | 更新 {stats['inline_thumb_updated']:>4} 張 | 略過 {stats['inline_thumb_skipped']:>4} 張")
+    print(f"  - PDF 預覽圖 (pdf_thumb)  : 共 {stats['pdf_thumb_total']:>4} 張 | 新增 {stats['pdf_thumb_new']:>4} 張 | 更新 {stats['pdf_thumb_updated']:>4} 張 | 略過 {stats['pdf_thumb_skipped']:>4} 張")
+
     cleanup_old_api_files()
     
     print(f"\n==========================================")

@@ -17,9 +17,11 @@
 3. Update .md-details CSS styling
 4. Responsive UI for narrow screens in main.js & style.css
 5. Upgrade Group Header UI layout (Inline Float Right style)
+6. group thumbnail in generate_projects.py
 
 ## adjust
 1. code-lang-label width and padding
+2. generate_projects.py logic
 
 ## fix
 1. Mermaid UI
