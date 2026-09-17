@@ -849,10 +849,20 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     z-index: 50; 
 }
 
+/* ========================================================================== */
+/* ✨ 全域共用 Tooltip 氣泡 (乾淨俐落的屬性選擇器版) */
+/* ========================================================================== */
+
 [data-tooltip]::after { 
-    content: attr(data-tooltip); position: absolute; top: -38px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--card); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; opacity: 0; pointer-events: none; transition: all 0.2s var(--ease-smooth); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; 
-    line-height: 1.2; /* ✨ 核心修復：強制覆寫繼承的行高，確保所有氣泡高度一致 */
-    box-sizing: border-box; /* 確保 padding 不會異常撐開 */
+    content: attr(data-tooltip); position: absolute; top: -38px; left: 50%; transform: translateX(-50%) translateY(8px); background: var(--text); color: var(--card); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; opacity: 0; pointer-events: none; transition: all 0.2s var(--ease-smooth); box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; 
+    line-height: 1.2; 
+    box-sizing: border-box; 
+
+    /* ✨ 加入類似 .nav-title 的 CSS 截斷判斷 */
+    max-width: 200px; /* 您可依喜好微調此寬度，200px 約等於 14 個中文字 */
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
 }
 [data-tooltip]::before { 
     content: ''; position: absolute; top: -12px; left: 50%; transform: translateX(-50%) translateY(8px); border-width: 5px; border-style: solid; border-color: var(--text) transparent transparent transparent; opacity: 0; pointer-events: none; transition: all 0.2s var(--ease-smooth); z-index: 10000; 
@@ -1253,23 +1263,28 @@ span.article-item-date {
 /* ==========================================
    ✨ 文章頂部左側：群組標籤與導覽膠囊垂直堆疊
    ========================================== */
+/* ==========================================
+   ✨ 文章頂部左側：群組標籤改為絕對定位，不撐開高度
+   ========================================== */
 .top-nav-stack {
+    position: relative;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px; /* 控制小字與膠囊之間的距離 */
-    justify-content: center;
+    align-items: center;
 }
 
 .article-group-label {
-    font-family: 'Courier New', monospace; /* 使用 monospace 更有系統感 */
+    position: absolute;
+    top: -16px; /* ✨ 核心魔法：向上浮動到 top-bar 原本的 padding 留白空間中 */
+    left: 0.8rem; /* 對齊下方膠囊內的文字 */
+    font-family: 'Courier New', monospace;
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.08em;
-    color: var(--muted); /* 預設文字顏色 */
+    color: var(--muted);
     text-transform: uppercase;
     line-height: 1;
-    padding-left: 0.8rem; /* 稍微往右推，視覺上對齊下方膠囊內的文字 */
+    white-space: nowrap;
+    pointer-events: none; /* 防止干擾下方按鈕的邊緣點擊 */
 }
 
 /* 如果有分配到高光群組色，直接套用並帶點微弱的光暈 */

@@ -4274,14 +4274,20 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             const generateNavBtn = (item, type) => {
                 const isPrev = type === 'prev';
                 const iconSvg = isPrev ? GLOBAL_SVGS.chevronLeft : GLOBAL_SVGS.chevronRight;
-                const text = isPrev ? '上一篇' : '下一篇';
+                const text = isPrev ? '上一篇' : '下一篇'; 
                 
                 if (!item) {
                     return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled>${iconSvg}</button>` };
                 }
                 
+                // ✨ 單純防護 HTML 結構，將標題完整傳給 data-tooltip
+                const tooltipText = item.art.title.replace(/"/g, '&quot;');
+                
                 const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `${iconSvg} ${text}` : `${text} ${iconSvg}`}</div><div class="nav-title">${item.art.title}</div></a>`;
-                const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${text}">${iconSvg}</button>`;
+                
+                // 將 tooltipText 完整塞入
+                const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${tooltipText}">${iconSvg}</button>`;
+                
                 return { cardHtml, btnHtml };
             };
 

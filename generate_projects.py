@@ -29,6 +29,26 @@ stats = {
 SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED', 'WIP', 'OC'}
 
 # ==========================================
+# ✨ 動態讀取前端設定 (Sync with main.js)
+# ==========================================
+def get_tag_expire_days():
+    """從 main.js 的 CONFIG 中動態抓取 TAG_EXPIRE_DAYS"""
+    try:
+        # 尋找當前目錄下的 main.js
+        js_file = next((f for f in os.listdir('.') if f.startswith('main') and f.endswith('.js')), 'main.js')
+        with open(js_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # 利用正則表達式精準抓取數值
+            match = re.search(r'TAG_EXPIRE_DAYS:\s*(\d+)', content)
+            if match:
+                return int(match.group(1))
+    except Exception as e:
+        print(f"⚠️ 無法讀取 TAG_EXPIRE_DAYS，將使用預設值 14: {e}")
+    return 14 # 預防萬一的預設值
+
+GLOBAL_EXPIRE_DAYS = get_tag_expire_days()
+
+# ==========================================
 # 🗜️ 自動化壓縮引擎 (Minification Engine)
 # ==========================================
 def minify_assets():
@@ -226,8 +246,11 @@ def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwr
 # ==========================================
 # ⏰ 時間戳過期偵測引擎 (Expiration Checker)
 # ==========================================
-def check_expiration_reminders(item_title, item_type, data_dict, detail_path, days= 14):
+def check_expiration_reminders(item_title, item_type, data_dict, detail_path, days=None):
     """檢查 JSON 內的日期標籤或屬性是否過期，並印出黃色警告提醒"""
+    if days is None:
+        days = GLOBAL_EXPIRE_DAYS
+        
     now = datetime.now()
     expire_delta = timedelta(days=days) # 與前端 JS 的 TAG_EXPIRE_DAYS 保持一致
     
