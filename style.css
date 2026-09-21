@@ -181,6 +181,7 @@
 [data-status="WIP"]      { --s-color: #F59E0B;            --s-shadow: rgba(245, 158, 11, 0.4); } 
 [data-status="ARCHIVED"] { --s-color: var(--muted);       --s-shadow: transparent; }           
 [data-status="OC"]       { --s-color: #A855F7;            --s-shadow: rgba(168, 85, 247, 0.4); }
+[data-status="FANART"]   { --s-color: #eb4d9c;            --s-shadow: rgba(236, 72, 153, 0.4); } /* ✨ FANART 專屬亮桃粉色 */
 [data-status="MAJOR"]    { --s-color: #E11D48;            --s-shadow: rgba(225, 29, 72, 0.6); } 
 [data-status="HOTFIX"]   { --s-color: #FF5722;            --s-shadow: rgba(255, 87, 34, 0.6); } 
 [data-status="FEATURE"]  { --s-color: #10B981;            --s-shadow: rgba(16, 185, 129, 0.5); } 
@@ -2075,14 +2076,11 @@ span.article-item-date {
     /* ✨ 新增這行外框，這條線會自動適應深淺色模式，完美勾勒出圖片邊界 */
     border: 1px solid var(--card-border); 
 }
-.markdown-body img.is-loading, .markdown-body img.is-broken { 
-    width: 100%; 
-    height: auto; 
-}
 
-/* 🔥 當「沒有」被 JS 算好比例時，才啟用強制裁切與高度限制 (防呆機制) */
-.markdown-body img.is-loading:not([style*="aspect-ratio"]), 
-.markdown-body img.is-broken:not([style*="aspect-ratio"]) { 
+/* 🔥 當「沒有」被賦予真實寬高 (例如外部圖片連結) 時，才啟用強制 16:9 佔位與高度限制 */
+.markdown-body img.is-loading:not([width]), 
+.markdown-body img.is-broken:not([width]) { 
+    width: 100%;
     min-height: 200px; 
     max-height: 450px; 
     aspect-ratio: 16 / 9; 

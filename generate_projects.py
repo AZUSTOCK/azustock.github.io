@@ -29,7 +29,7 @@ stats = {
     "pdf_thumb_total": 0, "pdf_thumb_new": 0, "pdf_thumb_updated": 0, "pdf_thumb_skipped": 0 
 }
 
-SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED', 'WIP', 'OC'}
+SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED', 'WIP', 'OC', 'FANART'}
 
 # ==========================================
 # ✨ 動態讀取前端設定 (Sync with main.js)
@@ -266,7 +266,7 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
                 try:
                     dt = datetime.strptime(match.group(2).replace('-', '/'), "%Y/%m/%d")
                     if now - dt > expire_delta:
-                        expiration_l.append(f"\033[93m  ⏰ [標籤過期] {item_type} '{item_title}' 的 '{t}' 已過 {days} 天，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
+                        expiration_l.append(f"\033[93m  ⏰ [標籤過期] {item_type} '{item_title}' 的 '{t}' 已過 {days} 天。\n      📁 路徑: {detail_path}\033[0m")
                 except Exception:
                     pass
     
@@ -278,10 +278,10 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
                 dt = datetime.strptime(val.replace('-', '/'), "%Y/%m/%d")
                 if key.lower() == 'hidden':
                     if now >= dt:
-                        expiration_l.append(f"\033[92m  🔓 [解封提醒] {item_type} '{item_title}' 的隱藏期限 '{val}' 已到期(現已公開)，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
+                        expiration_l.append(f"\033[92m  🔓 [解封提醒] {item_type} '{item_title}' 的隱藏期限 '{val}' 已到期(現已公開)。\n      📁 路徑: {detail_path}\033[0m")
                 else:
                     if now - dt > expire_delta:
-                        expiration_l.append(f"\033[93m  ⏰ [狀態過期] {item_type} '{item_title}' 的 '{key}: {val}' 已過 {days} 天，建議刪除。\n      📁 路徑: {detail_path}\033[0m")
+                        expiration_l.append(f"\033[93m  ⏰ [狀態過期] {item_type} '{item_title}' 的 '{key}: {val}' 已過 {days} 天。\n      📁 路徑: {detail_path}\033[0m")
             except Exception:
                 pass
 
@@ -949,7 +949,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             # 🔥 嘗試讀取 poster 的長寬比
                                             try:
                                                 with Image.open(os.path.normpath(p_path)) as tmp_img:
-                                                    poster_ar_str = f"&ar={round(tmp_img.width / tmp_img.height, 4)}"
+                                                    # ✨ 改為傳遞真實寬高
+                                                    poster_ar_str = f"&w={tmp_img.width}&h={tmp_img.height}"
                                             except Exception:
                                                 pass
                                         elif p.startswith('full='):
@@ -995,7 +996,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         ar_str = ""
                                         try:
                                             with Image.open(local_main_path) as tmp_img:
-                                                ar_str = f"&ar={round(tmp_img.width / tmp_img.height, 4)}"
+                                                # ✨ 改為傳遞真實寬高
+                                                ar_str = f"&w={tmp_img.width}&h={tmp_img.height}"
                                         except Exception:
                                             pass
                                         
@@ -1038,7 +1040,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                                 ar_str = ""
                                                 try:
                                                     with Image.open(thumb_local_path) as tmp_img:
-                                                        ar_str = f"&ar={round(tmp_img.width / tmp_img.height, 4)}"
+                                                        # ✨ 改為傳遞真實寬高
+                                                        ar_str = f"&w={tmp_img.width}&h={tmp_img.height}"
                                                 except Exception:
                                                     pass
                                                     
@@ -1059,12 +1062,17 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
                             def replace_html_img(match):
                                 nonlocal art_needs_update
-                                prefix, url, suffix = match.group(1), match.group(2), match.group(3)
-                                if not url.startswith(('http://', 'https://', 'data:')) and 'projects/' not in url:
+                                try:
+                                    prefix, url, suffix = match.group(1), match.group(2), match.group(3)
+                                    
+                                    # 如果是外部網址或 data URI，直接放行，不進行任何本地處理
+                                    if url.startswith(('http://', 'https://', 'data:')) or 'projects/' in url:
+                                        return f"{prefix}{url}{suffix}"
+                                        
                                     clean_url = url[2:] if url.startswith('./') else url
                                     orig_url = f"{real_path}{clean_url}"
                                     
-                                    # ✨ 關鍵修復：同步濾掉 HTML 標籤內的參數
+                                    # ✨ 同步濾掉 HTML 標籤內的參數
                                     clean_local_url = orig_url.split('?')[0].split('#')[0]
                                     local_img_path = os.path.normpath(clean_local_url)
                                     
@@ -1101,9 +1109,23 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         valid_api_files.add(os.path.abspath(thumb_local_path))
                                         thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
                                         orig_url_t = get_hash_url(local_img_path, orig_url)
-                                        return f'{prefix}{thumb_url}" data-full="{orig_url_t}"{suffix[1:]}'
                                         
-                                return f"{prefix}{url}{suffix}"
+                                        # 🔥 取得一般圖片的真實寬高，直接作為 HTML 屬性與 Style 注入！
+                                        size_attrs = ""
+                                        try:
+                                            with Image.open(local_img_path) as tmp_img:
+                                                size_attrs = f' width="{tmp_img.width}" height="{tmp_img.height}" style="aspect-ratio: {tmp_img.width}/{tmp_img.height};"'
+                                        except Exception:
+                                            pass
+                                        
+                                        # ✨ 拔除不必要的網址參數，直接寫入原生 HTML 標籤內，並保有 data-full 屬性！
+                                        return f'{prefix}{thumb_url}" data-full="{orig_url_t}"{size_attrs}{suffix[1:]}'
+                                        
+                                    return f"{prefix}{url}{suffix}"
+                                except Exception as inner_e:
+                                    # ✨ 若字串替換過程中發生任何不可預期錯誤，印出細節並原封不動退回原本的標籤，保證腳本絕不崩潰！
+                                    print(f"    ⚠️ HTML 圖片替換發生錯誤 ({url}): {inner_e}")
+                                    return match.group(0)
                                 
                             content = re.sub(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)', replace_html_img, content)
 

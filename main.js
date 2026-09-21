@@ -92,7 +92,7 @@ const GLOBAL_SVGS = {
 window.STATUS_LIST = [
     ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED'], 
     ['WIP'], 
-    ['OC'],
+    ['OC', 'FANART'], // ✨ 將 FANART 與 OC 放在一起，形成屬性互斥群組
     ['DEV']
 ];
 
@@ -2500,15 +2500,28 @@ renderer.image = function(token_or_href, title, text) {
     const cleanAlt = (altText || '').trim().toLowerCase();
 
     if (!href) return '';
-
+    
     let decodedHref = href.replace(/%23/g, '#');
     
-    // 🔥 新增：擷取並分離 &ar= 參數
-    let ar = '';
+    // 🔥 擷取並分離真實寬高參數
+    let w = '', h = '';
+    const wMatch = decodedHref.match(/&w=(\d+)/);
+    const hMatch = decodedHref.match(/&h=(\d+)/);
+    if (wMatch && hMatch) {
+        w = wMatch[1];
+        h = hMatch[1];
+        // 從原本的網址中剔除這兩個參數
+        decodedHref = decodedHref.replace(/&w=\d+/, '').replace(/&h=\d+/, '');
+    }
+    
+    // 給 PDF 或影音使用的比例字串 (利用原生 CSS 支援的 W/H 寫法)
+    let ar = (w && h) ? `${w}/${h}` : '';
+
+    // ✨ 為了相容之前的舊版 &ar= 參數，我們還是要保留這個檢查
     const arMatch = decodedHref.match(/&ar=([0-9.]+)/);
-    if (arMatch) {
+    if (arMatch) { 
         ar = arMatch[1];
-        // 從原本的網址中剔除這個參數，以免干擾後續解析
+        // 從原本的網址中剔除這個參數
         decodedHref = decodedHref.replace(/&ar=[0-9.]+/, '');
     }
 
@@ -2539,11 +2552,11 @@ renderer.image = function(token_or_href, title, text) {
         srcUrl = parts[0]; fullUrl = parts[1];
     }
 
-    // 🔥 新增：動態生成 aspect-ratio 的 inline style
-    const aspectStyle = ar ? `style="aspect-ratio: ${ar}; width: 100%; height: auto;" ` : '';
+    // 🔥 改用原生 HTML width / height 屬性，並強制鎖死 aspect-ratio，徹底防止透明 SVG 替換造成的高度塌陷！
+    const sizeAttr = (w && h) ? `width="${w}" height="${h}" style="aspect-ratio: ${w}/${h};" ` : '';
 
-    // 🔥 替換 imgTag，注入 aspectStyle
-    const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" ${aspectStyle}loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
+    // 🔥 替換 imgTag，注入真實尺寸
+    const imgTag = `<img src="${srcUrl}" data-full="${fullUrl}" alt="${altText || ''}" class="is-loading" ${sizeAttr}loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">`;
     const zoomBtnHtml = `<button class="zoom-btn" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
     const floatingZoomBtnHtml = `<button class="zoom-btn floating" data-tooltip="放大檢視" onclick="window.openLightbox(this, event)">${GLOBAL_SVGS.zoomIcon}</button>`;
 
