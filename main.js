@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.12.1",          // 目前系統版本號
+    VERSION: "U1.5.12.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -92,7 +92,8 @@ const GLOBAL_SVGS = {
 window.STATUS_LIST = [
     ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED'], 
     ['WIP'], 
-    ['OC', 'FANART'], // ✨ 將 FANART 與 OC 放在一起，形成屬性互斥群組
+    ['OC'],
+    ['FANART'],
     ['DEV']
 ];
 

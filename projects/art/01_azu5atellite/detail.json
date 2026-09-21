@@ -6,6 +6,5 @@
   "tags": ["Draw", "azu5atellite"],
   "cover": "architecture.webp",
   "pinned": true,
-  "default_sort": "asc",
-  "min_sys_version": "1.5.12.1"
+  "default_sort": "asc"
 }
