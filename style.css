@@ -3925,3 +3925,40 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         text-shadow: none;
     }
 }
+
+/* ========================================================================== */
+/* ✨ 區塊級無痕偽裝 (Stealth Block) 排版與動畫                               */
+/* ========================================================================== */
+.md-stealth-block {
+    position: relative;
+    display: block; /* 區塊級元素，獨立成行 */
+    margin: 0; 
+}
+
+/* 🔒 鎖定狀態：隱藏真內容，顯示偽裝內容 */
+.md-stealth-block.is-locked .stealth-real {
+    display: none;
+}
+.md-stealth-block.is-locked .stealth-cover {
+    display: block;
+    color: inherit;
+}
+
+/* 🔓 解鎖狀態：隱藏偽裝內容，顯示真內容，並加上解碼特效 */
+.md-stealth-block.is-unlocked .stealth-cover {
+    display: none;
+}
+.md-stealth-block.is-unlocked .stealth-real {
+    display: block;
+    color: inherit; /* ✨ 最終回歸原本文字顏色 */
+    animation: stealth-decrypt-anim 1s var(--ease-smooth);
+}
+
+/* ========================================================================== */
+/* ✨ 已解鎖狀態防呆 (抑制重複動畫)                                           */
+/* ========================================================================== */
+/* 當區塊帶有 already-unlocked 時，強制取消它與它所有子元素的解碼動畫 */
+.already-unlocked, 
+.already-unlocked * {
+    animation: none !important;
+}

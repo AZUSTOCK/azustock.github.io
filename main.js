@@ -2827,15 +2827,13 @@ const spoilerExtension = {
 };
 
 // ==========================================
-// ✨ 新增 1：機密隱藏區塊 (Secret Block - 降級為 Inline 增強穿透力)
-// 語法：:::secret[金鑰代碼] 內容 :::
+// ✨ 機密隱藏區塊 (Secret Block)
 // ==========================================
 const secretBlockExtension = {
     name: 'secretBlock',
     level: 'inline',
     start(src) { return src.match(/:::\s*secret/i)?.index; }, 
     tokenizer(src, tokens) {
-        // ✨ 核心修復：加入對 "偽裝文字" 的擷取，並且相容不寫的舊語法
         const rule = /^:::\s*secret(?:\[(.*?)\])?(?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*:::/i;
         const match = rule.exec(src);
         if (match) {
@@ -2843,19 +2841,29 @@ const secretBlockExtension = {
                 type: 'secretBlock',
                 raw: match[0],
                 secretId: match[1] || 'DEFAULT_KEY',
-                coverText: match[2] || 'ENCRYPTED DATA', // ✨ 如果有寫引號文字就用，沒有就用預設值
+                coverText: match[2] || 'ENCRYPTED DATA',
                 tokens: this.lexer.inlineTokens(match[3]) 
             };
         }
     },
     renderer(token) {
         const isUnlocked = window.isSecretUnlocked(token.secretId);
-        const statusClass = isUnlocked ? 'is-unlocked' : 'is-locked';
+        
+        // ✨ 判斷是否在這個地方播過動畫
+        const placeId = window._currentRenderPlace + '_' + token.secretId;
+        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+        const hasAnimatedHere = animatedPlaces.includes(placeId);
+
+        let statusClass = 'is-locked';
+        if (isUnlocked) {
+            // 如果全域已解鎖，且這裡播過動畫了，直接顯示結果；否則掛上待命標籤準備播放！
+            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
+        }
+
         const lockIcon = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
         
-        // ✨ 這裡將原本寫死的 ENCRYPTED DATA 換成 token.coverText
         return `
-        <div class="md-secret-block ${statusClass}" data-secret-id="${token.secretId}">
+        <div class="md-secret-block ${statusClass}" data-secret-id="${token.secretId}" data-place-id="${placeId}">
             <div class="secret-overlay">
                 ${lockIcon}
                 <span class="secret-cover-text">${token.coverText}</span>
@@ -2869,15 +2877,13 @@ const secretBlockExtension = {
 };
 
 // ==========================================
-// ✨ 新增 2：行內機密文字 (Inline Secret) 擴充
-// 語法：!![金鑰代碼] 內容 !!
+// ✨ 行內機密文字 (Inline Secret) 
 // ==========================================
 const inlineSecretExtension = {
     name: 'inlineSecret',
     level: 'inline',
     start(src) { return src.match(/!!\[/)?.index; },
     tokenizer(src, tokens) {
-        // ✨ 加入對 "偽裝文字" 的擷取，並且讓中間的空白可有可無
         const rule = /^!!\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)!!/;
         const match = rule.exec(src);
         if (match) {
@@ -2885,31 +2891,36 @@ const inlineSecretExtension = {
                 type: 'inlineSecret',
                 raw: match[0],
                 secretId: match[1] || 'DEFAULT_KEY',
-                coverText: match[2] || 'LOCKED', // ✨ 預設值為 LOCKED
+                coverText: match[2] || 'LOCKED',
                 tokens: this.lexer.inlineTokens(match[3])
             };
         }
     },
     renderer(token) {
         const isUnlocked = window.isSecretUnlocked(token.secretId);
-        const statusClass = isUnlocked ? 'is-unlocked' : 'is-locked';
+        const placeId = window._currentRenderPlace + '_' + token.secretId;
+        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+        const hasAnimatedHere = animatedPlaces.includes(placeId);
+
+        let statusClass = 'is-locked';
+        if (isUnlocked) {
+            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
+        }
+        
         const lockIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
 
-        // ✨ 這裡將原本寫死的 LOCKED 換成 token.coverText
-        return `<span class="md-inline-secret ${statusClass}" data-secret-id="${token.secretId}"><span class="secret-overlay">${lockIcon}<span class="secret-cover-text">${token.coverText}</span></span><span class="secret-content">${this.parser.parseInline(token.tokens)}</span></span>`;
+        return `<span class="md-inline-secret ${statusClass}" data-secret-id="${token.secretId}" data-place-id="${placeId}"><span class="secret-overlay">${lockIcon}<span class="secret-cover-text">${token.coverText}</span></span><span class="secret-content">${this.parser.parseInline(token.tokens)}</span></span>`;
     }
 };
 
 // ==========================================
-// ✨ 新增 3：無痕偽裝機密 (Stealth Secret) 擴充
-// 語法：??[金鑰代碼] "完全普通的偽裝文字" 解鎖後的真正內容 ??
+// ✨ 無痕偽裝機密 (Stealth Secret)
 // ==========================================
 const stealthSecretExtension = {
     name: 'stealthSecret',
     level: 'inline',
     start(src) { return src.match(/\?\?\[/)?.index; },
     tokenizer(src, tokens) {
-        // ✨ 核心修復：加上 \s* 自動吸收前後多餘空白，確保文字絕對緊貼
         const rule = /^\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?/;
         const match = rule.exec(src);
         if (match) {
@@ -2918,7 +2929,6 @@ const stealthSecretExtension = {
                 type: 'stealthSecret',
                 raw: match[0],
                 secretId: match[1] || 'DEFAULT_KEY',
-                // ✨ 加上 trim()，雙重確保沒有換行或空白被當成文字渲染
                 coverTokens: this.lexer.inlineTokens(coverStr.trim()), 
                 tokens: this.lexer.inlineTokens(match[3].trim())
             };
@@ -2926,13 +2936,67 @@ const stealthSecretExtension = {
     },
     renderer(token) {
         const isUnlocked = window.isSecretUnlocked(token.secretId);
-        const statusClass = isUnlocked ? 'is-unlocked' : 'is-locked';
+        const placeId = window._currentRenderPlace + '_' + token.secretId;
+        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+        const hasAnimatedHere = animatedPlaces.includes(placeId);
 
-        // ✨ 這裡只負責把解析好的 tokens 轉成 HTML 輸出
+        let statusClass = 'is-locked';
+        if (isUnlocked) {
+            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
+        }
+
         const parsedCover = this.parser.parseInline(token.coverTokens);
         const parsedReal = this.parser.parseInline(token.tokens);
 
-        return `<span class="md-stealth-secret ${statusClass}" data-secret-id="${token.secretId}"><span class="stealth-cover">${parsedCover}</span><span class="stealth-real">${parsedReal}</span></span>`;
+        return `<span class="md-stealth-secret ${statusClass}" data-secret-id="${token.secretId}" data-place-id="${placeId}"><span class="stealth-cover">${parsedCover}</span><span class="stealth-real">${parsedReal}</span></span>`;
+    }
+};
+
+// ==========================================
+// ✨ 區塊級無痕偽裝 (Stealth Block)
+// ==========================================
+const stealthBlockExtension = {
+    name: 'stealthBlock',
+    level: 'block',
+    start(src) { return src.match(/^:::\s*stealth/i)?.index; },
+    tokenizer(src, tokens) {
+        const rule = /^:::\s*stealth(?:\[(.*?)\])?\n([\s\S]*?)\n:::/i;
+        const match = rule.exec(src);
+        if (match) {
+            const innerContent = match[2];
+            let coverStr = '***';
+            let realStr = innerContent;
+            
+            const parts = innerContent.split(/\n---\n/);
+            if (parts.length > 1) {
+                coverStr = parts[0];
+                realStr = parts.slice(1).join('\n---\n');
+            }
+
+            return {
+                type: 'stealthBlock',
+                raw: match[0],
+                secretId: match[1] || 'DEFAULT_KEY',
+                coverTokens: this.lexer.blockTokens(coverStr.trim()), 
+                tokens: this.lexer.blockTokens(realStr.trim())
+            };
+        }
+    },
+    renderer(token) {
+        const isUnlocked = window.isSecretUnlocked(token.secretId);
+        const placeId = window._currentRenderPlace + '_' + token.secretId;
+        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+        const hasAnimatedHere = animatedPlaces.includes(placeId);
+
+        let statusClass = 'is-locked';
+        if (isUnlocked) {
+            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
+        }
+
+        const parsedCover = this.parser.parse(token.coverTokens);
+        const parsedReal = this.parser.parse(token.tokens);
+
+        return `<div class="md-stealth-block ${statusClass}" data-secret-id="${token.secretId}" data-place-id="${placeId}"><div class="stealth-cover">${parsedCover}</div><div class="stealth-real">${parsedReal}</div></div>`;
     }
 };
 
@@ -3078,8 +3142,9 @@ const detailsBlockExtension = {
     }
 };
 
+// ⚠️ 註冊擴充元件
 marked.use({ 
-    extensions: [spoilerExtension, highlightExtension, secretBlockExtension, inlineSecretExtension, stealthSecretExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
+    extensions: [spoilerExtension, highlightExtension, secretBlockExtension, inlineSecretExtension, stealthSecretExtension, stealthBlockExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
     renderer: renderer,
     breaks: false, 
     gfm: true      
@@ -4401,6 +4466,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             if (viewIndex) viewIndex.style.display = 'none';
             if (viewArticle) {
                 viewArticle.style.display = 'block';
+                // ✨ 賦予目前渲染環境的專屬 ID，供解鎖特效記憶使用
+                window._currentRenderPlace = projectId + '_' + articleIndex;
                 viewArticle.innerHTML = marked.parse(markdownContent);
             }
             
@@ -4505,12 +4572,21 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                                 // 2. 讓鑰匙發出覺醒光芒
                                 keyEl.classList.add('is-key-triggered');
                                 
-                                // 3. 自動尋找同頁面被鎖住的區塊，進行解鎖動畫！
-                                // ✨ 補上 .md-stealth-secret，讓無痕文字也能連動解鎖！
-                                const lockedBlocks = document.querySelectorAll(`.md-secret-block.is-locked[data-secret-id="${secretId}"], .md-inline-secret.is-locked[data-secret-id="${secretId}"], .md-stealth-secret.is-locked[data-secret-id="${secretId}"]`);
+                                const lockedBlocks = document.querySelectorAll(`.md-secret-block.is-locked[data-secret-id="${secretId}"], .md-inline-secret.is-locked[data-secret-id="${secretId}"], .md-stealth-secret.is-locked[data-secret-id="${secretId}"], .md-stealth-block.is-locked[data-secret-id="${secretId}"]`);
                                 lockedBlocks.forEach(block => {
-                                    block.classList.remove('is-locked');
+                                    // 解除鎖定與待命狀態
+                                    block.classList.remove('is-locked', 'pending-auto-unlock');
                                     block.classList.add('is-unlocked');
+                                    
+                                    // 📝 記錄為已播過動畫，下次進來就不會再閃爍
+                                    const placeId = block.getAttribute('data-place-id');
+                                    if (placeId) {
+                                        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+                                        if (!animatedPlaces.includes(placeId)) {
+                                            animatedPlaces.push(placeId);
+                                            sessionStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
+                                        }
+                                    }
                                 });
                             }
                             keyObserver.unobserve(keyEl);
@@ -4525,6 +4601,38 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                         k.classList.add('is-key-triggered'); // 以前解鎖過，直接亮起
                     }
                 });
+            }
+
+            // ==========================================
+            // ✨ 跨文章機密自動解碼引擎 (Auto-Decrypt for Global Secrets)
+            // ==========================================
+            const autoUnlockBlocks = activeView.querySelectorAll('.pending-auto-unlock');
+            if (autoUnlockBlocks.length > 0) {
+                const autoObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const block = entry.target;
+                            
+                            // 📝 記錄為已播過動畫
+                            const placeId = block.getAttribute('data-place-id');
+                            if (placeId) {
+                                let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+                                if (!animatedPlaces.includes(placeId)) {
+                                    animatedPlaces.push(placeId);
+                                    sessionStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
+                                }
+                            }
+                            
+                            // 觸發自動解碼動畫！
+                            block.classList.remove('is-locked', 'pending-auto-unlock');
+                            block.classList.add('is-unlocked');
+                            
+                            autoObserver.unobserve(block);
+                        }
+                    });
+                }, { threshold: 0.15 }); // 捲入畫面 15% 時觸發自動解碼
+
+                autoUnlockBlocks.forEach(b => autoObserver.observe(b));
             }
 
             const firstH1 = activeView.querySelector('h1');
