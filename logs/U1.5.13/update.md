@@ -6,7 +6,7 @@
 2. Article Lock & Unlock
 
 | type | block | inline |
-| :-- | :-- | :-- |
+| :--- | :--- | :--- |
 | secret | `:::secret` | `!![]` |
 | stealth | `:::stealth` | `??[]` |
 | key |  | `++[KEY:id]++` |
@@ -35,11 +35,11 @@
 
 | session | local | 
 | :--- | :--- | 
-| sessionStorage.getItem('sys_unlocked_secrets') | localStorage.getItem('sys_unlocked_secrets') |
-| sessionStorage.setItem('sys_unlocked_secrets' | localStorage.setItem('sys_unlocked_secrets' |
-| sessionStorage.getItem('sys_animated_secrets') | localStorage.getItem('sys_animated_secrets') |
-| sessionStorage.setItem('sys_animated_secrets' | localStorage.setItem('sys_animated_secrets' |
-| (Console) remove key | localStorage.removeItem('sys_unlocked_secrets') |
-| (Console) remove animate record | sessionStorage.removeItem('sys_animated_secrets')
+| `sessionStorage.getItem('sys_unlocked_secrets')` | `localStorage.getItem('sys_unlocked_secrets')` |
+| `sessionStorage.setItem('sys_unlocked_secrets'` | `localStorage.setItem('sys_unlocked_secrets'` |
+| `sessionStorage.getItem('sys_animated_secrets')` | `localStorage.getItem('sys_animated_secrets')` |
+| `sessionStorage.setItem('sys_animated_secrets'` | `localStorage.setItem('sys_animated_secrets'` |
+| (Console) remove key | `localStorage.removeItem('sys_unlocked_secrets')` |
+| (Console) remove animate record | `sessionStorage.removeItem('sys_animated_secrets')`
 
 > now `localStorage`
