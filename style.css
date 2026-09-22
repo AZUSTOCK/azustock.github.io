@@ -3695,3 +3695,153 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 [data-theme="dark"] .lightbox-mermaid-clone {
     background-color: var(--bg); /* 深色模式自動切換 */
 }
+
+/* ========================================================================== */
+/* ✨ 機密檔案區塊 (Secret Block) 排版與解鎖動畫                               */
+/* ========================================================================== */
+.md-secret-block {
+    position: relative;
+    margin: 2rem 0;
+    border-radius: 12px;
+    border: 1px solid var(--card-border);
+    overflow: hidden;
+    background: var(--bg);
+    transition: all 0.8s var(--ease-smooth);
+}
+
+/* 內文容器 */
+.md-secret-block .secret-content {
+    padding: 1.5rem 2rem;
+    transition: filter 0.8s ease, opacity 0.8s ease, transform 0.8s var(--ease-smooth);
+}
+
+/* 🔒 鎖定狀態：嚴重模糊、禁止選取、稍微內縮 */
+.md-secret-block.is-locked .secret-content {
+    filter: blur(12px) grayscale(80%);
+    opacity: 0.2;
+    transform: scale(0.98);
+    user-select: none;
+    pointer-events: none;
+}
+
+/* 🔒 鎖定狀態：覆蓋在上面的警告標語 */
+.md-secret-block .secret-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--bg) 60%, transparent);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    color: var(--muted);
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.6s var(--ease-smooth);
+}
+
+.md-secret-block.is-locked .secret-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.md-secret-block .secret-overlay svg {
+    margin-bottom: 0.5rem;
+    opacity: 0.7;
+}
+
+/* 🔓 解鎖狀態：金光閃爍與邊框發亮 */
+.md-secret-block.is-unlocked {
+    border-color: var(--accent-2);
+    box-shadow: 0 0 20px color-mix(in srgb, var(--accent-2) 15%, transparent);
+    animation: secret-unlock-pulse 1s ease;
+}
+
+@keyframes secret-unlock-pulse {
+    0% { box-shadow: 0 0 0 transparent; border-color: var(--card-border); }
+    50% { box-shadow: 0 0 40px color-mix(in srgb, var(--accent-2) 40%, transparent); border-color: var(--accent-2); }
+    100% { box-shadow: 0 0 20px color-mix(in srgb, var(--accent-2) 15%, transparent); }
+}
+
+/* 🔑 觸發後的鑰匙高光特效 */
+.md-highlight-text.is-key-triggered {
+    --dynamic-glow: var(--accent-2) !important;
+    animation: key-found-pulse 1s ease;
+}
+
+.md-highlight-text.is-key-triggered .marquee-text-track {
+    opacity: 1 !important;
+    animation-play-state: running !important;
+}
+
+@keyframes key-found-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); filter: brightness(1.5); }
+    100% { transform: scale(1); }
+}
+
+/* ========================================================================== */
+/* ✨ 行內機密文字 (Inline Secret) 排版與解鎖動畫                             */
+/* ========================================================================== */
+.md-inline-secret {
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    vertical-align: bottom;
+    transition: all 0.8s var(--ease-smooth);
+    border-radius: 4px;
+    padding: 0 4px;
+    margin: 0 2px;
+    overflow: hidden;
+}
+
+.md-inline-secret .secret-content {
+    transition: filter 0.8s ease, opacity 0.8s ease;
+}
+
+/* 🔒 鎖定狀態：縮小變糊，防呆點擊 */
+.md-inline-secret.is-locked .secret-content {
+    filter: blur(5px) grayscale(100%);
+    opacity: 0.15;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* 🔒 鎖定覆蓋層：黑色警示條 */
+.md-inline-secret .secret-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--text);
+    color: var(--bg);
+    font-family: 'Courier New', monospace;
+    font-size: 0.75em;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    z-index: 10;
+    border-radius: 4px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    white-space: nowrap;
+    padding: 0 6px;
+}
+
+.md-inline-secret.is-locked .secret-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 🔓 解鎖狀態：浮現高光背景色 */
+.md-inline-secret.is-unlocked {
+    background: color-mix(in srgb, var(--accent-2) 15%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--accent-2) 20%, transparent);
+    color: var(--accent-2);
+}

@@ -174,6 +174,24 @@ window.getResVersion = function(key) {
 };
 
 // ==========================================
+// ✨ 機密檔案解鎖記憶引擎 (Secret Storage Engine)
+// ==========================================
+window.isSecretUnlocked = function(id) {
+    const unlocked = JSON.parse(sessionStorage.getItem('sys_unlocked_secrets') || '[]');
+    return unlocked.includes(id);
+};
+
+window.unlockSecret = function(id) {
+    let unlocked = JSON.parse(sessionStorage.getItem('sys_unlocked_secrets') || '[]');
+    if (!unlocked.includes(id)) {
+        unlocked.push(id);
+        sessionStorage.setItem('sys_unlocked_secrets', JSON.stringify(unlocked));
+        return true; // 代表「剛剛才解鎖」
+    }
+    return false; // 代表「以前就解鎖過了」
+};
+
+// ==========================================
 // ✨ 全域字體縮放引擎 (Text Scaling Engine)
 // ==========================================
 window.currentTextScale = parseInt(localStorage.getItem('sys_text_scale')) || 0; 
@@ -2754,29 +2772,33 @@ renderer.link = function(token_or_href, title, text) {
 // 4. ✨ 攔截 Markdown 標題，同時用全域陣列記住最新出現的標題文字
 window._lastMarkdownHeadings = [];
 renderer.heading = function(token_or_text, level, raw) {
-    let text = typeof token_or_text === 'object' ? token_or_text.text : token_or_text;
+    // 1. 抓取原始文字與層級
+    let rawText = typeof token_or_text === 'object' ? token_or_text.text : token_or_text;
     const depth = typeof token_or_text === 'object' ? token_or_text.depth : level;
     
-    // ✨ 核心魔法：偵測標題文字後面是否帶有 {#自訂ID}
+    // 2. ✨ 核心修復：優先解析標題內的 Inline 元素 (讓高光、機密文字能在標題內運作！)
+    let parsedText = typeof token_or_text === 'object' && token_or_text.tokens 
+        ? this.parser.parseInline(token_or_text.tokens) 
+        : rawText;
+    
+    // 3. 偵測並拔除 {#自訂ID}
     let customId = null;
-    const idMatch = text.match(/\s+\{#([^}]+)\}$/);
+    const idMatch = rawText.match(/\s+\{#([^}]+)\}$/);
     
     if (idMatch) {
         customId = idMatch[1].trim();
-        // 把 "{#自訂ID}" 從標題文字中剔除，讓畫面上跟右上角目錄只顯示乾淨的標題
-        text = text.replace(/\s+\{#[^}]+\}$/, '').trim(); 
+        // 分別從 rawText 與解析後的 HTML 字串尾端剔除 ID
+        rawText = rawText.replace(/\s+\{#[^}]+\}$/, '').trim(); 
+        parsedText = parsedText.replace(/\s+\{#[^}]+\}$/, '').trim();
     }
 
     // 將最乾淨的標題文字存入全域，給 Mermaid 抓取當作圖表預設標題
-    window._lastMarkdownHeadings.push(text.replace(/<[^>]+>/g, '')); // 順手剝除 HTML 標籤
+    window._lastMarkdownHeadings.push(rawText.replace(/<[^>]+>/g, '')); 
     
-    // 如果有自訂 ID 就用自訂的，沒有的話就沿用預設的轉換邏輯
-    const id = customId || text.toLowerCase().replace(/\s+/g, '-').replace(/<[^>]+>/g, '');
+    const id = customId || rawText.toLowerCase().replace(/\s+/g, '-').replace(/<[^>]+>/g, '');
     
-    // ✨ 終極魔法：給所有標題 ID 加上 "md-sys-" 前綴！
-    // 這樣瀏覽器在網址列看到 #target 時，會找不到 id="target" 的元素，就會放棄原生跳躍。
-    // 而我們的 JS 引擎很聰明，會自動加上前綴去找它，完美接管捲動權權！
-    return `<h${depth} id="md-sys-${id}" data-raw-title="${encodeURIComponent(text)}">${text}</h${depth}>`;
+    // ✨ 輸出時，畫面上的內容使用已渲染的 parsedText！
+    return `<h${depth} id="md-sys-${id}" data-raw-title="${encodeURIComponent(rawText)}">${parsedText}</h${depth}>`;
 };
 
 // ==========================================
@@ -2805,7 +2827,77 @@ const spoilerExtension = {
 };
 
 // ==========================================
-// ✨ 新增：動態高光螢光筆 (雙層接力無縫跑馬燈)
+// ✨ 新增 1：機密隱藏區塊 (Secret Block - 降級為 Inline 增強穿透力)
+// 語法：:::secret[金鑰代碼] 內容 :::
+// ==========================================
+const secretBlockExtension = {
+    name: 'secretBlock',
+    level: 'inline',
+    start(src) { return src.match(/:::\s*secret/i)?.index; }, // ✨ 加上 i 忽略大小寫
+    tokenizer(src, tokens) {
+        // ✨ 加上 i 忽略大小寫，現在 Secret、SECRET 都能完美辨識！
+        const rule = /^:::\s*secret(?:\[(.*?)\])?\s*([\s\S]*?)\s*:::/i;
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'secretBlock',
+                raw: match[0],
+                secretId: match[1] || 'DEFAULT_KEY',
+                // 因為我們降級為 inline，但內部可能還是有 Markdown 結構，所以保留 parseInline 的能力
+                tokens: this.lexer.inlineTokens(match[2]) 
+            };
+        }
+    },
+    renderer(token) {
+        const isUnlocked = window.isSecretUnlocked(token.secretId);
+        const statusClass = isUnlocked ? 'is-unlocked' : 'is-locked';
+        const lockIcon = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+        
+        return `
+        <div class="md-secret-block ${statusClass}" data-secret-id="${token.secretId}">
+            <div class="secret-overlay">
+                ${lockIcon}
+                <span>ENCRYPTED DATA</span>
+                <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7; margin-top: 4px;">Requires Key: [${token.secretId}]</span>
+            </div>
+            <div class="secret-content markdown-body">
+                ${this.parser.parseInline(token.tokens)}
+            </div>
+        </div>`;
+    }
+};
+
+// ==========================================
+// ✨ 新增 2：行內機密文字 (Inline Secret) 擴充
+// 語法：!![金鑰代碼] 內容 !!
+// ==========================================
+const inlineSecretExtension = {
+    name: 'inlineSecret',
+    level: 'inline',
+    start(src) { return src.match(/!!\[/)?.index; },
+    tokenizer(src, tokens) {
+        const rule = /^!!\[(.*?)\]([\s\S]*?)!!/;
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'inlineSecret',
+                raw: match[0],
+                secretId: match[1] || 'DEFAULT_KEY',
+                tokens: this.lexer.inlineTokens(match[2])
+            };
+        }
+    },
+    renderer(token) {
+        const isUnlocked = window.isSecretUnlocked(token.secretId);
+        const statusClass = isUnlocked ? 'is-unlocked' : 'is-locked';
+        const lockIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+
+        return `<span class="md-inline-secret ${statusClass}" data-secret-id="${token.secretId}"><span class="secret-overlay">${lockIcon}LOCKED</span><span class="secret-content">${this.parser.parseInline(token.tokens)}</span></span>`;
+    }
+};
+
+// ==========================================
+// ✨ 修改：讓高光螢光筆支援 KEY 觸發
 // ==========================================
 const highlightExtension = {
     name: 'updateHighlight',
@@ -2826,17 +2918,24 @@ const highlightExtension = {
     },
     renderer(token) {
         const badge = token.badgeText.trim();
-        // 拔除 getStatusColorFromCSS，改用 data-status 屬性
-        const statusAttr = badge ? ` data-status="${badge.toUpperCase()}"` : '';
-        const defaultStyle = badge ? '' : ' style="--dynamic-glow: var(--accent);"';
-        const displayText = badge ? badge : 'HIGHLIGHT'; 
+        
+        // ✨ 新增：判斷這是不是一把「鑰匙」
+        const isKey = badge.startsWith('KEY:');
+        const secretId = isKey ? badge.replace('KEY:', '').trim() : '';
+        const keyAttr = isKey ? ` data-secret-key="${secretId}"` : '';
+        
+        // 如果是鑰匙，改變預設外觀
+        const displayText = isKey ? 'KEY FOUND' : (badge ? badge : 'HIGHLIGHT'); 
+        const statusAttr = (badge && !isKey) ? ` data-status="${badge.toUpperCase()}"` : '';
+        const defaultStyle = (badge && !isKey) ? '' : ' style="--dynamic-glow: var(--accent-2);"';
         
         const repeatedText = `${displayText} • `.repeat(20);
         const duration = Math.max(20, repeatedText.length * 0.4); 
         
         const bgHtml = `<span class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></span>`;
         
-        return `<span class="md-highlight-text"${statusAttr}${defaultStyle}>${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
+        // ✨ 把 keyAttr 塞入最外層
+        return `<span class="md-highlight-text"${statusAttr}${defaultStyle}${keyAttr}>${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
     }
 };
 
@@ -2941,7 +3040,7 @@ const detailsBlockExtension = {
 
 // ⚠️ 記得把 detailsBlockExtension 加進陣列裡！
 marked.use({ 
-    extensions: [spoilerExtension, highlightExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
+    extensions: [spoilerExtension, highlightExtension, secretBlockExtension, inlineSecretExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
     renderer: renderer,
     breaks: false, 
     gfm: true      
@@ -4344,6 +4443,49 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
             // ✨ 呼叫全域 Mermaid 渲染引擎 (取代原本 30 幾行的 renderMermaid 函數)
             window.renderAllMermaidCharts(activeView);
+
+            // ==========================================
+            // ✨ 機密檔案解鎖監視引擎 (Secret Unlock Engine)
+            // ==========================================
+            const keys = activeView.querySelectorAll('[data-secret-key]');
+            if (keys.length > 0) {
+                const keyObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const keyEl = entry.target;
+                            const secretId = keyEl.getAttribute('data-secret-key');
+                            
+                            // 呼叫解鎖引擎
+                            if (window.unlockSecret(secretId)) {
+                                // 1. 顯示超有質感的解鎖 Toast
+                                if (window.showSystemToast) {
+                                    window.showSystemToast('>_ ACCESS_GRANTED', '取得授權金鑰', `已解鎖隱藏機密 [${secretId}]`, 6000, 'success');
+                                }
+                                window.triggerHaptic('success');
+                                
+                                // 2. 讓鑰匙發出覺醒光芒
+                                keyEl.classList.add('is-key-triggered');
+                                
+                                // 3. 自動尋找同頁面被鎖住的區塊，進行解鎖動畫！
+                                const lockedBlocks = document.querySelectorAll(`.md-secret-block.is-locked[data-secret-id="${secretId}"], .md-inline-secret.is-locked[data-secret-id="${secretId}"]`);
+                                lockedBlocks.forEach(block => {
+                                    block.classList.remove('is-locked');
+                                    block.classList.add('is-unlocked');
+                                });
+                            }
+                            keyObserver.unobserve(keyEl);
+                        }
+                    });
+                }, { threshold: 0.5 }); // 滾到元素露出一半時才觸發
+
+                keys.forEach(k => {
+                    if (!window.isSecretUnlocked(k.getAttribute('data-secret-key'))) {
+                        keyObserver.observe(k);
+                    } else {
+                        k.classList.add('is-key-triggered'); // 以前解鎖過，直接亮起
+                    }
+                });
+            }
 
             const firstH1 = activeView.querySelector('h1');
             if (firstH1) {
