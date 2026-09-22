@@ -2833,18 +2833,18 @@ const spoilerExtension = {
 const secretBlockExtension = {
     name: 'secretBlock',
     level: 'inline',
-    start(src) { return src.match(/:::\s*secret/i)?.index; }, // ✨ 加上 i 忽略大小寫
+    start(src) { return src.match(/:::\s*secret/i)?.index; }, 
     tokenizer(src, tokens) {
-        // ✨ 加上 i 忽略大小寫，現在 Secret、SECRET 都能完美辨識！
-        const rule = /^:::\s*secret(?:\[(.*?)\])?\s*([\s\S]*?)\s*:::/i;
+        // ✨ 核心修復：加入對 "偽裝文字" 的擷取，並且相容不寫的舊語法
+        const rule = /^:::\s*secret(?:\[(.*?)\])?(?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*:::/i;
         const match = rule.exec(src);
         if (match) {
             return {
                 type: 'secretBlock',
                 raw: match[0],
                 secretId: match[1] || 'DEFAULT_KEY',
-                // 因為我們降級為 inline，但內部可能還是有 Markdown 結構，所以保留 parseInline 的能力
-                tokens: this.lexer.inlineTokens(match[2]) 
+                coverText: match[2] || 'ENCRYPTED DATA', // ✨ 如果有寫引號文字就用，沒有就用預設值
+                tokens: this.lexer.inlineTokens(match[3]) 
             };
         }
     },
@@ -2853,11 +2853,12 @@ const secretBlockExtension = {
         const statusClass = isUnlocked ? 'is-unlocked' : 'is-locked';
         const lockIcon = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
         
+        // ✨ 這裡將原本寫死的 ENCRYPTED DATA 換成 token.coverText
         return `
         <div class="md-secret-block ${statusClass}" data-secret-id="${token.secretId}">
             <div class="secret-overlay">
                 ${lockIcon}
-                <span>ENCRYPTED DATA</span>
+                <span class="secret-cover-text">${token.coverText}</span>
                 <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7; margin-top: 4px;">Requires Key: [${token.secretId}]</span>
             </div>
             <div class="secret-content markdown-body">
@@ -2876,14 +2877,16 @@ const inlineSecretExtension = {
     level: 'inline',
     start(src) { return src.match(/!!\[/)?.index; },
     tokenizer(src, tokens) {
-        const rule = /^!!\[(.*?)\]([\s\S]*?)!!/;
+        // ✨ 加入對 "偽裝文字" 的擷取，並且讓中間的空白可有可無
+        const rule = /^!!\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)!!/;
         const match = rule.exec(src);
         if (match) {
             return {
                 type: 'inlineSecret',
                 raw: match[0],
                 secretId: match[1] || 'DEFAULT_KEY',
-                tokens: this.lexer.inlineTokens(match[2])
+                coverText: match[2] || 'LOCKED', // ✨ 預設值為 LOCKED
+                tokens: this.lexer.inlineTokens(match[3])
             };
         }
     },
@@ -2892,7 +2895,44 @@ const inlineSecretExtension = {
         const statusClass = isUnlocked ? 'is-unlocked' : 'is-locked';
         const lockIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
 
-        return `<span class="md-inline-secret ${statusClass}" data-secret-id="${token.secretId}"><span class="secret-overlay">${lockIcon}LOCKED</span><span class="secret-content">${this.parser.parseInline(token.tokens)}</span></span>`;
+        // ✨ 這裡將原本寫死的 LOCKED 換成 token.coverText
+        return `<span class="md-inline-secret ${statusClass}" data-secret-id="${token.secretId}"><span class="secret-overlay">${lockIcon}<span class="secret-cover-text">${token.coverText}</span></span><span class="secret-content">${this.parser.parseInline(token.tokens)}</span></span>`;
+    }
+};
+
+// ==========================================
+// ✨ 新增 3：無痕偽裝機密 (Stealth Secret) 擴充
+// 語法：??[金鑰代碼] "完全普通的偽裝文字" 解鎖後的真正內容 ??
+// ==========================================
+const stealthSecretExtension = {
+    name: 'stealthSecret',
+    level: 'inline',
+    start(src) { return src.match(/\?\?\[/)?.index; },
+    tokenizer(src, tokens) {
+        // ✨ 核心修復：加上 \s* 自動吸收前後多餘空白，確保文字絕對緊貼
+        const rule = /^\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?/;
+        const match = rule.exec(src);
+        if (match) {
+            const coverStr = match[2] || '***'; 
+            return {
+                type: 'stealthSecret',
+                raw: match[0],
+                secretId: match[1] || 'DEFAULT_KEY',
+                // ✨ 加上 trim()，雙重確保沒有換行或空白被當成文字渲染
+                coverTokens: this.lexer.inlineTokens(coverStr.trim()), 
+                tokens: this.lexer.inlineTokens(match[3].trim())
+            };
+        }
+    },
+    renderer(token) {
+        const isUnlocked = window.isSecretUnlocked(token.secretId);
+        const statusClass = isUnlocked ? 'is-unlocked' : 'is-locked';
+
+        // ✨ 這裡只負責把解析好的 tokens 轉成 HTML 輸出
+        const parsedCover = this.parser.parseInline(token.coverTokens);
+        const parsedReal = this.parser.parseInline(token.tokens);
+
+        return `<span class="md-stealth-secret ${statusClass}" data-secret-id="${token.secretId}"><span class="stealth-cover">${parsedCover}</span><span class="stealth-real">${parsedReal}</span></span>`;
     }
 };
 
@@ -3038,9 +3078,8 @@ const detailsBlockExtension = {
     }
 };
 
-// ⚠️ 記得把 detailsBlockExtension 加進陣列裡！
 marked.use({ 
-    extensions: [spoilerExtension, highlightExtension, secretBlockExtension, inlineSecretExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
+    extensions: [spoilerExtension, highlightExtension, secretBlockExtension, inlineSecretExtension, stealthSecretExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
     renderer: renderer,
     breaks: false, 
     gfm: true      
@@ -4467,7 +4506,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                                 keyEl.classList.add('is-key-triggered');
                                 
                                 // 3. 自動尋找同頁面被鎖住的區塊，進行解鎖動畫！
-                                const lockedBlocks = document.querySelectorAll(`.md-secret-block.is-locked[data-secret-id="${secretId}"], .md-inline-secret.is-locked[data-secret-id="${secretId}"]`);
+                                // ✨ 補上 .md-stealth-secret，讓無痕文字也能連動解鎖！
+                                const lockedBlocks = document.querySelectorAll(`.md-secret-block.is-locked[data-secret-id="${secretId}"], .md-inline-secret.is-locked[data-secret-id="${secretId}"], .md-stealth-secret.is-locked[data-secret-id="${secretId}"]`);
                                 lockedBlocks.forEach(block => {
                                     block.classList.remove('is-locked');
                                     block.classList.add('is-unlocked');
@@ -5507,33 +5547,52 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     };
 };
 
-// ✨ 專為 JSON/Markdown 轉 HTML 後的中文排版處理器
+// ==========================================
+// ✨ 專為 JSON/Markdown 轉 HTML 後的中文排版處理器 (支援 <br> 狀態機遞迴版)
+// ==========================================
 window.applyIndentToVerticalWrapper = function(container) {
     if (!container || container.getAttribute('data-indent') === 'false') return;
 
-    // ✨ 使用 Unicode 全形空格字元 (U+3000)，直接填入文字，不會被轉義為字串
-    const indent = '\u3000\u3000';
+    const indent = '\u3000\u3000'; // 兩個全形空白
 
-    function traverse(node) {
-        node.childNodes.forEach(child => {
-            if (child.nodeType === Node.TEXT_NODE) {
-                // 檢查是否已經有縮排，避免重複執行
-                if (child.textContent.trim().length > 0 && !child.textContent.startsWith(indent)) {
-                    const lines = child.textContent.split('\n');
-                    const indentedLines = lines.map(line => {
-                        // 每一行開頭都加上全形空格
-                        return line.trim() ? indent + line.trim() : line;
-                    });
-                    child.textContent = indentedLines.join('\n');
+    function processNode(node, state) {
+        for (let i = 0; i < node.childNodes.length; i++) {
+            let child = node.childNodes[i];
+            
+            if (child.nodeName === 'BR') {
+                // ✨ 遇到 <br> 換行標籤，舉起旗子：接下來的文字是新的一行！
+                state.isNewLine = true;
+            } else if (child.nodeType === Node.TEXT_NODE) {
+                // 忽略純換行符號或無意義的空白節點
+                if (child.textContent.trim().length > 0) {
+                    // 如果旗子舉著 (代表這是新行的開頭)
+                    if (state.isNewLine) {
+                        if (!child.textContent.startsWith(indent)) {
+                            child.textContent = indent + child.textContent.replace(/^\s+/, '');
+                        }
+                        // 縮排完畢，放下旗子
+                        state.isNewLine = false;
+                    }
                 }
-            } else if (child.tagName !== 'BR' && child.tagName !== 'SCRIPT' && child.tagName !== 'STYLE') {
-                // 遞迴處理非換行標籤
-                traverse(child);
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                // 遇到大型區塊元素，它們本身就自成一區，所以後面的文字又算新的一行
+                if (['IMG', 'VIDEO', 'AUDIO', 'TABLE', 'UL', 'OL', 'FIGURE', 'DIV'].includes(child.tagName)) {
+                    state.isNewLine = true; 
+                } else if (['SCRIPT', 'STYLE'].includes(child.tagName)) {
+                    // 系統標籤，直接略過
+                } else {
+                    // ✨ 遇到 span, a, strong, ruby 等行內元素，帶著「目前的旗子狀態」鑽進去繼續找！
+                    processNode(child, state);
+                }
             }
-        });
+        }
     }
 
-    traverse(container);
+    // 針對所有 <p> 段落執行狀態機掃描
+    container.querySelectorAll('p').forEach(p => {
+        let state = { isNewLine: true }; // 進入新段落，預設舉起新行旗子
+        processNode(p, state);
+    });
 };
 
 // ==========================================

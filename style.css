@@ -3785,6 +3785,7 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     100% { transform: scale(1); }
 }
 
+
 /* ========================================================================== */
 /* ✨ 行內機密文字 (Inline Secret) 排版與解鎖動畫                             */
 /* ========================================================================== */
@@ -3839,9 +3840,88 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     pointer-events: auto;
 }
 
-/* 🔓 解鎖狀態：浮現高光背景色 */
+/* 🔓 解鎖狀態：最終還原為透明背景與普通文字，將發光特效移交給動畫 */
 .md-inline-secret.is-unlocked {
-    background: color-mix(in srgb, var(--accent-2) 15%, transparent);
-    box-shadow: 0 0 10px color-mix(in srgb, var(--accent-2) 20%, transparent);
-    color: var(--accent-2);
+    background: transparent;
+    box-shadow: none;
+    color: inherit;
+    animation: inline-decrypt-anim 1.5s var(--ease-smooth);
+}
+
+/* ✨ 行內解密動畫：從高光漸漸消退 */
+@keyframes inline-decrypt-anim {
+    0%, 40% {
+        background: color-mix(in srgb, var(--accent-2) 15%, transparent);
+        box-shadow: 0 0 10px color-mix(in srgb, var(--accent-2) 20%, transparent);
+        color: var(--accent-2);
+    }
+    100% {
+        background: transparent;
+        box-shadow: none;
+        color: inherit;
+    }
+}
+
+/* 限制最大寬度以防撐破版面 */
+.md-inline-secret .secret-overlay .secret-cover-text {
+    display: inline-block;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}
+
+
+/* ========================================================================== */
+/* ✨ 無痕偽裝文字 (Stealth Secret) 排版與解碼動畫                             */
+/* ========================================================================== */
+.md-stealth-secret {
+    position: relative;
+    display: inline;
+}
+
+/* 🔒 鎖定狀態：隱藏真文字，顯示偽裝文字 */
+.md-stealth-secret.is-locked .stealth-real {
+    display: none;
+}
+.md-stealth-secret.is-locked .stealth-cover {
+    display: inline;
+    color: inherit;
+}
+
+/* 🔓 解鎖狀態：隱藏偽裝文字，顯示真文字 */
+.md-stealth-secret.is-unlocked .stealth-cover {
+    display: none;
+}
+.md-stealth-secret.is-unlocked .stealth-real {
+    display: inline;
+    color: inherit; /* ✨ 最終狀態改為繼承原本的文字顏色 */
+    animation: stealth-decrypt-anim 1s var(--ease-smooth); /* 將動畫時間稍微拉長至 1.5 秒，讓消退更自然 */
+}
+
+/* ✨ 文字重組/解碼特效 (加入高光消退的階段) */
+@keyframes stealth-decrypt-anim {
+    0% { 
+        opacity: 0; 
+        filter: blur(8px); 
+        background: var(--text); 
+        color: transparent; 
+        text-shadow: none;
+    }
+    30% { 
+        filter: blur(3px); 
+        background: transparent; 
+        color: var(--accent-2); 
+        text-shadow: 0 0 10px var(--accent-2);
+    }
+    60% {
+        color: var(--accent-2);
+        text-shadow: 0 0 10px var(--accent-2);
+    }
+    100% { 
+        opacity: 1; 
+        filter: blur(0); 
+        color: inherit; /* ✨ 最終回歸平凡 */
+        text-shadow: none;
+    }
 }
