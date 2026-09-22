@@ -3,12 +3,13 @@
 
 ## add
 1. tag: FANART
+2. article lock & unlock associated
 
 ## change / update
 1. 
 
 ## adjust
-1. 
+1. reboot URL
 
 ## fix
 1. 

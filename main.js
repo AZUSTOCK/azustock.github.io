@@ -816,6 +816,11 @@ window.getSystemErrorHtml = function(title, msg) {
 
 
 window.triggerSystemUpdate = function(targetVersion) {
+    // ✨ 新增：在關閉視窗前，擷取網址列的專案 ID 當作失敗時的退路
+    const urlParams = new URLSearchParams(window.location.search);
+    const pParam = urlParams.get('p');
+    if (pParam) sessionStorage.setItem('sys_fallback_project', pParam);
+
     closeModal();
     sessionStorage.setItem('sys_reboot_count', '1');
     sessionStorage.setItem('sys_is_rebooting', 'true');
@@ -1181,7 +1186,10 @@ window.renderTocMenu = function(menuItems, tooltipText) {
             const li = document.createElement('li');
             li.className = item.className || 'toc-h1';
             const a = document.createElement('a');
-            a.innerText = item.label;
+            
+            // ✨ 核心修復 1：改用 innerHTML，讓機密與高光特效能在目錄中渲染！
+            a.innerHTML = item.label; 
+            
             a.href = "javascript:void(0)";
             a.onclick = () => {
                 window.executeAnchorScroll(item.targetHash, false);
@@ -3886,8 +3894,17 @@ async function checkSystemVersionAndBoot() {
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
                 sessionStorage.removeItem('sys_intent'); 
+                
+                // ✨ 新增：抓出退路 ID
+                const fallbackP = sessionStorage.getItem('sys_fallback_project');
+                sessionStorage.removeItem('sys_fallback_project');
+
                 hideSystemRebootScreen(false); 
                 loadProjects(); 
+                
+                // ✨ 新增：如果退路存在，就在載入完成後幫使用者重新打開目錄
+                if (fallbackP) setTimeout(() => window.openProjectIndex(fallbackP), 300);
+
                 if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600); 
                 setTimeout(() => { window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `已還原為安全狀態`, 12000, 'error'); }, 1000);
                 return;
@@ -3918,9 +3935,16 @@ async function checkSystemVersionAndBoot() {
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
                 
+                // ✨ 新增：抓出退路 ID
+                const fallbackP = sessionStorage.getItem('sys_fallback_project');
+                sessionStorage.removeItem('sys_fallback_project');
+
                 // 觸發「紅色退回狀態」的終端機過場動畫
                 hideSystemRebootScreen(false); 
                 loadProjects();
+                
+                // ✨ 新增：如果退路存在，就在載入完成後幫使用者重新打開目錄
+                if (fallbackP) setTimeout(() => window.openProjectIndex(fallbackP), 300);
                 
                 // 彈出精美的錯誤提示，告訴使用者 CDN 正在塞車
                 setTimeout(() => { 
@@ -4623,9 +4647,18 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                                 }
                             }
                             
-                            // 觸發自動解碼動畫！
-                            block.classList.remove('is-locked', 'pending-auto-unlock');
-                            block.classList.add('is-unlocked');
+                            // ✨ 核心修復 3：把畫面上所有的同 ID 區塊一起解碼，這樣目錄 (TOC) 裡的副本也會跟著同步！
+                            const secretId = block.getAttribute('data-secret-id');
+                            if (secretId) {
+                                const syncBlocks = document.querySelectorAll(`[data-secret-id="${secretId}"]`);
+                                syncBlocks.forEach(b => {
+                                    b.classList.remove('is-locked', 'pending-auto-unlock');
+                                    b.classList.add('is-unlocked');
+                                });
+                            } else {
+                                block.classList.remove('is-locked', 'pending-auto-unlock');
+                                block.classList.add('is-unlocked');
+                            }
                             
                             autoObserver.unobserve(block);
                         }
@@ -4736,13 +4769,18 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 headings.forEach((h, index) => {
                     if (!h.id) h.id = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-') || `article-heading-${index}`;
                     
-                    let labelText = h.innerText;
-                    const rawTitle = h.getAttribute('data-raw-title');
-                    if (rawTitle) {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = decodeURIComponent(rawTitle);
-                        labelText = tempDiv.innerText;
-                    }
+                    // ✨ 核心修復 2：直接抓取 h 的 innerHTML 來保留所有解析過的特效標籤 (機密、高光)
+                    let labelText = h.innerHTML;
+                    
+                    // 預防標題內有超連結，將 <a> 替換為 <span> 防止 TOC 的 <a> 標籤嵌套壞掉
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = labelText;
+                    tempDiv.querySelectorAll('a').forEach(aTag => {
+                        const span = document.createElement('span');
+                        span.innerHTML = aTag.innerHTML;
+                        aTag.parentNode.replaceChild(span, aTag);
+                    });
+                    labelText = tempDiv.innerHTML;
                     
                     let targetHash = '#' + h.id;
                     if (h.id.startsWith('md-sys-')) {

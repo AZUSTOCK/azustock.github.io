@@ -3840,17 +3840,24 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     pointer-events: auto;
 }
 
-/* 🔓 解鎖狀態：最終還原為透明背景與普通文字，將發光特效移交給動畫 */
+/* ========================================================================== */
+/* ✨ 行內機密文字 (Inline Secret) 動畫更新                                     */
+/* ========================================================================== */
 .md-inline-secret.is-unlocked {
     background: transparent;
     box-shadow: none;
     color: inherit;
-    animation: inline-decrypt-anim 1.5s var(--ease-smooth);
+    /* ✨ 總時長改為 3 秒 */
+    animation: inline-decrypt-anim 3s var(--ease-smooth);
 }
 
-/* ✨ 行內解密動畫：從高光漸漸消退 */
 @keyframes inline-decrypt-anim {
-    0%, 40% {
+    0%, 15% {
+        background: color-mix(in srgb, var(--accent-2) 15%, transparent);
+        box-shadow: 0 0 10px color-mix(in srgb, var(--accent-2) 20%, transparent);
+        color: var(--accent-2);
+    }
+    80% { /* ✨ 讓高光狀態一路保持到 80% (在 3 秒內大約等於維持 2 秒) */
         background: color-mix(in srgb, var(--accent-2) 15%, transparent);
         box-shadow: 0 0 10px color-mix(in srgb, var(--accent-2) 20%, transparent);
         color: var(--accent-2);
@@ -3860,6 +3867,17 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         box-shadow: none;
         color: inherit;
     }
+}
+
+/* ========================================================================== */
+/* ✨ 無痕偽裝文字 (Stealth Secret / Block) 動畫更新                            */
+/* ========================================================================== */
+.md-stealth-secret.is-unlocked .stealth-real,
+.md-stealth-block.is-unlocked .stealth-real {
+    display: inline; /* (block 依據您的區塊設定) */
+    color: inherit; 
+    /* ✨ 總時長改為 3 秒 */
+    animation: stealth-decrypt-anim 3s var(--ease-smooth);
 }
 
 /* 限制最大寬度以防撐破版面 */
@@ -3896,10 +3914,9 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 .md-stealth-secret.is-unlocked .stealth-real {
     display: inline;
     color: inherit; /* ✨ 最終狀態改為繼承原本的文字顏色 */
-    animation: stealth-decrypt-anim 1s var(--ease-smooth); /* 將動畫時間稍微拉長至 1.5 秒，讓消退更自然 */
+    animation: stealth-decrypt-anim 3s var(--ease-smooth); /* 將動畫時間稍微拉長至 1.5 秒，讓消退更自然 */
 }
 
-/* ✨ 文字重組/解碼特效 (加入高光消退的階段) */
 @keyframes stealth-decrypt-anim {
     0% { 
         opacity: 0; 
@@ -3908,20 +3925,23 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         color: transparent; 
         text-shadow: none;
     }
-    30% { 
-        filter: blur(3px); 
+    15% { /* 快速完成模糊解碼，進入高光狀態 */
+        opacity: 1;
+        filter: blur(0); 
         background: transparent; 
         color: var(--accent-2); 
         text-shadow: 0 0 10px var(--accent-2);
     }
-    60% {
-        color: var(--accent-2);
-        text-shadow: 0 0 10px var(--accent-2);
-    }
-    100% { 
+    80% { /* ✨ 讓這個狀態持續整整 2 秒 (佔 3 秒總時長的 65%) */
         opacity: 1; 
         filter: blur(0); 
-        color: inherit; /* ✨ 最終回歸平凡 */
+        color: var(--accent-2); 
+        text-shadow: 0 0 10px var(--accent-2);
+    }
+    100% { /* 最後 20% 的時間平滑淡出回原本顏色 */
+        opacity: 1; 
+        filter: blur(0); 
+        color: inherit; 
         text-shadow: none;
     }
 }
@@ -3951,7 +3971,7 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 .md-stealth-block.is-unlocked .stealth-real {
     display: block;
     color: inherit; /* ✨ 最終回歸原本文字顏色 */
-    animation: stealth-decrypt-anim 1s var(--ease-smooth);
+    animation: stealth-decrypt-anim 1.5s var(--ease-smooth);
 }
 
 /* ========================================================================== */
@@ -3961,4 +3981,35 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 .already-unlocked, 
 .already-unlocked * {
     animation: none !important;
+}
+
+/* ========================================================================== */
+/* ✨ 直書模式專屬修復 (Vertical Mode Overrides)                                */
+/* ========================================================================== */
+
+/* 1. 將跑馬燈的軌道轉向，由原本的橫向無限延伸改為「直向無限延伸」 */
+.vertical-wrapper .md-highlight-text .marquee-text-track {
+    width: 100%; 
+    height: max-content; 
+    top: 0;
+    left: 0;
+    animation-name: bg-text-marquee-vertical; /* 切換為垂直動畫 */
+}
+
+/* 2. 把文字間距從右邊 (padding-right) 改到下方 (padding-bottom) */
+.vertical-wrapper .md-highlight-text .marquee-part {
+    padding-right: 0;
+    padding-bottom: 0.5em;
+}
+
+/* 3. 區塊型高光透視框 (is-block) 邊距翻轉：從左右擴張改為「上下擴張」 */
+.vertical-wrapper .md-highlight-text.is-block {
+    margin: -1rem 0; 
+    padding: 1rem 0; 
+}
+
+/* 4. 全新的垂直跑馬燈動畫：由下往上滑動 (-50% 剛好是 Y 軸往上) */
+@keyframes bg-text-marquee-vertical {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(-50%); } 
 }
