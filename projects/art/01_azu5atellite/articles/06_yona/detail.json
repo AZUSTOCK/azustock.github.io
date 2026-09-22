@@ -3,5 +3,6 @@
   "category": "art",
   "meta": "夜中同學",
   "description": "Yona san",
-  "tags": ["azu5atellite", "OC"]
+  "tags": ["azu5atellite", "OC"],
+  "min_sys_version": "1.5.12.3"
 }

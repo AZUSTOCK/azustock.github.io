@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.12.2",          // 目前系統版本號
+    VERSION: "U1.5.12.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -171,6 +171,24 @@ window.getResVersion = function(key) {
     } catch (e) {
         return CONFIG.VERSION;
     }
+};
+
+// ==========================================
+// ✨ 機密檔案解鎖記憶引擎 (Secret Storage Engine - LocalStorage 版)
+// ==========================================
+window.isSecretUnlocked = function(id) {
+    const unlocked = JSON.parse(localStorage.getItem('sys_unlocked_secrets') || '[]');
+    return unlocked.includes(id);
+};
+
+window.unlockSecret = function(id) {
+    let unlocked = JSON.parse(localStorage.getItem('sys_unlocked_secrets') || '[]');
+    if (!unlocked.includes(id)) {
+        unlocked.push(id);
+        localStorage.setItem('sys_unlocked_secrets', JSON.stringify(unlocked));
+        return true; // 代表「剛剛才解鎖」
+    }
+    return false; // 代表「以前就解鎖過了」
 };
 
 // ==========================================
@@ -798,6 +816,11 @@ window.getSystemErrorHtml = function(title, msg) {
 
 
 window.triggerSystemUpdate = function(targetVersion) {
+    // ✨ 新增：在關閉視窗前，擷取網址列的專案 ID 當作失敗時的退路
+    const urlParams = new URLSearchParams(window.location.search);
+    const pParam = urlParams.get('p');
+    if (pParam) sessionStorage.setItem('sys_fallback_project', pParam);
+
     closeModal();
     sessionStorage.setItem('sys_reboot_count', '1');
     sessionStorage.setItem('sys_is_rebooting', 'true');
@@ -847,7 +870,7 @@ window.calculateIdealScrollCache = function(containerId, targetItemId, currentCa
         if (itemTop < finalScroll + topBarHeight) {
             finalScroll = itemTop - topBarHeight - 15;
         } else if (itemBottom > finalScroll + containerHeight) {
-            finalScroll = itemBottom - containerHeight + 15;
+            finalScroll = itemBottom - containerHeight + 10;
         }
     }
     
@@ -1163,7 +1186,10 @@ window.renderTocMenu = function(menuItems, tooltipText) {
             const li = document.createElement('li');
             li.className = item.className || 'toc-h1';
             const a = document.createElement('a');
-            a.innerText = item.label;
+            
+            // ✨ 核心修復 1：改用 innerHTML，讓機密與高光特效能在目錄中渲染！
+            a.innerHTML = item.label; 
+            
             a.href = "javascript:void(0)";
             a.onclick = () => {
                 window.executeAnchorScroll(item.targetHash, false);
@@ -2754,29 +2780,33 @@ renderer.link = function(token_or_href, title, text) {
 // 4. ✨ 攔截 Markdown 標題，同時用全域陣列記住最新出現的標題文字
 window._lastMarkdownHeadings = [];
 renderer.heading = function(token_or_text, level, raw) {
-    let text = typeof token_or_text === 'object' ? token_or_text.text : token_or_text;
+    // 1. 抓取原始文字與層級
+    let rawText = typeof token_or_text === 'object' ? token_or_text.text : token_or_text;
     const depth = typeof token_or_text === 'object' ? token_or_text.depth : level;
     
-    // ✨ 核心魔法：偵測標題文字後面是否帶有 {#自訂ID}
+    // 2. ✨ 核心修復：優先解析標題內的 Inline 元素 (讓高光、機密文字能在標題內運作！)
+    let parsedText = typeof token_or_text === 'object' && token_or_text.tokens 
+        ? this.parser.parseInline(token_or_text.tokens) 
+        : rawText;
+    
+    // 3. 偵測並拔除 {#自訂ID}
     let customId = null;
-    const idMatch = text.match(/\s+\{#([^}]+)\}$/);
+    const idMatch = rawText.match(/\s+\{#([^}]+)\}$/);
     
     if (idMatch) {
         customId = idMatch[1].trim();
-        // 把 "{#自訂ID}" 從標題文字中剔除，讓畫面上跟右上角目錄只顯示乾淨的標題
-        text = text.replace(/\s+\{#[^}]+\}$/, '').trim(); 
+        // 分別從 rawText 與解析後的 HTML 字串尾端剔除 ID
+        rawText = rawText.replace(/\s+\{#[^}]+\}$/, '').trim(); 
+        parsedText = parsedText.replace(/\s+\{#[^}]+\}$/, '').trim();
     }
 
     // 將最乾淨的標題文字存入全域，給 Mermaid 抓取當作圖表預設標題
-    window._lastMarkdownHeadings.push(text.replace(/<[^>]+>/g, '')); // 順手剝除 HTML 標籤
+    window._lastMarkdownHeadings.push(rawText.replace(/<[^>]+>/g, '')); 
     
-    // 如果有自訂 ID 就用自訂的，沒有的話就沿用預設的轉換邏輯
-    const id = customId || text.toLowerCase().replace(/\s+/g, '-').replace(/<[^>]+>/g, '');
+    const id = customId || rawText.toLowerCase().replace(/\s+/g, '-').replace(/<[^>]+>/g, '');
     
-    // ✨ 終極魔法：給所有標題 ID 加上 "md-sys-" 前綴！
-    // 這樣瀏覽器在網址列看到 #target 時，會找不到 id="target" 的元素，就會放棄原生跳躍。
-    // 而我們的 JS 引擎很聰明，會自動加上前綴去找它，完美接管捲動權權！
-    return `<h${depth} id="md-sys-${id}" data-raw-title="${encodeURIComponent(text)}">${text}</h${depth}>`;
+    // ✨ 輸出時，畫面上的內容使用已渲染的 parsedText！
+    return `<h${depth} id="md-sys-${id}" data-raw-title="${encodeURIComponent(rawText)}">${parsedText}</h${depth}>`;
 };
 
 // ==========================================
@@ -2805,7 +2835,181 @@ const spoilerExtension = {
 };
 
 // ==========================================
-// ✨ 新增：動態高光螢光筆 (雙層接力無縫跑馬燈)
+// ✨ 機密隱藏區塊 (Secret Block)
+// ==========================================
+const secretBlockExtension = {
+    name: 'secretBlock',
+    level: 'inline',
+    start(src) { return src.match(/:::\s*secret/i)?.index; }, 
+    tokenizer(src, tokens) {
+        const rule = /^:::\s*secret(?:\[(.*?)\])?(?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*:::/i;
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'secretBlock',
+                raw: match[0],
+                secretId: match[1] || 'DEFAULT_KEY',
+                coverText: match[2] || 'ENCRYPTED DATA',
+                tokens: this.lexer.inlineTokens(match[3]) 
+            };
+        }
+    },
+    renderer(token) {
+        const isUnlocked = window.isSecretUnlocked(token.secretId);
+        
+        // ✨ 判斷是否在這個地方播過動畫
+        const placeId = window._currentRenderPlace + '_' + token.secretId;
+        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
+        const hasAnimatedHere = animatedPlaces.includes(placeId);
+
+        let statusClass = 'is-locked';
+        if (isUnlocked) {
+            // 如果全域已解鎖，且這裡播過動畫了，直接顯示結果；否則掛上待命標籤準備播放！
+            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
+        }
+
+        const lockIcon = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+        
+        return `
+        <div class="md-secret-block ${statusClass}" data-secret-id="${token.secretId}" data-place-id="${placeId}">
+            <div class="secret-overlay">
+                ${lockIcon}
+                <span class="secret-cover-text">${token.coverText}</span>
+                <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7; margin-top: 4px;">Requires Key: [${token.secretId}]</span>
+            </div>
+            <div class="secret-content markdown-body">
+                ${this.parser.parseInline(token.tokens)}
+            </div>
+        </div>`;
+    }
+};
+
+// ==========================================
+// ✨ 行內機密文字 (Inline Secret) 
+// ==========================================
+const inlineSecretExtension = {
+    name: 'inlineSecret',
+    level: 'inline',
+    start(src) { return src.match(/!!\[/)?.index; },
+    tokenizer(src, tokens) {
+        const rule = /^!!\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)!!/;
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'inlineSecret',
+                raw: match[0],
+                secretId: match[1] || 'DEFAULT_KEY',
+                coverText: match[2] || 'LOCKED',
+                tokens: this.lexer.inlineTokens(match[3])
+            };
+        }
+    },
+    renderer(token) {
+        const isUnlocked = window.isSecretUnlocked(token.secretId);
+        const placeId = window._currentRenderPlace + '_' + token.secretId;
+        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
+        const hasAnimatedHere = animatedPlaces.includes(placeId);
+
+        let statusClass = 'is-locked';
+        if (isUnlocked) {
+            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
+        }
+        
+        const lockIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+
+        return `<span class="md-inline-secret ${statusClass}" data-secret-id="${token.secretId}" data-place-id="${placeId}"><span class="secret-overlay">${lockIcon}<span class="secret-cover-text">${token.coverText}</span></span><span class="secret-content">${this.parser.parseInline(token.tokens)}</span></span>`;
+    }
+};
+
+// ==========================================
+// ✨ 無痕偽裝機密 (Stealth Secret)
+// ==========================================
+const stealthSecretExtension = {
+    name: 'stealthSecret',
+    level: 'inline',
+    start(src) { return src.match(/\?\?\[/)?.index; },
+    tokenizer(src, tokens) {
+        const rule = /^\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?/;
+        const match = rule.exec(src);
+        if (match) {
+            const coverStr = match[2] || '***'; 
+            return {
+                type: 'stealthSecret',
+                raw: match[0],
+                secretId: match[1] || 'DEFAULT_KEY',
+                coverTokens: this.lexer.inlineTokens(coverStr.trim()), 
+                tokens: this.lexer.inlineTokens(match[3].trim())
+            };
+        }
+    },
+    renderer(token) {
+        const isUnlocked = window.isSecretUnlocked(token.secretId);
+        const placeId = window._currentRenderPlace + '_' + token.secretId;
+        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
+        const hasAnimatedHere = animatedPlaces.includes(placeId);
+
+        let statusClass = 'is-locked';
+        if (isUnlocked) {
+            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
+        }
+
+        const parsedCover = this.parser.parseInline(token.coverTokens);
+        const parsedReal = this.parser.parseInline(token.tokens);
+
+        return `<span class="md-stealth-secret ${statusClass}" data-secret-id="${token.secretId}" data-place-id="${placeId}"><span class="stealth-cover">${parsedCover}</span><span class="stealth-real">${parsedReal}</span></span>`;
+    }
+};
+
+// ==========================================
+// ✨ 區塊級無痕偽裝 (Stealth Block)
+// ==========================================
+const stealthBlockExtension = {
+    name: 'stealthBlock',
+    level: 'block',
+    start(src) { return src.match(/^:::\s*stealth/i)?.index; },
+    tokenizer(src, tokens) {
+        const rule = /^:::\s*stealth(?:\[(.*?)\])?\n([\s\S]*?)\n:::/i;
+        const match = rule.exec(src);
+        if (match) {
+            const innerContent = match[2];
+            let coverStr = '***';
+            let realStr = innerContent;
+            
+            const parts = innerContent.split(/\n---\n/);
+            if (parts.length > 1) {
+                coverStr = parts[0];
+                realStr = parts.slice(1).join('\n---\n');
+            }
+
+            return {
+                type: 'stealthBlock',
+                raw: match[0],
+                secretId: match[1] || 'DEFAULT_KEY',
+                coverTokens: this.lexer.blockTokens(coverStr.trim()), 
+                tokens: this.lexer.blockTokens(realStr.trim())
+            };
+        }
+    },
+    renderer(token) {
+        const isUnlocked = window.isSecretUnlocked(token.secretId);
+        const placeId = window._currentRenderPlace + '_' + token.secretId;
+        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
+        const hasAnimatedHere = animatedPlaces.includes(placeId);
+
+        let statusClass = 'is-locked';
+        if (isUnlocked) {
+            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
+        }
+
+        const parsedCover = this.parser.parse(token.coverTokens);
+        const parsedReal = this.parser.parse(token.tokens);
+
+        return `<div class="md-stealth-block ${statusClass}" data-secret-id="${token.secretId}" data-place-id="${placeId}"><div class="stealth-cover">${parsedCover}</div><div class="stealth-real">${parsedReal}</div></div>`;
+    }
+};
+
+// ==========================================
+// ✨ 修改：讓高光螢光筆支援 KEY 觸發
 // ==========================================
 const highlightExtension = {
     name: 'updateHighlight',
@@ -2826,17 +3030,24 @@ const highlightExtension = {
     },
     renderer(token) {
         const badge = token.badgeText.trim();
-        // 拔除 getStatusColorFromCSS，改用 data-status 屬性
-        const statusAttr = badge ? ` data-status="${badge.toUpperCase()}"` : '';
-        const defaultStyle = badge ? '' : ' style="--dynamic-glow: var(--accent);"';
-        const displayText = badge ? badge : 'HIGHLIGHT'; 
+        
+        // ✨ 新增：判斷這是不是一把「鑰匙」
+        const isKey = badge.startsWith('KEY:');
+        const secretId = isKey ? badge.replace('KEY:', '').trim() : '';
+        const keyAttr = isKey ? ` data-secret-key="${secretId}"` : '';
+        
+        // 如果是鑰匙，改變預設外觀
+        const displayText = isKey ? 'KEY FOUND' : (badge ? badge : 'HIGHLIGHT'); 
+        const statusAttr = (badge && !isKey) ? ` data-status="${badge.toUpperCase()}"` : '';
+        const defaultStyle = (badge && !isKey) ? '' : ' style="--dynamic-glow: var(--accent-2);"';
         
         const repeatedText = `${displayText} • `.repeat(20);
         const duration = Math.max(20, repeatedText.length * 0.4); 
         
         const bgHtml = `<span class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></span>`;
         
-        return `<span class="md-highlight-text"${statusAttr}${defaultStyle}>${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
+        // ✨ 把 keyAttr 塞入最外層
+        return `<span class="md-highlight-text"${statusAttr}${defaultStyle}${keyAttr}>${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
     }
 };
 
@@ -2939,9 +3150,9 @@ const detailsBlockExtension = {
     }
 };
 
-// ⚠️ 記得把 detailsBlockExtension 加進陣列裡！
+// ⚠️ 註冊擴充元件
 marked.use({ 
-    extensions: [spoilerExtension, highlightExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
+    extensions: [spoilerExtension, highlightExtension, secretBlockExtension, inlineSecretExtension, stealthSecretExtension, stealthBlockExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
     renderer: renderer,
     breaks: false, 
     gfm: true      
@@ -3683,8 +3894,17 @@ async function checkSystemVersionAndBoot() {
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
                 sessionStorage.removeItem('sys_intent'); 
+                
+                // ✨ 新增：抓出退路 ID
+                const fallbackP = sessionStorage.getItem('sys_fallback_project');
+                sessionStorage.removeItem('sys_fallback_project');
+
                 hideSystemRebootScreen(false); 
                 loadProjects(); 
+                
+                // ✨ 新增：如果退路存在，就在載入完成後幫使用者重新打開目錄
+                if (fallbackP) setTimeout(() => window.openProjectIndex(fallbackP), 300);
+
                 if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600); 
                 setTimeout(() => { window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `已還原為安全狀態`, 12000, 'error'); }, 1000);
                 return;
@@ -3715,9 +3935,16 @@ async function checkSystemVersionAndBoot() {
                 sessionStorage.removeItem('sys_is_rebooting');
                 sessionStorage.removeItem('sys_expected_version');
                 
+                // ✨ 新增：抓出退路 ID
+                const fallbackP = sessionStorage.getItem('sys_fallback_project');
+                sessionStorage.removeItem('sys_fallback_project');
+
                 // 觸發「紅色退回狀態」的終端機過場動畫
                 hideSystemRebootScreen(false); 
                 loadProjects();
+                
+                // ✨ 新增：如果退路存在，就在載入完成後幫使用者重新打開目錄
+                if (fallbackP) setTimeout(() => window.openProjectIndex(fallbackP), 300);
                 
                 // 彈出精美的錯誤提示，告訴使用者 CDN 正在塞車
                 setTimeout(() => { 
@@ -4263,6 +4490,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             if (viewIndex) viewIndex.style.display = 'none';
             if (viewArticle) {
                 viewArticle.style.display = 'block';
+                // ✨ 賦予目前渲染環境的專屬 ID，供解鎖特效記憶使用
+                window._currentRenderPlace = projectId + '_' + articleIndex;
                 viewArticle.innerHTML = marked.parse(markdownContent);
             }
             
@@ -4344,6 +4573,100 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
             // ✨ 呼叫全域 Mermaid 渲染引擎 (取代原本 30 幾行的 renderMermaid 函數)
             window.renderAllMermaidCharts(activeView);
+
+            // ==========================================
+            // ✨ 機密檔案解鎖監視引擎 (Secret Unlock Engine)
+            // ==========================================
+            const keys = activeView.querySelectorAll('[data-secret-key]');
+            if (keys.length > 0) {
+                const keyObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const keyEl = entry.target;
+                            const secretId = keyEl.getAttribute('data-secret-key');
+                            
+                            // 呼叫解鎖引擎
+                            if (window.unlockSecret(secretId)) {
+                                // 1. 顯示超有質感的解鎖 Toast
+                                if (window.showSystemToast) {
+                                    window.showSystemToast('>_ ACCESS_GRANTED', '取得授權金鑰', `已解鎖隱藏機密 [${secretId}]`, 6000, 'success');
+                                }
+                                window.triggerHaptic('success');
+                                
+                                // 2. 讓鑰匙發出覺醒光芒
+                                keyEl.classList.add('is-key-triggered');
+                                
+                                const lockedBlocks = document.querySelectorAll(`.md-secret-block.is-locked[data-secret-id="${secretId}"], .md-inline-secret.is-locked[data-secret-id="${secretId}"], .md-stealth-secret.is-locked[data-secret-id="${secretId}"], .md-stealth-block.is-locked[data-secret-id="${secretId}"]`);
+                                lockedBlocks.forEach(block => {
+                                    // 解除鎖定與待命狀態
+                                    block.classList.remove('is-locked', 'pending-auto-unlock');
+                                    block.classList.add('is-unlocked');
+                                    
+                                    // 📝 記錄為已播過動畫，下次進來就不會再閃爍
+                                    const placeId = block.getAttribute('data-place-id');
+                                    if (placeId) {
+                                        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
+                                        if (!animatedPlaces.includes(placeId)) {
+                                            animatedPlaces.push(placeId);
+                                            localStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
+                                        }
+                                    }
+                                });
+                            }
+                            keyObserver.unobserve(keyEl);
+                        }
+                    });
+                }, { threshold: 0.5 }); // 滾到元素露出一半時才觸發
+
+                keys.forEach(k => {
+                    if (!window.isSecretUnlocked(k.getAttribute('data-secret-key'))) {
+                        keyObserver.observe(k);
+                    } else {
+                        k.classList.add('is-key-triggered'); // 以前解鎖過，直接亮起
+                    }
+                });
+            }
+
+            // ==========================================
+            // ✨ 跨文章機密自動解碼引擎 (Auto-Decrypt for Global Secrets)
+            // ==========================================
+            const autoUnlockBlocks = activeView.querySelectorAll('.pending-auto-unlock');
+            if (autoUnlockBlocks.length > 0) {
+                const autoObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const block = entry.target;
+                            
+                            // 📝 記錄為已播過動畫
+                            const placeId = block.getAttribute('data-place-id');
+                            if (placeId) {
+                                let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
+                                if (!animatedPlaces.includes(placeId)) {
+                                    animatedPlaces.push(placeId);
+                                    localStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
+                                }
+                            }
+                            
+                            // ✨ 核心修復 3：把畫面上所有的同 ID 區塊一起解碼，這樣目錄 (TOC) 裡的副本也會跟著同步！
+                            const secretId = block.getAttribute('data-secret-id');
+                            if (secretId) {
+                                const syncBlocks = document.querySelectorAll(`[data-secret-id="${secretId}"]`);
+                                syncBlocks.forEach(b => {
+                                    b.classList.remove('is-locked', 'pending-auto-unlock');
+                                    b.classList.add('is-unlocked');
+                                });
+                            } else {
+                                block.classList.remove('is-locked', 'pending-auto-unlock');
+                                block.classList.add('is-unlocked');
+                            }
+                            
+                            autoObserver.unobserve(block);
+                        }
+                    });
+                }, { threshold: 0.15 }); // 捲入畫面 15% 時觸發自動解碼
+
+                autoUnlockBlocks.forEach(b => autoObserver.observe(b));
+            }
 
             const firstH1 = activeView.querySelector('h1');
             if (firstH1) {
@@ -4446,13 +4769,18 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 headings.forEach((h, index) => {
                     if (!h.id) h.id = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-') || `article-heading-${index}`;
                     
-                    let labelText = h.innerText;
-                    const rawTitle = h.getAttribute('data-raw-title');
-                    if (rawTitle) {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = decodeURIComponent(rawTitle);
-                        labelText = tempDiv.innerText;
-                    }
+                    // ✨ 核心修復 2：直接抓取 h 的 innerHTML 來保留所有解析過的特效標籤 (機密、高光)
+                    let labelText = h.innerHTML;
+                    
+                    // 預防標題內有超連結，將 <a> 替換為 <span> 防止 TOC 的 <a> 標籤嵌套壞掉
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = labelText;
+                    tempDiv.querySelectorAll('a').forEach(aTag => {
+                        const span = document.createElement('span');
+                        span.innerHTML = aTag.innerHTML;
+                        aTag.parentNode.replaceChild(span, aTag);
+                    });
+                    labelText = tempDiv.innerHTML;
                     
                     let targetHash = '#' + h.id;
                     if (h.id.startsWith('md-sys-')) {
@@ -5365,33 +5693,52 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     };
 };
 
-// ✨ 專為 JSON/Markdown 轉 HTML 後的中文排版處理器
+// ==========================================
+// ✨ 專為 JSON/Markdown 轉 HTML 後的中文排版處理器 (支援 <br> 狀態機遞迴版)
+// ==========================================
 window.applyIndentToVerticalWrapper = function(container) {
     if (!container || container.getAttribute('data-indent') === 'false') return;
 
-    // ✨ 使用 Unicode 全形空格字元 (U+3000)，直接填入文字，不會被轉義為字串
-    const indent = '\u3000\u3000';
+    const indent = '\u3000\u3000'; // 兩個全形空白
 
-    function traverse(node) {
-        node.childNodes.forEach(child => {
-            if (child.nodeType === Node.TEXT_NODE) {
-                // 檢查是否已經有縮排，避免重複執行
-                if (child.textContent.trim().length > 0 && !child.textContent.startsWith(indent)) {
-                    const lines = child.textContent.split('\n');
-                    const indentedLines = lines.map(line => {
-                        // 每一行開頭都加上全形空格
-                        return line.trim() ? indent + line.trim() : line;
-                    });
-                    child.textContent = indentedLines.join('\n');
+    function processNode(node, state) {
+        for (let i = 0; i < node.childNodes.length; i++) {
+            let child = node.childNodes[i];
+            
+            if (child.nodeName === 'BR') {
+                // ✨ 遇到 <br> 換行標籤，舉起旗子：接下來的文字是新的一行！
+                state.isNewLine = true;
+            } else if (child.nodeType === Node.TEXT_NODE) {
+                // 忽略純換行符號或無意義的空白節點
+                if (child.textContent.trim().length > 0) {
+                    // 如果旗子舉著 (代表這是新行的開頭)
+                    if (state.isNewLine) {
+                        if (!child.textContent.startsWith(indent)) {
+                            child.textContent = indent + child.textContent.replace(/^\s+/, '');
+                        }
+                        // 縮排完畢，放下旗子
+                        state.isNewLine = false;
+                    }
                 }
-            } else if (child.tagName !== 'BR' && child.tagName !== 'SCRIPT' && child.tagName !== 'STYLE') {
-                // 遞迴處理非換行標籤
-                traverse(child);
+            } else if (child.nodeType === Node.ELEMENT_NODE) {
+                // 遇到大型區塊元素，它們本身就自成一區，所以後面的文字又算新的一行
+                if (['IMG', 'VIDEO', 'AUDIO', 'TABLE', 'UL', 'OL', 'FIGURE', 'DIV'].includes(child.tagName)) {
+                    state.isNewLine = true; 
+                } else if (['SCRIPT', 'STYLE'].includes(child.tagName)) {
+                    // 系統標籤，直接略過
+                } else {
+                    // ✨ 遇到 span, a, strong, ruby 等行內元素，帶著「目前的旗子狀態」鑽進去繼續找！
+                    processNode(child, state);
+                }
             }
-        });
+        }
     }
 
-    traverse(container);
+    // 針對所有 <p> 段落執行狀態機掃描
+    container.querySelectorAll('p').forEach(p => {
+        let state = { isNewLine: true }; // 進入新段落，預設舉起新行旗子
+        processNode(p, state);
+    });
 };
 
 // ==========================================
