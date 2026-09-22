@@ -174,18 +174,18 @@ window.getResVersion = function(key) {
 };
 
 // ==========================================
-// ✨ 機密檔案解鎖記憶引擎 (Secret Storage Engine)
+// ✨ 機密檔案解鎖記憶引擎 (Secret Storage Engine - LocalStorage 版)
 // ==========================================
 window.isSecretUnlocked = function(id) {
-    const unlocked = JSON.parse(sessionStorage.getItem('sys_unlocked_secrets') || '[]');
+    const unlocked = JSON.parse(localStorage.getItem('sys_unlocked_secrets') || '[]');
     return unlocked.includes(id);
 };
 
 window.unlockSecret = function(id) {
-    let unlocked = JSON.parse(sessionStorage.getItem('sys_unlocked_secrets') || '[]');
+    let unlocked = JSON.parse(localStorage.getItem('sys_unlocked_secrets') || '[]');
     if (!unlocked.includes(id)) {
         unlocked.push(id);
-        sessionStorage.setItem('sys_unlocked_secrets', JSON.stringify(unlocked));
+        localStorage.setItem('sys_unlocked_secrets', JSON.stringify(unlocked));
         return true; // 代表「剛剛才解鎖」
     }
     return false; // 代表「以前就解鎖過了」
@@ -2859,7 +2859,7 @@ const secretBlockExtension = {
         
         // ✨ 判斷是否在這個地方播過動畫
         const placeId = window._currentRenderPlace + '_' + token.secretId;
-        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
         const hasAnimatedHere = animatedPlaces.includes(placeId);
 
         let statusClass = 'is-locked';
@@ -2907,7 +2907,7 @@ const inlineSecretExtension = {
     renderer(token) {
         const isUnlocked = window.isSecretUnlocked(token.secretId);
         const placeId = window._currentRenderPlace + '_' + token.secretId;
-        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
         const hasAnimatedHere = animatedPlaces.includes(placeId);
 
         let statusClass = 'is-locked';
@@ -2945,7 +2945,7 @@ const stealthSecretExtension = {
     renderer(token) {
         const isUnlocked = window.isSecretUnlocked(token.secretId);
         const placeId = window._currentRenderPlace + '_' + token.secretId;
-        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
         const hasAnimatedHere = animatedPlaces.includes(placeId);
 
         let statusClass = 'is-locked';
@@ -2993,7 +2993,7 @@ const stealthBlockExtension = {
     renderer(token) {
         const isUnlocked = window.isSecretUnlocked(token.secretId);
         const placeId = window._currentRenderPlace + '_' + token.secretId;
-        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
         const hasAnimatedHere = animatedPlaces.includes(placeId);
 
         let statusClass = 'is-locked';
@@ -4605,10 +4605,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                                     // 📝 記錄為已播過動畫，下次進來就不會再閃爍
                                     const placeId = block.getAttribute('data-place-id');
                                     if (placeId) {
-                                        let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+                                        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
                                         if (!animatedPlaces.includes(placeId)) {
                                             animatedPlaces.push(placeId);
-                                            sessionStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
+                                            localStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
                                         }
                                     }
                                 });
@@ -4640,10 +4640,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                             // 📝 記錄為已播過動畫
                             const placeId = block.getAttribute('data-place-id');
                             if (placeId) {
-                                let animatedPlaces = JSON.parse(sessionStorage.getItem('sys_animated_secrets') || '[]');
+                                let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
                                 if (!animatedPlaces.includes(placeId)) {
                                     animatedPlaces.push(placeId);
-                                    sessionStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
+                                    localStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
                                 }
                             }
                             
