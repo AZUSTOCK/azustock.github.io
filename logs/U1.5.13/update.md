@@ -10,6 +10,7 @@
 
 ## adjust
 1. reboot URL
+2. calculateIdealScrollCache position
 
 ## fix
 1. 

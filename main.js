@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.12.2",          // 目前系統版本號
+    VERSION: "U1.5.12.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -870,7 +870,7 @@ window.calculateIdealScrollCache = function(containerId, targetItemId, currentCa
         if (itemTop < finalScroll + topBarHeight) {
             finalScroll = itemTop - topBarHeight - 15;
         } else if (itemBottom > finalScroll + containerHeight) {
-            finalScroll = itemBottom - containerHeight + 15;
+            finalScroll = itemBottom - containerHeight + 10;
         }
     }
     
