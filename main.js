@@ -2839,10 +2839,10 @@ const spoilerExtension = {
 // ==========================================
 const secretBlockExtension = {
     name: 'secretBlock',
-    level: 'inline',
-    start(src) { return src.match(/:::\s*secret/i)?.index; }, 
+    level: 'block',
+    start(src) { return src.match(/^:::\s*secret/i)?.index; },
     tokenizer(src, tokens) {
-        const rule = /^:::\s*secret(?:\[(.*?)\])?(?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*:::/i;
+        const rule = /^:::\s*secret(?:\[(.*?)\])?(?:[ \t]*"([^"]+)")?\n([\s\S]*?)\n:::/i;
         const match = rule.exec(src);
         if (match) {
             return {
@@ -2850,21 +2850,18 @@ const secretBlockExtension = {
                 raw: match[0],
                 secretId: match[1] || 'DEFAULT_KEY',
                 coverText: match[2] || 'ENCRYPTED DATA',
-                tokens: this.lexer.inlineTokens(match[3]) 
+                tokens: this.lexer.blockTokens(match[3])
             };
         }
     },
     renderer(token) {
         const isUnlocked = window.isSecretUnlocked(token.secretId);
-        
-        // ✨ 判斷是否在這個地方播過動畫
         const placeId = window._currentRenderPlace + '_' + token.secretId;
         let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
         const hasAnimatedHere = animatedPlaces.includes(placeId);
 
         let statusClass = 'is-locked';
         if (isUnlocked) {
-            // 如果全域已解鎖，且這裡播過動畫了，直接顯示結果；否則掛上待命標籤準備播放！
             statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
         }
 
@@ -2878,7 +2875,7 @@ const secretBlockExtension = {
                 <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7; margin-top: 4px;">Requires Key: [${token.secretId}]</span>
             </div>
             <div class="secret-content markdown-body">
-                ${this.parser.parseInline(token.tokens)}
+                ${this.parser.parse(token.tokens)}
             </div>
         </div>`;
     }
@@ -3052,15 +3049,14 @@ const highlightExtension = {
 };
 
 // ==========================================
-// ✨ 新增：區塊型高光透視框 (支援多行與內部 Markdown)
+// ✨ 區塊型高光透視框 (Block Highlight)
 // ==========================================
 const highlightBlockExtension = {
     name: 'highlightBlock',
     level: 'block',
-    start(src) { return src.match(/^:::\s*highlight/)?.index; },
+    start(src) { return src.match(/^:::\s*highlight/i)?.index; },
     tokenizer(src, tokens) {
-        // 匹配 ::: highlight[標籤] ... ::: 的多行語法
-        const rule = /^:::\s*highlight(?:\[(.*?)\])?\n([\s\S]*?)\n:::/;
+        const rule = /^:::\s*highlight(?:\[(.*?)\])?\n([\s\S]*?)\n:::/i;
         const match = rule.exec(src);
         if (match) {
             return {
@@ -3068,7 +3064,6 @@ const highlightBlockExtension = {
                 raw: match[0],
                 badgeText: match[1] || '',
                 text: match[2],
-                // 這裡改用 blockTokens，讓框框裡面也能寫標題、清單、粗體！
                 tokens: this.lexer.blockTokens(match[2])
             };
         }
@@ -3089,42 +3084,64 @@ const highlightBlockExtension = {
 };
 
 // ==========================================
-// ✨ 新增：日文漢字注音擴充 (Ruby Furigana)
-// 語法：^^漢字(かんじ)^^
+// ✨ 日文漢字注音擴充 (Ruby Furigana)
+// 語法：^^漢字(かんじ)^^ (預設日文) 或 ^^Word(Pronunciation)[en]^^ (自訂語言)
 // ==========================================
 const rubyExtension = {
     name: 'ruby',
     level: 'inline',
     start(src) { return src.match(/\^\^/)?.index; },
     tokenizer(src, tokens) {
-        // 匹配 ^^漢字(注音)^^ 的格式
-        const rule = /^\^\^([^()]+)\(([^()]+)\)\^\^/;
+        const rule = /^\^\^([^()]+)\(([^()]+)\)(?:\[([a-zA-Z\-]+)\])?\^\^/;
         const match = rule.exec(src);
         if (match) {
             return {
                 type: 'ruby',
                 raw: match[0],
                 kanji: match[1],
-                furigana: match[2]
+                furigana: match[2],
+                lang: match[3] || 'ja' // 預設自動套用日文
             };
         }
     },
     renderer(token) {
-        // 轉換為標準的 HTML ruby 標籤
-        return `<ruby>${token.kanji}<rt>${token.furigana}</rt></ruby>`;
+        return `<ruby lang="${token.lang}">${token.kanji}<rt>${token.furigana}</rt></ruby>`;
     }
 };
 
 // ==========================================
-// ✨ 新增：摺疊區塊 (Collapsible Details / Accordion) 擴充
-// 語法：:::details[標題] 內容 :::
+// ✨ 多語系段落區塊 (Language Block)
+// ==========================================
+const langBlockExtension = {
+    name: 'langBlock',
+    level: 'block',
+    start(src) { return src.match(/^:::\s*lang/i)?.index; },
+    tokenizer(src, tokens) {
+        const rule = /^:::\s*lang(?:\[([a-zA-Z\-]+)\])?\n([\s\S]*?)\n:::/i;
+        const match = rule.exec(src);
+        if (match) {
+            return {
+                type: 'langBlock',
+                raw: match[0],
+                lang: match[1] || 'ja',
+                tokens: this.lexer.blockTokens(match[2].trim())
+            };
+        }
+    },
+    renderer(token) {
+        return `<div lang="${token.lang}" class="lang-wrapper">${this.parser.parse(token.tokens)}</div>`;
+    }
+};
+
+// ==========================================
+// ✨ 摺疊區塊 (Collapsible Details)
 // ==========================================
 const detailsBlockExtension = {
     name: 'detailsBlock',
     level: 'block',
-    start(src) { return src.match(/^:::\s*details/)?.index; },
+    start(src) { return src.match(/^:::\s*details/i)?.index; },
     tokenizer(src, tokens) {
-        const rule = /^:::\s*details(?:\[(.*?)\])?\n([\s\S]*?)\n:::/;
+        const rule = /^:::\s*details(?:\[(.*?)\])?\n([\s\S]*?)\n:::/i;
         const match = rule.exec(src);
         if (match) {
             return {
@@ -3152,7 +3169,8 @@ const detailsBlockExtension = {
 
 // ⚠️ 註冊擴充元件
 marked.use({ 
-    extensions: [spoilerExtension, highlightExtension, secretBlockExtension, inlineSecretExtension, stealthSecretExtension, stealthBlockExtension, highlightBlockExtension, rubyExtension, detailsBlockExtension], 
+    // ✨ 確保 langBlockExtension 有加進去
+    extensions: [spoilerExtension, highlightExtension, secretBlockExtension, inlineSecretExtension, stealthSecretExtension, stealthBlockExtension, highlightBlockExtension, rubyExtension, langBlockExtension, detailsBlockExtension], 
     renderer: renderer,
     breaks: false, 
     gfm: true      

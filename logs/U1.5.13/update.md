@@ -1,5 +1,8 @@
+# Continuously updated
+
 ## refactor
 1. `applyIndentToVerticalWrapper` to recursive 
+2. Revert custom block extensions (`secretBlock`, `stealthBlock`, `highlightBlock`, `langBlock`, `detailsBlock`) regex to standard strict mode (`^:::`) to ensure robust Markdown parsing and prevent conflicts with lists and paragraphs.
 
 ## add
 1. tag: FANART
@@ -11,6 +14,9 @@
 | stealth | `:::stealth` | `??[]` |
 | key |  | `++[KEY:id]++` |
 
+3. Multilingual Support (Language Block & CSS `:lang` variables): `:::lang[ja]`
+4. Language parameter support for Ruby Furigana: `^^Kanji(Furigana)[lang]^^` (defaults to `ja`).
+
 ## change / update
 1. TOC change to read `innerHTML`
 
@@ -19,13 +25,14 @@
 2. calculateIdealScrollCache position
 
 ## fix
-1. 
+1. marquee text animation in `.vertical-wrapper` scrolls bottom-to-top (`translateY`)
 
 ## deprecate
 1. 
 
 ## remove
-1. 
+1. Removed overly permissive regex (`^[ \t]*` and `\r?\n`) in custom block parsers to prevent unexpected formatting absorption.
+2. unused fetch in index.html
 
 ## pending
 1. 
