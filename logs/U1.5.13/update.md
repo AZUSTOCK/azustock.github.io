@@ -23,9 +23,11 @@
 ## adjust
 1. Reboot URL Fallback
 2. calculateIdealScrollCache position
+3. group-header-cover behavior
 
 ## fix
 1. marquee text animation in `.vertical-wrapper` scrolls bottom-to-top (`translateY`)
+2. main page section animation behavior
 
 ## deprecate
 1. 

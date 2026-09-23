@@ -1002,7 +1002,8 @@ main section:hover::before, main section.force-target::before {
     opacity: 0.25; 
 }
 
-main section:hover::after, main section.force-target::after { 
+/* 只有在從漢堡選單跳轉 (force-target) 時，才顯示區塊底色與光暈提示 */
+main section.force-target::after { 
     opacity: 1; transform: scale(1); 
     background-color: color-mix(in srgb, var(--sec-color) 6%, transparent); 
     box-shadow: 0 0 50px 15px color-mix(in srgb, var(--sec-color) 12%, transparent); 

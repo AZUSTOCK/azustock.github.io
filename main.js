@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.12.3",          // 目前系統版本號
+    VERSION: "U1.5.12.4",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1231,9 +1231,9 @@ window.handleImageError = function(img) {
     // 換上透明 SVG 讓 CSS 破圖背景透出來
     img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E";
 
-    // ✨ 核心判定：排除目錄頁縮圖 (.article-item-cover) 與其他非內文圖片
-    // 只有當圖片位於內文 (.markdown-body) 或是 Lightbox，且「絕對不是」目錄清單縮圖時才允許重試
-    const isContentImage = (img.closest('.markdown-body') !== null || img.id === 'lightbox-img') && !img.classList.contains('article-item-cover') && !img.classList.contains('card-image');
+    // ✨ 核心判定：排除目錄頁縮圖、群組縮圖 (.group-header-cover) 與其他非內文圖片
+    // 只有當圖片位於內文 (.markdown-body) 或是 Lightbox，且「絕對不是」目錄清單或群組縮圖時才允許重試
+    const isContentImage = (img.closest('.markdown-body') !== null || img.id === 'lightbox-img') && !img.classList.contains('article-item-cover') && !img.classList.contains('group-header-cover') && !img.classList.contains('card-image');
     if (!isContentImage) {
         img.style.cursor = 'default';
         return; // 提早結束，不綁定重試事件！
