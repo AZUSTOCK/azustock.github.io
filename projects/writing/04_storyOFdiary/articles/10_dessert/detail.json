@@ -2,6 +2,7 @@
   "title": "#10甜點",
   "description": "",
   "wip": true,
-  "NEW": "2026-09-22",
-  "min_sys_version": "1.5.12.3"
+  "new": "2026-09-22",
+  "min_sys_version": "1.5.12.3",
+  "date": "2026-09-22"
 }
