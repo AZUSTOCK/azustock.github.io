@@ -3,6 +3,7 @@
 ## refactor
 1. `applyIndentToVerticalWrapper` to recursive 
 2. Revert custom block extensions (`secretBlock`, `stealthBlock`, `highlightBlock`, `langBlock`, `detailsBlock`) regex to standard strict mode (`^:::`) to ensure robust Markdown parsing and prevent conflicts with lists and paragraphs.
+3. Python build script cache engine: three global hash for higher precision.
 
 ## add
 1. tag: FANART
@@ -16,7 +17,7 @@
 
 3. Multilingual Support (Language Block & CSS `:lang` variables): `:::lang[ja]`
 4. Language parameter support for Ruby Furigana: `^^Kanji(Furigana)[lang]^^` (defaults to `ja`).
-5. `API_LOGIC_VERSION` in generate_projects.py
+5. Global version `API_LOGIC_VERSION`, `HTML_LOGIC_VERSION`, `IMAGE_LOGIC_VERSION` in generate_projects.py
 
 ## change / update
 1. TOC change to read `innerHTML`

@@ -13,7 +13,10 @@ import rcssmin # type: ignore
 # ==========================================
 # 🧠 細項 Hash 快取與版本控制引擎 (Fine-Grained State Cache)
 # ==========================================
-API_LOGIC_VERSION = "U2026-09-24" # ✨ 每次修改打包邏輯時，修改此值 (例如 "v2", "v3")
+API_LOGIC_VERSION = "U2026-09-24"    # ✨ 修改 Markdown 解析、contents.json 結構時改這個
+HTML_LOGIC_VERSION = "U2026-09-24"   # ✨ 修改 index.html 跳轉模板時改這個
+IMAGE_LOGIC_VERSION = "U2026-09-24"  # ✨ 修改 OG圖合成、圖片轉檔品質時改這個
+
 CACHE_FILE = '.build_cache.json'
 
 
@@ -246,7 +249,18 @@ def get_hash_url(local_path, base_url):
 
 def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwrite):
     """使用 Hash 判斷單一檔案是否需要更新"""
-    current_hash = get_file_hash(source_path)
+    
+    # ✨ 智慧分流：透過「目標輸出檔案」的副檔名，決定要混入哪一種邏輯版本號
+    logic_version = ""
+    if target_path.endswith('contents.json'):
+        logic_version = API_LOGIC_VERSION
+    elif target_path.endswith('index.html'):
+        logic_version = HTML_LOGIC_VERSION
+    elif target_path.endswith(('.webp', '.png', '.jpg')):
+        logic_version = IMAGE_LOGIC_VERSION
+        
+    current_hash = get_file_hash(source_path, logic_version)
+    
     if not os.path.exists(target_path):
         return 'NEW', current_hash
     if force_overwrite or old_hash_dict.get(key) != current_hash:
@@ -292,20 +306,23 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
             except Exception:
                 pass
 
-
-def get_file_hash(filepath):
+# ==========================================
+# Hash 運作引擎
+# ==========================================
+def get_file_hash(filepath, logic_version=""):
     """計算單一檔案的 MD5 Hash (安全二進位讀取)"""
     if not os.path.exists(filepath): return ""
     hasher = hashlib.md5()
     with open(filepath, 'rb') as f:
         content = f.read()
-        # 只有 Markdown 或是 JSON 才需要替換換行符號 (防止跨平台 hash 跑掉)
         if filepath.endswith('.md') or filepath.endswith('.json'):
             content = content.replace(b'\r\n', b'\n')
         hasher.update(content)
         
-    # ✨ 加入 API 邏輯版本，強制改變打包時的比對 Hash
-    hasher.update(API_LOGIC_VERSION.encode('utf-8'))
+    # ✨ 混入特定的邏輯版本號，強制改變該類別的比對結果
+    if logic_version:
+        hasher.update(logic_version.encode('utf-8'))
+        
     return hasher.hexdigest()[:8]
 
 def get_dir_hash(dirpath):
@@ -319,8 +336,9 @@ def get_dir_hash(dirpath):
                     content = f.read().replace('\r\n', '\n')
                     hasher.update(content.encode('utf-8'))
                     
-    # ✨ 加入 API 邏輯版本，強制改變前端 data_version.json 的驗證 Hash，觸發前端重載
+    # ✨ 讓前端重載機制受到 API 與 HTML 版號變動的觸發
     hasher.update(API_LOGIC_VERSION.encode('utf-8'))
+    hasher.update(HTML_LOGIC_VERSION.encode('utf-8'))
     return hasher.hexdigest()[:8]
 
 def update_data_version():
