@@ -16,6 +16,7 @@
 
 3. Multilingual Support (Language Block & CSS `:lang` variables): `:::lang[ja]`
 4. Language parameter support for Ruby Furigana: `^^Kanji(Furigana)[lang]^^` (defaults to `ja`).
+5. `API_LOGIC_VERSION` in generate_projects.py
 
 ## change / update
 1. TOC change to read `innerHTML`

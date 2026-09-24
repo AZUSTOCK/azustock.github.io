@@ -10,6 +10,13 @@ from tools.update_paths import update_extensions_to_webp
 import rjsmin # type: ignore
 import rcssmin # type: ignore
 
+# ==========================================
+# 🧠 細項 Hash 快取與版本控制引擎 (Fine-Grained State Cache)
+# ==========================================
+API_LOGIC_VERSION = "U2026-09-24" # ✨ 每次修改打包邏輯時，修改此值 (例如 "v2", "v3")
+CACHE_FILE = '.build_cache.json'
+
+
 # 準備一個 Set 來記錄所有合法的 API 檔案絕對路徑，用於最後的清理階段
 valid_api_files = set()
 protected_api_dirs = set()
@@ -285,10 +292,6 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
             except Exception:
                 pass
 
-# ==========================================
-# 🧠 細項 Hash 快取與版本控制引擎 (Fine-Grained State Cache)
-# ==========================================
-CACHE_FILE = '.build_cache.json'
 
 def get_file_hash(filepath):
     """計算單一檔案的 MD5 Hash (安全二進位讀取)"""
@@ -300,6 +303,9 @@ def get_file_hash(filepath):
         if filepath.endswith('.md') or filepath.endswith('.json'):
             content = content.replace(b'\r\n', b'\n')
         hasher.update(content)
+        
+    # ✨ 加入 API 邏輯版本，強制改變打包時的比對 Hash
+    hasher.update(API_LOGIC_VERSION.encode('utf-8'))
     return hasher.hexdigest()[:8]
 
 def get_dir_hash(dirpath):
@@ -312,6 +318,9 @@ def get_dir_hash(dirpath):
                 with open(os.path.join(root, file), 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read().replace('\r\n', '\n')
                     hasher.update(content.encode('utf-8'))
+                    
+    # ✨ 加入 API 邏輯版本，強制改變前端 data_version.json 的驗證 Hash，觸發前端重載
+    hasher.update(API_LOGIC_VERSION.encode('utf-8'))
     return hasher.hexdigest()[:8]
 
 def update_data_version():
@@ -471,6 +480,10 @@ def generate_version_json(is_github_actions=False):
 # 📝 升級版系統日誌生成器 (Changelog Generator)
 # ==========================================
 def generate_changelogs_json():
+    print(f"\n==========================================")
+    print(f"📦 打包 版本紀錄...")
+    print(f"==========================================")
+    
     base_dir = 'logs'
     output_data = []
 
