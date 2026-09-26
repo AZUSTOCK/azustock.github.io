@@ -21,6 +21,7 @@
 
 ## change / update
 1. TOC change to read `innerHTML`
+2. System Maintenance Console (`>_ RELOAD_SYS`)
 
 ## adjust
 1. Reboot URL Fallback
@@ -30,6 +31,8 @@
 ## fix
 1. marquee text animation in `.vertical-wrapper` scrolls bottom-to-top (`translateY`)
 2. main page section animation behavior
+3. hid drawer scrollbar and applied `overscroll-behavior: contain`
+5. SVG subpixel rendering jitter/trembling
 
 ## deprecate
 1. 

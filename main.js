@@ -6440,10 +6440,10 @@ window.toggleWebFullscreen = function(videoEl) {
 
 
 // ==========================================
-// 🖥️ 系統重載與記憶重置底部選單 (System Action Sheet)
+// 🖥️ 系統重載與記憶重置底部選單 (完美借用 PDF Modal UI)
 // ==========================================
 window.showSystemReloadModal = function() {
-    // 1. 深度關閉漢堡選單抽屜
+    // 1. 強制隱藏漢堡選單抽屜
     if (typeof window.closeDrawer === 'function') window.closeDrawer();
     if (typeof window.closeMenu === 'function') window.closeMenu();
     document.querySelectorAll('.drawer, #drawer, #category-drawer, #nav-drawer, #menu-drawer, .nav-menu').forEach(el => {
@@ -6453,136 +6453,94 @@ window.showSystemReloadModal = function() {
         el.classList.remove('is-active', 'active', 'show');
     });
 
-    // 2. 動態計算原生捲軸寬度並補償 padding，防止畫面左右跳動
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-    if (scrollbarWidth > 0) {
-        document.body.style.paddingRight = `${scrollbarWidth}px`;
-    }
-
-    const existing = document.getElementById('sys-reload-sheet-modal');
+    // 2. 防呆：移除已存在的彈窗
+    const existing = document.getElementById('pdf-action-modal');
     if (existing) existing.remove();
 
-    // 3. 建立 DOM 結構 (✨ 移除所有 onclick 屬性)
-    const modalHtml = `
-    <div id="sys-reload-sheet-modal" class="sys-sheet-overlay">
-        <div class="sys-sheet-content">
-            <div class="sys-sheet-handle"></div>
-            
-            <div class="sys-sheet-header">
-                <div class="sys-sheet-title">>_ 系統維護控制台</div>
-                <div class="sys-sheet-desc">請選擇要執行的系統程序</div>
-            </div>
+    // 3. 建立 Overlay (✨ 核心魔法：直接掛上 PDF 彈窗的 ID，完美繼承排版與遮罩樣式)
+    const overlay = document.createElement('div');
+    overlay.id = 'pdf-action-modal';
 
-            <div class="sys-sheet-actions">
-                <button type="button" class="sys-sheet-btn" id="sys-btn-soft-reload">
-                    <div class="sys-sheet-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                        </svg>
-                    </div>
-                    <div class="sys-sheet-text">
-                        <div class="sys-sheet-btn-title">重新整理系統 (SOFT_RELOAD)</div>
-                        <div class="sys-sheet-btn-desc">重新載入頁面並同步檢查遠端最新版本。</div>
-                    </div>
-                </button>
-
-                <button type="button" class="sys-sheet-btn is-danger" id="sys-btn-format-memory">
-                    <div class="sys-sheet-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                    </div>
-                    <div class="sys-sheet-text">
-                        <div class="sys-sheet-btn-title">重置系統記憶 (FORMAT_MEMORY)</div>
-                        <div class="sys-sheet-btn-desc">清空解鎖金鑰與快取，重新體驗演出（保留主題與字型設定）。</div>
-                    </div>
-                </button>
-            </div>
-
-            <button type="button" class="sys-sheet-cancel" id="sys-btn-cancel-modal">
-                取消 (CANCEL)
-            </button>
-        </div>
-    </div>`;
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    if (typeof window.lockScroll === 'function') window.lockScroll();
-
-    // 4. ✨ 改用強綁定 EventListener，確保絕對不會發生 is not defined 錯誤
-    const modalEl = document.getElementById('sys-reload-sheet-modal');
-    const contentEl = modalEl.querySelector('.sys-sheet-content');
-    
-    // 阻擋內部點擊冒泡
-    contentEl.addEventListener('click', (e) => e.stopPropagation());
-    
-    // 綁定關閉事件 (點擊背景或取消按鈕)
-    const closeHandler = (e) => {
-        if (e) e.stopPropagation();
-        modalEl.classList.remove('is-active');
-        if (typeof window.unlockScroll === 'function') window.unlockScroll();
+    const closeModal = () => {
+        overlay.style.opacity = '0';
+        const sheet = overlay.querySelector('.pdf-action-sheet');
+        if (sheet) sheet.style.transform = 'translateY(100%)';
         setTimeout(() => {
-            modalEl.remove();
-            document.body.style.paddingRight = '';
-        }, 280);
+            overlay.remove();
+        }, 300);
     };
-    modalEl.addEventListener('click', closeHandler);
-    document.getElementById('sys-btn-cancel-modal').addEventListener('click', closeHandler);
 
-    // 綁定: 重新整理系統
-    document.getElementById('sys-btn-soft-reload').addEventListener('click', (e) => {
+    // 準備 SVG 圖示
+    const refreshIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>`;
+    const trashIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+
+    // 套用與 PDF 彈窗 100% 相同的 HTML 結構 (pdf-action-sheet, pdf-action-btn)
+    overlay.innerHTML = `
+        <div class="pdf-action-sheet">
+            <div class="pdf-drag-handle"></div>
+            <div class="pdf-sheet-title" style="color: var(--accent); font-family: monospace;">&gt;_ 系統維護控制台</div>
+            <div class="pdf-sheet-subtitle">SYSTEM MAINTENANCE CONSOLE</div>
+            <div class="pdf-btn-group">
+                <button id="sys-btn-soft-reload" class="pdf-action-btn primary">
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${refreshIcon}</span>重新整理系統 (SOFT_RELOAD)
+                </button>
+                <button id="sys-btn-format-memory" class="pdf-action-btn secondary" style="color: var(--error-color); border-color: var(--error-shadow); background: var(--card);">
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${trashIcon}</span>重置系統記憶 (FORMAT_MEMORY)
+                </button>
+                <button id="sys-modal-close" class="pdf-action-btn cancel">取消</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // ✨ 進入動畫
+    setTimeout(() => {
+        overlay.style.opacity = '1';
+        const sheet = overlay.querySelector('.pdf-action-sheet');
+        if (sheet) sheet.style.transform = 'translateY(0)';
+    }, 10);
+
+    // 4. 綁定事件
+    overlay.querySelector('#sys-btn-soft-reload').onclick = (e) => {
         e.stopPropagation();
         if (typeof window.triggerHaptic === 'function') window.triggerHaptic('selection');
-        closeHandler();
-        window.location.reload();
-    });
+        closeModal();
+        setTimeout(() => window.location.reload(), 300);
+    };
 
-    // 綁定: 重置系統記憶
-    document.getElementById('sys-btn-format-memory').addEventListener('click', (e) => {
+    overlay.querySelector('#sys-btn-format-memory').onclick = (e) => {
         e.stopPropagation();
         if (typeof window.triggerHaptic === 'function') window.triggerHaptic('warning');
 
-        // 讀取並保護偏好設定
         const savedTheme = localStorage.getItem('theme');
         const savedTextScale = localStorage.getItem('sys_text_scale');
 
-        // 精準清除
         localStorage.removeItem('sys_unlocked_secrets');
         localStorage.removeItem('sys_animated_secrets');
         localStorage.removeItem('sys_data_versions');
         sessionStorage.clear();
 
-        // 恢復偏好設定
         if (savedTheme) localStorage.setItem('theme', savedTheme);
         if (savedTextScale) localStorage.setItem('sys_text_scale', savedTextScale);
 
-        closeHandler();
+        closeModal();
 
-        // ✨ 終極修復：showSystemRebootScreen 不接受 callback，只接受文字參數！
-        // 必須把 window.location.reload() 獨立用 setTimeout 執行
         setTimeout(() => {
             try {
                 if (typeof window.showSystemRebootScreen === 'function' || typeof showSystemRebootScreen === 'function') {
                     const rebootFn = window.showSystemRebootScreen || showSystemRebootScreen;
-                    // 正確參數傳遞：title, localV, remoteV, msg, immediate
                     rebootFn("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE...", true);
-                    
-                    // 延遲 1.2 秒，讓終端機動畫演完再執行真正的重新整理
                     setTimeout(() => { window.location.reload(); }, 1200);
                 } else {
                     window.location.reload();
                 }
             } catch (error) {
-                console.warn("重啟動畫呼叫失敗，強制執行原生重載:", error);
                 window.location.reload();
             }
-        }, 150);
-    });
+        }, 300);
+    };
 
-    // 觸發進場動畫
-    setTimeout(() => {
-        if (modalEl) modalEl.classList.add('is-active');
-    }, 25);
+    overlay.querySelector('#sys-modal-close').onclick = closeModal;
+    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
 };

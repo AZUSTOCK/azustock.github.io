@@ -542,8 +542,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 .share-link-btn:hover { color: var(--card); border-color: var(--accent-2); background: var(--accent-2); box-shadow: 0 0 12px var(--glow-1); }
 .share-link-btn svg { display: block; transition: transform 0.3s var(--ease-smooth); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
-.share-link-btn:hover svg { transform: scale(1.15) rotate(10deg) translateZ(0); }
-.share-link-btn:hover svg.sort-icon { transform: scale(1.15) translateZ(0); }
+.share-link-btn:hover svg { transform: scale(1.15) translateZ(0); }
 
 /* ✨ 共用複製狀態 */
 .share-link-btn.copied, .share-site-btn.copied { 
@@ -4035,177 +4034,20 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 }
 
 /* ========================================================================== */
-/* 📱 系統維護底部動作選單 (System Action Sheet Modal)                          */
+/* ✨ 核心修復：解決特定按鈕內的 SVG 在動畫時產生的顫抖/抖動問題                 */
 /* ========================================================================== */
-
-.sys-sheet-overlay {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    background: rgba(0, 0, 0, 0.65) !important;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 2147483647 !important; /* 確保高於所有漢堡選單抽屜與遮罩 */
-    display: flex !important;
-    align-items: flex-end !important;
-    justify-content: center !important;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.28s ease;
-}
-
-.sys-sheet-overlay.is-active {
-    opacity: 1 !important;
-    pointer-events: auto !important;
-}
-
-.sys-sheet-content {
-    width: 100%;
-    max-width: 500px;
-    /* 變數 Fallback，防止背景變全透明 */
-    background: var(--card, var(--bg, #18181b)) !important;
-    border-top: 1px solid var(--box-border, rgba(255, 255, 255, 0.15));
-    border-left: 1px solid var(--box-border, rgba(255, 255, 255, 0.15));
-    border-right: 1px solid var(--box-border, rgba(255, 255, 255, 0.15));
-    border-radius: 20px 20px 0 0;
-    padding: 1rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.45);
-    transform: translateY(100%);
-    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-    box-sizing: border-box;
-}
-
-.sys-sheet-overlay.is-active .sys-sheet-content {
-    transform: translateY(0) !important;
-}
-
-/* 頂部拖曳飾條 */
-.sys-sheet-handle {
-    width: 38px;
-    height: 4px;
-    background: var(--divider-line, rgba(255, 255, 255, 0.25));
-    border-radius: 2px;
-    margin: 0 auto 1rem;
-}
-
-.sys-sheet-header {
-    text-align: left;
-    margin-bottom: 1.25rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--divider-line, rgba(255, 255, 255, 0.1));
-}
-
-.sys-sheet-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--accent, #3b82f6);
-    font-family: monospace;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
-}
-
-.sys-sheet-desc {
-    font-size: 0.82rem;
-    color: var(--muted, #a1a1aa);
-}
-
-.sys-sheet-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-    margin-bottom: 1rem;
-}
-
-/* 選項按鈕本體 */
-.sys-sheet-btn {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    width: 100%;
-    padding: 0.85rem 1rem;
-    background: var(--box-bg, rgba(255, 255, 255, 0.05));
-    border: 1px solid var(--box-border, rgba(255, 255, 255, 0.12));
-    border-radius: 12px;
-    color: var(--text, #f4f4f5);
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.2s, border-color 0.2s, transform 0.15s;
-    box-sizing: border-box;
-}
-
-.sys-sheet-btn:hover {
-    background: color-mix(in srgb, var(--accent, #3b82f6) 12%, transparent);
-    border-color: var(--accent, #3b82f6);
-    transform: translateY(-1px);
-}
-
-.sys-sheet-btn:active {
-    transform: scale(0.98);
-}
-
-.sys-sheet-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--accent, #3b82f6) 15%, transparent);
-    color: var(--accent, #3b82f6);
-    flex-shrink: 0;
-}
-
-.sys-sheet-text {
-    flex: 1;
-}
-
-.sys-sheet-btn-title {
-    font-size: 0.92rem;
-    font-weight: 600;
-    font-family: monospace;
-    margin-bottom: 0.2rem;
-}
-
-.sys-sheet-btn-desc {
-    font-size: 0.75rem;
-    color: var(--muted, #a1a1aa);
-    line-height: 1.35;
-}
-
-/* 危險警戒選項 (FORMAT_MEMORY) */
-.sys-sheet-btn.is-danger .sys-sheet-icon {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-}
-
-.sys-sheet-btn.is-danger:hover {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: #ef4444;
-}
-
-.sys-sheet-btn.is-danger .sys-sheet-btn-title {
-    color: #ef4444;
-}
-
-/* 取消按鈕 */
-.sys-sheet-cancel {
-    width: 100%;
-    padding: 0.8rem;
-    background: transparent;
-    border: 1px solid var(--box-border, rgba(255, 255, 255, 0.15));
-    border-radius: 10px;
-    color: var(--muted, #a1a1aa);
-    font-size: 0.85rem;
-    font-family: monospace;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-    box-sizing: border-box;
-}
-
-.sys-sheet-cancel:hover {
-    background: var(--box-bg, rgba(255, 255, 255, 0.05));
-    color: var(--text, #f4f4f5);
+.pdf-view-btn svg,
+.share-link-btn.responsive-share-btn svg,
+.toggle-sort-btn svg {
+    /* 1. 強制核心 GPU 加速，讓瀏覽器用硬體渲染代替軟體，大幅優化動畫性能 */
+    transform: translateZ(0); 
+    
+    /* 2. 在 WebKit 核心瀏覽器（Safari/iOS 版 Chrome）中啟用次像素抗鋸齒，改善清晰度 */
+    -webkit-font-smoothing: subpixel-antialiased;
+    
+    /* 3. 在 Chrome 中將核心渲染層預先通知 GPU 有動畫要發生，優化渲染鏈 */
+    will-change: transform;
+    
+    /* 4. 核心防抖動：防止按鈕在點擊或懸停時產生不必要的層級震動 */
+    backface-visibility: hidden;
 }
