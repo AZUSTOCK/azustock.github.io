@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.5.12.4",          // 目前系統版本號
+    VERSION: "U1.6.0",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -6436,4 +6436,111 @@ window.toggleWebFullscreen = function(videoEl) {
             document.body.appendChild(videoEl._fsExitBtn);
         }
     }
+};
+
+
+// ==========================================
+// 🖥️ 系統重載與記憶重置底部選單 (完美借用 PDF Modal UI)
+// ==========================================
+window.showSystemReloadModal = function() {
+    // 1. 強制隱藏漢堡選單抽屜
+    if (typeof window.closeDrawer === 'function') window.closeDrawer();
+    if (typeof window.closeMenu === 'function') window.closeMenu();
+    document.querySelectorAll('.drawer, #drawer, #category-drawer, #nav-drawer, #menu-drawer, .nav-menu').forEach(el => {
+        el.classList.remove('is-open', 'active', 'open');
+    });
+    document.querySelectorAll('.drawer-overlay, #drawer-overlay, #overlay, .menu-overlay').forEach(el => {
+        el.classList.remove('is-active', 'active', 'show');
+    });
+
+    // 2. 防呆：移除已存在的彈窗
+    const existing = document.getElementById('pdf-action-modal');
+    if (existing) existing.remove();
+
+    // 3. 建立 Overlay (✨ 核心魔法：直接掛上 PDF 彈窗的 ID，完美繼承排版與遮罩樣式)
+    const overlay = document.createElement('div');
+    overlay.id = 'pdf-action-modal';
+
+    const closeModal = () => {
+        overlay.style.opacity = '0';
+        const sheet = overlay.querySelector('.pdf-action-sheet');
+        if (sheet) sheet.style.transform = 'translateY(100%)';
+        setTimeout(() => {
+            overlay.remove();
+        }, 300);
+    };
+
+    // 準備 SVG 圖示
+    const refreshIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>`;
+    const trashIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+
+    // 套用與 PDF 彈窗 100% 相同的 HTML 結構 (pdf-action-sheet, pdf-action-btn)
+    overlay.innerHTML = `
+        <div class="pdf-action-sheet">
+            <div class="pdf-drag-handle"></div>
+            <div class="pdf-sheet-title" style="color: var(--accent); font-family: monospace;">&gt;_ 系統維護控制台</div>
+            <div class="pdf-sheet-subtitle">SYSTEM MAINTENANCE CONSOLE</div>
+            <div class="pdf-btn-group">
+                <button id="sys-btn-soft-reload" class="pdf-action-btn primary">
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${refreshIcon}</span>重新整理系統 (SOFT_RELOAD)
+                </button>
+                <button id="sys-btn-format-memory" class="pdf-action-btn secondary" style="color: var(--error-color); border-color: var(--error-shadow); background: var(--card);">
+                    <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${trashIcon}</span>重置系統記憶 (FORMAT_MEMORY)
+                </button>
+                <button id="sys-modal-close" class="pdf-action-btn cancel">取消</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // ✨ 進入動畫
+    setTimeout(() => {
+        overlay.style.opacity = '1';
+        const sheet = overlay.querySelector('.pdf-action-sheet');
+        if (sheet) sheet.style.transform = 'translateY(0)';
+    }, 10);
+
+    // 4. 綁定事件
+    overlay.querySelector('#sys-btn-soft-reload').onclick = (e) => {
+        e.stopPropagation();
+        if (typeof window.triggerHaptic === 'function') window.triggerHaptic('selection');
+        closeModal();
+        setTimeout(() => window.location.reload(), 300);
+    };
+
+    overlay.querySelector('#sys-btn-format-memory').onclick = (e) => {
+        e.stopPropagation();
+        if (typeof window.triggerHaptic === 'function') window.triggerHaptic('warning');
+
+        const savedTheme = localStorage.getItem('theme');
+        const savedTextScale = localStorage.getItem('sys_text_scale');
+
+        localStorage.removeItem('sys_unlocked_secrets');
+        localStorage.removeItem('sys_animated_secrets');
+        localStorage.removeItem('sys_data_versions');
+        sessionStorage.clear();
+
+        if (savedTheme) localStorage.setItem('theme', savedTheme);
+        if (savedTextScale) localStorage.setItem('sys_text_scale', savedTextScale);
+
+        closeModal();
+
+        setTimeout(() => {
+            try {
+                if (typeof window.showSystemRebootScreen === 'function' || typeof showSystemRebootScreen === 'function') {
+                    const rebootFn = window.showSystemRebootScreen || showSystemRebootScreen;
+                    rebootFn("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE...", true);
+                    setTimeout(() => { window.location.reload(); }, 1200);
+                } else {
+                    window.location.reload();
+                }
+            } catch (error) {
+                window.location.reload();
+            }
+        }, 300);
+    };
+
+    overlay.querySelector('#sys-modal-close').onclick = closeModal;
+    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
 };

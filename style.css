@@ -542,8 +542,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 .share-link-btn:hover { color: var(--card); border-color: var(--accent-2); background: var(--accent-2); box-shadow: 0 0 12px var(--glow-1); }
 .share-link-btn svg { display: block; transition: transform 0.3s var(--ease-smooth); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
-.share-link-btn:hover svg { transform: scale(1.15) rotate(10deg) translateZ(0); }
-.share-link-btn:hover svg.sort-icon { transform: scale(1.15) translateZ(0); }
+.share-link-btn:hover svg { transform: scale(1.15) translateZ(0); }
 
 /* ✨ 共用複製狀態 */
 .share-link-btn.copied, .share-site-btn.copied { 
@@ -4032,4 +4031,23 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 @keyframes bg-text-marquee-vertical {
     0%   { transform: translateY(0); }
     100% { transform: translateY(-50%); } 
+}
+
+/* ========================================================================== */
+/* ✨ 核心修復：解決特定按鈕內的 SVG 在動畫時產生的顫抖/抖動問題                 */
+/* ========================================================================== */
+.pdf-view-btn svg,
+.share-link-btn.responsive-share-btn svg,
+.toggle-sort-btn svg {
+    /* 1. 強制核心 GPU 加速，讓瀏覽器用硬體渲染代替軟體，大幅優化動畫性能 */
+    transform: translateZ(0); 
+    
+    /* 2. 在 WebKit 核心瀏覽器（Safari/iOS 版 Chrome）中啟用次像素抗鋸齒，改善清晰度 */
+    -webkit-font-smoothing: subpixel-antialiased;
+    
+    /* 3. 在 Chrome 中將核心渲染層預先通知 GPU 有動畫要發生，優化渲染鏈 */
+    will-change: transform;
+    
+    /* 4. 核心防抖動：防止按鈕在點擊或懸停時產生不必要的層級震動 */
+    backface-visibility: hidden;
 }
