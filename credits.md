@@ -14,7 +14,8 @@
 
 ### Audio & Synthesizers
 * **OpenUtau** - Vocal Synthesis Core
-* **VOCALOID 6** - Vocal Synthesis Core
+* **VOCALOID** - Vocal Synthesis Core
+* **Synthesizer V** - Vocal Synthesis Core
 * **FL Studio** - Audio Mixing & Mastering
 
 ### Sprcial Thanks
