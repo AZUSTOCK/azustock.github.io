@@ -6437,3 +6437,152 @@ window.toggleWebFullscreen = function(videoEl) {
         }
     }
 };
+
+
+// ==========================================
+// 🖥️ 系統重載與記憶重置底部選單 (System Action Sheet)
+// ==========================================
+window.showSystemReloadModal = function() {
+    // 1. 深度關閉漢堡選單抽屜
+    if (typeof window.closeDrawer === 'function') window.closeDrawer();
+    if (typeof window.closeMenu === 'function') window.closeMenu();
+    document.querySelectorAll('.drawer, #drawer, #category-drawer, #nav-drawer, #menu-drawer, .nav-menu').forEach(el => {
+        el.classList.remove('is-open', 'active', 'open');
+    });
+    document.querySelectorAll('.drawer-overlay, #drawer-overlay, #overlay, .menu-overlay').forEach(el => {
+        el.classList.remove('is-active', 'active', 'show');
+    });
+
+    // 2. 動態計算原生捲軸寬度並補償 padding，防止畫面左右跳動
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    const existing = document.getElementById('sys-reload-sheet-modal');
+    if (existing) existing.remove();
+
+    // 3. 建立 DOM 結構 (✨ 移除所有 onclick 屬性)
+    const modalHtml = `
+    <div id="sys-reload-sheet-modal" class="sys-sheet-overlay">
+        <div class="sys-sheet-content">
+            <div class="sys-sheet-handle"></div>
+            
+            <div class="sys-sheet-header">
+                <div class="sys-sheet-title">>_ 系統維護控制台</div>
+                <div class="sys-sheet-desc">請選擇要執行的系統程序</div>
+            </div>
+
+            <div class="sys-sheet-actions">
+                <button type="button" class="sys-sheet-btn" id="sys-btn-soft-reload">
+                    <div class="sys-sheet-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                        </svg>
+                    </div>
+                    <div class="sys-sheet-text">
+                        <div class="sys-sheet-btn-title">重新整理系統 (SOFT_RELOAD)</div>
+                        <div class="sys-sheet-btn-desc">重新載入頁面並同步檢查遠端最新版本。</div>
+                    </div>
+                </button>
+
+                <button type="button" class="sys-sheet-btn is-danger" id="sys-btn-format-memory">
+                    <div class="sys-sheet-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div class="sys-sheet-text">
+                        <div class="sys-sheet-btn-title">重置系統記憶 (FORMAT_MEMORY)</div>
+                        <div class="sys-sheet-btn-desc">清空解鎖金鑰與快取，重新體驗演出（保留主題與字型設定）。</div>
+                    </div>
+                </button>
+            </div>
+
+            <button type="button" class="sys-sheet-cancel" id="sys-btn-cancel-modal">
+                取消 (CANCEL)
+            </button>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    if (typeof window.lockScroll === 'function') window.lockScroll();
+
+    // 4. ✨ 改用強綁定 EventListener，確保絕對不會發生 is not defined 錯誤
+    const modalEl = document.getElementById('sys-reload-sheet-modal');
+    const contentEl = modalEl.querySelector('.sys-sheet-content');
+    
+    // 阻擋內部點擊冒泡
+    contentEl.addEventListener('click', (e) => e.stopPropagation());
+    
+    // 綁定關閉事件 (點擊背景或取消按鈕)
+    const closeHandler = (e) => {
+        if (e) e.stopPropagation();
+        modalEl.classList.remove('is-active');
+        if (typeof window.unlockScroll === 'function') window.unlockScroll();
+        setTimeout(() => {
+            modalEl.remove();
+            document.body.style.paddingRight = '';
+        }, 280);
+    };
+    modalEl.addEventListener('click', closeHandler);
+    document.getElementById('sys-btn-cancel-modal').addEventListener('click', closeHandler);
+
+    // 綁定: 重新整理系統
+    document.getElementById('sys-btn-soft-reload').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof window.triggerHaptic === 'function') window.triggerHaptic('selection');
+        closeHandler();
+        window.location.reload();
+    });
+
+    // 綁定: 重置系統記憶
+    document.getElementById('sys-btn-format-memory').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof window.triggerHaptic === 'function') window.triggerHaptic('warning');
+
+        // 讀取並保護偏好設定
+        const savedTheme = localStorage.getItem('theme');
+        const savedTextScale = localStorage.getItem('sys_text_scale');
+
+        // 精準清除
+        localStorage.removeItem('sys_unlocked_secrets');
+        localStorage.removeItem('sys_animated_secrets');
+        localStorage.removeItem('sys_data_versions');
+        sessionStorage.clear();
+
+        // 恢復偏好設定
+        if (savedTheme) localStorage.setItem('theme', savedTheme);
+        if (savedTextScale) localStorage.setItem('sys_text_scale', savedTextScale);
+
+        closeHandler();
+
+        // ✨ 終極修復：showSystemRebootScreen 不接受 callback，只接受文字參數！
+        // 必須把 window.location.reload() 獨立用 setTimeout 執行
+        setTimeout(() => {
+            try {
+                if (typeof window.showSystemRebootScreen === 'function' || typeof showSystemRebootScreen === 'function') {
+                    const rebootFn = window.showSystemRebootScreen || showSystemRebootScreen;
+                    // 正確參數傳遞：title, localV, remoteV, msg, immediate
+                    rebootFn("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE...", true);
+                    
+                    // 延遲 1.2 秒，讓終端機動畫演完再執行真正的重新整理
+                    setTimeout(() => { window.location.reload(); }, 1200);
+                } else {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.warn("重啟動畫呼叫失敗，強制執行原生重載:", error);
+                window.location.reload();
+            }
+        }, 150);
+    });
+
+    // 觸發進場動畫
+    setTimeout(() => {
+        if (modalEl) modalEl.classList.add('is-active');
+    }, 25);
+};
