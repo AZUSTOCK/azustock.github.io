@@ -6530,7 +6530,7 @@ window.showSystemReloadModal = function() {
             try {
                 if (typeof window.showSystemRebootScreen === 'function' || typeof showSystemRebootScreen === 'function') {
                     const rebootFn = window.showSystemRebootScreen || showSystemRebootScreen;
-                    rebootFn("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE...", true);
+                    rebootFn("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE", true);
                     setTimeout(() => { window.location.reload(); }, 1200);
                 } else {
                     window.location.reload();
