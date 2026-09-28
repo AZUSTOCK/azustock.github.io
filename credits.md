@@ -4,8 +4,12 @@
 * **Marked.js** - Markdown Rendering Engine
 * **Mermaid.js** - Diagram & Visualization Engine
 * **rjsmin & rcssmin** - Asset Minification & Code Compression
-* **AI** - Code Implementation
+* **AI** - Code Implementation (website build only)
 * **風川梓** - System Architect
+
+### Content Creation
+* **風川梓** - Text and media creation
+* **AI** - Website development assistance only
 
 ### Automation & Data
 * **Python** - Core Automation Pipeline
@@ -18,12 +22,12 @@
 * **Synthesizer V** - Vocal Synthesis Core
 * **FL Studio** - Audio Mixing & Mastering
 
-### Sprcial Thanks
+### Special Thanks
 * **はんごうすいはん** - Inspiration
 
 ---
 <div style="text-align: center; margin-top: 2rem; line-height: 1.8;">
-    <b>And You</b><br>
+    <b style="color: var(--accent-2);">And You</b><br>
     感謝您的到訪<br>
     Thank you for visiting<br>
     ご訪問いただきありがとうございます
