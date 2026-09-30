@@ -148,8 +148,6 @@
     min-width: 0; 
     display: block; /* ✨ 3. 拔除 Flex，回歸純區塊，高度完全由內部文字決定 */
     margin: 0;
-    padding-bottom: 0.3rem;
-    margin-top: 0.4rem;
 }
 
 .group-header-title { 
@@ -207,7 +205,8 @@
 }
 
 /* Fallback Icon Color */
-.article-li[class*="group-color-"] .article-item-fallback {
+.article-li[class*="group-color-"] .article-item-fallback,
+.article-li[style*="--current-group-color"] .article-item-fallback {
     color: var(--current-group-color);
 }
 
@@ -1830,8 +1829,7 @@ span.article-item-date {
     -webkit-user-select: none; 
     z-index: 20; 
     padding: 0 0.4rem; 
-    margin: 0 0.1rem; 
-    /* border-radius: 4px; */
+    margin: 0 0.1rem;
 }
 
 /* 1. 底層：解密後的文字 */
@@ -1848,7 +1846,6 @@ span.article-item-date {
     position: absolute;
     inset: 0;
     background-color: var(--text);
-    /* border-radius: 4px; */
     z-index: 2;
     
     /* Base: 完整的矩形 */
@@ -2116,6 +2113,25 @@ span.article-item-date {
 .markdown-body img[alt="float-right"], .markdown-body figure.float-right { float: right; width: 40%; max-width: 280px; margin: 0.5rem 0 1.5rem 1.5rem; position: relative; z-index: 10; }
 .markdown-body img[alt="float-left"], .markdown-body figure.float-left { float: left; width: 40%; max-width: 280px; margin: 0.5rem 1.5rem 1.5rem 0; position: relative; z-index: 10; }
 .markdown-body img[alt="float-right"].is-loading, .markdown-body img[alt="float-right"].is-broken, .markdown-body img[alt="float-left"].is-loading, .markdown-body img[alt="float-left"].is-broken { min-height: 150px; max-height: 300px; aspect-ratio: 1 / 1; }
+
+/* ========================================================================== */
+/* ✨ 修復：讓隱藏文字 / 機密 / 高光區塊在遇到 float 圖片時，於剩餘空間內自動換行 */
+/* ========================================================================== */
+.markdown-body :is(figure.float-right, figure.float-left, img[alt="float-right"], img[alt="float-left"]) ~ :is(.spoiler-text, .md-inline-secret),
+.markdown-body :is(figure.float-right, figure.float-left, img[alt="float-right"], img[alt="float-left"]) ~ * :is(.spoiler-text, .md-inline-secret) {
+    /* 自動扣除浮動圖片的寬度 (min(40%, 280px)) 與間距 (1.5rem + 安全緩衝) */
+    max-width: calc(100% - min(40%, 280px) - 2rem);
+    box-sizing: border-box;
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* 若中間經過了清除浮動的分割線 (.md-divider / .md-clear)，則恢復 100% 寬度 */
+.markdown-body :is(.md-divider, .md-clear) ~ :is(.spoiler-text, .md-inline-secret),
+.markdown-body :is(.md-divider, .md-clear) ~ * :is(.spoiler-text, .md-inline-secret) {
+    max-width: 100%;
+}
+
 .markdown-body img[alt="full"] { width: 100%; max-width: none; border-radius: 0; }
 /* ✨ 保護小圖示與 Badge，確保在載入中也不會被放大為 100% */
 .markdown-body img[alt="icon" i] { 
@@ -2571,6 +2587,10 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
 
     /* Markdown 排版優化 */
     .markdown-body img[alt="float-right"], .markdown-body figure.float-right, .markdown-body img[alt="float-left"], .markdown-body figure.float-left { float: none; display: block; width: 75%; max-width: 260px; margin: 1.5rem auto; }
+
+    .markdown-body :is(.spoiler-text, .md-highlight-text, .md-inline-secret) {
+        max-width: 100% !important;
+    }
     .markdown-body img[alt="center"] { width: 90%; }
 
     /* 文章導覽膠囊與底部卡片 */

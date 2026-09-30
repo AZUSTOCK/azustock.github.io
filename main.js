@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.0",          // 目前系統版本號
+    VERSION: "U1.6.0.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -4245,21 +4245,27 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                         let groupColor = groupData.color;
                         let themeClass = '';
-                        let customStyle = ''; // ✨ 1. 補回這行宣告！
-                        
+                        let customStyle = ''; 
+
                         if (groupData.highlight) {
-                            const groupNum = (colorIndex % 5) + 1;
-                            themeClass = ` group-color-${groupNum}`;
-                            colorIndex++; 
+                            if (groupColor) {
+                                // ✨ 同時開啟 highlight 且有自訂 color：讓文章高光背景與圖示直接套用自訂色
+                                customStyle = ` style="--current-group-color: ${groupColor}; --tab-color: ${groupColor};"`;
+                            } else {
+                                // 僅開啟 highlight：走系統預設的 5 色循環
+                                const groupNum = (colorIndex % 5) + 1;
+                                themeClass = ` group-color-${groupNum}`;
+                                colorIndex++; 
+                            }
                         } else if (groupColor) {
-                            // ✨ 2. 補回這行，讓群組底下的文章也能吃到專屬顏色！
+                            // 僅設定自訂 color（無高光背景）
                             customStyle = ` style="--current-group-color: ${groupColor};"`; 
                         }
 
-                        const topMargin = isFirstGroup ? '0rem' : '1.8rem';
+                        const topMargin = isFirstGroup ? '0rem' : '1.2rem';
 
-                        // ✨ 3. 處理 Group Header 專屬的合併 Style
-                        let inlineStyles = ``;
+                        // ✨ 只要有設定 groupColor，就注入給 Group Header（包含標題、底線與縮圖直角外框）
+                        let inlineStyles = groupColor ? ` --current-group-color: ${groupColor};` : '';
                         if (groupColor && !groupData.highlight) {
                             inlineStyles += ` --current-group-color: ${groupColor};`;
                         }
@@ -4277,9 +4283,9 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             </div>`;
                         }
 
-                        // ✨ 4. 渲染 HTML，套用 themeClass 與 inlineStyles
+                        // ✨ 修復：將 ${inlineStyles} 補進 style 屬性尾端！
                         html += `
-                            <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;">
+                            <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;${inlineStyles}">
                                 <div class="group-header-text">
                                     <div class="group-header-title">${groupData.title || groupId}</div>
                                     ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
@@ -4298,7 +4304,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     }
                     const ungrouped = finalArray.filter(item => !item.art.group);
                     if (ungrouped.length > 0) {
-                        const topMargin = isFirstGroup ? '0rem' : '1.5rem';
+                        const topMargin = isFirstGroup ? '0rem' : '1rem';
                         // ✨ 未分群區塊也加上 ID
                         html += `<ul id="group-ungrouped" class="article-list-ul" style="margin-top:${topMargin};">`;
                         
@@ -4743,22 +4749,23 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 let themeClass = '';
                 let customStyle = '';
 
-                // 為了確保顏色與目錄頁完全一致，重跑一次目錄的顏色推導邏輯
-                if (groupData.highlight) {
+                // ✨ 優先檢查是否有自訂 color，若有則直接套用顏色與光暈
+                if (groupData.color) {
+                    customStyle = ` style="color: ${groupData.color}; text-shadow: 0 0 8px color-mix(in srgb, ${groupData.color} 30%, transparent);"`;
+                } else if (groupData.highlight) {
                     let colorIndex = 0;
                     for (const [gId, gData] of Object.entries(proj.groups)) {
                         const groupArticles = flatSequence.filter(item => item.art.group === gId);
-                        if (groupArticles.length === 0) continue; // 略過無文章或隱藏的群組
+                        if (groupArticles.length === 0) continue; 
                         
                         if (gId === article.group) {
                             const groupNum = (colorIndex % 5) + 1;
                             themeClass = ` group-color-${groupNum}`;
                             break;
                         }
-                        if (gData.highlight) colorIndex++;
+                        // 只有「開啟 highlight 且沒自訂 color」的群組才消耗輪替色額度
+                        if (gData.highlight && !gData.color) colorIndex++;
                     }
-                } else if (groupData.color) {
-                    customStyle = ` style="color: ${groupData.color};"`;
                 }
 
                 const groupTitle = groupData.title || article.group;

@@ -6,5 +6,28 @@
   "tags": ["Draw", "azu5atellite"],
   "cover": "architecture.webp",
   "pinned": true,
-  "default_sort": "asc"
+  "default_sort": "asc",
+  "groups": {
+    "trpg": {
+      "title": "TRPG",
+      "description": "跑團角卡",
+      "color": "var(--group-c1)"
+    },
+    "vocaloid": {
+      "title": "VOCALOID",
+      "description": "ボカロ",
+      "default": true,
+      "color": "var(--group-c5)"
+    },
+    "storyOFdiary": {
+      "title": "STORY OF DIARY",
+      "description": "日記的故事",
+      "color": "var(--group-c3)"
+    },
+    "draw!": {
+      "title": "DRAW!",
+      "description": "想畫畫！",
+      "color": "var(--group-c4)"
+    }
+  }
 }
