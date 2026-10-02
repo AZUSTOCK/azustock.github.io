@@ -1,0 +1,3 @@
+classDef base fill:var(--box-bg),stroke:var(--card-border),color:var(--text)
+classDef active fill:var(--accent-2),stroke:transparent,color:var(--card)
+classDef warning fill:var(--error-color),stroke:transparent,color:#fff
