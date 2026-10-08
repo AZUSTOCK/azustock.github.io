@@ -30,6 +30,22 @@
   <!-- ========================================== -->
   <!-- ✨ 0 毫秒無縫接軌引擎：防止重整時舊畫面與遮罩閃爍 -->
   <!-- ========================================== -->
+   <script>
+      // 核心資源載入失敗的攔截器
+      function handleAssetLoadError(assetName) {
+          // 等待 DOMContentLoaded 後再顯示錯誤畫面 (避免 body 尚未生成)
+          document.addEventListener('DOMContentLoaded', function() {
+              var errorScreen = document.getElementById('sys-load-error');
+              var errorName = document.getElementById('error-asset-name');
+              if (errorScreen && errorName) {
+                  errorName.innerText = assetName;
+                  errorScreen.style.display = 'flex';
+                  // 隱藏原本可能因為缺 CSS 而破版的內容
+                  document.documentElement.style.overflow = 'hidden';
+              }
+          });
+      }
+  </script>
   <style>
       /* 如果正在重啟，隱藏 body 內的所有東西，只准顯示黑底遮罩 */
       html { background-color: #020617; }
@@ -67,15 +83,29 @@
   
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="./style.css?u=U1.5.7.5" />
-  <script defer src="./main.js?u=U1.5.7.5"></script>
+  <link rel="stylesheet" href="./style.css?u=U1.5.7.5" onerror="handleAssetLoadError('CSS 樣式表')" />
+  <script defer src="./main.js?u=U1.5.7.5" onerror="handleAssetLoadError('JavaScript 核心')" ></script>
 </head>
 <body>
-<button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
-    <img src="./assets/light.png" id="icon-sun" class="theme-img" alt="Sun">
-    <img src="./assets/dark.png" id="icon-moon" class="theme-img" alt="Moon">
-  </button>
-<button id="menu-toggle" class="menu-btn">
+  <!-- ========================================== -->
+  <!-- ✨ 資源載入失敗的保護罩 (預設隱藏) -->
+  <!-- ========================================== -->
+  <div id="sys-load-error" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #020617; z-index: 999999; flex-direction: column; align-items: center; justify-content: center; font-family: monospace; color: #f8fafc; text-align: center; padding: 2rem; box-sizing: border-box;">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      <h2 style="color: #ef4444; font-size: 1.5rem; letter-spacing: 0.05em; margin-bottom: 0.5rem;">>_ SYSTEM_ERR : ASSET_LOAD_FAILED</h2>
+      <p style="color: #94a3b8; font-size: 1rem; line-height: 1.6; margin-bottom: 2rem;">
+          核心模組 (<span id="error-asset-name" style="color: #fff; font-weight: bold;"></span>) 載入失敗。<br>
+          請檢查您的網路連線，或清除瀏覽器快取後重試。
+      </p>
+      <button onclick="window.location.reload(true)" style="background: transparent; border: 2px solid #3b82f6; color: #3b82f6; padding: 0.75rem 1.5rem; font-size: 1rem; font-family: monospace; cursor: pointer; border-radius: 8px; font-weight: bold; transition: all 0.2s;">
+          >_ RELOAD_RETRY
+      </button>
+  </div>
+  <button id="theme-toggle" class="theme-btn" aria-label="切換深淺色模式">
+      <img src="./assets/light.png" id="icon-sun" class="theme-img" alt="Sun">
+      <img src="./assets/dark.png" id="icon-moon" class="theme-img" alt="Moon">
+    </button>
+  <button id="menu-toggle" class="menu-btn">
     <span class="bar"></span>
     <span class="bar"></span>
     <span class="bar"></span>

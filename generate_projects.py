@@ -484,6 +484,19 @@ def generate_version_json(is_github_actions=False):
             # 替換 Footer 裡的靜態文字 (例如 <span id="sys-version">U1.5.6.1</span>)
             new_html = re.sub(r'(<span id="sys-version"[^>]*>)[^<]+(</span>)', rf'\g<1>{latest_version}\g<2>', new_html)
             
+            # ✨ 1. 清除 HTML 註解 (<!-- ... -->)
+            new_html = re.sub(r'<!--[\s\S]*?-->', '', new_html)
+            
+            # ✨ 2. 清除 CSS 與 JS 的多行註解 (/* ... */)
+            new_html = re.sub(r'/\*[\s\S]*?\*/', '', new_html)
+            
+            # ✨ 3. 清除 JS 單行註解 (// ...)
+            # 使用 re.MULTILINE 標記，並加上 ^\s* 確保只刪除「位於行首（或前方只有空白）」的註解，完美避開 http://
+            new_html = re.sub(r'^\s*//.*$', '', new_html, flags=re.MULTILINE)
+            
+            # ✨ 4. 順便壓縮多餘的空行 (將多個換行壓縮成單一換行)
+            new_html = re.sub(r'\n\s*\n', '\n', new_html)
+            
             # 永遠強制輸出 index.html
             with open(output_html, 'w', encoding='utf-8') as f:
                 f.write(new_html)

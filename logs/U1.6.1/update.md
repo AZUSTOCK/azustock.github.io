@@ -3,9 +3,11 @@
 
 ## add
 1. Custom group theme color support (`color` property in `detail.json` `groups`)
+2. js, css loading error UI
 
 ## change / update
 1. Updated `.article-item-fallback` CSS selector
+2. Clean index.html while packing
 
 ## adjust
 1. Adjusted `.article-group-label` color
