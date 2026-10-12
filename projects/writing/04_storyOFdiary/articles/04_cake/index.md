@@ -1,5 +1,5 @@
 # 蛋糕
-++[KEY:StoryOFDiary_I#4|SILENT]++
+++[KEY:StoryOFDiary#4|SILENT]++
 <div class="vertical-wrapper">
 
 從座位上回過神來，思緒還是有點混亂。  

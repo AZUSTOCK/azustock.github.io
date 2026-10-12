@@ -5,6 +5,7 @@
 1. Custom group theme color support (`color` property in `detail.json` `groups`)
 2. js, css loading error UI
 3. lock & key behavior
+4. track_keys.py
 
 ## change / update
 1. Updated `.article-item-fallback` CSS selector

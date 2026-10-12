@@ -1,5 +1,5 @@
 # 服飾店
-++[KEY:StoryOFDiary_I#8|SILENT]++
+++[KEY:StoryOFDiary#8|SILENT]++
 <div class="vertical-wrapper">
 
 今天又是個盡情玩樂的一天 ~  

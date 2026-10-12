@@ -1,5 +1,5 @@
 # 序
-++[KEY:StoryOFDiary_I#9|SILENT]++
+++[KEY:StoryOFDiary#9|SILENT]++
 <div class="vertical-wrapper">
 
 「為什麼要做這種事呢？」  

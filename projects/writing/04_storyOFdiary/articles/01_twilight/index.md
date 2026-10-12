@@ -1,5 +1,5 @@
 # 黃昏
-++[KEY:StoryOFDiary_I#1|SILENT]++
+++[KEY:StoryOFDiary#1|SILENT]++
 <div class="vertical-wrapper">
 
 我們就站在沐浴在黃昏的天橋上，她靠在欄杆上，望向遠方。我也學著她的樣子，看著下方的車子一輛一輛在靠近之後突然消失。  

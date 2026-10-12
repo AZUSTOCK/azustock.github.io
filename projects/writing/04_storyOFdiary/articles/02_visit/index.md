@@ -1,5 +1,5 @@
 # 拜訪
-++[KEY:StoryOFDiary_I#2|SILENT]++
+++[KEY:StoryOFDiary#2|SILENT]++
 <div class="vertical-wrapper">
 
 剛剛從打瞌睡的狀態中醒來，發現她的位置空蕩蕩的，桌上沒有東西，也沒坐人  
