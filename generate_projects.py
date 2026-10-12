@@ -108,6 +108,13 @@ def minify_assets():
 # ==========================================
 # 🛠️ 輔助系統 (Helper Functions)
 # ==========================================
+def clean_dynamic_text(text):
+    """清除動態字串語法，僅保留偽裝文字，用於安全的靜態 HTML 輸出與 SEO 防劇透"""
+    if not text or not isinstance(text, str): return text
+    def repl(m):
+        return m.group(2).strip() if m.group(2) else '***'
+    return re.sub(r'\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?', repl, text)
+
 def get_copyright_exif(img):
     """產生帶有專屬版權宣告的 EXIF 數位簽章位元組"""
     current_year = datetime.now().year
@@ -706,9 +713,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 
             if proj_data.get('link'): clean_proj_data['link'] = proj_data.get('link')
             
-            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive']:
+            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive', 'required_key', 'lock_mode']:
                 val = proj_data.get(key) or proj_data.get(key.upper())
-                if val is not None: clean_proj_data[f'is_{key}' if key != 'pinned' else 'pinned'] = val
+                if val is not None: 
+                    if key in ['required_key', 'lock_mode']:
+                        clean_proj_data[key] = val
+                    elif key == 'sensitive':
+                        clean_proj_data['is_sensitive'] = val
+                    else:
+                        clean_proj_data[f'is_{key}' if key != 'pinned' else 'pinned'] = val
 
             # ✨ 1. 將專案變數初始化往上移，解決原本 proj_id 尚未定義的重大 Bug
             proj_id = clean_proj_title
@@ -871,7 +884,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 proj_needs_update = True
                 with open(proj_html_path, "w", encoding="utf-8") as f:
                     f.write(html_template.format(
-                        title=proj_title, description=proj_desc, 
+                        title=clean_dynamic_text(proj_title), 
+                        description=clean_dynamic_text(proj_desc), 
                         image=proj_img_hashed, target_url=proj_target_url, share_url=proj_share_url
                     ))
                 if proj_html_status == 'NEW': stats["proj_new"] += 1
@@ -1271,7 +1285,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 art_needs_update = True
                                 with open(art_html_path, "w", encoding="utf-8") as f:
                                     f.write(html_template.format(
-                                        title=f"{art_title} | {proj_title}", description=art_desc, 
+                                        title=f"{clean_dynamic_text(art_title)} | {clean_dynamic_text(proj_title)}", 
+                                        description=clean_dynamic_text(art_desc), 
                                         image=art_img_hashed, target_url=art_target_url, share_url=art_share_url
                                     ))
                                 if art_html_status == 'NEW': stats["art_new"] += 1
@@ -1319,9 +1334,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         clean_tags.append(t)
                                 article_obj["tags"] = clean_tags
                             
-                            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive']:
+                            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive', 'required_key', 'lock_mode']:
                                 val = sub_data.get(key) or sub_data.get(key.upper())
-                                if val is not None: article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = val
+                                if val is not None: 
+                                    if key in ['required_key', 'lock_mode']:
+                                        article_obj[key] = val
+                                    elif key == 'sensitive':
+                                        article_obj['is_sensitive'] = val
+                                    else:
+                                        article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = val
 
                             # ✨ 智慧群組繼承：直接使用上方 (第 545 行) 已經判定好的 art_group (包含預設群組)
                             if 'groups' in proj_data and art_group:

@@ -1,6 +1,7 @@
 # 開學
 <div class="vertical-wrapper">
 
+++[KEY:StoryOFDiary#7|SILENT]++
 姊姊有寫日記的習慣，甚至有一個專屬的書架來放。  
 </br>
 內容無非都是些日常瑣事，然後伴隨著一些歡笑或是抱怨，然後文字也沒有絢麗的詞藻。  

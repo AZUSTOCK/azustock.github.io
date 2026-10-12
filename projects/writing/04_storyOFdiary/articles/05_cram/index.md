@@ -1,6 +1,7 @@
 # 補習
 <div class="vertical-wrapper">
 
+++[KEY:StoryOFDiary#5|SILENT]++
 「戶賀同學你好，最近過的如何？ 」  
 「誒。還...還不錯。」  
 「是嗎？ 那太好了。 戶賀同學最近常常請假，老師有點擔心，老師還以為自己被討厭了呢QAQ。」  

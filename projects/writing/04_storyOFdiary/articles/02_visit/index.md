@@ -1,6 +1,7 @@
 # 拜訪
 <div class="vertical-wrapper">
 
+++[KEY:StoryOFDiary#2|SILENT]++
 剛剛從打瞌睡的狀態中醒來，發現她的位置空蕩蕩的，桌上沒有東西，也沒坐人  
 『疑？』  
 『她今天怎麼沒來學校？』  
