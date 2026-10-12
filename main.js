@@ -221,10 +221,20 @@ window.isSingleKeyUnlocked = function(reqStr) {
     const reqCount = parts.length > 1 ? parseInt(parts[1]) : 1;
     
     const unlocked = JSON.parse(localStorage.getItem('sys_unlocked_secrets') || '[]');
+    // 如果持有主鑰匙 (無後綴)，直接擁有最高權限
     if (unlocked.includes(baseId)) return true; 
     
-    const fragments = unlocked.filter(k => k.startsWith(baseId + '#'));
-    return fragments.length >= reqCount;
+    // ✨ 嚴格檢查：必須包含 #1 ~ #reqCount 所有的指定碎片才算過關
+    if (parts.length > 1) {
+        for (let i = 1; i <= reqCount; i++) {
+            if (!unlocked.includes(`${baseId}#${i}`)) {
+                return false; // 只要缺任何一個號碼，立刻駁回！
+            }
+        }
+        return true; // 迴圈跑完都沒缺，代表 #1 ~ #5 全都有了
+    }
+    
+    return false;
 };
 
 window.isSecretUnlocked = function(input) {
@@ -241,12 +251,14 @@ window.unlockSecret = function(rawKey) {
     const baseId = match && match[1] ? match[1].trim() : rawKey.trim();
     const fragIndex = match && match[2] ? match[2].trim() : null;
     const reqCount = match && match[3] ? parseInt(match[3]) : 1;
+    // ✨ 記錄使用者是否有明確寫出「總數量」(是否有 / 符號)
+    const hasExplicitTotal = match && !!match[3]; 
     
     const storeKey = fragIndex ? `${baseId}#${fragIndex}` : baseId;
     let unlocked = JSON.parse(localStorage.getItem('sys_unlocked_secrets') || '[]');
         
     if (unlocked.includes(storeKey)) {
-        return { status: 'ALREADY_HAVE', baseId, currentCount: unlocked.filter(k => k.startsWith(baseId + '#')).length, reqCount };
+        return { status: 'ALREADY_HAVE', baseId, currentCount: unlocked.filter(k => k.startsWith(baseId + '#')).length, reqCount, hasExplicitTotal, fragIndex };
     }
     
     unlocked.push(storeKey);
@@ -256,11 +268,25 @@ window.unlockSecret = function(rawKey) {
     setTimeout(() => { if(window.refreshHomeKeysUI) window.refreshHomeKeysUI(); }, 500);
     
     if (fragIndex) {
+        let isComplete = false;
+        
+        // ✨ 如果有寫明數量 (例如 #1/5)，系統才能在「此刻」判定是否全部集滿
+        if (hasExplicitTotal) {
+            isComplete = true;
+            for (let i = 1; i <= reqCount; i++) {
+                if (!unlocked.includes(`${baseId}#${i}`)) {
+                    isComplete = false;
+                    break;
+                }
+            }
+        }
+        
         const currentCount = unlocked.filter(k => k.startsWith(baseId + '#')).length;
-        if (currentCount >= reqCount) {
-            return { status: 'GRANTED_FRAGMENTS_COMPLETE', baseId, currentCount, reqCount };
+        
+        if (isComplete) {
+            return { status: 'GRANTED_FRAGMENTS_COMPLETE', baseId, currentCount, reqCount, hasExplicitTotal, fragIndex };
         } else {
-            return { status: 'ACQUIRED_FRAGMENT', baseId, currentCount, reqCount };
+            return { status: 'ACQUIRED_FRAGMENT', baseId, currentCount, reqCount, hasExplicitTotal, fragIndex };
         }
     }
     return { status: 'GRANTED', baseId };
@@ -3278,6 +3304,11 @@ const highlightExtension = {
         const secretId = isKey ? badge.replace('KEY:', '').replace(/\|SILENT/i, '').trim() : '';
         const keyAttr = isKey ? ` data-secret-key="${secretId}" data-silent="${isSilent}"` : '';
         
+        if (isKey && isSilent && (!token.content || token.content.trim() === '')) {
+            // 輸出一個沒有體積的隱形節點，完全不佔用任何版面，但依然能觸發滾動解鎖！
+            return `<span class="md-silent-key-trigger"${keyAttr} style="display: inline-block; width: 0px; height: 0px; opacity: 0; pointer-events: none; overflow: hidden; margin: 0; padding: 0;"></span>`;
+        }
+
         const displayText = isKey ? 'KEY FOUND' : (badge ? badge : 'HIGHLIGHT'); 
         const statusAttr = (badge && !isKey) ? ` data-status="${badge.toUpperCase()}"` : '';
         const defaultStyle = (badge && !isKey) ? '' : ' style="--dynamic-glow: var(--accent-2);"';
@@ -4421,22 +4452,24 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const proj = window.siteProjects.find(p => p.id === projectId);
             if (!proj || !proj.articles) return;
 
-            // ✨ 敏感內容驗證 (專案層級獨立解鎖)
+            // ✨ 敏感內容驗證 (專案層級獨立解鎖 - 支援複雜金鑰邏輯)
             if (proj.is_sensitive) {
                 let sType = 'DEFAULT';
                 let bypassKey = null;
 
                 if (typeof proj.is_sensitive === 'string') {
-                    if (proj.is_sensitive.includes('|')) {
-                        const parts = proj.is_sensitive.split('|');
-                        sType = parts[0].toUpperCase();
-                        bypassKey = parts.slice(1).join('|').trim(); 
+                    // ✨ 核心修復：使用 indexOf 找出第一個 |，精準切開「模板」與「後方所有複雜金鑰」
+                    const firstPipeIdx = proj.is_sensitive.indexOf('|');
+                    if (firstPipeIdx !== -1) {
+                        sType = proj.is_sensitive.substring(0, firstPipeIdx).toUpperCase();
+                        bypassKey = proj.is_sensitive.substring(firstPipeIdx + 1).trim(); 
                     } else {
                         sType = proj.is_sensitive.toUpperCase();
                     }
                 }
 
                 const agreeKey = `PROJ_${projectId}`; 
+                // ✨ 改用系統共用的 window.isSecretUnlocked 引擎，完美支援複雜 DNF 邏輯！
                 const isBypassed = bypassKey && window.isSecretUnlocked(bypassKey);
 
                 if (!isBypassed && !window.hasAgreedToSensitive(agreeKey)) {
@@ -4849,7 +4882,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         return;
     }
 
-    // ✨ 敏感內容驗證 (專案與文章獨立辨識)
+    // ✨ 敏感內容驗證 (專案與文章獨立辨識 - 支援複雜金鑰邏輯)
     let isProjSensitive = proj.is_sensitive;
     let isArtSensitive = article.is_sensitive;
     let sensitiveType = isArtSensitive || isProjSensitive;
@@ -4860,23 +4893,25 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         let sTypeProj = 'DEFAULT';
         let sTypeArt = 'DEFAULT';
 
-        // ✨ 檢查專案層級 Bypass
+        // ✨ 檢查專案層級 Bypass (支援複雜邏輯)
         if (typeof isProjSensitive === 'string') {
-            if (isProjSensitive.includes('|')) {
-                const parts = isProjSensitive.split('|');
-                sTypeProj = parts[0].toUpperCase();
-                if (window.isSecretUnlocked(parts.slice(1).join('|').trim())) projBypass = true;
+            const firstPipeIdx = isProjSensitive.indexOf('|');
+            if (firstPipeIdx !== -1) {
+                sTypeProj = isProjSensitive.substring(0, firstPipeIdx).toUpperCase();
+                const bypassKeyStr = isProjSensitive.substring(firstPipeIdx + 1).trim();
+                if (bypassKeyStr && window.isSecretUnlocked(bypassKeyStr)) projBypass = true;
             } else {
                 sTypeProj = isProjSensitive.toUpperCase();
             }
         }
 
-        // ✨ 檢查文章層級 Bypass
+        // ✨ 檢查文章層級 Bypass (支援複雜邏輯)
         if (typeof isArtSensitive === 'string') {
-            if (isArtSensitive.includes('|')) {
-                const parts = isArtSensitive.split('|');
-                sTypeArt = parts[0].toUpperCase();
-                if (window.isSecretUnlocked(parts.slice(1).join('|').trim())) artBypass = true;
+            const firstPipeIdx = isArtSensitive.indexOf('|');
+            if (firstPipeIdx !== -1) {
+                sTypeArt = isArtSensitive.substring(0, firstPipeIdx).toUpperCase();
+                const bypassKeyStr = isArtSensitive.substring(firstPipeIdx + 1).trim();
+                if (bypassKeyStr && window.isSecretUnlocked(bypassKeyStr)) artBypass = true;
             } else {
                 sTypeArt = isArtSensitive.toUpperCase();
             }
@@ -4915,10 +4950,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     if (declineAction === 'close') {
                         closeModal();
                     } else {
-                        // ✨ 退回目錄時不用重整目錄，無縫接軌！
                         const viewIndex = document.getElementById('view-index');
                         if (viewIndex && viewIndex.dataset.projectId === projectId && viewIndex.style.display !== 'none') {
-                            // 目錄還開著，只要呼叫它就會自動修好網址，千萬不能再套一層 replaceState！
                             window.updateRouteState(projectId);
                         } else {
                             window.openProjectIndex(projectId, true);
@@ -5080,7 +5113,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                                 if (result.status === 'ACQUIRED_FRAGMENT') {
                                     title = '>_ FRAGMENT_ACQUIRED';
                                     msg = '取得金鑰碎片';
-                                    subMsg = `進度: ${result.currentCount}/${result.reqCount} [${result.baseId}]`;
+                                    // ✨ 智慧提示：有總數就顯示「進度 1/5」，沒總數就只顯示「已取得 #1」
+                                    subMsg = result.hasExplicitTotal 
+                                        ? `進度: ${result.currentCount}/${result.reqCount} [${result.baseId}]`
+                                        : `已取得碎片 [${result.baseId}#${result.fragIndex}]`;
                                 } else if (result.status === 'GRANTED_FRAGMENTS_COMPLETE') {
                                     title = '>_ ACCESS_GRANTED';
                                     msg = '金鑰合成完畢';
@@ -5771,13 +5807,17 @@ document.addEventListener('keydown', (e) => {
             e.preventDefault();
         }
         
-        if (e.key === 'ArrowLeft') {
-            const prevBtn = document.querySelector('.nav-card.prev');
-            if (prevBtn) { prevBtn.click(); e.preventDefault(); }
-        }
-        if (e.key === 'ArrowRight') {
-            const nextBtn = document.querySelector('.nav-card.next');
-            if (nextBtn) { nextBtn.click(); e.preventDefault(); }
+        // ✨ 嚴格判定：必須是「文章內文 (view-article)」顯示中，才允許左右鍵跳轉！
+        const viewArticle = document.getElementById('view-article');
+        if (viewArticle && viewArticle.style.display !== 'none') {
+            if (e.key === 'ArrowLeft') {
+                const prevBtn = document.querySelector('.nav-card.prev');
+                if (prevBtn) { prevBtn.click(); e.preventDefault(); }
+            }
+            if (e.key === 'ArrowRight') {
+                const nextBtn = document.querySelector('.nav-card.next');
+                if (nextBtn) { nextBtn.click(); e.preventDefault(); }
+            }
         }
     } else {
         // --- 🏠 第三層：首頁全螢幕選單 ---
