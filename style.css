@@ -1067,7 +1067,6 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .card-secret-pin { top: -14px; left: -14px; width: 34px; height: 34px; box-shadow: 0 4px 10px rgba(0,0,0,0.15), 0 0 8px var(--error-color); z-index: 10; }
 .modal-secret-pin { top: -12px; right: -12px; width: 24px; height: 24px; box-shadow: 0 0 8px var(--error-color); z-index: 1; }
 
-/* ✨ 彈跳方向與陰影 (依據卡片與目錄位置設定角度) */
 /* ==========================================
    ✨ 權限與圖釘互動：Hover 物理特效
    ========================================== */
@@ -1076,19 +1075,13 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     transform-origin: 12px 12px; 
 }
 
-/* 🟢 1. 一般隱藏模式 (.is_hidden)：Hover 時扣環會彈出斷開！ */
-.card:hover .card-secret-pin:not(.key-lock-pin) .secret-shackle,
-body.system-override-active .card:hover .key-lock-pin .secret-shackle { 
-    transform: translateY(-6px) translateX(-2px) rotate(-12deg); 
-}
-.modal-content a:hover .modal-secret-pin:not(.key-lock-pin) .secret-shackle,
-.article-li.simulate-hover a .modal-secret-pin:not(.key-lock-pin) .secret-shackle,
-body.system-override-active .modal-content a:hover .key-lock-pin .secret-shackle,
-body.system-override-active .article-li.simulate-hover a .key-lock-pin .secret-shackle { 
-    transform: translateY(-6px) translateX(2px) rotate(12deg); 
+/* 🟢 1. 隱藏模式預設視覺：扣環永遠是打開的！一看就知道是解鎖狀態 */
+.card-secret-pin:not(.key-lock-pin) .secret-shackle,
+.modal-secret-pin:not(.key-lock-pin) .secret-shackle {
+    transform: translateY(-4px) translateX(2px) rotate(15deg) !important;
 }
 
-/* 🟢 2. 一般隱藏圖釘 (.is_hidden) 與置頂圖釘 (.pinned) 的外殼旋轉放大 */
+/* 🟢 2. 一般隱藏圖釘 (.is_hidden) 與置頂圖釘 (.pinned) 的外殼旋轉放大 (Hover 特效) */
 .card:hover .card-secret-pin:not(.key-lock-pin),
 body.system-override-active .card:hover .key-lock-pin,
 .modal-content a:hover .modal-pin { 
@@ -1107,6 +1100,15 @@ body:not(.system-override-active) .card:hover .key-lock-pin,
 body:not(.system-override-active) .modal-content a:hover .key-lock-pin,
 body:not(.system-override-active) .article-li.simulate-hover a .key-lock-pin {
     transform: scale(1.15); 
+}
+
+/* 🟢 4. 管理員視角 (System Override)：對鑰匙鎖定文章 Hover 時扣環會被暴力彈開！ */
+body.system-override-active .card:hover .key-lock-pin .secret-shackle { 
+    transform: translateY(-6px) translateX(-2px) rotate(-12deg); 
+}
+body.system-override-active .modal-content a:hover .key-lock-pin .secret-shackle,
+body.system-override-active .article-li.simulate-hover a .key-lock-pin .secret-shackle { 
+    transform: translateY(-6px) translateX(2px) rotate(12deg); 
 }
 
 /* ✨ 陰影特效維持不變 */

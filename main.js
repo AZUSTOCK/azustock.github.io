@@ -4589,40 +4589,52 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     }
 
     // ✨ 敏感內容驗證 (專案與文章獨立辨識)
+    if (!window._agreedSensitiveTypes) window._agreedSensitiveTypes = new Set();
+    
     let isProjSensitive = proj.is_sensitive;
     let isArtSensitive = article.is_sensitive;
-    let sensitiveType = isArtSensitive || isProjSensitive;
+    
+    const projKey = `PROJ_${projectId}`;
+    const artKey = `ART_${projectId}_${articleIndex}`;
+    
+    let needsPrompt = false;
+    let agreeKeyToSave = '';
+    let currentPromptType = 'DEFAULT';
+    let declineAction = 'index';
 
-    if (sensitiveType) {
-        if (!window._agreedSensitiveTypes) window._agreedSensitiveTypes = new Set();
-        const sType = typeof sensitiveType === 'string' ? sensitiveType.toUpperCase() : 'DEFAULT';
-        
-        const projKey = `PROJ_${projectId}`;
-        const artKey = `ART_${projectId}_${articleIndex}`;
-        
-        let needsPrompt = false;
-        let agreeKeyToSave = '';
-        
-        // 判斷該文章是否需要被獨立攔截
-        if (isArtSensitive && !window._agreedSensitiveTypes.has(artKey) && !window._agreedSensitiveTypes.has(projKey)) {
-            needsPrompt = true;
-            agreeKeyToSave = artKey;
-        } else if (isProjSensitive && !window._agreedSensitiveTypes.has(projKey)) {
-            needsPrompt = true;
-            agreeKeyToSave = projKey;
-        }
+    // 優先驗證專案層級
+    if (isProjSensitive && !window._agreedSensitiveTypes.has(projKey)) {
+        needsPrompt = true;
+        agreeKeyToSave = projKey;
+        currentPromptType = isProjSensitive;
+        declineAction = 'close'; // 拒絕專案層級 -> 退回主頁
+    } 
+    // 再驗證文章層級
+    else if (isArtSensitive && !window._agreedSensitiveTypes.has(artKey)) {
+        needsPrompt = true;
+        agreeKeyToSave = artKey;
+        currentPromptType = isArtSensitive;
+        declineAction = 'index'; // 拒絕文章層級 -> 退回目錄
+    }
 
-        if (needsPrompt) {
-            window.showSensitiveAgreementModal(
-                sType,
-                () => {
-                    window._agreedSensitiveTypes.add(agreeKeyToSave);
-                    window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls);
-                },
-                () => window.openProjectIndex(projectId)
-            );
-            return;
-        }
+    if (needsPrompt) {
+        const sType = typeof currentPromptType === 'string' ? currentPromptType.toUpperCase() : 'DEFAULT';
+        window.showSensitiveAgreementModal(
+            sType,
+            () => {
+                window._agreedSensitiveTypes.add(agreeKeyToSave);
+                window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls);
+            },
+            () => {
+                // 根據攔截來源，執行對應的退回動作
+                if (declineAction === 'close') {
+                    closeModal();
+                } else {
+                    window.openProjectIndex(projectId);
+                }
+            }
+        );
+        return;
     }
     
     let markdownContent = "載入失敗";
