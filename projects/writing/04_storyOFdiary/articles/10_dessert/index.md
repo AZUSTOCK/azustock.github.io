@@ -1,4 +1,5 @@
 # 甜點
+++[KEY:StoryOFDiary#10|SILENT]++
 <div class="vertical-wrapper">
 
 零用錢越來越少了！  

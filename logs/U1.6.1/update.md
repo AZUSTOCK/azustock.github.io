@@ -10,6 +10,7 @@
 ## change / update
 1. Updated `.article-item-fallback` CSS selector
 2. Clean index.html while packing
+3. lock & key behavior
 
 ## adjust
 1. Adjusted `.article-group-label` color
