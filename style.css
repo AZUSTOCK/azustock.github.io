@@ -1069,36 +1069,51 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 
 /* ✨ 彈跳方向與陰影 (依據卡片與目錄位置設定角度) */
 /* ==========================================
-   ✨ 權限解密互動：Hover 時扣環「暴力彈出並斷開」
+   ✨ 權限與圖釘互動：Hover 物理特效
    ========================================== */
 .secret-shackle { 
     transition: transform 0.4s var(--ease-bounce);
-    /* 🚨 核心修復：強制鎖死 SVG 的物理中心座標，防止 Safari 把它甩出螢幕外 */
     transform-origin: 12px 12px; 
 }
 
-/* 👉 專案卡片 (左上角)：向「左上」彈出，並向「左」傾斜 (-12deg) */
-.card:hover .card-secret-pin .secret-shackle { 
+/* 🟢 1. 一般隱藏模式 (.is_hidden)：Hover 時扣環會彈出斷開！ */
+.card:hover .card-secret-pin:not(.key-lock-pin) .secret-shackle,
+body.system-override-active .card:hover .key-lock-pin .secret-shackle { 
     transform: translateY(-6px) translateX(-2px) rotate(-12deg); 
 }
-
-/* 👉 文章清單 (右上角)：向「右上」彈出，並向「右」傾斜 (12deg) */
-.modal-content a:hover .modal-secret-pin .secret-shackle,
-.article-li.simulate-hover a .modal-secret-pin .secret-shackle { 
+.modal-content a:hover .modal-secret-pin:not(.key-lock-pin) .secret-shackle,
+.article-li.simulate-hover a .modal-secret-pin:not(.key-lock-pin) .secret-shackle,
+body.system-override-active .modal-content a:hover .key-lock-pin .secret-shackle,
+body.system-override-active .article-li.simulate-hover a .key-lock-pin .secret-shackle { 
     transform: translateY(-6px) translateX(2px) rotate(12deg); 
 }
-.card:hover .card-pin, .modal-content a:hover .modal-secret-pin, .article-li.simulate-hover a .modal-secret-pin { transform: scale(1.15) rotate(8deg) translate(10%, -10%); }
-.card:hover .card-secret-pin, .modal-content a:hover .modal-pin { transform: scale(1.15) rotate(-8deg) translate(-10%, -10%); }
 
+/* 🟢 2. 一般隱藏圖釘 (.is_hidden) 與置頂圖釘 (.pinned) 的外殼旋轉放大 */
+.card:hover .card-secret-pin:not(.key-lock-pin),
+body.system-override-active .card:hover .key-lock-pin,
+.modal-content a:hover .modal-pin { 
+    transform: scale(1.15) rotate(-8deg) translate(-10%, -10%); 
+}
+.modal-content a:hover .modal-secret-pin:not(.key-lock-pin),
+.article-li.simulate-hover a .modal-secret-pin:not(.key-lock-pin),
+body.system-override-active .modal-content a:hover .key-lock-pin,
+body.system-override-active .article-li.simulate-hover a .key-lock-pin,
+.card:hover .card-pin { 
+    transform: scale(1.15) rotate(8deg) translate(10%, -10%); 
+}
+
+/* 🔴 3. 鑰匙鎖定模式 (required_key)：Hover 時圖釘單純放大，扣環不動！ */
+body:not(.system-override-active) .card:hover .key-lock-pin,
+body:not(.system-override-active) .modal-content a:hover .key-lock-pin,
+body:not(.system-override-active) .article-li.simulate-hover a .key-lock-pin {
+    transform: scale(1.15); 
+}
+
+/* ✨ 陰影特效維持不變 */
 .card:hover .card-pin { box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--accent-2); }
 .modal-content a:hover .modal-pin { box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--accent-2); }
 .card:hover .card-secret-pin { box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--error-color); }
 .modal-content a:hover .modal-secret-pin, .article-li.simulate-hover a .modal-secret-pin { box-shadow: 0 4px 10px rgba(0,0,0,0.2), 0 0 10px var(--error-color); }
-
-.card.highlighted { border-color: var(--accent-2) !important; box-shadow: 0 0 15px var(--accent-2); z-index: 10; position: relative; }
-.card.highlighted:hover { transform: translateY(-6px) translateZ(0); box-shadow: 0 8px 25px var(--accent-2); }
-@keyframes card-bump { 0% { translate: 0 0; } 50% { translate: 0 -12px; } 100% { translate: 0 0; } }
-.card.highlighted.jump-bump { z-index: 20; animation: card-bump 0.6s var(--ease-smooth); }
 
 /* 卡片 Hover 互動指示器 */
 .card:hover .card-action-btn { color: var(--card-glow) !important; }
@@ -4093,24 +4108,11 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     transition: transform 0.3s var(--ease-smooth);
 }
 
-/* 🔒 鎖定狀態下的 Hover 互動防護 (單純放大，不傾斜解鎖) */
-/* 確保涵蓋 simulate-hover 狀態，並在最高權限(admin)時放行解鎖特效 */
-body:not(.system-override-active) .card.is-key-locked:hover .card-secret-pin .secret-shackle,
-body:not(.system-override-active) .article-li.is-key-locked-item a:hover .modal-secret-pin .secret-shackle,
-body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover a .modal-secret-pin .secret-shackle {
-    transform: none !important; /* 扣環不准彈開 */
-}
-
-body:not(.system-override-active) .card.is-key-locked:hover .key-lock-pin,
-body:not(.system-override-active) .article-li.is-key-locked-item a:hover .key-lock-pin,
-body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover a .key-lock-pin {
-    transform: scale(1.15) !important; /* 圖釘單純放大，不旋轉 */
-}
-
+/* 🔒 鎖定狀態下：縮圖上的置中巨大鎖頭單純放大 */
 body:not(.system-override-active) .card.is-key-locked:hover .locked-cover-overlay svg,
 body:not(.system-override-active) .article-li.is-key-locked-item a:hover .locked-cover-overlay svg,
 body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover a .locked-cover-overlay svg {
-    transform: scale(1.2) !important; /* 縮圖上的置中鎖頭單純放大 */
+    transform: scale(1.2); 
 }
 
 /* ========================================================================== */
