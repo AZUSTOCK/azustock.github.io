@@ -1,4 +1,5 @@
 # 開學
+++[KEY:StoryOFDiary_I#7|SILENT]++
 <div class="vertical-wrapper">
 
 姊姊有寫日記的習慣，甚至有一個專屬的書架來放。  

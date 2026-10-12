@@ -1,4 +1,5 @@
 # 補習
+++[KEY:StoryOFDiary_I#5|SILENT]++
 <div class="vertical-wrapper">
 
 「戶賀同學你好，最近過的如何？ 」  

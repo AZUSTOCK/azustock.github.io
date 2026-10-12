@@ -1,4 +1,5 @@
 # 放學後
+++[KEY:StoryOFDiary_I#6|SILENT]++
 <div class="vertical-wrapper">
 
 要達成某項成就，就必須要有相對應的付出。  

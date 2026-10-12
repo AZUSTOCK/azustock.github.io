@@ -36,7 +36,7 @@ window.SENSITIVE_TEMPLATES = {
     },
     "MAIN": {
         title: " (Content Notice)",
-        desc: "因應劇情體驗，建議先閱讀前篇再讀本文。<br>點擊前往即表示您已了解。",
+        desc: "建議先閱讀前篇，以獲得較完整的體驗。<br>點擊前往即表示您已了解。",
         btn_text: "我已閱讀並前往",
         color: "var(--group-c5)"
     }
@@ -2893,10 +2893,14 @@ renderer.link = function(token_or_href, title, text) {
     const href = typeof token_or_href === 'object' ? token_or_href.href : token_or_href;
     const linkTitle = typeof token_or_href === 'object' ? token_or_href.title : title;
     
-    // ✨ 核心修復：使用內部解析器把 ![badge](...) 語法轉化為真正的 <img> 標籤
+    // ✨ 核心修復：加入 try-catch 保護，防止 marked.js 核心找不到解析器導致全頁崩潰
     let linkText = text;
     if (typeof token_or_href === 'object') {
-        linkText = token_or_href.tokens ? this.parser.parseInline(token_or_href.tokens) : token_or_href.text;
+        try {
+            linkText = (token_or_href.tokens && this.parser) ? this.parser.parseInline(token_or_href.tokens) : (token_or_href.text || text);
+        } catch (e) {
+            linkText = token_or_href.text || text;
+        }
     }
 
     // ✨ 魔法 1：支援多重樣式按鈕！只要 title 是以 btn 開頭，就直接把它當作 class 塞入
@@ -2941,10 +2945,17 @@ renderer.heading = function(token_or_text, level, raw) {
     let rawText = typeof token_or_text === 'object' ? token_or_text.text : token_or_text;
     const depth = typeof token_or_text === 'object' ? token_or_text.depth : level;
     
-    // 2. ✨ 核心修復：優先解析標題內的 Inline 元素 (讓高光、機密文字能在標題內運作！)
-    let parsedText = typeof token_or_text === 'object' && token_or_text.tokens 
-        ? this.parser.parseInline(token_or_text.tokens) 
-        : rawText;
+    // 2. ✨ 核心修復：優先解析標題內的 Inline 元素 (加上 Error 防崩潰保護，解決內文變空白的問題！)
+    let parsedText = rawText;
+    try {
+        if (typeof token_or_text === 'object' && token_or_text.tokens && this.parser) {
+            parsedText = this.parser.parseInline(token_or_text.tokens);
+        } else if (typeof marked !== 'undefined' && marked.parseInline) {
+            parsedText = marked.parseInline(rawText);
+        }
+    } catch(e) {
+        parsedText = rawText; // 解析失敗時，安全退回原始文字，保證網頁絕不崩潰
+    }
     
     // 3. 偵測並拔除 {#自訂ID}
     let customId = null;
@@ -3185,12 +3196,12 @@ const highlightExtension = {
     renderer(token) {
         const badge = token.badgeText.trim();
         
-        // ✨ 新增：判斷這是不是一把「鑰匙」
+        // ✨ 強化版靜音標記偵測 (支援大小寫、自動過濾)
         const isKey = badge.startsWith('KEY:');
-        const secretId = isKey ? badge.replace('KEY:', '').trim() : '';
-        const keyAttr = isKey ? ` data-secret-key="${secretId}"` : '';
+        const isSilent = /\|SILENT/i.test(badge); 
+        const secretId = isKey ? badge.replace('KEY:', '').replace(/\|SILENT/i, '').trim() : '';
+        const keyAttr = isKey ? ` data-secret-key="${secretId}" data-silent="${isSilent}"` : '';
         
-        // 如果是鑰匙，改變預設外觀
         const displayText = isKey ? 'KEY FOUND' : (badge ? badge : 'HIGHLIGHT'); 
         const statusAttr = (badge && !isKey) ? ` data-status="${badge.toUpperCase()}"` : '';
         const defaultStyle = (badge && !isKey) ? '' : ' style="--dynamic-glow: var(--accent-2);"';
@@ -3200,7 +3211,6 @@ const highlightExtension = {
         
         const bgHtml = `<span class="marquee-text-track" style="--marquee-duration: ${duration}s;" aria-hidden="true"><span class="marquee-part">${repeatedText}</span><span class="marquee-part">${repeatedText}</span></span>`;
         
-        // ✨ 把 keyAttr 塞入最外層
         return `<span class="md-highlight-text"${statusAttr}${defaultStyle}${keyAttr}>${bgHtml}<span class="text-content">${this.parser.parseInline(token.tokens)}</span></span>`;
     }
 };
@@ -4337,10 +4347,23 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             // ✨ 敏感內容驗證 (專案層級獨立解鎖)
             if (proj.is_sensitive) {
-                const sType = typeof proj.is_sensitive === 'string' ? proj.is_sensitive.toUpperCase() : 'DEFAULT';
-                const agreeKey = `PROJ_${projectId}`; 
+                let sType = 'DEFAULT';
+                let bypassKey = null;
 
-                if (!window.hasAgreedToSensitive(agreeKey)) {
+                if (typeof proj.is_sensitive === 'string') {
+                    if (proj.is_sensitive.includes('|')) {
+                        const parts = proj.is_sensitive.split('|');
+                        sType = parts[0].toUpperCase();
+                        bypassKey = parts.slice(1).join('|').trim(); 
+                    } else {
+                        sType = proj.is_sensitive.toUpperCase();
+                    }
+                }
+
+                const agreeKey = `PROJ_${projectId}`; 
+                const isBypassed = bypassKey && window.isSecretUnlocked(bypassKey);
+
+                if (!isBypassed && !window.hasAgreedToSensitive(agreeKey)) {
                     window.showSensitiveAgreementModal(
                         sType, 
                         (isPermanent) => { 
@@ -4726,35 +4749,75 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     let sensitiveType = isArtSensitive || isProjSensitive;
 
     if (sensitiveType) {
-        const sType = typeof sensitiveType === 'string' ? sensitiveType.toUpperCase() : 'DEFAULT';
+        let projBypass = false;
+        let artBypass = false;
+        let sTypeProj = 'DEFAULT';
+        let sTypeArt = 'DEFAULT';
+
+        // ✨ 檢查專案層級 Bypass
+        if (typeof isProjSensitive === 'string') {
+            if (isProjSensitive.includes('|')) {
+                const parts = isProjSensitive.split('|');
+                sTypeProj = parts[0].toUpperCase();
+                if (window.isSecretUnlocked(parts.slice(1).join('|').trim())) projBypass = true;
+            } else {
+                sTypeProj = isProjSensitive.toUpperCase();
+            }
+        }
+
+        // ✨ 檢查文章層級 Bypass
+        if (typeof isArtSensitive === 'string') {
+            if (isArtSensitive.includes('|')) {
+                const parts = isArtSensitive.split('|');
+                sTypeArt = parts[0].toUpperCase();
+                if (window.isSecretUnlocked(parts.slice(1).join('|').trim())) artBypass = true;
+            } else {
+                sTypeArt = isArtSensitive.toUpperCase();
+            }
+        }
+
         const projKey = `PROJ_${projectId}`;
         const artKey = `ART_${projectId}_${articleIndex}`;
         
         let needsPrompt = false;
         let agreeKeyToSave = '';
         let declineAction = 'index';
+        let finalSType = 'DEFAULT';
 
-        if (isProjSensitive && !window.hasAgreedToSensitive(projKey)) {
+        // ✨ 如果金鑰未解鎖，且還沒有點擊同意，才跳出提示
+        if (isProjSensitive && !projBypass && !window.hasAgreedToSensitive(projKey)) {
             needsPrompt = true;
             agreeKeyToSave = projKey;
             declineAction = 'close'; 
+            finalSType = sTypeProj;
         } 
-        else if (isArtSensitive && !window.hasAgreedToSensitive(artKey)) {
+        else if (isArtSensitive && !artBypass && !window.hasAgreedToSensitive(artKey)) {
             needsPrompt = true;
             agreeKeyToSave = artKey;
             declineAction = 'index'; 
+            finalSType = sTypeArt;
         }
 
         if (needsPrompt) {
             window.showSensitiveAgreementModal(
-                sType,
+                finalSType,
                 (isPermanent) => {
                     window.saveSensitiveAgreement(agreeKeyToSave, isPermanent);
                     window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls);
                 },
                 () => {
-                    if (declineAction === 'close') closeModal();
-                    else window.openProjectIndex(projectId);
+                    if (declineAction === 'close') {
+                        closeModal();
+                    } else {
+                        // ✨ 退回目錄時不用重整目錄，無縫接軌！
+                        const viewIndex = document.getElementById('view-index');
+                        if (viewIndex && viewIndex.dataset.projectId === projectId && viewIndex.style.display !== 'none') {
+                            // 目錄還開著，只要呼叫它就會自動修好網址，千萬不能再套一層 replaceState！
+                            window.updateRouteState(projectId);
+                        } else {
+                            window.openProjectIndex(projectId, true);
+                        }
+                    }
                 }
             );
             return;
@@ -4917,11 +4980,15 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                                     subMsg = `權限已解開！(${result.currentCount}/${result.reqCount}) [${result.baseId}]`;
                                 }
                                 
-                                const isSilent = keyEl.getAttribute('data-silent') === 'true'; // ✨ 讀取靜音標記
-                                if (window.showSystemToast && !isSilent) {
-                                    window.showSystemToast(title, msg, subMsg, 6000, 'success');
+                                // ✨ 精準讀取靜音標記
+                                const isSilent = keyEl.getAttribute('data-silent') === 'true';
+                                
+                                if (!isSilent) {
+                                    if (window.showSystemToast) {
+                                        window.showSystemToast(title, msg, subMsg, 6000, 'success');
+                                    }
+                                    window.triggerHaptic('success');
                                 }
-                                if (!isSilent) window.triggerHaptic('success'); // 靜音模式順便把震動也關掉
                                 keyEl.classList.add('is-key-triggered');
                                 
                                 // ✨ 如果完全解鎖，掃描並喚醒全頁面所有對應的機密區塊
@@ -5525,6 +5592,16 @@ modalOverlay.addEventListener('touchmove', (e) => { if (e.target === modalOverla
 // ✨ 全域鍵盤快捷鍵引擎 (Unified Keyboard Engine)
 // ==========================================
 document.addEventListener('keydown', (e) => {
+    // ✨ 絕對防護：當敏感內容警告窗開啟時，阻斷所有的方向鍵與背景操作！
+    if (document.getElementById('sensitive-modal-overlay')) {
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'm', 't', 'M', 'T'].includes(e.key)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        if (e.key === 'Escape') return; // 放行給 Modal 內部的 Listener 關閉視窗，但不觸發背景的關閉邏輯！
+    }
+
     const lightboxModal = document.getElementById('lightbox-modal');
     const isLightboxOpen = lightboxModal && lightboxModal.classList.contains('is-active');
     
@@ -5978,7 +6055,13 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
         overlay.style.pointerEvents = 'none'; 
         setTimeout(() => {
             overlay.remove();
-            window.unlockScroll();
+            
+            // ✨ 核心修復：檢查背後的文章 Modal 是否還開著，如果開著就保持鎖定狀態！
+            const mdModal = document.getElementById('md-modal');
+            if (!mdModal || !mdModal.classList.contains('active')) {
+                window.unlockScroll();
+            }
+            
             if (onDeclineCallback) onDeclineCallback();
             else window.history.replaceState(null, '', window.location.pathname);
         }, 250); 

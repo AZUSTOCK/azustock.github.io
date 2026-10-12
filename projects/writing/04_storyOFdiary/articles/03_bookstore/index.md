@@ -1,4 +1,5 @@
 # 書店
+++[KEY:StoryOFDiary_I#3|SILENT]++
 <div class="vertical-wrapper">
 
 久違的走進書店，店裡的氣氛讓我感到清爽，彷彿外頭的烈陽被那落地窗改變了一樣，照在身上並沒有灼熱感。  
