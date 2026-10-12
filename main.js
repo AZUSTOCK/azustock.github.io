@@ -5620,6 +5620,18 @@ document.addEventListener('keydown', (e) => {
         return; 
     }
 
+    // --- 📄 第 0.5 層：PDF 操作選單與系統控制台 ---
+    const pdfActionModal = document.getElementById('pdf-action-modal');
+    if (pdfActionModal) {
+        if (e.key === 'Escape') {
+            // 尋找選單內的「取消」按鈕並模擬點擊，觸發完整的退場動畫與解鎖
+            const closeBtn = pdfActionModal.querySelector('.cancel');
+            if (closeBtn) closeBtn.click();
+            e.preventDefault();
+        }
+        return; // 只要選單開著，就斬斷事件，絕對不把按鍵傳給底下的文章或圖片
+    }
+
     // --- 🥊 第一層：Lightbox 大圖預覽 ---
     if (isLightboxOpen) {
         if (e.key === 'Escape') {

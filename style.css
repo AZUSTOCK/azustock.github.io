@@ -3110,6 +3110,7 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
 }
 .pdf-action-btn.primary { background: var(--accent); color: var(--card); }
 .pdf-action-btn.secondary { background: var(--glass-bg); color: var(--text); border: 1px solid var(--card-border); }
+.pdf-action-btn.warn { background: var(--error-color); color: var(--card); }
 .pdf-action-btn.cancel { background: transparent; color: var(--muted); margin-top: 0.3rem; }
 
 /* ==========================================
