@@ -4244,7 +4244,9 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     user-select: none;
     transition: opacity 0.2s ease;
 }
-.sensitive-checkbox-label:hover { opacity: 0.8; }
+.sensitive-checkbox-label:hover {
+    text-decoration: underline 2px solid var(--muted);
+}
 .sensitive-checkbox-label input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
