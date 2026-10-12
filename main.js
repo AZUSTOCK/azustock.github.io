@@ -266,6 +266,42 @@ window.unlockSecret = function(rawKey) {
     return { status: 'GRANTED', baseId };
 };
 
+// ✨ 動態文字解析引擎 (Dynamic Text Engine - 完美防重複特效版)
+window.parseDynamicText = function(text, renderContext = 'DEFAULT') {
+    if (!text || typeof text !== 'string') return text;
+    return text.replace(/\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?/g, function(match, key, cover, real) {
+        const cleanKey = key.trim();
+        const isUnlocked = window.isSecretUnlocked(cleanKey);
+        
+        // 如果是氣泡提示 (Tooltip) 等不需要渲染 DOM 的地方，直接回傳純文字，不消耗動畫額度
+        if (renderContext === 'TOOLTIP') {
+            return isUnlocked ? real.trim() : (cover || '***').trim();
+        }
+
+        const rawStr = match; 
+        const strHash = Array.from(rawStr).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
+        
+        // ✨ 加入 renderContext，確保「卡片」、「目錄」、「按鈕」的動畫額度互相獨立！
+        const placeId = 'UI_FX_' + renderContext + '_' + cleanKey + '_' + strHash;
+        
+        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
+        const hasAnimatedHere = animatedPlaces.includes(placeId);
+
+        let statusClass = 'is-locked';
+        if (isUnlocked) {
+            // ✨ 如果播過動畫，直接加上 already-unlocked 封印 CSS 特效
+            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-unlocked';
+            
+            if (!hasAnimatedHere) {
+                animatedPlaces.push(placeId);
+                localStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
+            }
+        }
+
+        return `<span class="md-stealth-secret ${statusClass}" data-secret-id="${cleanKey}" data-place-id="${placeId}"><span class="stealth-cover">${(cover || '***').trim()}</span><span class="stealth-real">${real.trim()}</span></span>`;
+    });
+};
+
 window.refreshHomeKeysUI = function() {
     const isUnlockedSys = document.body.classList.contains('system-override-active');
     
@@ -289,7 +325,34 @@ window.refreshHomeKeysUI = function() {
     document.querySelectorAll('.card').forEach(card => {
         const pid = card.getAttribute('data-project-id');
         const proj = window.siteProjects.find(p => p.id === pid);
-        if (proj && proj.articles && proj.articles.length > 0) {
+        if (!proj) return;
+
+        const keyAttr = card.getAttribute('data-required-key');
+        if (keyAttr) {
+            let keyData = keyAttr;
+            try { if(keyAttr.startsWith('[')) keyData = JSON.parse(keyAttr); } catch(e){}
+
+            if (window.isSecretUnlocked(keyData)) {
+                card.classList.remove('is-key-locked', 'sys-hidden-card');
+                const pin = card.querySelector('.key-lock-pin');
+                if (pin) pin.remove();
+                card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.openProjectIndex(pid); };
+            }
+        }
+
+        // ✨ 即時更新卡片上的動態文字 (解鎖後立刻渲染出真實標題與特效)
+        const titleH3 = card.querySelector('.card-text h3');
+        if (titleH3) {
+            const cardMetaHtml = proj.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(proj.meta, 'CARD_META')}</span>` : '';
+            titleH3.innerHTML = `${window.parseDynamicText(proj.title, 'CARD_TITLE')} ${cardMetaHtml}`;
+        }
+
+        const descP = card.querySelector('.card-desc-text');
+        if (descP) {
+            descP.innerHTML = window.parseDynamicText(proj.description, 'CARD_DESC');
+        }
+
+        if (proj.articles && proj.articles.length > 0) {
             const visibleCount = proj.articles.filter(a => {
                 if (isUnlockedSys) return true;
                 const artLocked = a.required_key && !window.isSecretUnlocked(a.required_key);
@@ -3915,8 +3978,8 @@ async function loadProjects() {
                 }
 
                 const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="card-thumb-img is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : '';
-                const cardMetaHtml = data.meta ? `<span class="card-meta-text">- ${data.meta}</span>` : '';
-                const cardDescHtml = data.description ? `<p class="card-desc-text">${data.description}</p>` : '';
+                const cardMetaHtml = data.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(data.meta, 'CARD_META')}</span>` : '';
+                const cardDescHtml = data.description ? `<p class="card-desc-text">${window.parseDynamicText(data.description, 'CARD_DESC')}</p>` : '';
                 const absolutePinHtml = data.pinned ? `<div class="card-pin">${GLOBAL_SVGS.pin}</div>` : '';
                 
                 // ✨ 統整機密與鑰匙鎖定 UI (使用原汁原味的紅色鎖頭圖釘)
@@ -3934,8 +3997,8 @@ async function loadProjects() {
 
                 card.innerHTML = `
                     ${absolutePinHtml}${absoluteSecretHtml}${cardDateHtml} 
-                    <div class="card-content-wrapper">
-                        <div class="card-text"><h3 style="margin-top: 0; margin-bottom: 0.4rem;">${data.title} ${cardMetaHtml}</h3>${cardDescHtml}</div>
+                   <div class="card-content-wrapper">
+                        <div class="card-text"><h3 style="margin-top: 0; margin-bottom: 0.4rem;">${window.parseDynamicText(data.title, 'CARD_TITLE')} ${cardMetaHtml}</h3>${cardDescHtml}</div>
                         ${cardImageHtml ? `<div class="card-image">${cardImageHtml}</div>` : ''}
                     </div>
                     <div class="tags-container">${tagsHTML}</div>${actionText}`;
@@ -4393,7 +4456,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             // 2. 將目錄標題與功能按鈕直接注入 modal-top-left (完全還原原始樣式)
             document.getElementById('modal-top-left').innerHTML = `
                 <div class="index-header-container">
-                    <h1 class="index-header-title">${proj.title} - 目錄</h1>
+                    <h1 class="index-header-title">${window.parseDynamicText(proj.title, 'INDEX_HEADER')} - 目錄</h1>
                     <div class="index-header-actions">
                         <!-- ✨ 使用 visibleCount 替換掉原本的 proj.articles.length -->
                         <span class="article-count-badge">共 ${visibleCount} 篇</span>
@@ -4418,7 +4481,11 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             // ✨ DOM 緩存核心：隱藏文章，顯示目錄
             if (viewArticle) viewArticle.style.display = 'none';
-            if (viewIndex) viewIndex.style.display = 'block';
+            if (viewIndex) {
+                // ✨ 終極防呆：在切換 display: block 之前，強制將目前快取中所有的解鎖元素封印，防止 CSS 動畫重播！
+                viewIndex.querySelectorAll('.is-unlocked:not(.already-unlocked)').forEach(el => el.classList.add('already-unlocked'));
+                viewIndex.style.display = 'block';
+            }
 
             // 加入 window._keysUnlockedSinceLastIndex
             const needsRender = viewIndex.dataset.projectId !== projectId || viewIndex.dataset.sort !== currentSort || window._keysUnlockedSinceLastIndex;
@@ -4458,12 +4525,12 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         lockPrompt = isComplex ? '需要多重金鑰' : `需要金鑰 [${art.required_key}]`;
                     }
 
-                    // ✨ 套用動態 lockPrompt
+                    // ✨ 補上 window. 前綴
                     let onClickAttr = artLocked 
                         ? `onclick="event.preventDefault(); window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', '${lockPrompt} 才能解鎖', 4000, 'error');"` 
-                        : `onclick="event.preventDefault(); openArticle('${projectId}',${idx})"`;
+                        : `onclick="event.preventDefault(); window.openArticle('${projectId}',${idx})"`;
 
-                    let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
+                    let descHtml = art.description ? `<span class="article-item-desc">- ${window.parseDynamicText(art.description, 'INDEX_DESC')}</span>` : '';
                     let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
                     let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                     
@@ -4489,7 +4556,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                                     ${iconHtml}
                                     <div class="article-item-content">
                                         <div class="article-item-title-row">
-                                            <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                            <span class="article-item-title">${window.parseDynamicText(art.title, 'INDEX_TITLE')}${statusBadgeHtml}</span>
                                             ${descHtml}
                                         </div>
                                         ${dateHtml}
@@ -4553,8 +4620,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             html += `
                                 <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;${inlineStyles}">
                                     <div class="group-header-text">
-                                        <div class="group-header-title">${groupData.title || groupId}</div>
-                                        ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
+                                        <div class="group-header-title">${window.parseDynamicText(groupData.title || groupId, 'GROUP_TITLE')}</div>${groupData.description ? `<div class="group-header-desc">${window.parseDynamicText(groupData.description, 'GROUP_DESC')}</div>` : ''}
                                     </div>
                                     ${groupCoverHtml}
                                 </div>
@@ -4600,7 +4666,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     if ((validGroups.length + (hasUngrouped ? 1 : 0)) >= 2) {
                         validGroups.forEach(([groupId, groupData]) => {
                             menuItems.push({
-                                label: groupData.title || groupId,
+                                label: window.parseDynamicText(groupData.title || groupId, 'TOC_GROUP'),
                                 targetHash: `#group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`,
                                 className: 'toc-h1'
                             });
@@ -4917,12 +4983,13 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled>${iconSvg}</button>` };
                 }
                 
-                // ✨ 單純防護 HTML 結構，將標題完整傳給 data-tooltip
-                const tooltipText = item.art.title.replace(/"/g, '&quot;');
+                // ✨ 安全解析：TOOLTIP 不消耗特效額度，NAV_BTN 觸發獨立特效
+                const plainTitle = window.parseDynamicText(item.art.title, 'TOOLTIP').replace(/<[^>]+>/g, '');
+                const tooltipText = plainTitle.replace(/"/g, '&quot;');
+                const uiTitle = window.parseDynamicText(item.art.title, 'NAV_BTN');
                 
-                const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `${iconSvg} ${text}` : `${text} ${iconSvg}`}</div><div class="nav-title">${item.art.title}</div></a>`;
+                const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `${iconSvg}${text}` : `${text}${iconSvg}`}</div><div class="nav-title">${uiTitle}</div></a>`;
                 
-                // 將 tooltipText 完整塞入
                 const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${tooltipText}">${iconSvg}</button>`;
                 
                 return { cardHtml, btnHtml };
@@ -5599,14 +5666,9 @@ document.addEventListener('keydown', (e) => {
             e.stopPropagation();
             return;
         }
-        if (e.key === 'Escape') return; // 放行給 Modal 內部的 Listener 關閉視窗，但不觸發背景的關閉邏輯！
+        // 放行 ESC 鍵給 Modal 內部的 Listener 關閉視窗
+        if (e.key === 'Escape') return; 
     }
-
-    const lightboxModal = document.getElementById('lightbox-modal');
-    const isLightboxOpen = lightboxModal && lightboxModal.classList.contains('is-active');
-    
-    const modalOverlay = document.getElementById('md-modal');
-    const isArticleOpen = modalOverlay && modalOverlay.classList.contains('active');
 
     // --- 🎬 第 0 層：自製影片全螢幕 (最最高優先權) ---
     const fullscreenVideo = document.querySelector('video.is-web-fullscreen');

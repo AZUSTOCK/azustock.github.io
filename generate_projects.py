@@ -108,6 +108,13 @@ def minify_assets():
 # ==========================================
 # 🛠️ 輔助系統 (Helper Functions)
 # ==========================================
+def clean_dynamic_text(text):
+    """清除動態字串語法，僅保留偽裝文字，用於安全的靜態 HTML 輸出與 SEO 防劇透"""
+    if not text or not isinstance(text, str): return text
+    def repl(m):
+        return m.group(2).strip() if m.group(2) else '***'
+    return re.sub(r'\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?', repl, text)
+
 def get_copyright_exif(img):
     """產生帶有專屬版權宣告的 EXIF 數位簽章位元組"""
     current_year = datetime.now().year
@@ -877,7 +884,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 proj_needs_update = True
                 with open(proj_html_path, "w", encoding="utf-8") as f:
                     f.write(html_template.format(
-                        title=proj_title, description=proj_desc, 
+                        title=clean_dynamic_text(proj_title), 
+                        description=clean_dynamic_text(proj_desc), 
                         image=proj_img_hashed, target_url=proj_target_url, share_url=proj_share_url
                     ))
                 if proj_html_status == 'NEW': stats["proj_new"] += 1
@@ -1277,7 +1285,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 art_needs_update = True
                                 with open(art_html_path, "w", encoding="utf-8") as f:
                                     f.write(html_template.format(
-                                        title=f"{art_title} | {proj_title}", description=art_desc, 
+                                        title=f"{clean_dynamic_text(art_title)} | {clean_dynamic_text(proj_title)}", 
+                                        description=clean_dynamic_text(art_desc), 
                                         image=art_img_hashed, target_url=art_target_url, share_url=art_share_url
                                     ))
                                 if art_html_status == 'NEW': stats["art_new"] += 1
