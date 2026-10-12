@@ -1078,13 +1078,13 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 }
 
 /* 👉 專案卡片 (左上角)：向「左上」彈出，並向「左」傾斜 (-12deg) */
-.card:hover .secret-shackle { 
+.card:hover .card-secret-pin .secret-shackle { 
     transform: translateY(-6px) translateX(-2px) rotate(-12deg); 
 }
 
 /* 👉 文章清單 (右上角)：向「右上」彈出，並向「右」傾斜 (12deg) */
-.modal-content a:hover .secret-shackle,
-.article-li.simulate-hover a .secret-shackle { 
+.modal-content a:hover .modal-secret-pin .secret-shackle,
+.article-li.simulate-hover a .modal-secret-pin .secret-shackle { 
     transform: translateY(-6px) translateX(2px) rotate(12deg); 
 }
 .card:hover .card-pin, .modal-content a:hover .modal-secret-pin, .article-li.simulate-hover a .modal-secret-pin { transform: scale(1.15) rotate(8deg) translate(10%, -10%); }
@@ -3223,96 +3223,6 @@ body {
 
 
 /* ========================================================================== */
-/* ✨ 敏感內容協議畫面 (Sensitive Content Modal)                               */
-/* ========================================================================== */
-.sensitive-modal-content {
-    cursor: auto; 
-    width: 90%;
-    max-width: 500px; 
-    min-width: min(85vw, 320px);  /* ✨ 設定最小寬度 */
-    min-height: 280px;            /* ✨ 設定最小高度 */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center; 
-    padding: 3rem 2rem; 
-    opacity: 1; 
-    position: relative;
-    background: var(--card); 
-    border: 1px solid var(--card-border); 
-    border-radius: 1.1rem; 
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    transition: background-color 0.5s ease, border-color 0.5s ease;
-}
-.sensitive-close-btn {
-    position: absolute; 
-    top: 1.2rem; 
-    right: 1.2rem; 
-    background: transparent; 
-    border: none; 
-    color: var(--muted); 
-    cursor: pointer; 
-    padding: 0.5rem; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
-    transform-origin: center center; 
-    opacity: 0.7;
-}
-.sensitive-close-btn:hover {
-    opacity: 1; 
-    color: var(--current-warning-color, var(--error-color)); /* ✨ 關閉按鈕 Hover 變色 */
-    transform: rotate(90deg) scale(1.1);
-}
-.sensitive-title {
-    margin: 0 0 1rem 0; 
-    color: var(--current-warning-color, var(--error-color)); /* ✨ 標題綁定客製化顏色 */
-}
-.sensitive-desc {
-    color: var(--muted); 
-    font-size: 0.95rem; 
-    line-height: 1.6; 
-    margin-bottom: 2rem;
-}
-.sensitive-desc-hint {
-    font-size: 0.8rem; 
-    opacity: 0.7;
-}
-.sensitive-actions {
-    display: flex; 
-    justify-content: center; 
-    gap: 1rem; 
-    flex-wrap: wrap;
-    margin-top: 0.5rem;
-}
-
-/* ✨ 動態模板按鈕與圖示色彩連動 */
-#sensitive-agree-btn { 
-    background: var(--current-warning-color, var(--error-color)) !important; 
-    color: #fff !important; 
-    border-color: var(--current-warning-color, var(--error-color)) !important; 
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); 
-}
-
-#sensitive-agree-btn:hover { 
-    box-shadow: 0 8px 25px color-mix(in srgb, var(--current-warning-color, var(--error-color)) 60%, transparent), 0 0 12px var(--current-warning-color, var(--error-color)) !important; 
-    filter: brightness(1.15); 
-}
-
-#sensitive-warning-icon-wrapper svg {
-    stroke: var(--current-warning-color, var(--error-color));
-    transition: all 0.4s var(--ease-smooth); 
-}
-
-.sensitive-modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-icon-wrapper svg {
-    filter: drop-shadow(0 0 25px var(--current-warning-color, var(--error-color))); 
-    transform: scale(1.15);
-}
-
-
-/* ========================================================================== */
 /* 「PDF PWA 選單內部排版」(showPdfActionModal)                            */
 /* ========================================================================== */
 /* 補充 PDF Modal 內部細節樣式 */
@@ -4131,4 +4041,169 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     
     /* 4. 核心防抖動：防止按鈕在點擊或懸停時產生不必要的層級震動 */
     backface-visibility: hidden;
+}
+
+/* ========================================================================== */
+/* ✨ 鑰匙鎖定模式 (Key Locked Engine)                                          */
+/* ========================================================================== */
+.is-key-locked {
+    filter: grayscale(80%);
+    opacity: 0.85;
+    transition: all 0.3s ease;
+}
+.is-key-locked .card-image img {
+    filter: blur(5px);
+}
+.is-key-locked:hover {
+    filter: grayscale(0%);
+    opacity: 1;
+    border-color: var(--error-color) !important;
+    box-shadow: 0 8px 25px var(--error-shadow) !important;
+}
+
+/* 目錄列表鎖定視覺 */
+.is-key-locked-item {
+    opacity: 0.7;
+    filter: grayscale(80%);
+}
+.is-key-locked-item:hover, .is-key-locked-item.simulate-hover {
+    opacity: 1;
+    filter: grayscale(0%);
+    border-left-color: var(--error-color) !important;
+}
+.is-key-locked-item:hover .article-item-title {
+    color: var(--error-color) !important;
+    text-shadow: 0 0 8px var(--error-shadow);
+}
+
+/* 縮圖上的鎖頭遮罩 */
+.locked-cover-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    z-index: 10;
+}
+.locked-cover-overlay svg {
+    transition: transform 0.3s var(--ease-smooth);
+}
+
+/* 🔒 鎖定狀態下的 Hover 互動防護 (單純放大，不傾斜解鎖) */
+/* 確保涵蓋 simulate-hover 狀態，並在最高權限(admin)時放行解鎖特效 */
+body:not(.system-override-active) .card.is-key-locked:hover .card-secret-pin .secret-shackle,
+body:not(.system-override-active) .article-li.is-key-locked-item a:hover .modal-secret-pin .secret-shackle,
+body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover a .modal-secret-pin .secret-shackle {
+    transform: none !important; /* 扣環不准彈開 */
+}
+
+body:not(.system-override-active) .card.is-key-locked:hover .key-lock-pin,
+body:not(.system-override-active) .article-li.is-key-locked-item a:hover .key-lock-pin,
+body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover a .key-lock-pin {
+    transform: scale(1.15) !important; /* 圖釘單純放大，不旋轉 */
+}
+
+body:not(.system-override-active) .card.is-key-locked:hover .locked-cover-overlay svg,
+body:not(.system-override-active) .article-li.is-key-locked-item a:hover .locked-cover-overlay svg,
+body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover a .locked-cover-overlay svg {
+    transform: scale(1.2) !important; /* 縮圖上的置中鎖頭單純放大 */
+}
+
+/* ========================================================================== */
+/* ✨ 敏感內容協議畫面 (Sensitive Content Modal)                               */
+/* ========================================================================== */
+.sensitive-modal-content {
+    cursor: auto; 
+    width: 90%;
+    max-width: 500px; 
+    min-width: min(85vw, 320px);  /* ✨ 設定最小寬度 */
+    min-height: 280px;            /* ✨ 設定最小高度 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center; 
+    padding: 3rem 2rem; 
+    opacity: 1; 
+    position: relative;
+    background: var(--card); 
+    border: 1px solid var(--card-border); 
+    border-radius: 1.1rem; 
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    transition: background-color 0.5s ease, border-color 0.5s ease;
+}
+.sensitive-close-btn {
+    position: absolute; 
+    top: 1.2rem; 
+    right: 1.2rem; 
+    background: transparent; 
+    border: none; 
+    color: var(--muted); 
+    cursor: pointer; 
+    padding: 0.5rem; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
+    transform-origin: center center; 
+    opacity: 0.7;
+}
+.sensitive-close-btn:hover {
+    opacity: 1; 
+    color: var(--current-warning-color, var(--error-color)); /* ✨ 關閉按鈕 Hover 變色 */
+    transform: rotate(90deg) scale(1.1);
+}
+.sensitive-title {
+    margin: 0 0 1rem 0; 
+    color: var(--current-warning-color, var(--error-color));
+}
+.sensitive-desc {
+    color: var(--muted); 
+    font-size: 0.95rem; 
+    line-height: 1.6; 
+    margin-bottom: 2rem;
+}
+.sensitive-desc-hint {
+    font-size: 0.8rem; 
+    opacity: 0.7;
+}
+.sensitive-actions {
+    display: flex; 
+    justify-content: center; 
+    gap: 1rem; 
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+/* ✨ 動態模板按鈕與圖示色彩連動 */
+#sensitive-agree-btn { 
+    background: var(--current-warning-color, var(--error-color)) !important; 
+    color: #fff !important; 
+    border-color: var(--current-warning-color, var(--error-color)) !important; 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); 
+    transition: all 0.3s ease;
+}
+
+/* ✨ Hover 時：按鈕全面化身為危險紅色 (--error-color) */
+#sensitive-agree-btn:hover { 
+    background: var(--error-color) !important;
+    border-color: var(--error-color) !important;
+    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important; 
+    filter: brightness(1.15); 
+}
+
+#sensitive-warning-icon-wrapper svg {
+    stroke: var(--current-warning-color, var(--error-color));
+    transition: all 0.4s var(--ease-smooth); 
+}
+
+/* ✨ Hover 時：警告 SVG 標誌同步化身為危險紅色，並發出紅光 */
+.sensitive-modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-icon-wrapper svg {
+    stroke: var(--error-color) !important;
+    filter: drop-shadow(0 0 25px var(--error-color)) !important; 
+    transform: scale(1.15);
 }

@@ -4222,13 +4222,23 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const proj = window.siteProjects.find(p => p.id === projectId);
             if (!proj || !proj.articles) return;
 
-            // ✨ 新增：敏感內容攔截 (如果不通過，中斷執行並呼叫彈窗)
-            if (proj.is_sensitive && window._hasAgreedSensitiveContent !== true) {
-                window.showSensitiveAgreementModal(
-                    () => window.openProjectIndex(projectId, restoreScroll),
-                    () => closeModal() // ✨ 拒絕時：關閉系統 Modal，退回主頁 (這會同時消滅 403 畫面)
-                );
-                return;
+            // ✨ 敏感內容驗證 (專案層級獨立解鎖)
+            if (proj.is_sensitive) {
+                if (!window._agreedSensitiveTypes) window._agreedSensitiveTypes = new Set();
+                const sType = typeof proj.is_sensitive === 'string' ? proj.is_sensitive.toUpperCase() : 'DEFAULT';
+                const agreeKey = `PROJ_${projectId}`; // 專案專屬解鎖鑰匙
+
+                if (!window._agreedSensitiveTypes.has(agreeKey)) {
+                    window.showSensitiveAgreementModal(
+                        sType,
+                        () => { 
+                            window._agreedSensitiveTypes.add(agreeKey);
+                            window.openProjectIndex(projectId, restoreScroll);
+                        },
+                        () => closeModal()
+                    );
+                    return;
+                }
             }
 
             let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
@@ -4578,16 +4588,37 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         return;
     }
 
-    // ✨ 敏感內容驗證
-    let sensitiveType = article.is_sensitive || proj.is_sensitive;
+    // ✨ 敏感內容驗證 (專案與文章獨立辨識)
+    let isProjSensitive = proj.is_sensitive;
+    let isArtSensitive = article.is_sensitive;
+    let sensitiveType = isArtSensitive || isProjSensitive;
+
     if (sensitiveType) {
         if (!window._agreedSensitiveTypes) window._agreedSensitiveTypes = new Set();
         const sType = typeof sensitiveType === 'string' ? sensitiveType.toUpperCase() : 'DEFAULT';
         
-        if (!window._agreedSensitiveTypes.has(sType) && window._hasAgreedSensitiveContent !== true) {
+        const projKey = `PROJ_${projectId}`;
+        const artKey = `ART_${projectId}_${articleIndex}`;
+        
+        let needsPrompt = false;
+        let agreeKeyToSave = '';
+        
+        // 判斷該文章是否需要被獨立攔截
+        if (isArtSensitive && !window._agreedSensitiveTypes.has(artKey) && !window._agreedSensitiveTypes.has(projKey)) {
+            needsPrompt = true;
+            agreeKeyToSave = artKey;
+        } else if (isProjSensitive && !window._agreedSensitiveTypes.has(projKey)) {
+            needsPrompt = true;
+            agreeKeyToSave = projKey;
+        }
+
+        if (needsPrompt) {
             window.showSensitiveAgreementModal(
-                sensitiveType,
-                () => window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls),
+                sType,
+                () => {
+                    window._agreedSensitiveTypes.add(agreeKeyToSave);
+                    window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls);
+                },
                 () => window.openProjectIndex(projectId)
             );
             return;
@@ -5830,8 +5861,6 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
     document.getElementById('sensitive-agree-btn').onclick = (e) => {
         if (e) { e.preventDefault(); e.stopPropagation(); }
         document.removeEventListener('keydown', escListener); 
-        window._agreedSensitiveTypes.add(sType); 
-        window._hasAgreedSensitiveContent = true; // 相容全域舊邏輯
         overlay.remove();
         if (onAgreeCallback) onAgreeCallback();
     };
