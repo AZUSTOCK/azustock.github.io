@@ -1,7 +1,7 @@
 # 蛋糕
-++[KEY:StoryOFDiary#4|SILENT]++
 <div class="vertical-wrapper">
 
+++[KEY:StoryOFDiary#4|SILENT]++
 從座位上回過神來，思緒還是有點混亂。  
 看起來被昨天的經歷嚇得不清。  
 這也是正常的吧？  

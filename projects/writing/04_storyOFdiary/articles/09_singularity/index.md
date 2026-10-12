@@ -1,7 +1,7 @@
 # 序
-++[KEY:StoryOFDiary#9|SILENT]++
 <div class="vertical-wrapper">
 
+++[KEY:StoryOFDiary#9|SILENT]++
 「為什麼要做這種事呢？」  
 我止不住身體的發抖。  
 </br>

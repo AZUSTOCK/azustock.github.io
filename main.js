@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1",          // 目前系統版本號
+    VERSION: "U1.6.0.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1067,12 +1067,21 @@ window.getRelativeOffsetTop = function(element, container) {
 // ✨ 智慧定位預判引擎：在離開清單前，預先計算並快取最佳的返回捲軸位置
 window.calculateIdealScrollCache = function(containerId, targetItemId, currentCache) {
     const container = document.getElementById(containerId);
-    const scroller = window.getActiveScrollContainer() || container; // ✨ 加上這行，取得真正的捲動層
+    const scroller = window.getActiveScrollContainer() || container; 
     if (!container) return currentCache || 0;
     
-    // 為了計算精準座標，如果容器處於隱藏狀態，暫時打開它的物理佈局
+    // ✨ 終極佈局隔離：確保計算期間，另一個視圖絕對不會佔用空間推擠座標！
+    const viewArticle = document.getElementById('view-article');
+    const viewIndex = document.getElementById('view-index');
+    const articleWasVisible = viewArticle && viewArticle.style.display !== 'none';
+    const indexWasVisible = viewIndex && viewIndex.style.display !== 'none';
+
     const wasHidden = container.style.display === 'none';
+    
     if (wasHidden) {
+        if (containerId === 'view-index' && articleWasVisible) viewArticle.style.display = 'none';
+        if (containerId === 'view-article' && indexWasVisible) viewIndex.style.display = 'none';
+        
         container.style.visibility = 'hidden';
         container.style.display = 'block';
     }
@@ -1082,21 +1091,25 @@ window.calculateIdealScrollCache = function(containerId, targetItemId, currentCa
     
     if (targetItem) {
         const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
-        const itemTop = window.getRelativeOffsetTop(targetItem, scroller); // ✨ 改為 scroller
+        const itemTop = window.getRelativeOffsetTop(targetItem, scroller); 
         const itemBottom = itemTop + targetItem.offsetHeight;
-        const containerHeight = scroller.clientHeight || window.innerHeight; // ✨ 改為 scroller
+        const containerHeight = scroller.clientHeight || window.innerHeight; 
         
         // 判斷目標是否超出現在的捲軸可視範圍，並進行微調
         if (itemTop < finalScroll + topBarHeight) {
             finalScroll = itemTop - topBarHeight - 15;
         } else if (itemBottom > finalScroll + containerHeight) {
-            finalScroll = itemBottom - containerHeight + 10;
+            finalScroll = itemBottom - containerHeight + 40; // 加一點緩衝，不要貼死底部
         }
     }
     
     if (wasHidden) {
         container.style.display = 'none';
         container.style.visibility = '';
+        
+        // 恢復原本的顯示狀態
+        if (containerId === 'view-index' && articleWasVisible) viewArticle.style.display = 'block';
+        if (containerId === 'view-article' && indexWasVisible) viewIndex.style.display = 'block';
     }
     
     return Math.max(0, finalScroll);
@@ -4725,10 +4738,37 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const modalContainer = document.querySelector('.modal-content'); 
             if (modalContainer) {
                 if (restoreScroll && window._indexScrollTopCache !== undefined) {
+                    // 1. 先試著捲動到快取位置
                     modalContainer.scrollTo({ top: window._indexScrollTopCache, behavior: 'auto' });
                     
-                    const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
-                    if (targetItem) setTimeout(() => window.simulateHoverFlash(targetItem), 150);
+                    // ✨ 2. 終極修復：用 setTimeout 等待 DOM 重繪徹底完成，再次確認目標是否在視野內，防止被瀏覽器截斷！
+                    setTimeout(() => {
+                        const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
+                        if (targetItem) {
+                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
+                            const itemTop = window.getRelativeOffsetTop(targetItem, modalContainer);
+                            const itemBottom = itemTop + targetItem.offsetHeight;
+                            const containerHeight = modalContainer.clientHeight || window.innerHeight;
+                            
+                            let finalScroll = modalContainer.scrollTop;
+                            let needsScroll = false;
+
+                            if (itemTop < finalScroll + topBarHeight) {
+                                finalScroll = itemTop - topBarHeight - 20;
+                                needsScroll = true;
+                            } else if (itemBottom > finalScroll + containerHeight) {
+                                finalScroll = itemBottom - containerHeight + 40;
+                                needsScroll = true;
+                            }
+                            
+                            if (needsScroll) {
+                                modalContainer.scrollTo({ top: Math.max(0, finalScroll), behavior: 'auto' });
+                                window._indexScrollTopCache = Math.max(0, finalScroll); // 同步更新快取
+                            }
+                            window.simulateHoverFlash(targetItem, 1200);
+                        }
+                    }, 50);
+                    
                 } else {
                     modalContainer.scrollTo({ top: 0, behavior: 'auto' });
                 }
@@ -5659,16 +5699,32 @@ modalOverlay.addEventListener('touchmove', (e) => { if (e.target === modalOverla
 // ✨ 全域鍵盤快捷鍵引擎 (Unified Keyboard Engine)
 // ==========================================
 document.addEventListener('keydown', (e) => {
-    // ✨ 絕對防護：當敏感內容警告窗開啟時，阻斷所有的方向鍵與背景操作！
-    if (document.getElementById('sensitive-modal-overlay')) {
-        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'm', 't', 'M', 'T'].includes(e.key)) {
+    // ✨ 絕對防護：當敏感內容警告窗或 PDF 操作選單開啟時，阻斷所有的方向鍵與背景操作！
+    const sensitiveModal = document.getElementById('sensitive-modal-overlay');
+    const pdfActionModal = document.getElementById('pdf-action-modal');
+
+    if ((sensitiveModal && window.getComputedStyle(sensitiveModal).opacity !== '0') || pdfActionModal) {
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(e.key)) {
             e.preventDefault();
             e.stopPropagation();
             return;
         }
-        // 放行 ESC 鍵給 Modal 內部的 Listener 關閉視窗
-        if (e.key === 'Escape') return; 
+        if (e.key === 'Escape') {
+            if (pdfActionModal) {
+                const closeBtn = pdfActionModal.querySelector('.cancel');
+                if (closeBtn) closeBtn.click();
+                e.preventDefault();
+            }
+            return; // 放行 ESC 給敏感警告窗，並阻斷其他按鍵穿透
+        }
     }
+
+    // ✨ 宣告必要狀態變數
+    const lightboxModal = document.getElementById('lightbox-modal');
+    const isLightboxOpen = lightboxModal && lightboxModal.classList.contains('is-active');
+    
+    const modalOverlay = document.getElementById('md-modal');
+    const isArticleOpen = modalOverlay && modalOverlay.classList.contains('active');
 
     // --- 🎬 第 0 層：自製影片全螢幕 (最最高優先權) ---
     const fullscreenVideo = document.querySelector('video.is-web-fullscreen');
@@ -5677,21 +5733,7 @@ document.addEventListener('keydown', (e) => {
             window.toggleWebFullscreen(fullscreenVideo); // 退出影片全螢幕
             e.preventDefault();
         }
-        // ✨ 直接 return 終止事件！這樣你在全螢幕看影片按左右鍵時，
-        // 只會觸發影片原生控制列的「快轉/倒退」，而不會誤觸切換文章！
         return; 
-    }
-
-    // --- 📄 第 0.5 層：PDF 操作選單與系統控制台 ---
-    const pdfActionModal = document.getElementById('pdf-action-modal');
-    if (pdfActionModal) {
-        if (e.key === 'Escape') {
-            // 尋找選單內的「取消」按鈕並模擬點擊，觸發完整的退場動畫與解鎖
-            const closeBtn = pdfActionModal.querySelector('.cancel');
-            if (closeBtn) closeBtn.click();
-            e.preventDefault();
-        }
-        return; // 只要選單開著，就斬斷事件，絕對不把按鍵傳給底下的文章或圖片
     }
 
     // --- 🥊 第一層：Lightbox 大圖預覽 ---

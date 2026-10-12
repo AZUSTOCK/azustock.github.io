@@ -21,3 +21,4 @@
 
 ## fix
 1. Fixed missing `${inlineStyles}` (`--current-group-color`) injection in the `.group-header`
+2. scroll
