@@ -25,6 +25,24 @@ const CONFIG = {
 };
 
 // ==========================================
+// ✨ 內容警告模板設定區 (Sensitive Templates)
+// ==========================================
+window.SENSITIVE_TEMPLATES = {
+    "DEFAULT": {
+        title: "內容警告 (Content Warning)",
+        desc: "此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。",
+        btn_text: "我已了解並前往",
+        color: "var(--error-color)"
+    },
+    "MAIN": {
+        title: " (Content Notice)",
+        desc: "因劇情需要，建議閱讀前篇再讀本文。<br>點擊前往即表示您已了解。",
+        btn_text: "我已閱讀前篇",
+        color: "var(--group-c5)"
+    }
+};
+
+// ==========================================
 // ✨ 全域共用 SVG 圖標 (集中管理，消滅重複代碼)
 // ==========================================
 const GLOBAL_SVGS = {
@@ -186,9 +204,44 @@ window.unlockSecret = function(id) {
     if (!unlocked.includes(id)) {
         unlocked.push(id);
         localStorage.setItem('sys_unlocked_secrets', JSON.stringify(unlocked));
-        return true; // 代表「剛剛才解鎖」
+        
+        window._keysUnlockedSinceLastIndex = true; // 觸發目錄重繪
+        setTimeout(() => { if(window.refreshHomeKeysUI) window.refreshHomeKeysUI(); }, 500); // 觸發首頁重繪
+        
+        return true; 
     }
-    return false; // 代表「以前就解鎖過了」
+    return false; 
+};
+
+window.refreshHomeKeysUI = function() {
+    const isUnlockedSys = document.body.classList.contains('system-override-active');
+    document.querySelectorAll('.card.is-key-locked, .card.sys-hidden-card').forEach(card => {
+        const key = card.getAttribute('data-required-key');
+        if (key && window.isSecretUnlocked(key)) {
+            card.classList.remove('is-key-locked', 'sys-hidden-card');
+            
+            // ✨ 解鎖瞬間，拔除右側的紅色鎖定圖釘
+            const pin = card.querySelector('.key-lock-pin');
+            if (pin) pin.remove();
+            
+            const pid = card.getAttribute('data-project-id');
+            card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.openProjectIndex(pid); };
+            
+            const proj = window.siteProjects.find(p => p.id === pid);
+            if (proj && proj.articles) {
+                const visibleCount = proj.articles.filter(a => {
+                    const artLocked = a.required_key && !window.isSecretUnlocked(a.required_key) && !isUnlockedSys;
+                    const artHidden = a.is_hidden || (artLocked && (a.lock_mode || 'visible') === 'hidden');
+                    return !artHidden;
+                }).length;
+                const actionBtn = card.querySelector('.card-action-btn');
+                if(actionBtn) {
+                    actionBtn.style.color = ''; 
+                    actionBtn.innerHTML = `<div class="card-action-icon-wrap">${GLOBAL_SVGS.folderClosed}${GLOBAL_SVGS.folderOpen}</div>展開系列 (${visibleCount})`;
+                }
+            }
+        }
+    });
 };
 
 // ==========================================
@@ -578,8 +631,12 @@ window.refreshUIAfterOverrideToggle = function() {
                         // ✨ 核心修復：把尋找的 class 改為正確的 .card-action-btn
                         const actionBtn = card.querySelector('.card-action-btn');
                         if (actionBtn && actionBtn.innerText.includes('展開系列')) {
-                            // 動態計算當前權限下可見的文章數量
-                            const count = isUnlocked ? proj.articles.length : proj.articles.filter(art => !art.is_hidden).length;
+                            /// 動態計算當前權限下可見的文章數量
+                            const count = isUnlocked ? proj.articles.length : proj.articles.filter(art => {
+                                const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key);
+                                const artHidden = art.is_hidden || (artLocked && (art.lock_mode || 'visible') === 'hidden');
+                                return !artHidden;
+                            }).length;
                             
                             // ✨ 精準抓出圖標容器，避免破壞 HTML 結構
                             const iconWrap = actionBtn.querySelector('.card-action-icon-wrap');
@@ -3656,10 +3713,24 @@ async function loadProjects() {
             if (targetGrid) {
                 const card = document.createElement('div');
                 card.className = 'card';
-                // ✨ 新增：如果是隱藏專案，掛上隱形斗篷
-                if (data.is_hidden) card.classList.add('sys-hidden-card');
                 
+                // ✨ 權限與鎖定驗證
+                const isUnlockedSys = document.body.classList.contains('system-override-active');
+                const isLocked = data.required_key && !window.isSecretUnlocked(data.required_key) && !isUnlockedSys;
+                const lockMode = data.lock_mode || 'visible';
+
+                card.setAttribute('data-required-key', data.required_key || '');
+                card.setAttribute('data-project-id', data.id);
                 card.setAttribute('data-tags', (data.tags || []).join(','));
+
+                // 隱藏模式
+                if (data.is_hidden || (isLocked && lockMode === 'hidden')) {
+                    card.classList.add('sys-hidden-card');
+                }
+                // 可見上鎖模式
+                if (isLocked && lockMode === 'visible') {
+                    card.classList.add('is-key-locked');
+                }
                 
                 const flatList = window.STATUS_LIST.flat(); 
                 let tagsHTML = (data.tags || []).map(tag => {
@@ -3672,46 +3743,66 @@ async function loadProjects() {
                 }).join('');
                 
                 let actionText = '';
+                
                 if (data.articles && data.articles.length > 0) {
                     card.style.cursor = 'pointer';
-                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); openProjectIndex(data.id); };
+                    card.onclick = (e) => { 
+                        if (isLocked && !document.body.classList.contains('system-override-active')) {
+                            e.stopPropagation(); 
+                            if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `需要金鑰 [${data.required_key}] 才能解鎖`, 4000, 'error');
+                            return;
+                        }
+                        if (window.currentActiveTag) window.clearFilter(); 
+                        window.openProjectIndex(data.id); 
+                    };
                     
-                    const visibleCount = data.articles.filter(art => !art.is_hidden).length;
+                    const visibleCount = data.articles.filter(art => {
+                        const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key) && !isUnlockedSys;
+                        const artHidden = art.is_hidden || (artLocked && (art.lock_mode || 'visible') === 'hidden');
+                        return !artHidden;
+                    }).length;
                     
                     actionText = `<div class="card-action-btn">
                         <div class="card-action-icon-wrap">
-                            ${GLOBAL_SVGS.folderClosed}
-                            ${GLOBAL_SVGS.folderOpen}
+                            ${GLOBAL_SVGS.folderClosed}${GLOBAL_SVGS.folderOpen}
                         </div>展開系列 (${visibleCount})</div>`;
                 } else if (data.link) {
                     card.style.cursor = 'pointer';
-                    card.onclick = () => { 
+                    card.onclick = (e) => { 
+                        if (isLocked && !document.body.classList.contains('system-override-active')) {
+                            e.stopPropagation(); 
+                            if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `需要金鑰 [${data.required_key}] 才能解鎖`, 4000, 'error');
+                            return;
+                        }
                         if (window.currentActiveTag) window.clearFilter(); 
-                        
-                        // ✨ 核心修復：改用隱形 <a> 標籤觸發跳轉，完美避開 PWA 的 window.open 幽靈視窗 Bug！
-                        const a = document.createElement('a');
-                        a.href = data.link;
-                        a.target = '_blank';
-                        a.rel = 'noopener noreferrer';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
+                        const a = document.createElement('a'); a.href = data.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
                     };
-                    
-                    actionText = `<div class="card-action-btn">
-                        ${GLOBAL_SVGS.linkLg} 
-                        前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">
-                        ${GLOBAL_SVGS.arrowUpRight}</span></div>`;
+                    actionText = `<div class="card-action-btn">${GLOBAL_SVGS.linkLg} 前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span></div>`;
                 } else {
-                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
+                    card.onclick = (e) => { 
+                        if (isLocked && !document.body.classList.contains('system-override-active')) {
+                            e.stopPropagation(); 
+                            if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `需要金鑰 [${data.required_key}] 才能解鎖`, 4000, 'error');
+                            return;
+                        }
+                        if (window.currentActiveTag) window.clearFilter(); 
+                    };
                     card.addEventListener('mouseenter', () => { card.style.cursor = window.currentActiveTag ? 'pointer' : 'default'; });
                 }
 
+                const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="card-thumb-img is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : '';
                 const cardMetaHtml = data.meta ? `<span class="card-meta-text">- ${data.meta}</span>` : '';
                 const cardDescHtml = data.description ? `<p class="card-desc-text">${data.description}</p>` : '';
-                const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="card-thumb-img is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : '';                
                 const absolutePinHtml = data.pinned ? `<div class="card-pin">${GLOBAL_SVGS.pin}</div>` : '';
-                const absoluteSecretHtml = data.is_hidden ? `<div class="card-secret-pin">${GLOBAL_SVGS.secretPin}</div>` : '';
+                
+                // ✨ 統整機密與鑰匙鎖定 UI (使用原汁原味的紅色鎖頭圖釘)
+                let absoluteSecretHtml = '';
+                if (data.is_hidden) {
+                    absoluteSecretHtml = `<div class="card-secret-pin">${GLOBAL_SVGS.secretPin}</div>`;
+                } else if (isLocked && lockMode === 'visible') {
+                    absoluteSecretHtml = `<div class="card-secret-pin key-lock-pin">${GLOBAL_SVGS.secretPin}</div>`;
+                }
 
                 let metaParts = [];
                 if (data.date) metaParts.push(data.date);
@@ -4179,11 +4270,12 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             if (viewArticle) viewArticle.style.display = 'none';
             if (viewIndex) viewIndex.style.display = 'block';
 
-            // ✨ 判斷是否需要重新渲染 DOM (若專案與排序相同，則直接沿用舊 DOM)
-            const needsRender = viewIndex.dataset.projectId !== projectId || viewIndex.dataset.sort !== currentSort;
+            // 加入 window._keysUnlockedSinceLastIndex
+            const needsRender = viewIndex.dataset.projectId !== projectId || viewIndex.dataset.sort !== currentSort || window._keysUnlockedSinceLastIndex;
 
             if (needsRender) {
                 viewIndex.innerHTML = `<div id="article-list-container" style="transition: opacity 0.2s ease;"></div>`;
+                window._keysUnlockedSinceLastIndex = false; // 歸零
             }
             
             // ✨ 目錄模式：隱藏閱讀進度條
@@ -4203,6 +4295,16 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
                 if (forceRegenerateHTML) {
                     const generateLi = (art, idx, isHighlightGroup, themeClass = '', customStyle = '') => {
+                    const isUnlockedSys = document.body.classList.contains('system-override-active');
+                    const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key) && !isUnlockedSys;
+                    const lockMode = art.lock_mode || 'visible';
+
+                    let hiddenClass = (art.is_hidden || (artLocked && lockMode === 'hidden')) ? ' sys-hidden-item' : '';
+
+                    let onClickAttr = artLocked 
+                        ? `onclick="event.preventDefault(); window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', '需要金鑰 [${art.required_key}] 才能解鎖', 4000, 'error');"` 
+                        : `onclick="event.preventDefault(); openArticle('${projectId}',${idx})"`;
+
                     let descHtml = art.description ? `<span class="article-item-desc">- ${art.description}</span>` : '';
                     let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
                     let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
@@ -4212,115 +4314,121 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         : `<div class="article-item-fallback" style="color: var(--muted);">${GLOBAL_SVGS.docIconLg}</div>`;
                     
                     let pinnedBadgeHtml = art.pinned ? `<div class="modal-pin">${GLOBAL_SVGS.pinSmall}</div>` : '';
-                    let secretBadgeHtml = art.is_hidden ? `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>` : '';
+                    
+                    // ✨ 統整清單的機密與鑰匙鎖定 UI
+                    let secretBadgeHtml = '';
+                    if (art.is_hidden) {
+                        secretBadgeHtml = `<div class="modal-secret-pin">${GLOBAL_SVGS.secretPinSmall}</div>`;
+                    } else if (artLocked && lockMode === 'visible') {
+                        secretBadgeHtml = `<div class="modal-secret-pin key-lock-pin">${GLOBAL_SVGS.secretPinSmall}</div>`;
+                    }
+                    
                     let iconHtml = `<div class="article-item-icon-wrap">${pinnedBadgeHtml}${secretBadgeHtml}${baseIconHtml}</div>`;
-                    let hiddenClass = art.is_hidden ? ' sys-hidden-item' : '';
 
-                    // ✨ 將 themeClass 也整合進 classList 裡
                     return `
                         <li id="article-item-${idx}" class="article-li ${isHighlightGroup ? 'is-highlight' : 'is-normal'}${hiddenClass}${themeClass}"${customStyle}>
-                            <a href="#" onclick="event.preventDefault(); openArticle('${projectId}', ${idx})" class="article-link">
-                                ${iconHtml}
-                                <div class="article-item-content">
-                                    <div class="article-item-title-row">
-                                        <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
-                                        ${descHtml}
+                                <a href="#" ${onClickAttr} class="article-link">
+                                    ${iconHtml}
+                                    <div class="article-item-content">
+                                        <div class="article-item-title-row">
+                                            <span class="article-item-title">${art.title}${statusBadgeHtml}</span>
+                                            ${descHtml}
+                                        </div>
+                                        ${dateHtml}
                                     </div>
-                                    ${dateHtml}
-                                </div>
-                            </a>
-                        </li>
-                    `;
-                };
-
-                let html = '';
-
-                if (proj.groups && Object.keys(proj.groups).length > 0) {
-                    let colorIndex = 0; 
-                    let isFirstGroup = true; 
-                    
-                    for (const [groupId, groupData] of Object.entries(proj.groups)) {
-                        const groupArticles = finalArray.filter(item => item.art.group === groupId);
-                        if (groupArticles.length === 0) continue;
-
-                        let groupColor = groupData.color;
-                        let themeClass = '';
-                        let customStyle = ''; 
-
-                        if (groupData.highlight) {
-                            if (groupColor) {
-                                // ✨ 同時開啟 highlight 且有自訂 color：讓文章高光背景與圖示直接套用自訂色
-                                customStyle = ` style="--current-group-color: ${groupColor}; --tab-color: ${groupColor};"`;
-                            } else {
-                                // 僅開啟 highlight：走系統預設的 5 色循環
-                                const groupNum = (colorIndex % 5) + 1;
-                                themeClass = ` group-color-${groupNum}`;
-                                colorIndex++; 
-                            }
-                        } else if (groupColor) {
-                            // 僅設定自訂 color（無高光背景）
-                            customStyle = ` style="--current-group-color: ${groupColor};"`; 
-                        }
-
-                        const topMargin = isFirstGroup ? '0rem' : '1.2rem';
-
-                        // ✨ 只要有設定 groupColor，就注入給 Group Header（包含標題、底線與縮圖直角外框）
-                        let inlineStyles = groupColor ? ` --current-group-color: ${groupColor};` : '';
-                        if (groupColor && !groupData.highlight) {
-                            inlineStyles += ` --current-group-color: ${groupColor};`;
-                        }
-
-                        // ✨ 加上專屬 ID 供漢堡選單跳轉定位
-                        const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
-                        
-                        // ✨ 判斷該群組是否有縮圖
-                        let groupCoverHtml = '';
-                        if (groupData.cover_image) {
-                            // ✨ 新增外層包裝盒 .group-header-cover-wrapper
-                            groupCoverHtml = `
-                            <div class="group-header-cover-wrapper">
-                                <img src="${groupData.cover_image}" alt="Group Cover" class="group-header-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">
-                            </div>`;
-                        }
-
-                        // ✨ 修復：將 ${inlineStyles} 補進 style 屬性尾端！
-                        html += `
-                            <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;${inlineStyles}">
-                                <div class="group-header-text">
-                                    <div class="group-header-title">${groupData.title || groupId}</div>
-                                    ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
-                                </div>
-                                ${groupCoverHtml}
-                            </div>
-                            <ul class="article-list-ul">
+                                </a>
+                            </li>
                         `;
+                    };
+
+                    let html = '';
+
+                    if (proj.groups && Object.keys(proj.groups).length > 0) {
+                        let colorIndex = 0; 
+                        let isFirstGroup = true; 
                         
-                        groupArticles.forEach(({art, idx}) => { 
-                            html += generateLi(art, idx, groupData.highlight, themeClass, customStyle);
-                        });
-                        html += `</ul>`;
-                        
-                        isFirstGroup = false;
-                    }
-                    const ungrouped = finalArray.filter(item => !item.art.group);
-                    if (ungrouped.length > 0) {
-                        const topMargin = isFirstGroup ? '0rem' : '1rem';
-                        // ✨ 未分群區塊也加上 ID
-                        html += `<ul id="group-ungrouped" class="article-list-ul" style="margin-top:${topMargin};">`;
-                        
-                        ungrouped.forEach(({art, idx}) => { 
+                        for (const [groupId, groupData] of Object.entries(proj.groups)) {
+                            const groupArticles = finalArray.filter(item => item.art.group === groupId);
+                            if (groupArticles.length === 0) continue;
+
+                            let groupColor = groupData.color;
+                            let themeClass = '';
+                            let customStyle = ''; 
+
+                            if (groupData.highlight) {
+                                if (groupColor) {
+                                    // ✨ 同時開啟 highlight 且有自訂 color：讓文章高光背景與圖示直接套用自訂色
+                                    customStyle = ` style="--current-group-color: ${groupColor}; --tab-color: ${groupColor};"`;
+                                } else {
+                                    // 僅開啟 highlight：走系統預設的 5 色循環
+                                    const groupNum = (colorIndex % 5) + 1;
+                                    themeClass = ` group-color-${groupNum}`;
+                                    colorIndex++; 
+                                }
+                            } else if (groupColor) {
+                                // 僅設定自訂 color（無高光背景）
+                                customStyle = ` style="--current-group-color: ${groupColor};"`; 
+                            }
+
+                            const topMargin = isFirstGroup ? '0rem' : '1.2rem';
+
+                            // ✨ 只要有設定 groupColor，就注入給 Group Header（包含標題、底線與縮圖直角外框）
+                            let inlineStyles = groupColor ? ` --current-group-color: ${groupColor};` : '';
+                            if (groupColor && !groupData.highlight) {
+                                inlineStyles += ` --current-group-color: ${groupColor};`;
+                            }
+
+                            // ✨ 加上專屬 ID 供漢堡選單跳轉定位
+                            const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
+                            
+                            // ✨ 判斷該群組是否有縮圖
+                            let groupCoverHtml = '';
+                            if (groupData.cover_image) {
+                                // ✨ 新增外層包裝盒 .group-header-cover-wrapper
+                                groupCoverHtml = `
+                                <div class="group-header-cover-wrapper">
+                                    <img src="${groupData.cover_image}" alt="Group Cover" class="group-header-cover is-loading" loading="lazy" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">
+                                </div>`;
+                            }
+
+                            // ✨ 修復：將 ${inlineStyles} 補進 style 屬性尾端！
+                            html += `
+                                <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;${inlineStyles}">
+                                    <div class="group-header-text">
+                                        <div class="group-header-title">${groupData.title || groupId}</div>
+                                        ${groupData.description ? `<div class="group-header-desc">${groupData.description}</div>` : ''}
+                                    </div>
+                                    ${groupCoverHtml}
+                                </div>
+                                <ul class="article-list-ul">
+                            `;
+                            
+                            groupArticles.forEach(({art, idx}) => { 
+                                html += generateLi(art, idx, groupData.highlight, themeClass, customStyle);
+                            });
+                            html += `</ul>`;
+                            
+                            isFirstGroup = false;
+                        }
+                        const ungrouped = finalArray.filter(item => !item.art.group);
+                        if (ungrouped.length > 0) {
+                            const topMargin = isFirstGroup ? '0rem' : '1rem';
+                            // ✨ 未分群區塊也加上 ID
+                            html += `<ul id="group-ungrouped" class="article-list-ul" style="margin-top:${topMargin};">`;
+                            
+                            ungrouped.forEach(({art, idx}) => { 
+                                html += generateLi(art, idx, false);
+                            });
+                            html += `</ul>`;
+                        }
+                    } else {
+                        html += `<ul class="article-list-ul" style="margin-top:0rem;">`;
+                        finalArray.forEach(({art, idx}) => { 
                             html += generateLi(art, idx, false);
                         });
                         html += `</ul>`;
                     }
-                } else {
-                    html += `<ul class="article-list-ul" style="margin-top:0rem;">`;
-                    finalArray.forEach(({art, idx}) => { 
-                        html += generateLi(art, idx, false);
-                    });
-                    html += `</ul>`;
-                }
-                listContainer.innerHTML = html;
+                    listContainer.innerHTML = html;
                 } // ✨ 結束 forceRegenerateHTML 區塊
 
                 // ==========================================
@@ -4462,13 +4570,28 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     // ✨ 進入文章的瞬間，預先計算並快取好返回目錄時的最佳捲軸位置
     window._indexScrollTopCache = window.calculateIdealScrollCache('view-index', `article-item-${articleIndex}`, window._indexScrollTopCache);
     
-    // ✨ 新增：敏感內容攔截 (改用全域變數檢查)
-    if ((proj.is_sensitive || article.is_sensitive) && window._hasAgreedSensitiveContent !== true) {
-        window.showSensitiveAgreementModal(
-            () => window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls),
-            () => window.openProjectIndex(projectId) // ✨ 拒絕時：退回該專案的目錄 (這會覆蓋掉 403 畫面)
-        );
+    // ✨ 文章金鑰權限驗證
+    const isUnlockedSys = document.body.classList.contains('system-override-active');
+    if (article.required_key && !window.isSecretUnlocked(article.required_key) && !isUnlockedSys) {
+        window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `需要金鑰 [${article.required_key}] 才能解鎖此文章`, 4000, 'error');
+        window.history.replaceState(null, '', window.location.pathname);
         return;
+    }
+
+    // ✨ 敏感內容驗證
+    let sensitiveType = article.is_sensitive || proj.is_sensitive;
+    if (sensitiveType) {
+        if (!window._agreedSensitiveTypes) window._agreedSensitiveTypes = new Set();
+        const sType = typeof sensitiveType === 'string' ? sensitiveType.toUpperCase() : 'DEFAULT';
+        
+        if (!window._agreedSensitiveTypes.has(sType) && window._hasAgreedSensitiveContent !== true) {
+            window.showSensitiveAgreementModal(
+                sensitiveType,
+                () => window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls),
+                () => window.openProjectIndex(projectId)
+            );
+            return;
+        }
     }
     
     let markdownContent = "載入失敗";
@@ -5643,33 +5766,31 @@ function show404Modal(title, message) {
 // ==========================================
 window._hasAgreedSensitiveContent = false;
 
-window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback) {
-    if (window._hasAgreedSensitiveContent === true) {
+window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, onDeclineCallback) {
+    if (!window._agreedSensitiveTypes) window._agreedSensitiveTypes = new Set();
+    const sType = typeof sensitiveType === 'string' ? sensitiveType.toUpperCase() : 'DEFAULT';
+    
+    if (window._agreedSensitiveTypes.has(sType) || window._hasAgreedSensitiveContent === true) {
         if (onAgreeCallback) onAgreeCallback();
         return;
     }
+
+    const tpl = window.SENSITIVE_TEMPLATES[sType] || window.SENSITIVE_TEMPLATES["DEFAULT"];
 
     const overlay = document.createElement('div');
     overlay.id = 'sensitive-modal-overlay';
     overlay.className = 'modal-overlay active'; 
     overlay.style.zIndex = '1100'; 
-    
-    // ✨ 移除原本的 title，保留游標暗示即可
     overlay.style.cursor = 'pointer';
     
-    // 將拒絕/關閉的邏輯抽出來
     const declineAction = () => {
         document.removeEventListener('keydown', escListener);
         overlay.remove();
         window.unlockScroll();
-        if (onDeclineCallback) {
-            onDeclineCallback();
-        } else {
-            window.history.replaceState(null, '', window.location.pathname);
-        }
+        if (onDeclineCallback) onDeclineCallback();
+        else window.history.replaceState(null, '', window.location.pathname);
     };
 
-    // 建立 ESC 鍵盤監聽器
     const escListener = (e) => {
         if (e.key === 'Escape') {
             e.preventDefault();
@@ -5678,22 +5799,22 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     };
     document.addEventListener('keydown', escListener);
 
-    // ✨ 移除內層與按鈕的 title
-    // ✨ 拔除 inline style，改用 .sensitive-modal-box 類別
     overlay.innerHTML = `
-        <div class="sensitive-modal-content">
-            <button id="sensitive-close-x" class="sensitive-close-btn">
+        <div class="sensitive-modal-content" style="--current-warning-color: ${tpl.color};">
+            <button type="button" id="sensitive-close-x" class="sensitive-close-btn">
                 ${GLOBAL_SVGS.closeX}
             </button>
-            ${GLOBAL_SVGS.warning}
-            <h2 class="sensitive-title">內容警告 (Content Warning)</h2>
+            <div id="sensitive-warning-icon-wrapper" style="color: var(--current-warning-color);">
+                ${GLOBAL_SVGS.warning}
+            </div>
+            <h2 class="sensitive-title">${tpl.title}</h2>
             <p class="sensitive-desc">
-                此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。<br>
-                <span class="sensitive-desc-hint">(同意後於本次瀏覽器存續期間將不再提示)</span>
+                ${tpl.desc}<br>
+                <span class="sensitive-desc-hint">(同意後於本次瀏覽器存續期間將不再提示此類警告)</span>
             </p>
             <div class="sensitive-actions">
-                <button id="sensitive-decline-btn" class="btn">不感興趣</button>
-                <button id="sensitive-agree-btn" class="btn">我已了解並前往</button>
+                <button type="button" id="sensitive-decline-btn" class="btn">不感興趣</button>
+                <button type="button" id="sensitive-agree-btn" class="btn">${tpl.btn_text}</button>
             </div>
         </div>
     `;
@@ -5701,18 +5822,16 @@ window.showSensitiveAgreementModal = function(onAgreeCallback, onDeclineCallback
     document.body.appendChild(overlay);
     window.lockScroll();
 
-    // 綁定三個能觸發「拒絕/關閉」的元素
-    document.getElementById('sensitive-decline-btn').onclick = declineAction;
-    document.getElementById('sensitive-close-x').onclick = declineAction;
-    
-    // 點擊背景遮罩關閉
-    overlay.onclick = (e) => {
-        if (e.target === overlay) declineAction();
-    };
+    // ✨ 強制阻斷事件冒泡，防止誤觸背景關閉或觸發預設跳轉
+    document.getElementById('sensitive-decline-btn').onclick = (e) => { if(e) { e.preventDefault(); e.stopPropagation(); } declineAction(); };
+    document.getElementById('sensitive-close-x').onclick = (e) => { if(e) { e.preventDefault(); e.stopPropagation(); } declineAction(); };
+    overlay.onclick = (e) => { if (e.target === overlay) { e.preventDefault(); e.stopPropagation(); declineAction(); } };
 
-    document.getElementById('sensitive-agree-btn').onclick = () => {
+    document.getElementById('sensitive-agree-btn').onclick = (e) => {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
         document.removeEventListener('keydown', escListener); 
-        window._hasAgreedSensitiveContent = true;
+        window._agreedSensitiveTypes.add(sType); 
+        window._hasAgreedSensitiveContent = true; // 相容全域舊邏輯
         overlay.remove();
         if (onAgreeCallback) onAgreeCallback();
     };

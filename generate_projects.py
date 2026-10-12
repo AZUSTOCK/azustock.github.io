@@ -706,9 +706,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 
             if proj_data.get('link'): clean_proj_data['link'] = proj_data.get('link')
             
-            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive']:
+            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive', 'required_key', 'lock_mode']:
                 val = proj_data.get(key) or proj_data.get(key.upper())
-                if val is not None: clean_proj_data[f'is_{key}' if key != 'pinned' else 'pinned'] = val
+                if val is not None: 
+                    if key in ['required_key', 'lock_mode']:
+                        clean_proj_data[key] = val
+                    elif key == 'sensitive':
+                        clean_proj_data['is_sensitive'] = val
+                    else:
+                        clean_proj_data[f'is_{key}' if key != 'pinned' else 'pinned'] = val
 
             # ✨ 1. 將專案變數初始化往上移，解決原本 proj_id 尚未定義的重大 Bug
             proj_id = clean_proj_title
@@ -1319,9 +1325,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         clean_tags.append(t)
                                 article_obj["tags"] = clean_tags
                             
-                            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive']:
+                            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive', 'required_key', 'lock_mode']:
                                 val = sub_data.get(key) or sub_data.get(key.upper())
-                                if val is not None: article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = val
+                                if val is not None: 
+                                    if key in ['required_key', 'lock_mode']:
+                                        article_obj[key] = val
+                                    elif key == 'sensitive':
+                                        article_obj['is_sensitive'] = val
+                                    else:
+                                        article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = val
 
                             # ✨ 智慧群組繼承：直接使用上方 (第 545 行) 已經判定好的 art_group (包含預設群組)
                             if 'groups' in proj_data and art_group:

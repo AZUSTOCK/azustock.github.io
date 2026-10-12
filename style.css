@@ -1042,7 +1042,7 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .card.show:hover { transform: translateY(-5px) translateZ(0); box-shadow: 0 15px 35px color-mix(in srgb, var(--card-glow) 22%, transparent); border-color: color-mix(in srgb, var(--card-glow) 40%, transparent); }
 .card-content-wrapper { display: flex; align-items: flex-start; gap: 1rem; }
 .card-text { flex: 1; }
-.card-image { width: 60px; height: 60px; object-fit: cover; border-radius: 12px; flex-shrink: 0; }
+.card-image { position: relative; width: 60px; height: 60px; object-fit: cover; border-radius: 12px; flex-shrink: 0; }
 .card h3 { margin-top: 0.1rem; margin-bottom: 0.8rem; font-size: 1.2rem; font-weight: 700; line-height: 1.2; }
 .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.6rem; }
 
@@ -2850,6 +2850,37 @@ body.system-override-active .sys-hidden-tag {
 
 
 /* ========================================================================== */
+/* ✨ 管理員最高權限 (System Override) 強制解除鑰匙鎖定視覺                     */
+/* ========================================================================== */
+body.system-override-active .is-key-locked {
+    filter: grayscale(0%);
+    opacity: 1;
+}
+body.system-override-active .is-key-locked .card-image img {
+    filter: blur(0px);
+}
+body.system-override-active .is-key-locked-item {
+    opacity: 1;
+    filter: grayscale(0%);
+}
+body.system-override-active .locked-cover-overlay {
+    display: none !important; /* 直接消滅鎖頭遮罩 */
+}
+/* 最高權限下 Hover 恢復原狀，不顯示紅色錯誤框 */
+body.system-override-active .is-key-locked:hover {
+    border-color: var(--accent-2) !important;
+    box-shadow: 0 8px 25px var(--accent-2) !important;
+}
+body.system-override-active .is-key-locked-item:hover {
+    border-left-color: var(--accent) !important;
+}
+body.system-override-active .is-key-locked-item:hover .article-item-title {
+    color: var(--accent-2) !important;
+    text-shadow: 0 0 8px var(--glow-1) !important;
+}
+
+
+/* ========================================================================== */
 /* 🔓 第十一層：403 錯誤畫面隱藏解鎖彩蛋 (Admin Trigger)                       */
 /* ========================================================================== */
 .secret-admin-trigger {
@@ -3196,12 +3227,18 @@ body {
 /* ========================================================================== */
 .sensitive-modal-content {
     cursor: auto; 
+    width: 90%;
     max-width: 500px; 
+    min-width: min(85vw, 320px);  /* ✨ 設定最小寬度 */
+    min-height: 280px;            /* ✨ 設定最小高度 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center; 
     padding: 3rem 2rem; 
     opacity: 1; 
     position: relative;
-    /* ✨ 直接在這裡加上背景與邊框，跟著系統主題切換 */
     background: var(--card); 
     border: 1px solid var(--card-border); 
     border-radius: 1.1rem; 
@@ -3226,12 +3263,12 @@ body {
 }
 .sensitive-close-btn:hover {
     opacity: 1; 
-    color: var(--accent); 
+    color: var(--current-warning-color, var(--error-color)); /* ✨ 關閉按鈕 Hover 變色 */
     transform: rotate(90deg) scale(1.1);
 }
 .sensitive-title {
     margin: 0 0 1rem 0; 
-    color: var(--error-color);
+    color: var(--current-warning-color, var(--error-color)); /* ✨ 標題綁定客製化顏色 */
 }
 .sensitive-desc {
     color: var(--muted); 
@@ -3248,6 +3285,30 @@ body {
     justify-content: center; 
     gap: 1rem; 
     flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+/* ✨ 動態模板按鈕與圖示色彩連動 */
+#sensitive-agree-btn { 
+    background: var(--current-warning-color, var(--error-color)) !important; 
+    color: #fff !important; 
+    border-color: var(--current-warning-color, var(--error-color)) !important; 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); 
+}
+
+#sensitive-agree-btn:hover { 
+    box-shadow: 0 8px 25px color-mix(in srgb, var(--current-warning-color, var(--error-color)) 60%, transparent), 0 0 12px var(--current-warning-color, var(--error-color)) !important; 
+    filter: brightness(1.15); 
+}
+
+#sensitive-warning-icon-wrapper svg {
+    stroke: var(--current-warning-color, var(--error-color));
+    transition: all 0.4s var(--ease-smooth); 
+}
+
+.sensitive-modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-icon-wrapper svg {
+    filter: drop-shadow(0 0 25px var(--current-warning-color, var(--error-color))); 
+    transform: scale(1.15);
 }
 
 
