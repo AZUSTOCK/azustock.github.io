@@ -1095,11 +1095,21 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     height: 18px;
 }
 
+/* ✨ 針對文章的右上角圖釘，把鑰匙預設「水平翻轉」 */
+.modal-secret-pin:not(.key-lock-pin)::before {
+    transform: scaleX(-1);
+}
+
 /* Hover 時：鑰匙轉動並放大！充滿解鎖的動畫感 */
-.card:hover .card-secret-pin:not(.key-lock-pin)::before,
+/* 卡片在左上角，順時針向內轉 */
+.card:hover .card-secret-pin:not(.key-lock-pin)::before {
+    transform: rotate(45deg) scale(1.15);
+}
+
+/* 文章在右上角，維持鏡像並相對應旋轉 (利用 scaleX(-1) 讓 rotate(45deg) 變成對稱的視覺感) */
 .modal-content a:hover .modal-secret-pin:not(.key-lock-pin)::before,
 .article-li.simulate-hover a .modal-secret-pin:not(.key-lock-pin)::before {
-    transform: rotate(45deg) scale(1.15);
+    transform: scaleX(-1) rotate(45deg) scale(1.15); 
 }
 
 /* 🔴 2. 鑰匙鎖定模式 (required_key)：Hover 時圖釘單純放大，扣環不動！ */

@@ -36,8 +36,8 @@ window.SENSITIVE_TEMPLATES = {
     },
     "MAIN": {
         title: " (Content Notice)",
-        desc: "因劇情需要，建議閱讀前篇再讀本文。<br>點擊前往即表示您已了解。",
-        btn_text: "我已閱讀前篇",
+        desc: "因應更好的去情體驗，建議先閱讀前篇再讀本文。<br>點擊前往即表示您已了解。",
+        btn_text: "我已閱讀並前往",
         color: "var(--group-c5)"
     }
 };
@@ -215,6 +215,8 @@ window.unlockSecret = function(id) {
 
 window.refreshHomeKeysUI = function() {
     const isUnlockedSys = document.body.classList.contains('system-override-active');
+    
+    // 1. 解鎖卡片本身的 UI
     document.querySelectorAll('.card.is-key-locked, .card.sys-hidden-card').forEach(card => {
         const key = card.getAttribute('data-required-key');
         if (key && window.isSecretUnlocked(key)) {
@@ -226,19 +228,28 @@ window.refreshHomeKeysUI = function() {
             
             const pid = card.getAttribute('data-project-id');
             card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.openProjectIndex(pid); };
+        }
+    });
+
+    // 2. ✨ 更新所有卡片的文章數量 (因為有些專案沒被鎖，但裡面的隱藏文章被解鎖了，數量也會變多)
+    document.querySelectorAll('.card').forEach(card => {
+        const pid = card.getAttribute('data-project-id');
+        const proj = window.siteProjects.find(p => p.id === pid);
+        if (proj && proj.articles && proj.articles.length > 0) {
+            const visibleCount = proj.articles.filter(a => {
+                if (isUnlockedSys) return true;
+                const artLocked = a.required_key && !window.isSecretUnlocked(a.required_key);
+                const artHidden = a.is_hidden || (artLocked && (a.lock_mode || 'visible') === 'hidden');
+                return !artHidden;
+            }).length;
             
-            const proj = window.siteProjects.find(p => p.id === pid);
-            if (proj && proj.articles) {
-                const visibleCount = proj.articles.filter(a => {
-                    const artLocked = a.required_key && !window.isSecretUnlocked(a.required_key) && !isUnlockedSys;
-                    const artHidden = a.is_hidden || (artLocked && (a.lock_mode || 'visible') === 'hidden');
-                    return !artHidden;
-                }).length;
-                const actionBtn = card.querySelector('.card-action-btn');
-                if(actionBtn) {
-                    actionBtn.style.color = ''; 
-                    actionBtn.innerHTML = `<div class="card-action-icon-wrap">${GLOBAL_SVGS.folderClosed}${GLOBAL_SVGS.folderOpen}</div>展開系列 (${visibleCount})`;
-                }
+            const actionBtn = card.querySelector('.card-action-btn');
+            if (actionBtn && actionBtn.innerText.includes('展開系列')) {
+                // 重建 HTML，避免把裡面的 SVG 洗掉
+                const iconWrap = actionBtn.querySelector('.card-action-icon-wrap');
+                actionBtn.innerHTML = '';
+                if (iconWrap) actionBtn.appendChild(iconWrap);
+                actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${visibleCount})`);
             }
         }
     });
@@ -4244,9 +4255,14 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
             sessionStorage.setItem(`sort_${projectId}`, currentSort);
 
-            // ✨ 精準計算「當下有權限看到」的文章數量
-            const isUnlocked = document.body.classList.contains('system-override-active');
-            const visibleCount = proj.articles.filter(a => isUnlocked || !a.is_hidden).length;
+            // ✨ 精準計算「當下有權限看到」的文章數量 (支援過濾未解鎖的 hidden 金鑰文章)
+            const isUnlockedSys = document.body.classList.contains('system-override-active');
+            const visibleCount = proj.articles.filter(art => {
+                if (isUnlockedSys) return true;
+                const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key);
+                const artHidden = art.is_hidden || (artLocked && (art.lock_mode || 'visible') === 'hidden');
+                return !artHidden;
+            }).length;
 
             const shareUrl = window.updateRouteState(projectId);
 
