@@ -1424,12 +1424,6 @@ if __name__ == "__main__":
     cout.stage("第二階段", "開始解析 Markdown 並打包 JSON 資料庫...", icon_key='stage')
     generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb, overwrite_pdf_thumb=overwrite_pdf_thumb, target_folders=target_folders)
 
-    # 1. 先產生最新的 changelogs.json
-    generate_changelogs_json()
-
-    # 2. 讀取日誌生成 version.json 並同步版號
-    generate_version_json(is_github_actions)
-
     # ✨ 使用 Cout 輸出對齊的統計表格 (自動為新增/更新上色)
     cout.stats_table(stats, [
         ("專案 HTML (index)", "proj"),
@@ -1447,6 +1441,12 @@ if __name__ == "__main__":
     
     cout.stage("最後階段", "開始修改路徑...", icon_key='stage')
     update_extensions_to_webp()
+
+    # 1. 先產生最新的 changelogs.json
+    generate_changelogs_json()
+
+    # 2. 讀取日誌生成 version.json 並同步版號
+    generate_version_json(is_github_actions)
 
     # 3. 執行細項 Hash 快取引擎，統整並輸出 data_version.json
     update_data_version()
