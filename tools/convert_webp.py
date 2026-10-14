@@ -1,7 +1,9 @@
 import os
 import glob
+import time
 from PIL import Image
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ✨ 支援由外部主程式呼叫 (tools.cout) 或在 tools 目錄下單獨執行 (cout)
 try:
@@ -31,14 +33,46 @@ def get_copyright_exif(img):
     clean_exif[315] = "Azustock" 
     
     return clean_exif.tobytes()
-# ==========================================
+
+def _convert_single_worker(img_path, force_overwrite, quality, max_size, ratio):
+    """單張圖片轉檔 Worker (供 ThreadPoolExecutor 平行呼叫，不直接印出訊息以避免多執行緒輸出交錯)"""
+    try:
+        file_name, _ = os.path.splitext(img_path)
+        webp_path = f"{file_name}.webp"
+        existed_before = os.path.exists(webp_path)
+        
+        if existed_before and not force_overwrite:
+            return ('SKIPPED', img_path, webp_path, None)
+            
+        with Image.open(img_path) as img:
+            clean_img = img.convert("RGBA")
+            clean_img.info.clear()
+
+            orig_width, orig_height = clean_img.size
+
+            if orig_width > 300 and orig_height > 300:
+                new_width = int(orig_width * ratio)
+                new_height = int(orig_height * ratio)
+                target_width = min(new_width, max_size[0])
+                target_height = min(new_height, max_size[1])
+                clean_img.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
+            else:
+                clean_img.thumbnail(max_size, Image.Resampling.LANCZOS)
+            
+            exif_bytes = get_copyright_exif(clean_img)
+            clean_img.save(webp_path, "webp", quality=quality, exif=exif_bytes)
+        
+        status = 'OVERWRITTEN' if (existed_before and force_overwrite) else 'CONVERTED'
+        return (status, img_path, webp_path, None)
+        
+    except Exception as e:
+        return ('ERROR', img_path, None, str(e))
 
 def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode=None, max_size=MAX_SIZE, ratio=RATIO):
     """
-    掃描目錄下的圖片，進行「降解析度」、「壓印浮水印」、「寫入版權 EXIF」並轉換為 WebP。
-    包含已存在檔案的處理策略選擇，並支援無外掛自動化執行。
+    掃描目錄下的圖片，利用多核心平行進行「降解析度」、「寫入版權 EXIF」並轉換為 WebP。
     """
-    cout.stage("WebP系統", "啟動 WebP 轉檔與防禦系統...", icon_key='search')
+    cout.stage("第一階段", "啟動 WebP 多核心轉檔與防禦系統...", icon_key='search')
     
     if auto_mode is not None:
         force_overwrite = auto_mode
@@ -56,9 +90,11 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
         force_overwrite = (user_choice == '2')
 
         if force_overwrite:
-            cout.warn("已選擇「複寫」模式：將強制重新轉檔所有圖片！")
+            cout.warn("已選擇「複寫」模式：將使用多核心強制重新轉檔所有圖片！")
         else:
             cout.success("已選擇「跳過」模式：只會處理尚未轉檔的新圖片。")
+
+    t_start = time.perf_counter()
 
     search_patterns = [
         os.path.join(directory, "**/*.png"),
@@ -76,54 +112,32 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
 
     success_count = 0
     skip_count = 0
+    max_workers = min(32, (os.cpu_count() or 4) + 4)
     
-    for img_path in image_files:
-        try:
-            file_name, ext = os.path.splitext(img_path)
-            webp_path = f"{file_name}.webp"
-            existed_before = os.path.exists(webp_path)
-            
-            if existed_before and not force_overwrite:
+    # 🔥 啟動多核心平行池處理圖片
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(_convert_single_worker, img_path, force_overwrite, quality, max_size, ratio)
+            for img_path in image_files
+        ]
+        for future in as_completed(futures):
+            status, img_path, webp_path, err = future.result()
+            if status == 'SKIPPED':
                 skip_count += 1
-                continue
-                
-            with Image.open(img_path) as img:
-                clean_img = img.convert("RGBA")
-                clean_img.info.clear()
-
-                orig_width, orig_height = clean_img.size
-
-                if orig_width > 300 and orig_height > 300:
-                    new_width = int(orig_width * ratio)
-                    new_height = int(orig_height * ratio)
-                    
-                    target_width = min(new_width, max_size[0])
-                    target_height = min(new_height, max_size[1])
-                    
-                    clean_img.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
-                else:
-                    clean_img.thumbnail(max_size, Image.Resampling.LANCZOS)
-                
-                # 🔥 統一呼叫共用版權函式
-                exif_bytes = get_copyright_exif(clean_img)
-
-                clean_img.save(webp_path, "webp", quality=quality, exif=exif_bytes)
-            
-            if existed_before and force_overwrite:
+            elif status == 'OVERWRITTEN':
                 cout.file_size_action("複寫成功", img_path, webp_path, icon_key='refresh', tree=True)
-            else:
+                success_count += 1
+            elif status == 'CONVERTED':
                 cout.file_size_action("轉換成功", img_path, webp_path, icon_key='success', tree=True)
-            
-            success_count += 1
-            
-        except Exception as e:
-            cout.error(f"處理失敗 {img_path}: {e}")
+                success_count += 1
+            elif status == 'ERROR':
+                cout.error(f"處理失敗 {img_path}: {err}")
 
-    # ✨ 移除多餘的 stage 橫幅，直接以單行狀態總結收尾
+    elapsed = time.perf_counter() - t_start
     if success_count > 0:
-        cout.success(f"WebP 系統處理完成！成功轉檔/複寫: {success_count} 張 | 略過已存在圖: {skip_count} 張。", icon_key='party')
+        cout.success(f"WebP 系統處理完成！成功轉檔/複寫: {success_count} 張 | 略過已存在圖: {skip_count} 張 (耗時 {elapsed:.2f}s)。", icon_key='party')
     else:
-        cout.skip(f"圖片皆已為最新 WebP 格式，共略過 {skip_count} 張已存在圖片。", indent=0)
+        cout.skip(f"圖片皆已為最新 WebP 格式，共略過 {skip_count} 張已存在圖片 (耗時 {elapsed:.2f}s)。", indent=0)
 
 def generate_cover_thumbnail(src_path, dest_path, max_width=320, quality=80):
     """
@@ -145,7 +159,6 @@ def generate_cover_thumbnail(src_path, dest_path, max_width=320, quality=80):
                 new_size = (max_width, int(img.height * ratio))
                 img = img.resize(new_size, Image.Resampling.LANCZOS)
             
-            # 🔥 統一呼叫共用版權函式
             exif_bytes = get_copyright_exif(img)
 
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
