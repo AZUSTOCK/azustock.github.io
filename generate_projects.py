@@ -7,8 +7,12 @@ from PIL import Image
 from datetime import datetime, timedelta
 from tools.convert_webp import convert_to_webp_with_protection, generate_cover_thumbnail, get_copyright_exif
 from tools.update_paths import update_extensions_to_webp
+from tools.cout import cout  # ✨ 引入 Cout 全域實例
 import rjsmin # type: ignore
 import rcssmin # type: ignore
+
+# ✨ 若想切換為純文字標籤模式 (如 [STAGE], [WARN], [IMG])，取消註解下面這行即可：
+# cout.set_icon_mode('text')
 
 # ==========================================
 # 🧠 細項 Hash 快取與版本控制引擎 (Fine-Grained State Cache)
@@ -19,12 +23,9 @@ IMAGE_LOGIC_VERSION = "U2026-09-24"  # ✨ 修改 OG圖合成、圖片轉檔品�
 
 CACHE_FILE = '.build_cache.json'
 
-
 # 準備一個 Set 來記錄所有合法的 API 檔案絕對路徑，用於最後的清理階段
 valid_api_files = set()
 protected_api_dirs = set()
-
-expiration_l = []
 
 # 全域統計數據
 stats = {
@@ -33,8 +34,8 @@ stats = {
     "json_total": 0, "json_new": 0, "json_updated": 0, "json_skipped": 0,       
     "og_total": 0,   "og_new": 0,   "og_updated": 0,   "og_skipped": 0,         
     "thumb_total": 0, "thumb_new": 0, "thumb_updated": 0, "thumb_skipped": 0,    
-    "group_og_total": 0, "group_og_new": 0, "group_og_updated": 0, "group_og_skipped": 0,       # ✨ 新增群組 OG
-    "group_thumb_total": 0, "group_thumb_new": 0, "group_thumb_updated": 0, "group_thumb_skipped": 0, # ✨ 新增群組縮圖
+    "group_og_total": 0, "group_og_new": 0, "group_og_updated": 0, "group_og_skipped": 0,
+    "group_thumb_total": 0, "group_thumb_new": 0, "group_thumb_updated": 0, "group_thumb_skipped": 0,
     "inline_thumb_total": 0, "inline_thumb_new": 0, "inline_thumb_updated": 0, "inline_thumb_skipped": 0,
     "pdf_thumb_total": 0, "pdf_thumb_new": 0, "pdf_thumb_updated": 0, "pdf_thumb_skipped": 0 
 }
@@ -47,17 +48,15 @@ SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR'
 def get_tag_expire_days():
     """從 main.js 的 CONFIG 中動態抓取 TAG_EXPIRE_DAYS"""
     try:
-        # 尋找當前目錄下的 main.js
         js_file = next((f for f in os.listdir('.') if f.startswith('main') and f.endswith('.js')), 'main.js')
         with open(js_file, 'r', encoding='utf-8') as f:
             content = f.read()
-            # 利用正則表達式精準抓取數值
             match = re.search(r'TAG_EXPIRE_DAYS:\s*(\d+)', content)
             if match:
                 return int(match.group(1))
     except Exception as e:
-        print(f"⚠️ 無法讀取 TAG_EXPIRE_DAYS，將使用預設值 14: {e}")
-    return 14 # 預防萬一的預設值
+        cout.warn(f"無法讀取 TAG_EXPIRE_DAYS，將使用預設值 14: {e}")
+    return 14
 
 GLOBAL_EXPIRE_DAYS = get_tag_expire_days()
 
@@ -65,45 +64,38 @@ GLOBAL_EXPIRE_DAYS = get_tag_expire_days()
 # 🗜️ 自動化壓縮引擎 (Minification Engine)
 # ==========================================
 def minify_assets():
-    print(f"\n==========================================")
-    print(f"🗜️ [壓縮階段] 開始壓縮 JS 與 CSS 檔案...")
-    print(f"==========================================")
+    cout.stage("壓縮階段", "開始壓縮 JS 與 CSS 檔案...", icon_key='compress')
     
     try:
-        # 1. 讀取原始檔案
         with open('main.js', 'r', encoding='utf-8') as f:
             js_content = f.read()
         with open('style.css', 'r', encoding='utf-8') as f:
             css_content = f.read()
             
-        # 2. 執行壓縮
         min_js = rjsmin.jsmin(js_content)
         min_css = rcssmin.cssmin(css_content)
         
-        # 3. 輸出 .min 檔案
         with open('main.min.js', 'w', encoding='utf-8') as f:
             f.write(min_js)
         with open('style.min.css', 'w', encoding='utf-8') as f:
             f.write(min_css)
             
-        print(f"  └─ JS 壓縮成功:  {len(js_content)/1024:.1f} KB -> {len(min_js)/1024:.1f} KB")
-        print(f"  └─ CSS 壓縮成功: {len(css_content)/1024:.1f} KB -> {len(min_css)/1024:.1f} KB")
+        cout.size_action("JS 壓縮成功", "main.min.js", len(js_content)/1024, len(min_js)/1024, icon_key='stage')
+        cout.size_action("CSS 壓縮成功", "style.min.css", len(css_content)/1024, len(min_css)/1024, icon_key='stage')
 
-        # 4. 自動替換 index.html 裡的引入路徑 (此時 index.html 已由前一步生成)
         if os.path.exists('index.html'):
             with open('index.html', 'r', encoding='utf-8') as f:
                 html = f.read()
             
-            # ✨ 精準替換：包含前面的 ./ 也能正確辨識並加上 .min
             html = re.sub(r'src="(\./)?main\.js', r'src="\g<1>main.min.js', html)
             html = re.sub(r'href="(\./)?style\.css', r'href="\g<1>style.min.css', html)
 
             with open('index.html', 'w', encoding='utf-8') as f:
                 f.write(html)
-            print("  └─ 網頁掛載成功: index.html 已自動切換為壓縮版資源。")
+            cout.action("網頁掛載成功", "index.html 已自動切換為壓縮版資源。", color='green')
             
     except Exception as e:
-        print(f"⚠️ 壓縮失敗: {e}")
+        cout.warn(f"壓縮失敗: {e}")
 
 # ==========================================
 # 🛠️ 輔助系統 (Helper Functions)
@@ -114,16 +106,6 @@ def clean_dynamic_text(text):
     def repl(m):
         return m.group(2).strip() if m.group(2) else '***'
     return re.sub(r'\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?', repl, text)
-
-def get_copyright_exif(img):
-    """產生帶有專屬版權宣告的 EXIF 數位簽章位元組"""
-    current_year = datetime.now().year
-    clean_exif = img.getexif()
-    clean_exif.clear()
-    clean_exif[40093] = ("風川梓 (Azustock)" + '\x00').encode('utf-16le') # 作者 Author
-    clean_exif[40092] = (f"Copyright (c) {current_year} 風川梓 (Azustock). All rights reserved." + '\x00').encode('utf-16le') # 註解/版權宣告
-    clean_exif[315] = "Azustock" # 軟體/建立者
-    return clean_exif.tobytes()
 
 def get_file_status(source_paths, target_path, force_overwrite=False):
     if not os.path.exists(target_path):
@@ -138,13 +120,10 @@ def get_file_status(source_paths, target_path, force_overwrite=False):
     return 'SKIPPED'
 
 def print_conversion(tag, src_path, dest_path, context=""):
-    """輔助函式：印出圖片轉換前後的檔案大小與所屬專案/文章"""
-    if os.path.exists(src_path) and os.path.exists(dest_path):
-        s_size = os.path.getsize(src_path) / 1024
-        d_size = os.path.getsize(dest_path) / 1024
-        # ✨ 若有傳入 context，就把它用中括號包起來顯示
-        ctx_str = f" [{context}]" if context else ""
-        print(f"  └─ {tag}{ctx_str} {os.path.basename(dest_path)} ({s_size:.1f} KB -> {d_size:.1f} KB)")
+    """輔助函式：透過 Cout 印出圖片轉換前後的檔案大小、壓縮率與所屬專案/文章"""
+    clean_tag = re.sub(r'^.*?\[(.*?)\]$', r'\1', tag)
+    icon_key = 'pdf' if 'PDF' in tag else 'image'
+    cout.file_size_action(clean_tag, src_path, dest_path, context=context, icon_key=icon_key)
 
 def create_og_image(original_path, output_path, bg_path=None):
     """將任意尺寸的圖片疊加到 1200x630 的背景圖中央，生成完美的 OG 分享圖"""
@@ -168,14 +147,12 @@ def create_og_image(original_path, output_path, bg_path=None):
         bg.paste(img, (x, y), img)
         
         final_img = bg.convert("RGB")
-        
-        # 🔥 呼叫全域版權共用函式
         exif_bytes = get_copyright_exif(final_img)
         
         final_img.save(output_path, "WEBP", quality=90, exif=exif_bytes)
         return True
     except Exception as e:
-        print(f"⚠️ 生成 OG 圖片失敗 {original_path}: {e}")
+        cout.warn(f"生成 OG 圖片失敗 {original_path}: {e}")
         return False
 
 def generate_pdf_thumbnail(pdf_path, output_path, max_width=1600, quality=90):
@@ -183,43 +160,35 @@ def generate_pdf_thumbnail(pdf_path, output_path, max_width=1600, quality=90):
     try:
         import pymupdf  # type: ignore
     except ImportError:
-        print("⚠️ 未安裝 PyMuPDF，無法自動生成 PDF 縮圖。請執行: pip install PyMuPDF")
+        cout.warn("未安裝 PyMuPDF，無法自動生成 PDF 縮圖。請執行: pip install PyMuPDF")
         return False
         
     try:
         doc = pymupdf.open(pdf_path)
         if len(doc) == 0:
             return False
-        page = doc.load_page(0)  # 讀取第一頁 (Index 0)
-        
-        # 🔥 畫質躍升：矩陣縮放 4 倍以進行超取樣 (Super Sampling)，確保 Retina 銳利度
+        page = doc.load_page(0)
         pix = page.get_pixmap(matrix=pymupdf.Matrix(4, 4))
         
-        # 將 PyMuPDF 的 pixmap 轉為 PIL Image 格式
         mode = "RGBA" if pix.alpha else "RGB"
         img = Image.frombytes(mode, [pix.width, pix.height], pix.samples)
         
-        # ✨ 防呆：PDF 通常是透明背景，強制墊上一層白底
         if mode == "RGBA":
             bg = Image.new("RGB", img.size, (255, 255, 255))
             bg.paste(img, mask=img.split()[3]) 
             img = bg
         
-        # 調整尺寸 (max_width 從 800 提升至 1600)
         if img.width > max_width:
             ratio = max_width / img.width
             new_size = (max_width, int(img.height * ratio))
             img = img.resize(new_size, Image.Resampling.LANCZOS)
             
-        # 🔥 呼叫全域版權共用函式
         exif_bytes = get_copyright_exif(img)
-            
-        # 轉存為 WebP (無縫夾帶 EXIF 數位簽章)
         img.save(output_path, "WEBP", quality=quality, exif=exif_bytes)
         doc.close()
         return True
     except Exception as e:
-        print(f"⚠️ PDF 縮圖生成失敗 {pdf_path}: {e}")
+        cout.warn(f"PDF 縮圖生成失敗 {pdf_path}: {e}")
         return False
 
 def parse_folder_meta(folder_name):
@@ -234,20 +203,17 @@ def load_detail_json(json_path):
             with open(json_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"⚠️ Error reading {json_path}: {e}")
+            cout.warn(f"Error reading {json_path}: {e}")
     return {}
 
 def get_hash_url(local_path, base_url):
     """獲取帶有檔案內容 Hash 的網址 (支援帶有 ? 參數的網址)"""
-    # ✨ 濾掉 local_path 的 query 參數與 hash，確保能在本機找到檔案
     clean_local_path = local_path.split('?')[0].split('#')[0]
     
     if os.path.exists(clean_local_path):
         try:
             with open(clean_local_path, 'rb') as f:
                 file_hash = hashlib.md5(f.read()).hexdigest()[:8]
-            
-            # ✨ 判斷原本的網址是否已經帶有參數 (?)，若有則改用 & 串接
             sep = '&' if '?' in base_url else '?'
             return f"{base_url}{sep}v={file_hash}"
         except Exception:
@@ -256,8 +222,6 @@ def get_hash_url(local_path, base_url):
 
 def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwrite):
     """使用 Hash 判斷單一檔案是否需要更新"""
-    
-    # ✨ 智慧分流：透過「目標輸出檔案」的副檔名，決定要混入哪一種邏輯版本號
     logic_version = ""
     if target_path.endswith('contents.json'):
         logic_version = API_LOGIC_VERSION
@@ -278,12 +242,12 @@ def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwr
 # ⏰ 時間戳過期偵測引擎 (Expiration Checker)
 # ==========================================
 def check_expiration_reminders(item_title, item_type, data_dict, detail_path, days=None):
-    """檢查 JSON 內的日期標籤或屬性是否過期，並印出黃色警告提醒"""
+    """檢查 JSON 內的日期標籤或屬性是否過期，並交由 Cout 收集提醒"""
     if days is None:
         days = GLOBAL_EXPIRE_DAYS
         
     now = datetime.now()
-    expire_delta = timedelta(days=days) # 與前端 JS 的 TAG_EXPIRE_DAYS 保持一致
+    expire_delta = timedelta(days=days)
     
     # 1. 檢查 Tags (例如 "NEW:2026-08-01")
     tags = data_dict.get('tags') or data_dict.get('TAGS')
@@ -294,7 +258,10 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
                 try:
                     dt = datetime.strptime(match.group(2).replace('-', '/'), "%Y/%m/%d")
                     if now - dt > expire_delta:
-                        expiration_l.append(f"\033[93m  ⏰ [標籤過期] {item_type} '{item_title}' 的 '{t}' 已過 {days} 天。\n      📁 路徑: {detail_path}\033[0m")
+                        cout.collect_reminder(
+                            "標籤過期", f"{item_type} '{item_title}' 的 '{t}' 已過 {days} 天。",
+                            filepath=detail_path, color='yellow', icon_key='expired'
+                        )
                 except Exception:
                     pass
     
@@ -306,10 +273,16 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
                 dt = datetime.strptime(val.replace('-', '/'), "%Y/%m/%d")
                 if key.lower() == 'hidden':
                     if now >= dt:
-                        expiration_l.append(f"\033[92m  🔓 [解封提醒] {item_type} '{item_title}' 的隱藏期限 '{val}' 已到期(現已公開)。\n      📁 路徑: {detail_path}\033[0m")
+                        cout.collect_reminder(
+                            "解封提醒", f"{item_type} '{item_title}' 的隱藏期限 '{val}' 已到期(現已公開)。",
+                            filepath=detail_path, color='green', icon_key='unlock'
+                        )
                 else:
                     if now - dt > expire_delta:
-                        expiration_l.append(f"\033[93m  ⏰ [狀態過期] {item_type} '{item_title}' 的 '{key}: {val}' 已過 {days} 天。\n      📁 路徑: {detail_path}\033[0m")
+                        cout.collect_reminder(
+                            "狀態過期", f"{item_type} '{item_title}' 的 '{key}: {val}' 已過 {days} 天。",
+                            filepath=detail_path, color='yellow', icon_key='expired'
+                        )
             except Exception:
                 pass
 
@@ -326,7 +299,6 @@ def get_file_hash(filepath, logic_version=""):
             content = content.replace(b'\r\n', b'\n')
         hasher.update(content)
         
-    # ✨ 混入特定的邏輯版本號，強制改變該類別的比對結果
     if logic_version:
         hasher.update(logic_version.encode('utf-8'))
         
@@ -343,16 +315,13 @@ def get_dir_hash(dirpath):
                     content = f.read().replace('\r\n', '\n')
                     hasher.update(content.encode('utf-8'))
                     
-    # ✨ 讓前端重載機制受到 API 與 HTML 版號變動的觸發
     hasher.update(API_LOGIC_VERSION.encode('utf-8'))
     hasher.update(HTML_LOGIC_VERSION.encode('utf-8'))
     return hasher.hexdigest()[:8]
 
 def update_data_version():
     """計算各獨立項目的 Hash，並寫入 data_version.json 與狀態快取"""
-    print(f"\n==========================================")
-    print(f"🧠 [快取引擎] 開始計算細項 Hash 值...")
-    print(f"==========================================")
+    cout.stage("快取引擎", "開始計算細項 Hash 值...", icon_key='cache')
     
     items = {
         "projects": get_dir_hash("projects"),
@@ -377,90 +346,75 @@ def update_data_version():
         changed_items = list(items.keys())
 
     if changed_items:
-        print(f"🔄 偵測到以下項目內容變更: {', '.join(changed_items)}")
+        cout.info(f"偵測到以下項目內容變更: {cout.styled(', '.join(changed_items), 'bold', 'yellow')}", icon_key='refresh')
     else:
-        print(f"⏭️ 內容無任何變更，維持現有快取。")
+        cout.skip("內容無任何變更，維持現有快取。", indent=0)
 
-    # 強制寫入 data_version.json，供前端獲取各項目的最新 Hash
     with open('data_version.json', 'w', encoding='utf-8') as f:
         json.dump(items, f, indent=2)
         
-    # 儲存狀態快取
     with open(CACHE_FILE, 'w', encoding='utf-8') as f:
         json.dump(items, f, indent=2)
         
     return changed_items
 
-# 🔥 加上 is_github_actions 參數
 def generate_version_json(is_github_actions=False):
     """從 logs 資料夾提取最新版本號 (支援以 detail.json 為主的滾動版號)，並同步寫入前端"""
-    print(f"\n==========================================")
-    print(f"⚙️ [系統設定] 開始同步全站版號...")
-    print(f"==========================================")
+    cout.stage("系統設定", "開始同步全站版號...", icon_key='config')
     try:
         base_dir = 'logs'
         if not os.path.exists(base_dir) or not os.listdir(base_dir):
-            print("⚠️ 找不到 logs 資料夾，無法同步版本號！")
+            cout.warn("找不到 logs 資料夾，無法同步版本號！")
             return
 
         def parse_version(v_str):
             return [int(x) for x in re.findall(r'\d+', v_str)]
             
         versions_found = []
-        # ✨ 升級為深度掃描，無視資料夾層級結構
         for root, dirs, files in os.walk(base_dir):
             if 'detail.json' not in files:
                 continue
 
             folder_path = root
-            version_folder = os.path.basename(root) # 自動抓取最後一層資料夾名稱，例如 U1.5.8
+            version_folder = os.path.basename(root)
             actual_version = version_folder
-            skip_tracking = False  # ✨ 預設為追蹤
+            skip_tracking = False
 
             detail_path = os.path.join(folder_path, 'detail.json')
             if os.path.exists(detail_path):
                 try:
                     with open(detail_path, 'r', encoding='utf-8') as f:
                         detail = json.load(f)
-                        
-                        # ✨ 檢查是否有「不追蹤」參數 (支援中文或英文命名)
                         if detail.get('no_track', False):
                             skip_tracking = True
-                            
                         if 'version' in detail:
                             actual_version = detail['version']
                 except Exception:
                     pass
             
-            # ✨ 如果標記為不追蹤，就跳過，不加入全站版本號的選拔池中
             if skip_tracking:
-                print(f"  ⏭️ 略過不追蹤版本: {actual_version}")
+                cout.skip(f"略過不追蹤版本: {actual_version}", indent=1)
                 continue
 
             versions_found.append(actual_version)
 
         if not versions_found:
-            print("⚠️ 找不到任何有效的版號！")
+            cout.warn("找不到任何有效的版號！")
             return
 
-        # ✨ 取得真正的最新版號 (蒐集所有 detail.json 覆寫過的版號後，進行最高版本排序)
         latest_version = sorted(versions_found, key=parse_version, reverse=True)[0]
         
-        # 1. 寫入 version.json 供前端強制對答案
         with open('version.json', 'w', encoding='utf-8') as f:
             json.dump({"version": latest_version}, f, indent=2)
-        print(f"✅ 成功提取最新系統版號 ({latest_version}) 並寫入 version.json")
+        cout.success(f"成功提取最新系統版號 ({latest_version}) 並寫入 version.json")
         
-        # 2. 反向同步更新 main.js
         js_file = next((f for f in os.listdir('.') if f.startswith('main') and f.endswith('.js')), None)
         if js_file:
             with open(js_file, 'r', encoding='utf-8') as f:
                 js_content = f.read()
             
-            # 使用正則精準替換 CONFIG 中的 VERSION 數值
             new_js_content = re.sub(r'(VERSION:\s*")[^"]+(")', rf'\g<1>{latest_version}\g<2>', js_content, count=1)
             
-            # ✨ 核心魔法：只有在 GitHub Actions 雲端打包時，才強制將延遲設為 0
             if is_github_actions:
                 new_js_content = re.sub(r'(DEBUG_FETCH_DELAY:\s*)\d+', r'\g<1>0', new_js_content, count=1)
             
@@ -468,17 +422,15 @@ def generate_version_json(is_github_actions=False):
                 with open(js_file, 'w', encoding='utf-8') as f:
                     f.write(new_js_content)
                     
-                # 依據環境印出不同的成功提示
                 if is_github_actions:
-                    print(f"✅ 成功將 {js_file} 同步更新為 {latest_version}，並自動關閉 DEBUG_FETCH_DELAY")
+                    cout.success(f"成功將 {js_file} 同步更新為 {latest_version}，並自動關閉 DEBUG_FETCH_DELAY")
                 else:
-                    print(f"✅ 成功將 {js_file} 同步更新為 {latest_version} (本地開發模式，保留 DEBUG 設定)")
+                    cout.success(f"成功將 {js_file} 同步更新為 {latest_version} (本地開發模式，保留 DEBUG 設定)")
             else:
-                print(f"⏭️ {js_file} 設定已是最新，無須修改。")
+                cout.skip(f"{js_file} 設定已是最新，無須修改。", indent=0)
         else:
-            print("⚠️ 找不到 main.js 檔案，無法更新前端系統版本！")
+            cout.warn("找不到 main.js 檔案，無法更新前端系統版本！")
 
-        # 3. 讀取本地測試檔 index_local.html 並生成正式發布版 index.html
         local_html = 'index_local.html'
         output_html = 'index.html'
         
@@ -486,60 +438,44 @@ def generate_version_json(is_github_actions=False):
             with open(local_html, 'r', encoding='utf-8') as f:
                 html_content = f.read()
             
-            # 替換 CSS 與 JS 的快取後綴 (例如 ./style.css?u=U1.5.6.1)
             new_html = re.sub(r'(\.(?:css|js)\?u=)[^"]+(")', rf'\g<1>{latest_version}\g<2>', html_content)
-            # 替換 Footer 裡的靜態文字 (例如 <span id="sys-version">U1.5.6.1</span>)
             new_html = re.sub(r'(<span id="sys-version"[^>]*>)[^<]+(</span>)', rf'\g<1>{latest_version}\g<2>', new_html)
-            
-            # ✨ 1. 清除 HTML 註解 (<!-- ... -->)
             new_html = re.sub(r'<!--[\s\S]*?-->', '', new_html)
-            
-            # ✨ 2. 清除 CSS 與 JS 的多行註解 (/* ... */)
             new_html = re.sub(r'/\*[\s\S]*?\*/', '', new_html)
-            
-            # ✨ 3. 清除 JS 單行註解 (// ...)
-            # 使用 re.MULTILINE 標記，並加上 ^\s* 確保只刪除「位於行首（或前方只有空白）」的註解，完美避開 http://
             new_html = re.sub(r'^\s*//.*$', '', new_html, flags=re.MULTILINE)
-            
-            # ✨ 4. 順便壓縮多餘的空行 (將多個換行壓縮成單一換行)
             new_html = re.sub(r'\n\s*\n', '\n', new_html)
             
-            # 永遠強制輸出 index.html
             with open(output_html, 'w', encoding='utf-8') as f:
                 f.write(new_html)
-            print(f"✅ 成功從 {local_html} 生成正式版 {output_html} (版號 {latest_version})")
+            cout.success(f"成功從 {local_html} 生成正式版 {output_html} (版號 {latest_version})")
         else:
-            print(f"⚠️ 找不到 {local_html} 檔案，跳過 HTML 版號與生成處理。")
+            cout.warn(f"找不到 {local_html} 檔案，跳過 HTML 版號與生成處理。")
 
     except Exception as e:
-        print(f"⚠️ 系統版本號同步失敗: {e}")
+        cout.warn(f"系統版本號同步失敗: {e}")
 
-## ==========================================
+# ==========================================
 # 📝 升級版系統日誌生成器 (Changelog Generator)
 # ==========================================
 def generate_changelogs_json():
-    print(f"\n==========================================")
-    print(f"📦 打包 版本紀錄...")
-    print(f"==========================================")
+    cout.stage("版本紀錄", "開始打包系統日誌 (Changelog)...", icon_key='stage')
     
     base_dir = 'logs'
     output_data = []
 
     if not os.path.exists(base_dir):
         os.makedirs(base_dir, exist_ok=True)
-        print(f"📁 已自動建立 '{base_dir}' 資料夾。")
+        cout.info(f"已自動建立 '{base_dir}' 資料夾。", icon_key='folder')
         return
 
     def parse_version(v_str):
         return [int(x) for x in re.findall(r'\d+', v_str)]
 
-    # ✨ 升級為深度掃描，搜集所有包含 detail.json 的有效日誌路徑
     log_folders = []
     for root, dirs, files in os.walk(base_dir):
         if 'detail.json' in files:
             log_folders.append(root)
 
-    # ✨ 依照資料夾名稱 (basename) 進行版本號反向排序
     log_folders.sort(key=lambda x: parse_version(os.path.basename(x)), reverse=True)
 
     for folder_path in log_folders:
@@ -557,16 +493,18 @@ def generate_changelogs_json():
             date = detail.get('date', date)
             status = detail.get('status', status)
             
-            # ✨ 新增：判斷目錄名稱與內部版號是否一致的警告引擎
             if 'version' in detail and detail['version'] != version_folder:
-                print(f"\033[93m  📌 [版本覆寫提示] 日誌目錄 '{version_folder}' 與內部版號 (同對外版號) '{detail['version']}' 不一致。\033[0m")
+                cout.action(
+                    "版本覆寫提示", f"日誌目錄 '{version_folder}' 與內部版號 (同對外版號) '{detail['version']}' 不一致。",
+                    icon_key='pin', color='yellow', tree=False, indent=1
+                )
             
             version = detail.get('version', version)
             description = detail.get('description', description)
             is_hidden = detail.get('hidden', False)
 
         if str(version).count('.') >= 3 or str(version_folder).count('.') >= 3 or is_hidden:
-            print(f"  ⏭️ 隱藏內部紀錄: 目錄 {version_folder} (對外版號: {version})")
+            cout.skip(f"隱藏內部紀錄: 目錄 {version_folder} (對外版號: {version})", indent=1)
             continue
 
         for file in os.listdir(folder_path):
@@ -583,7 +521,7 @@ def generate_changelogs_json():
 
     with open('changelogs.json', 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
-    print(f"✅ 升級版版本日誌 (Changelog) 打包完成，共發布 {len(output_data)} 筆紀錄。")
+    cout.success(f"升級版版本日誌 (Changelog) 打包完成，共發布 {len(output_data)} 筆紀錄。")
 
 
 # ==========================================
@@ -631,7 +569,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 </html>"""
 
     if not os.path.exists(base_dir):
-        print(f"❌ Directory '{base_dir}' not found.")
+        cout.error(f"Directory '{base_dir}' not found.")
         return
 
     # 1. 掃描大分類 (Categories)
@@ -643,7 +581,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
         cat_data = load_detail_json(os.path.join(cat_path, 'detail.json'))
         cat_cover = cat_data.get('cover')
         
-        # ✨ 新增時間戳處理
         cat_cover_url = None
         if cat_cover:
             cat_cover_path = os.path.join(cat_path, cat_cover)
@@ -656,35 +593,31 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             "meta": cat_data.get('meta', ''),            
             "description": cat_data.get('description', ''), 
             "watermark_url": cat_data.get('watermark_url', ''), 
-            "cover_image": cat_cover_url # ✨ 替換為有時間戳的網址
+            "cover_image": cat_cover_url
         })
 
         # 2. 掃描分類底下的專案 (Projects)
         proj_folders = []
         for root, dirs, files in os.walk(cat_path):
-            # ✂️ 神級防呆：遇到 articles 資料夾就剪枝，防止掃描誤闖文章區域
             if 'articles' in dirs:
                 dirs.remove('articles') 
             if 'detail.json' in files and root != cat_path:
                 proj_folders.append(root)
 
         for proj_path in sorted(proj_folders):
-            proj_folder = os.path.basename(proj_path) # 依然能精準抓到 '02_mind' 作為 ID
+            proj_folder = os.path.basename(proj_path)
             
             stats["proj_total"] += 1
             proj_detail_path = os.path.join(proj_path, 'detail.json')
             proj_data = load_detail_json(proj_detail_path)
             default_proj_order, clean_proj_title = parse_folder_meta(proj_folder)
 
-            # ✨ 檢查此專案是否在強制更新名單中 (支援輸入完整資料夾名 或 去除編號的乾淨名稱)
             is_proj_targeted = bool(target_folders and (proj_folder in target_folders or clean_proj_title in target_folders))
             
-            # ✨ 動態產生該專案的複寫 Flag
             p_overwrite_json = overwrite_json or is_proj_targeted
             p_overwrite_og = overwrite_og or is_proj_targeted
             p_overwrite_thumb = overwrite_thumb or is_proj_targeted
 
-            # ✨ 呼叫過期檢查引擎 (專案層級)
             check_expiration_reminders(proj_data.get('title', clean_proj_title), "專案", proj_data, proj_detail_path)
             
             clean_proj_data = {
@@ -695,9 +628,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 'default_sort': proj_data.get('default_sort', 'desc')
             }
             
-            # ✨ 新增這行：抓取專案級別的最低版本要求
             if proj_data.get('min_sys_version'): clean_proj_data['min_sys_version'] = str(proj_data.get('min_sys_version'))
-            
             if proj_data.get('description'): clean_proj_data['description'] = proj_data.get('description')
             if proj_data.get('date'): clean_proj_data['date'] = proj_data.get('date')
             if proj_data.get('version'): clean_proj_data['version'] = str(proj_data.get('version'))
@@ -723,7 +654,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     else:
                         clean_proj_data[f'is_{key}' if key != 'pinned' else 'pinned'] = val
 
-            # ✨ 1. 將專案變數初始化往上移，解決原本 proj_id 尚未定義的重大 Bug
             proj_id = clean_proj_title
             proj_title = proj_data.get('title', clean_proj_title)
             proj_desc = proj_data.get('description', '查看專案內容')
@@ -743,7 +673,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             current_proj_hashes = {}
             proj_needs_update = False
 
-            # ✨ 2. 處理群組縮圖與「群組專屬 OG 圖」
             if proj_data.get('groups'):
                 processed_groups = {}
                 for g_id, g_info in proj_data['groups'].items():
@@ -756,11 +685,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             thumb_dir = os.path.join(API_DIR, proj_id, "thumbnails")
                             os.makedirs(thumb_dir, exist_ok=True)
                             
-                            # ✨ 核心修正：使用 os.path.basename 徹底拔除帶有的路徑 (如 ./ 或資料夾名稱)，只留純檔名與副檔名
                             base_cover_name = os.path.basename(g_cover)
                             safe_name = base_cover_name.replace('/', '_').replace('\\', '_')
                             
-                            # (A) 生成群組縮圖 (加上 Hash 判斷防呆與統計)
                             stats["group_thumb_total"] += 1
                             thumb_filename = f"group_thumb_{os.path.splitext(safe_name)[0]}.webp"
                             thumb_local_path = os.path.join(thumb_dir, thumb_filename)
@@ -782,7 +709,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             valid_api_files.add(os.path.abspath(thumb_local_path))
                             group_obj['cover_image'] = get_hash_url(thumb_local_path, f"./api/{proj_id}/thumbnails/{thumb_filename}")
                             
-                            # (B) ✨ 生成群組專屬 OG 分享圖 (加上統計)
                             stats["group_og_total"] += 1
                             og_filename = f"group_og_{os.path.splitext(safe_name)[0]}.webp"
                             og_local_path = os.path.join(proj_api_dir, og_filename)
@@ -802,7 +728,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 stats["group_og_skipped"] += 1
                                 
                             valid_api_files.add(os.path.abspath(og_local_path))
-                            # 儲存 1200x630 的完美 OG 網址 (✨ 加上 Hash)
                             group_obj['og_image'] = get_hash_url(og_local_path, f"{BASE_URL}/api/{proj_id}/{og_filename}")
         
                     processed_groups[g_id] = group_obj
@@ -815,13 +740,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             proj_data = clean_proj_data
             articles = []
 
-            # 3. 處理專案封面與 OG 圖...
             proj_og_filename = "og.webp"
             proj_og_local_path = os.path.join(proj_api_dir, proj_og_filename)
             
-            # 🚨 刪除了重複宣告的 proj_cache 與 proj_needs_update，保護上方的群組快取 🚨
-            
-            # ✨ 處理專案 OG 圖片與縮圖
             if 'cover_image' in clean_proj_data:
                 stats["og_total"] += 1
                 local_proj_cover = clean_proj_data['cover_image']
@@ -843,7 +764,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     stats["og_skipped"] += 1
                 valid_api_files.add(os.path.abspath(proj_og_local_path))
 
-                # ✨ 處理專案封面縮圖 (Thumbnail)
                 proj_thumb_filename = "cover_thumb.webp"
                 proj_thumb_local_path = os.path.join(proj_api_dir, proj_thumb_filename)
                 stats["thumb_total"] += 1 
@@ -870,11 +790,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             proj_share_url = f"{BASE_URL}/api/{proj_id}/index.html"
             proj_html_path = os.path.join(proj_api_dir, "index.html")
             
-            # ✨ 處理專案 HTML
             proj_html_status, detail_hash = check_hash_status(proj_detail_path, proj_html_path, proj_cache, 'detail', p_overwrite_json)
             current_proj_hashes['detail'] = detail_hash
             
-            # ✨ 確保專案 OG 圖更新時，HTML 內的圖片路徑會同步帶上 Hash
             if 'cover_image' in clean_proj_data:
                 proj_img_hashed = get_hash_url(proj_og_local_path, proj_img) if os.path.exists(proj_og_local_path) else get_hash_url(local_proj_cover, proj_img)
             else:
@@ -895,7 +813,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 
             valid_api_files.add(os.path.abspath(proj_html_path))
 
-            # 寫入專案快取
             if proj_needs_update:
                 with open(proj_meta_path, 'w', encoding='utf-8') as f:
                     json.dump(current_proj_hashes, f)
@@ -911,16 +828,14 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                         art_folders.append(root)
                         
                 for item_path in sorted(art_folders):
-                    item = os.path.basename(item_path) # 依然能精準抓到 '24_create' 作為 ID
+                    item = os.path.basename(item_path)
                     
                     art_detail_path = os.path.join(item_path, 'detail.json')
                     sub_data = load_detail_json(art_detail_path)
                     default_art_order, clean_art_title = parse_folder_meta(item)
 
-                    # ✨ 檢查此文章是否在強制更新名單中 (如果父專案被指定，底下的子文章也會連帶強制更新！)
                     is_art_targeted = bool(target_folders and (item in target_folders or clean_art_title in target_folders))
                     
-                    # ✨ 動態產生該文章的複寫 Flag
                     a_overwrite_json = p_overwrite_json or is_art_targeted
                     a_overwrite_og = p_overwrite_og or is_art_targeted
                     a_overwrite_thumb = p_overwrite_thumb or is_art_targeted
@@ -953,7 +868,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             content_filename = "contents.json"
                             content_filepath = os.path.join(art_dir, content_filename)
                             
-                            # ✨ 讀取文章舊的 contents.json 快取紀錄
                             art_cache = {}
                             if os.path.exists(content_filepath):
                                 try:
@@ -998,16 +912,14 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         
                                     parts = fixed_url.split('#')
                                     stamped_parts = []
-                                    poster_ar_str = "" # 🔥 新增變數：用來儲存影片/PDF的自訂封面比例
+                                    poster_ar_str = ""
                                     
                                     for p in parts:
                                         if p.startswith('poster='):
                                             p_path = p[7:]
                                             stamped_parts.append(f"poster={get_hash_url(os.path.normpath(p_path), p_path)}")
-                                            # 🔥 嘗試讀取 poster 的長寬比
                                             try:
                                                 with Image.open(os.path.normpath(p_path)) as tmp_img:
-                                                    # ✨ 改為傳遞真實寬高
                                                     poster_ar_str = f"&w={tmp_img.width}&h={tmp_img.height}"
                                             except Exception:
                                                 pass
@@ -1017,7 +929,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         else:
                                             stamped_parts.append(get_hash_url(os.path.normpath(p), p))
                                             
-                                    # 🚨 就是這行剛剛不見了！一定要把它組合回來：
                                     final_stamped_url = '#'.join(stamped_parts)
                                     
                                     valid_image_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'}
@@ -1050,11 +961,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
                                         orig_url_t = get_hash_url(local_main_path, main_url)
                                         
-                                        # 🔥 取得一般圖片的長寬比
                                         ar_str = ""
                                         try:
                                             with Image.open(local_main_path) as tmp_img:
-                                                # ✨ 改為傳遞真實寬高
                                                 ar_str = f"&w={tmp_img.width}&h={tmp_img.height}"
                                         except Exception:
                                             pass
@@ -1094,24 +1003,19 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             
                                             if os.path.exists(thumb_local_path):
                                                 thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
-                                                
                                                 ar_str = ""
                                                 try:
                                                     with Image.open(thumb_local_path) as tmp_img:
-                                                        # ✨ 改為傳遞真實寬高
                                                         ar_str = f"&w={tmp_img.width}&h={tmp_img.height}"
                                                 except Exception:
                                                     pass
-                                                    
                                                 final_stamped_url += f"#poster={thumb_url}{ar_str}"
                                         else:
-                                            # 如果使用者手動指定了封面，把剛剛算好的 poster_ar_str 接上去
                                             final_stamped_url += poster_ar_str
 
                                         return f"![{alt_text}]({final_stamped_url}{title_str})"
                                             
                                     else:
-                                        # 影片或音樂，把 poster_ar_str 接到網址上
                                         return f"![{alt_text}]({final_stamped_url}{poster_ar_str}{title_str})"
                                         
                                 return f"![{alt_text}]({url_part})"
@@ -1122,15 +1026,12 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 nonlocal art_needs_update
                                 try:
                                     prefix, url, suffix = match.group(1), match.group(2), match.group(3)
-                                    
-                                    # 如果是外部網址或 data URI，直接放行，不進行任何本地處理
                                     if url.startswith(('http://', 'https://', 'data:')) or 'projects/' in url:
                                         return f"{prefix}{url}{suffix}"
                                         
                                     clean_url = url[2:] if url.startswith('./') else url
                                     orig_url = f"{real_path}{clean_url}"
                                     
-                                    # ✨ 同步濾掉 HTML 標籤內的參數
                                     clean_local_url = orig_url.split('?')[0].split('#')[0]
                                     local_img_path = os.path.normpath(clean_local_url)
                                     
@@ -1148,7 +1049,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
-                                        # ✨ 內文縮圖 Hash 判定
                                         inline_status, img_hash = check_hash_status(local_img_path, thumb_local_path, art_cache, local_img_path, a_overwrite_thumb)
                                         current_hashes[local_img_path] = img_hash
                                         
@@ -1168,7 +1068,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_url = get_hash_url(thumb_local_path, f"./api/{proj_id}/{art_id}/thumbnails/{thumb_filename}")
                                         orig_url_t = get_hash_url(local_img_path, orig_url)
                                         
-                                        # 🔥 取得一般圖片的真實寬高，直接作為 HTML 屬性與 Style 注入！
                                         size_attrs = ""
                                         try:
                                             with Image.open(local_img_path) as tmp_img:
@@ -1176,18 +1075,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         except Exception:
                                             pass
                                         
-                                        # ✨ 拔除不必要的網址參數，直接寫入原生 HTML 標籤內，並保有 data-full 屬性！
                                         return f'{prefix}{thumb_url}" data-full="{orig_url_t}"{size_attrs}{suffix[1:]}'
                                         
                                     return f"{prefix}{url}{suffix}"
                                 except Exception as inner_e:
-                                    # ✨ 若字串替換過程中發生任何不可預期錯誤，印出細節並原封不動退回原本的標籤，保證腳本絕不崩潰！
-                                    print(f"    ⚠️ HTML 圖片替換發生錯誤 ({url}): {inner_e}")
+                                    cout.warn(f"HTML 圖片替換發生錯誤 ({url}): {inner_e}", indent=2)
                                     return match.group(0)
                                 
                             content = re.sub(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)', replace_html_img, content)
 
-                            # ✨ 處理 Markdown 轉 JSON (透過 Hash)
                             stats["json_total"] += 1
                             json_status, md_hash = check_hash_status(md_file_path, content_filepath, art_cache, 'md_source', a_overwrite_json)
                             current_hashes['md_source'] = md_hash
@@ -1195,15 +1091,11 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             if json_status in ('NEW', 'UPDATED'):
                                 art_needs_update = True
 
-                            # 單篇文章 Share 中轉頁處理 & OG 生成
                             art_title = meta_title
                             art_desc = meta_desc if meta_desc else proj_desc
                             og_local_path = os.path.join(art_dir, "og.webp")
                             
-                            # ✨ 【修復】精準繼承文章群組的專屬 OG 封面
                             art_group = sub_data.get('group')
-                            
-                            # ✨ 智慧偵測：若文章沒明確指定 group，找出該專案的「預設群組」
                             if not art_group and 'groups' in proj_data:
                                 for g_id, g_info in proj_data['groups'].items():
                                     if g_info.get('default'):
@@ -1212,7 +1104,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         
                             group_cover_url = None
                             if 'groups' in proj_data and art_group and art_group in proj_data['groups']:
-                                # 讀取剛剛在上方處理好的完美 1200x630 OG 圖網址！
                                 group_cover_url = proj_data['groups'][art_group].get('og_image')
                             
                             if meta_cover:
@@ -1220,11 +1111,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 local_cover_path = os.path.join(item_path, meta_cover)
                                 bg_image_path = os.path.join("assets", "og.png")
                                 
-                                # ✨ 文章 OG Hash 判定
                                 art_og_status, og_src_hash = check_hash_status(local_cover_path, og_local_path, art_cache, 'og_cover', a_overwrite_og)
                                 current_hashes['og_cover'] = og_src_hash
                                 
-                                # ✨ 修正 1：改用 art_og_status 獨立判定。只要有丟新圖片，就觸發 OG 生成！
                                 if art_og_status in ('NEW', 'UPDATED'):
                                     art_needs_update = True
                                     if create_og_image(local_cover_path, og_local_path, bg_image_path):
@@ -1243,7 +1132,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 art_thumb_local_path = os.path.join(art_dir, art_thumb_filename)
                                 stats["thumb_total"] += 1
                                 
-                                # ✨ 文章封面縮圖 Hash 判定
                                 art_thumb_status, thumb_src_hash = check_hash_status(local_cover_path, art_thumb_local_path, art_cache, 'thumb_cover', a_overwrite_thumb)
                                 current_hashes['thumb_cover'] = thumb_src_hash
                                 
@@ -1262,25 +1150,20 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     
                                 valid_api_files.add(os.path.abspath(art_thumb_local_path))
                             else:
-                                # ✨ 【修改】執行 SEO OG 分享圖繼承：群組封面 -> 專案封面 
-                                # (使用已經帶有 Hash 的 proj_img_hashed 進行兜底)
                                 art_img = group_cover_url if group_cover_url else proj_img_hashed
                                 
                             art_target_url = f"/?p={proj_id}&a={art_id}"
                             art_share_url = f"{BASE_URL}/api/{proj_id}/{art_id}/index.html"
                             art_html_path = os.path.join(art_dir, "index.html")
 
-                            # ✨ 文章 HTML Hash 判定
                             art_html_status, art_detail_hash = check_hash_status(art_detail_path, art_html_path, art_cache, 'art_detail', a_overwrite_json)
                             current_hashes['art_detail'] = art_detail_hash
                             
-                            # ✨ 智慧判斷：如果文章有自己的封面，才重新獲取 Hash；否則沿用已經帶有 Hash 的繼承網址
                             if meta_cover:
                                 art_img_hashed = get_hash_url(og_local_path, art_img) if os.path.exists(og_local_path) else get_hash_url(local_cover_path, art_img)
                             else:
                                 art_img_hashed = art_img
 
-                            # ✨ 終極連動：只要文章自身有變 (art_needs_update)，或是專案/群組有變 (proj_needs_update)，HTML 都要重刷！
                             if art_html_status in ('NEW', 'UPDATED') or art_needs_update or proj_needs_update:
                                 art_needs_update = True
                                 with open(art_html_path, "w", encoding="utf-8") as f:
@@ -1296,12 +1179,10 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     
                             valid_api_files.add(os.path.abspath(art_html_path))
 
-                            # ✨ 如果該文章有任何變動，覆寫 contents.json 並寫入快取字典
                             if art_needs_update:
                                 with open(content_filepath, 'w', encoding='utf-8') as af:
                                     json.dump({"content": content, "hashes": current_hashes}, af, ensure_ascii=False)
                                 
-                                # ✨ 補上缺漏的 JSON 統計邏輯！
                                 if json_status == 'NEW': 
                                     stats["json_new"] += 1
                                 else: 
@@ -1318,9 +1199,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 "content_path": f"./api/{proj_id}/{art_id}/{content_filename}"
                             }
                             
-                            # ✨ 新增這行：抓取文章級別的最低版本要求
                             if sub_data.get('min_sys_version'): article_obj["min_sys_version"] = str(sub_data.get('min_sys_version'))
-
                             if meta_desc: article_obj["description"] = meta_desc
                             if meta_cover: article_obj["cover_image"] = meta_cover_url
                             if sub_data.get('date'): article_obj["date"] = sub_data.get('date')
@@ -1344,14 +1223,12 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     else:
                                         article_obj[f'is_{key}' if key != 'pinned' else 'pinned'] = val
 
-                            # ✨ 智慧群組繼承：直接使用上方 (第 545 行) 已經判定好的 art_group (包含預設群組)
                             if 'groups' in proj_data and art_group:
                                 article_obj['group'] = art_group
 
                             articles.append(article_obj)
                         except Exception as e:
-                            print(f"⚠️ 處理文章失敗 {md_file_path}: {e}")
-                            # ✨ 當文章處理失敗時，將該文章的 api 資料夾加入保護白名單，防止誤刪
+                            cout.warn(f"處理文章失敗 {md_file_path}: {e}")
                             if 'art_dir' in locals():
                                 protected_api_dirs.add(os.path.abspath(art_dir))
 
@@ -1384,9 +1261,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
     output_data["projects"].sort(key=proj_sort)
 
-    print(f"✅ JSON 結構掃描完成，包含 {len(output_data['projects'])} 個專案。")
+    cout.success(f"JSON 結構掃描完成，包含 {len(output_data['projects'])} 個專案。")
 
-    # 強制寫入 all_projects.json (依據需求，即使未更新也強制生成確保檔案存在)
     with open('all_projects.json', 'w', encoding='utf-8') as f:
         json.dump(output_data, f, ensure_ascii=False, indent=2)
 
@@ -1394,12 +1270,10 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 # 🧹 清理廢棄 API 資料夾
 # ==========================================
 def cleanup_old_api_files(api_dir="api"):
-    print(f"\n==========================================")
-    print(f"🧹 [清理階段] 開始刪除無效與舊版 API 資料...")
-    print(f"==========================================")
+    cout.stage("清理階段", "開始刪除無效與舊版 API 資料...", icon_key='clean')
     
     if not os.path.exists(api_dir):
-        print("沒有找到 api 資料夾，略過清理。")
+        cout.skip("沒有找到 api 資料夾，略過清理。", indent=0)
         return
         
     deleted_files = 0
@@ -1407,8 +1281,6 @@ def cleanup_old_api_files(api_dir="api"):
     
     for root, dirs, files in os.walk(api_dir, topdown=False):
         current_root_abs = os.path.abspath(root)
-        
-        # ✨ 檢查當前目錄是否受到保護 (受保護資料夾的子目錄也一併保護)
         is_protected = any(current_root_abs.startswith(p_dir) for p_dir in protected_api_dirs)
         
         if is_protected:
@@ -1419,17 +1291,16 @@ def cleanup_old_api_files(api_dir="api"):
             if file_path not in valid_api_files:
                 os.remove(file_path)
                 deleted_files += 1
-                print(f"🗑️ 刪除廢棄檔案: {os.path.relpath(file_path)}")
+                cout.action("刪除廢棄檔案", os.path.relpath(file_path), icon_key='delete', color='yellow', tree=True)
                 
         for name in dirs:
             dir_path = os.path.join(root, name)
-            # ✨ 只有在資料夾真的為空時才刪除
             if not os.listdir(dir_path):
                 os.rmdir(dir_path)
                 deleted_dirs += 1
-                print(f"📁 刪除空資料夾: {os.path.relpath(dir_path)}")
+                cout.action("刪除空資料夾", os.path.relpath(dir_path), icon_key='folder', color='gray', tree=True)
             
-    print(f"✅ 清理完成！共刪除 {deleted_files} 個檔案, {deleted_dirs} 個資料夾。")
+    cout.success(f"清理完成！共刪除 {deleted_files} 個檔案, {deleted_dirs} 個資料夾。")
 
 
 if __name__ == "__main__":
@@ -1440,24 +1311,27 @@ if __name__ == "__main__":
     overwrite_og = False
     overwrite_thumb = False
     overwrite_pdf_thumb = False
-    target_folders = set() # ✨ 新增：目標資料夾集合
+    target_folders = set()
     
     if is_github_actions:
-        print("\n🤖 [CI/CD 模式] 偵測到 GitHub Actions 環境。")
-        print("   -> 自動停用互動提問，啟用【全域智慧跳過】以加速佈署流程 (僅更新修改過的檔案)。\n")
+        cout.stage("CI/CD 模式", "偵測到 GitHub Actions 環境", icon_key='bot')
+        cout.info("自動停用互動提問，啟用【全域智慧跳過】以加速佈署流程 (僅更新修改過的檔案)。\n", indent=1, tree=True)
     else:
-        print("請選擇整體作業模式？ (包含圖片轉檔與 JSON 打包)")
-        print("  [1] 全域智慧跳過 (遇到舊檔且無修改則跳過，速度最快 - 預設)")
-        print("  [2] 全域強制複寫 (重新處理所有檔案與縮圖)")
-        print("  [3] 自訂義 (針對各項處理分別選擇)")
-        print("  [4] 🎯 指定資料夾強制更新 (僅強制重刷特定專案或文章)")
-        
-        choice = input("請選擇 [1, 2, 3 或 4] (預設 1): ").strip()
+        choice = cout.menu(
+            "請選擇整體作業模式？ (包含圖片轉檔與 JSON 打包)",
+            [
+                ("1", "全域智慧跳過 (遇到舊檔且無修改則跳過，速度最快 - 預設)"),
+                ("2", "全域強制複寫 (重新處理所有檔案與縮圖)"),
+                ("3", "自訂義 (針對各項處理分別選擇)"),
+                ("4", "指定資料夾強制更新 (僅強制重刷特定專案或文章)")
+            ],
+            prompt_text="請選擇 [1, 2, 3 或 4]", default="1"
+        )
         
         if choice == '2':
             overwrite_webp = overwrite_json = overwrite_og = overwrite_thumb = overwrite_pdf_thumb = True
         elif choice == '3':
-            print("\n-- 自訂義細項設定 --")
+            cout.info("\n-- 自訂義細項設定 --", icon_key='config')
             w_choice = input("  [A] 處理選項 (1/5): 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_webp = (w_choice == '2')
             
@@ -1473,59 +1347,45 @@ if __name__ == "__main__":
             p_choice = input("  [E] 處理選項 (5/5): PDF 封面預覽縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
             overwrite_pdf_thumb = (p_choice == '2')
         elif choice == '4':
-            targets = input("\n🎯 請輸入要強制更新的資料夾名稱 (多個以空白分隔，如 '02_mind 24_create'): ").strip()
+            targets = input(f"\n{cout.icon('target')} 請輸入要強制更新的資料夾名稱 (多個以空白分隔，如 '02_mind 24_create'): ").strip()
             if targets:
                 target_folders = set(targets.split())
-                # ✨ 新增：明確印出即將強制更新的目標
-                print(f"\n🎯 [指定更新模式] 將強制重刷以下項目及其內容: {', '.join(target_folders)}")
+                cout.action("指定更新模式", f"將強制重刷以下項目及其內容: {', '.join(target_folders)}", icon_key='target', color='magenta', tree=False)
 
     convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
     
-    print(f"\n==========================================")
-    print(f"📦 [第二階段] 開始解析 Markdown 並打包 JSON 資料庫...")
-    print(f"==========================================")
-    # ✨ 將 target_folders 傳遞給打包引擎
+    cout.stage("Markdown解析", "開始解析 Markdown 並打包 JSON 資料庫...", icon_key='stage')
     generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb, overwrite_pdf_thumb=overwrite_pdf_thumb, target_folders=target_folders)
 
     # 1. 先產生最新的 changelogs.json
     generate_changelogs_json()
 
-    # 2. ✨ 核心修正：有了日誌之後，再讀取它來生成 version.json 並同步版號！
-    # 🔥 將上方已經偵測好的 is_github_actions 變數傳進去
+    # 2. 讀取日誌生成 version.json 並同步版號
     generate_version_json(is_github_actions)
 
-    print(f"\n📊 [處理統計]")
-    print(f"  - 專案 HTML (index)       : 共 {stats['proj_total']:>4} 個 | 新增 {stats['proj_new']:>4} 個 | 更新 {stats['proj_updated']:>4} 個 | 略過 {stats['proj_skipped']:>4} 個")
-    print(f"  - 文章 HTML (index)       : 共 {stats['art_total']:>4} 個 | 新增 {stats['art_new']:>4} 個 | 更新 {stats['art_updated']:>4} 個 | 略過 {stats['art_skipped']:>4} 個")
-    print(f"  - 內文 JSON (contents)    : 共 {stats['json_total']:>4} 個 | 新增 {stats['json_new']:>4} 個 | 更新 {stats['json_updated']:>4} 個 | 略過 {stats['json_skipped']:>4} 個")
-    
-    # ✨ 明確標示這兩項是「專案與文章」的
-    print(f"  - 專案與文章 OG 圖        : 共 {stats['og_total']:>4} 張 | 新增 {stats['og_new']:>4} 張 | 更新 {stats['og_updated']:>4} 張 | 略過 {stats['og_skipped']:>4} 張")
-    print(f"  - 專案與文章封面縮圖      : 共 {stats['thumb_total']:>4} 張 | 新增 {stats['thumb_new']:>4} 張 | 更新 {stats['thumb_updated']:>4} 張 | 略過 {stats['thumb_skipped']:>4} 張")
-    
-    print(f"  - 群組分享圖 (group_og)   : 共 {stats['group_og_total']:>4} 張 | 新增 {stats['group_og_new']:>4} 張 | 更新 {stats['group_og_updated']:>4} 張 | 略過 {stats['group_og_skipped']:>4} 張")
-    print(f"  - 群組縮圖 (group_thumb)  : 共 {stats['group_thumb_total']:>4} 張 | 新增 {stats['group_thumb_new']:>4} 張 | 更新 {stats['group_thumb_updated']:>4} 張 | 略過 {stats['group_thumb_skipped']:>4} 張")
-    print(f"  - 內文縮圖 (inline_thumb) : 共 {stats['inline_thumb_total']:>4} 張 | 新增 {stats['inline_thumb_new']:>4} 張 | 更新 {stats['inline_thumb_updated']:>4} 張 | 略過 {stats['inline_thumb_skipped']:>4} 張")
-    print(f"  - PDF 預覽圖 (pdf_thumb)  : 共 {stats['pdf_thumb_total']:>4} 張 | 新增 {stats['pdf_thumb_new']:>4} 張 | 更新 {stats['pdf_thumb_updated']:>4} 張 | 略過 {stats['pdf_thumb_skipped']:>4} 張")
+    # ✨ 使用 Cout 輸出對齊的統計表格 (自動為新增/更新上色)
+    cout.stats_table(stats, [
+        ("專案 HTML (index)", "proj"),
+        ("文章 HTML (index)", "art"),
+        ("內文 JSON (contents)", "json"),
+        ("專案與文章 OG 圖", "og"),
+        ("專案與文章封面縮圖", "thumb"),
+        ("群組分享圖 (group_og)", "group_og"),
+        ("群組縮圖 (group_thumb)", "group_thumb"),
+        ("內文縮圖 (inline_thumb)", "inline_thumb"),
+        ("PDF 預覽圖 (pdf_thumb)", "pdf_thumb"),
+    ])
 
     cleanup_old_api_files()
     
-    print(f"\n==========================================")
-    print(f"📦 [最後階段] 開始修改路徑...")
-    print(f"==========================================")
+    cout.stage("最後階段", "開始修改路徑...", icon_key='stage')
     update_extensions_to_webp()
 
     # 3. 執行細項 Hash 快取引擎，統整並輸出 data_version.json
     update_data_version()
 
-    # 👇 4. 呼叫最後的自動化壓縮引擎！
+    # 4. 呼叫最後的自動化壓縮引擎
     minify_assets()
 
-    print(f"\n==========================================")
-    print(f"過期tag提示 ({len(expiration_l)})")
-    print(f"==========================================")
-    if expiration_l:
-        for i, val in enumerate(expiration_l, 1):
-            print(i, val)
-    else:
-        print('無提示')
+    # 5. ✨ 統一輸出過期或解封提醒清單
+    cout.flush_reminders("過期 tag 提示")

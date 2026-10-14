@@ -3,6 +3,12 @@ import glob
 from PIL import Image
 from datetime import datetime
 
+# ✨ 支援由外部主程式呼叫 (tools.cout) 或在 tools 目錄下單獨執行 (cout)
+try:
+    from tools.cout import cout
+except ImportError:
+    from cout import cout
+
 # ✨ 魔法路徑：自動從 tools 資料夾往上一層找到 projects
 DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'projects'))
 
@@ -19,7 +25,7 @@ def get_copyright_exif(img):
     copyright_text = f"Copyright (c) {current_year} {AUTHOR_NAME}. All rights reserved."
     
     clean_exif = img.getexif()
-    clean_exif.clear() 
+    clean_exif.clear()
     clean_exif[40093] = (AUTHOR_NAME + '\x00').encode('utf-16le')
     clean_exif[40092] = (copyright_text + '\x00').encode('utf-16le')
     clean_exif[315] = "Azustock" 
@@ -32,25 +38,27 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
     掃描目錄下的圖片，進行「降解析度」、「壓印浮水印」、「寫入版權 EXIF」並轉換為 WebP。
     包含已存在檔案的處理策略選擇，並支援無外掛自動化執行。
     """
-    print(f"\n==========================================")
-    print(f"🔍 [第一階段] 啟動 WebP 轉檔與防禦系統...")
-    print(f"==========================================")
+    cout.stage("WebP系統", "啟動 WebP 轉檔與防禦系統...", icon_key='search')
     
     if auto_mode is not None:
         force_overwrite = auto_mode
         mode_text = "複寫" if force_overwrite else "跳過"
-        print(f"⚙️ 系統自動執行中：已設定遇到舊檔時「{mode_text}」。\n")
+        cout.info(f"系統自動執行中：已設定遇到舊檔時「{mode_text}」。", icon_key='config')
     else:
-        print("遇到已經存在的 .webp 檔案時，您希望如何處理？")
-        print("  [1] 跳過 (保留舊檔案，速度最快 - 預設)")
-        print("  [2] 複寫 (強制重新轉檔並覆蓋舊檔案)")
-        user_choice = input("請選擇 [1 或 2] (直接按 Enter 預設為 1): ").strip()
+        user_choice = cout.menu(
+            "遇到已經存在的 .webp 檔案時，您希望如何處理？",
+            [
+                ("1", "跳過 (保留舊檔案，速度最快 - 預設)"),
+                ("2", "複寫 (強制重新轉檔並覆蓋舊檔案)")
+            ],
+            prompt_text="請選擇 [1 或 2]", default="1"
+        )
         force_overwrite = (user_choice == '2')
 
-    if force_overwrite and auto_mode is None:
-        print("\n⚠️ 已選擇「複寫」模式：將強制重新轉檔所有圖片！\n")
-    elif auto_mode is None:
-        print("\n✅ 已選擇「跳過」模式：只會處理尚未轉檔的新圖片。\n")
+        if force_overwrite:
+            cout.warn("已選擇「複寫」模式：將強制重新轉檔所有圖片！")
+        else:
+            cout.success("已選擇「跳過」模式：只會處理尚未轉檔的新圖片。")
 
     search_patterns = [
         os.path.join(directory, "**/*.png"),
@@ -63,7 +71,7 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
         image_files.extend(glob.glob(pattern, recursive=True))
 
     if not image_files:
-        print("沒有找到需要轉換的圖片。")
+        cout.skip("沒有找到需要轉換的圖片。", indent=0)
         return
 
     success_count = 0
@@ -73,11 +81,11 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
         try:
             file_name, ext = os.path.splitext(img_path)
             webp_path = f"{file_name}.webp"
+            existed_before = os.path.exists(webp_path)
             
-            if os.path.exists(webp_path):
-                if not force_overwrite:
-                    skip_count += 1
-                    continue
+            if existed_before and not force_overwrite:
+                skip_count += 1
+                continue
                 
             with Image.open(img_path) as img:
                 clean_img = img.convert("RGBA")
@@ -101,31 +109,28 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
 
                 clean_img.save(webp_path, "webp", quality=quality, exif=exif_bytes)
             
-            original_size = os.path.getsize(img_path) / 1024
-            new_size = os.path.getsize(webp_path) / 1024
-            
-            if force_overwrite and os.path.exists(webp_path):
-                 print(f"🔄 複寫成功: {os.path.basename(img_path)} ({original_size:.1f} KB -> {new_size:.1f} KB)")
+            if existed_before and force_overwrite:
+                cout.file_size_action("複寫成功", img_path, webp_path, icon_key='refresh', tree=True)
             else:
-                 print(f"✅ 轉換成功: {os.path.basename(img_path)} ({original_size:.1f} KB -> {new_size:.1f} KB)")
+                cout.file_size_action("轉換成功", img_path, webp_path, icon_key='success', tree=True)
             
             success_count += 1
             
         except Exception as e:
-            print(f"❌ 處理失敗 {img_path}: {e}")
+            cout.error(f"處理失敗 {img_path}: {e}")
 
-    print("\n==========================================")
-    print("🎉 系統處理完成！")
-    print(f"   - 成功轉檔/複寫: {success_count} 張圖片")
-    print(f"   - 跳過已存在圖: {skip_count} 張圖片")
-    print("==========================================")
+    # ✨ 移除多餘的 stage 橫幅，直接以單行狀態總結收尾
+    if success_count > 0:
+        cout.success(f"WebP 系統處理完成！成功轉檔/複寫: {success_count} 張 | 略過已存在圖: {skip_count} 張。", icon_key='party')
+    else:
+        cout.skip(f"圖片皆已為最新 WebP 格式，共略過 {skip_count} 張已存在圖片。", indent=0)
 
 def generate_cover_thumbnail(src_path, dest_path, max_width=320, quality=80):
     """
     讀取原始圖片，等比例縮小並轉換為 WebP，存入 api 資料夾。
     """
     if not os.path.exists(src_path):
-        print(f"⚠️ 找不到來源圖片: {src_path}")
+        cout.warn(f"找不到來源圖片: {src_path}")
         return False
         
     try:
@@ -148,7 +153,7 @@ def generate_cover_thumbnail(src_path, dest_path, max_width=320, quality=80):
             return True
             
     except Exception as e:
-        print(f"❌ 縮圖生成失敗 {src_path}: {e}")
+        cout.error(f"縮圖生成失敗 {src_path}: {e}")
         return False
 
 if __name__ == "__main__":

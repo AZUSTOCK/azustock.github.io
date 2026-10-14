@@ -2,13 +2,19 @@ import os
 from typing import Literal
 from PIL import Image
 
+# ✨ 支援由外部主程式呼叫 (tools.cout) 或在 tools 目錄下單獨執行 (cout)
+try:
+    from tools.cout import cout
+except ImportError:
+    from cout import cout
+
 # ✨ 魔法路徑：自動從 tools 資料夾往上一層找到 projects
 DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'projects'))
 
 def verify_signature(image_path):
     # 如果檔案不存在就跳過，避免報錯
     if not os.path.exists(image_path):
-        print(f"⚠️ 檔案不存在，跳過測試: {image_path}")
+        cout.warn(f"檔案不存在，跳過測試: {image_path}")
         return
         
     try:
@@ -23,12 +29,17 @@ def verify_signature(image_path):
             artist = artist_raw.decode('utf-16le').rstrip('\x00') if artist_raw else "未找到作者資訊"
             copyright_info = copyright_raw.decode('utf-16le').rstrip('\x00') if copyright_raw else "未找到版權資訊"
             
-            print(f"🔍 正在檢查: {os.path.basename(image_path)}")
-            print(f"   👤 作者: {artist}")
-            print(f"   ©️ 版權: {copyright_info}\n")
+            artist_color = 'green' if artist_raw else 'yellow'
+            copy_color = 'green' if copyright_raw else 'yellow'
+
+            cout.info(f"正在檢查: {cout.styled(os.path.basename(image_path), 'bold', 'cyan')}", icon_key='search')
+            with cout.indent():
+                cout.action("作者", artist, color=artist_color, tree=True, indent=-1)
+                cout.action("版權", copyright_info, color=copy_color, tree=True, indent=-1)
+            print()
             
     except Exception as e:
-        print(f"讀取失敗 {image_path}: {e}")
+        cout.error(f"讀取失敗 {image_path}: {e}")
 
 def picture_path(category: str| None, project: str, article: str, filename: Literal['cover_thumb.webp', 'og.webp'], batch_name: Literal['thumbnails', 'articles', None]= 'articles', inner_batch_name=None, source_dir: Literal['projects', 'api', None]= 'projects', auto=True):
     """WIP"""
@@ -58,6 +69,6 @@ if __name__ == "__main__":
     tup += (os.path.join(DEFAULT_DIR, "art", "01_azu5atellite", "articles", "01_palindrome", "clothing", "normal.webp"),)
     tup += (r"C:\Users\iambe\Desktop\git page\api\data\vocaloid\thumbnails\thumb_ボかロ.webp",)
     
-    print("== 啟動 EXIF 數位簽章檢測 ==\n")
+    cout.stage("數位簽章檢測", "啟動 EXIF 版權資訊驗證...", icon_key='search')
     for path in tup:
         verify_signature(path)
