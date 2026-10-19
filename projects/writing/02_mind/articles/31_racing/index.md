@@ -1,4 +1,12 @@
 # 「賽跑」
+
+<div class="tab-buttons">
+    <button class="tab-btn active" onclick="window.switchTabPanel('p-1', this, 'Group')">賽道</button>
+    <button class="tab-btn" onclick="window.switchTabPanel('p-2', this, 'Group')">內圈</button>
+</div>
+
+<div id="p-1" class="tab-panel" data-group="Group" style="display: block;">
+
 拜託了，  
 明天可不可以不要到來？  
 今天可不可以快點結束？  
@@ -21,9 +29,10 @@
 我已經在的地方。  
 <br/>  
 
----
+</div>
 
-## 內圈
+<div id="p-2" class="tab-panel" data-group="Group" style="display: none;">
+
 為什麼每天都要碰這個討厭的東西？  
 為什麼？  
 為什麼？  
@@ -56,3 +65,5 @@
 雖然很難忍受，很想結束，  
 但是心跳卻從未  
 停止。
+
+</div>

@@ -2,7 +2,7 @@
 1. 
 
 ## add
-1. 
+1. switchTabPanel
 
 ## change / update
 1. tools

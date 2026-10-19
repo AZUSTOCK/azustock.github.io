@@ -431,6 +431,55 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* 🧰 第三層：全域共用 UI 元件 (Global UI Components)                           */
 /* ========================================================================== */
 
+/* ==========================================
+   ✨ 通用分頁切換按鈕 (Tab Buttons)
+   ========================================== */
+.tab-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    /* 加入底部邊線，讓它看起來更有導覽列的感覺 */
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 0.2rem;
+}
+
+/* 預設：純文字風格 (仿版權頁連結) */
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.4rem 0.6rem;
+    transition: all 0.2s ease;
+    /* 準備一條隱形的底線 */
+    border-bottom: 2px solid transparent;
+}
+
+.tab-btn:hover {
+    color: var(--accent-2);
+}
+
+/* Active 狀態：字體變亮並顯示底線 */
+.tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* ✨ 覆寫機制：如果同時加上了 .btn，就拔除底線，完全套用實體按鈕的樣式！ */
+.tab-btn.btn {
+    border-bottom: 1px solid var(--accent); /* 恢復 .btn 的原生邊框 */
+}
+.tab-btn.btn.active {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: var(--card);
+    box-shadow: 0 4px 12px var(--card);
+}
+
+
 /* 3-1. 基礎按鈕 */
 .btn { 
     display: inline-flex; 

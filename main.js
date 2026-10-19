@@ -35,10 +35,16 @@ window.SENSITIVE_TEMPLATES = {
         color: "var(--error-color)"
     },
     "MAIN": {
-        title: " (Content Notice)",
+        title: "內容提示 (Content Notice)",
         desc: "建議先閱讀前篇，以獲得較完整的體驗。<br>點擊前往即表示您已了解。",
         btn_text: "我已閱讀並前往",
         color: "var(--group-c5)"
+    },
+    "INSIDE": {
+        title: "風險提示 (Risk Warning)",
+        desc: "此條目含有警示內容，具高度風險，閱讀後所產生之後果概自行承受。<br>點擊前往即表示您已了解。",
+        btn_text: "我已接受並前往",
+        color: "var(--group-c4)"
     }
 };
 
@@ -6660,6 +6666,31 @@ window.switchBilingualTab = function(lang, btn) {
     const tabs = btn.closest('.lang-tabs');
     if (tabs) {
         tabs.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    }
+    btn.classList.add('active');
+};
+
+// ==========================================
+// ✨ 通用分頁/視角切換引擎 (Tabbed Content Switcher)
+// ==========================================
+window.switchTabPanel = function(panelId, btn, groupName) {
+    // 1. 尋找所有屬於同一個群組的內容面板並全部隱藏
+    // 限制在當前的文章內搜尋，避免干擾到其他地方的排版
+    const container = btn.closest('.markdown-body') || document;
+    container.querySelectorAll(`.tab-panel[data-group="${groupName}"]`).forEach(el => {
+        el.style.display = 'none';
+    });
+
+    // 2. 顯示被點擊的那一個面板
+    const targetPanel = document.getElementById(panelId);
+    if (targetPanel) {
+        targetPanel.style.display = 'block';
+    }
+
+    // 3. 更新按鈕的 active 狀態
+    const tabs = btn.closest('.tab-buttons') || btn.parentElement;
+    if (tabs) {
+        tabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     }
     btn.classList.add('active');
 };
