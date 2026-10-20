@@ -247,10 +247,20 @@
     --svg-arrow-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='19' y1='12' x2='5' y2='12'/%3E%3Cpolyline points='12 19 5 12 12 5'/%3E%3C/svg%3E");
 }
 
-/* 👇 請補上這兩行，動畫引擎才會真正啟動！ */
-#modal-body, #modal-top-left, #toc-mount-point { transition: var(--modal-transition) !important; will-change: var(--modal-will-change); transform-origin: var(--modal-origin); }
-#modal-body.content-fade-out, #modal-top-left.content-fade-out, #toc-mount-point.content-fade-out { opacity: var(--modal-out-opacity) !important; transform: var(--modal-out-transform) !important; filter: var(--modal-out-filter) !important; pointer-events: none; }
+/* 👇 1. 平時常駐狀態：拔除 will-change，解除 #modal-body 的濾鏡隔離結界！ */
+#modal-body, #modal-top-left, #toc-mount-point { 
+    transition: var(--modal-transition) !important; 
+    transform-origin: var(--modal-origin); 
+}
 
+/* 👇 2. 只有在切換文章的過場瞬間才啟用硬體加速 */
+#modal-body.content-fade-out, #modal-top-left.content-fade-out, #toc-mount-point.content-fade-out { 
+    will-change: var(--modal-will-change);
+    opacity: var(--modal-out-opacity) !important; 
+    transform: var(--modal-out-transform) !important; 
+    filter: var(--modal-out-filter) !important; 
+    pointer-events: none; 
+}
 
 /* ========================================================================== */
 /* 🏗️ 第二層：全域基底與版面 (Base & Layout)                                   */
@@ -432,51 +442,102 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================================================================== */
 
 /* ==========================================
-   ✨ 通用分頁切換按鈕 (Tab Buttons)
+   ✨ 通用分頁切換按鈕 (Tab Buttons) - 卡片式頁籤風格
    ========================================== */
 .tab-buttons {
     display: flex;
-    gap: 12px;
+    gap: 4px; /* 縮小頁籤之間的間距，讓它們看起來更緊密 */
     margin-bottom: 1.5rem;
     flex-wrap: wrap;
-    /* 加入底部邊線，讓它看起來更有導覽列的感覺 */
-    border-bottom: 1px solid var(--card-border);
-    padding-bottom: 0.2rem;
+
+    /* ✨ 底部導覽橫線：這條線會貫穿整個容器底部 */
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 0; /* 歸零，讓頁籤直接貼合底線 */
+
+    /* ✨ 黏性定位魔法 */
+    position: sticky;
+    /* 確保它剛好貼在 modal-top-bar 下緣，不會有縫隙讓文字漏出來 */
+    top: calc(var(--top-bar-height, 80px) - 1px); 
+    
+    /* ✨ 核心修復 1：提高層級，確保絕對壓過所有 .markdown-body 內的兄弟元素！ */
+    z-index: 100; 
+    
+    /* ✨ 核心修復 2：完美移植 .modal-top-bar 的原生配方 */
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    
+    /* ✨ 核心修復 3：利用陰影填補上方與系統列可能產生的 1px 縫隙，防止光暈斷層 */
+    box-shadow: 0 -4px 10px -2px var(--bg);
+    
+    padding-top: 0.8rem; /* 稍微增加上方空間 */
+    margin-left: -1rem; 
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
 }
 
-/* 預設：純文字風格 (仿版權頁連結) */
+/* 基礎頁籤樣式 */
 .tab-btn {
     background: transparent;
-    border: none;
+
+    /* ✨ 修復防跳動：上下左右都鎖死 2px 邊框，並將底部設為透明！ */
+    border: 2px solid transparent; 
+    border-bottom: 2px solid transparent; 
+    
     color: var(--muted);
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    padding: 0.4rem 0.6rem;
-    transition: all 0.2s ease;
-    /* 準備一條隱形的底線 */
-    border-bottom: 2px solid transparent;
+    
+    padding: 0.5rem 1rem;
+    
+    /* ✨ 關鍵魔法：讓按鈕往下「吃掉」底線的空間 */
+    margin-bottom: -2px; 
+    
+    /* ✨ 拔除 all，精準指定顏色過渡，徹底消滅底線漸變閃爍！ */
+    transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+
+    position: relative; /* 供下方的偽元素底線定位使用 */
 }
 
-.tab-btn:hover {
+/* 未選中時的 Hover 狀態：微微變亮 */
+.tab-btn:not(.active):hover {
     color: var(--accent-2);
+    background: color-mix(in srgb, var(--box-bg) 50%, transparent);
 }
 
-/* Active 狀態：字體變亮並顯示底線 */
+/* ✨ 選中狀態 (Active)：變成實體方塊，並與底線無縫接合！ */
 .tab-btn.active {
     color: var(--accent);
-    border-bottom-color: var(--accent);
+    background: var(--card); /* 使用背景色，蓋掉毛玻璃底色 */
+    
+    /* 畫出左右與上方的實體邊框，顏色與底線相同 */
+    border-color: var(--card-border);
+    
+    /* ✨ 把按鈕底部的邊框顏色，變成跟背景色一樣！完美切斷下方的導覽線！ */
+    border-bottom-color: var(--card); 
+    
+    /* 加一點微妙的上方光暈 */
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
 }
 
-/* ✨ 覆寫機制：如果同時加上了 .btn，就拔除底線，完全套用實體按鈕的樣式！ */
-.tab-btn.btn {
-    border-bottom: 1px solid var(--accent); /* 恢復 .btn 的原生邊框 */
+/* ✨ 在選中狀態的文字下方，加一條不碰到邊框的獨立底線 */
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: 2px; /* 距離底部（文字下方）的距離 */
+    left: 10%;   /* 從左側 10% 開始 */
+    width: 80%;  /* 只佔寬度的 80%，完美避開左右兩側的框線 */
+    height: 2px;
+    background-color: var(--accent);
+    border-radius: 2px;
 }
-.tab-btn.btn.active {
-    background: var(--accent-hover);
-    border-color: var(--accent-hover);
-    color: var(--card);
-    box-shadow: 0 4px 12px var(--card);
+
+/* 如果有人同時加上 .btn (實體按鈕版)，讓它強制失效保持排版一致 */
+.tab-btn.btn {
+    border-radius: 8px 8px 0 0 !important;
+    height: auto !important;
 }
 
 

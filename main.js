@@ -37,12 +37,12 @@ window.SENSITIVE_TEMPLATES = {
     "MAIN": {
         title: "內容提示 (Content Notice)",
         desc: "建議先閱讀前篇，以獲得較完整的體驗。<br>點擊前往即表示您已了解。",
-        btn_text: "我已閱讀並前往",
+        btn_text: "我已了解並前往",
         color: "var(--group-c5)"
     },
     "INSIDE": {
         title: "風險提示 (Risk Warning)",
-        desc: "此條目含有警示內容，具高度風險，閱讀後所產生之後果概自行承受。<br>點擊前往即表示您已了解。",
+        desc: "此條目含有警示內容，具高度風險，閱讀後所產生之後果概自行承受。<br>點擊前往即表示您已接受風險。",
         btn_text: "我已接受並前往",
         color: "var(--group-c4)"
     }
@@ -4819,11 +4819,11 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 // ==========================================
 // 打開具體的「文章內文」
 // ==========================================
-window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0, targetHash = null, restoreInnerScrolls = []) {
+window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0, targetHash = null, restoreInnerScrolls = [], restoreActiveTabs = []) {
     const proj = window.siteProjects.find(p => p.id === projectId);
     const article = proj.articles[articleIndex];
 
-    // ✨ 新增：版本相容性防護網 (文章層級，同時比對專案與文章的要求，取較高者)[cite: 14]
+    // ✨ 新增：版本相容性防護網 (文章層級，同時比對專案與文章的要求，取較高者)
     let targetVersion = proj.min_sys_version || null;
     if (article && article.min_sys_version) {
         if (!targetVersion || window.compareVersions(targetVersion, article.min_sys_version) < 0) {
@@ -4854,7 +4854,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             if (activeContainer) {
                 window.historyStack[window.historyStack.length - 1].scrollTop = activeContainer.scrollTop;
                 
-                // ✨ 修正：改由判斷 view-article 是否存在且顯示中，來記錄內部的直書捲軸
+                // ✨ 修正：改由判斷 view-article 是否存在且顯示中，來記錄內部的直書捲軸與分頁狀態
                 const viewArticle = document.getElementById('view-article');
                 if (viewArticle && viewArticle.style.display !== 'none') {
                     const wrappers = viewArticle.querySelectorAll('.vertical-wrapper');
@@ -4862,11 +4862,17 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                         scrollTop: w.scrollTop,
                         scrollLeft: w.scrollLeft
                     }));
+
+                    // 👇 新增：記錄離開前所有處於 active 狀態的 tab-btn 索引 (支援同一篇內有多組分頁)
+                    const allTabBtns = viewArticle.querySelectorAll('.tab-btn');
+                    window.historyStack[window.historyStack.length - 1].activeTabs = Array.from(allTabBtns)
+                        .map((btn, idx) => btn.classList.contains('active') ? idx : -1)
+                        .filter(idx => idx !== -1);
                 }
             }
         }
         
-        window.historyStack.push({ projectId, articleIndex, scrollTop: 0, innerScrolls: [] });
+        window.historyStack.push({ projectId, articleIndex, scrollTop: 0, innerScrolls: [], activeTabs: [] });
     }
 
     window.lastReadArticleIndex = articleIndex;
@@ -5019,6 +5025,20 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             
             // 建立操作指標
             const activeView = viewArticle || modalBody;
+
+            if (isFromHistory && restoreActiveTabs && restoreActiveTabs.length > 0) {
+                const allTabBtns = activeView.querySelectorAll('.tab-btn');
+                restoreActiveTabs.forEach(idx => {
+                    const targetBtn = allTabBtns[idx];
+                    if (targetBtn && !targetBtn.classList.contains('active')) {
+                        if (typeof targetBtn.onclick === 'function') {
+                            targetBtn.onclick();
+                        } else {
+                            targetBtn.click();
+                        }
+                    }
+                });
+            }
 
             // ==========================================
             // ✨ 啟動進度條引擎 (主進度條 & 直書獨立進度條)
@@ -5694,8 +5714,8 @@ window.goBackInHistory = function() {
     window.historyStack.pop(); 
     const prev = window.historyStack[window.historyStack.length - 1]; 
     
-    // ✨ 修正：傳入 6 個參數，第 5 個給 null (代表沒有錨點)，第 6 個給 innerScrolls 陣列
-    window.openArticle(prev.projectId, prev.articleIndex, true, prev.scrollTop || 0, null, prev.innerScrolls || []); 
+    // ✨ 傳入 7 個參數：第 5 個給 null (無錨點)，第 6 個還原直書捲軸，第 7 個還原分頁按鈕狀態
+    window.openArticle(prev.projectId, prev.articleIndex, true, prev.scrollTop || 0, null, prev.innerScrolls || [], prev.activeTabs || []); 
 };
 
 function closeModal() {

@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 PROJECTS_DIR = 'projects'
-OUTPUT_FILE = 'key_dashboard.html'
+OUTPUT_FILE = './tools/tracker/reports/key_dashboard.html'
 RE_KEY = re.compile(r'\+\+\[KEY:([^\]]+)\]')
 # SILENT 是發放點屬性；完整旗標才匹配，避免把 SILENTLY 當作 SILENT。
 RE_SILENT = re.compile(r'\|SILENT(?=\s*(?:\||$))', re.IGNORECASE)
