@@ -15,7 +15,7 @@
 * 預設日文：^^魔法(まほう)^^
 * 指定語言：^^Apple(/ˈæp.əl/)[en]^^
 
-多行日文排版測試（應自動套用日文字體）：
+**A. 標準多行日文排版測試（套用日文字體與日文專屬寬行距）：**
 
 :::lang[ja]
 **春はあけぼの。**
@@ -24,7 +24,79 @@
 2. 內部也支援 ^^漢字(かんじ)^^
 :::
 
+**B. 不改行距與排版模式（`|no-format`，僅切換字體，行距與對齊完全繼承外部）：**
+
+:::lang[ja|no-format]
+「言葉」——這段日文使用了 `:::lang[ja|no-format]`，只會套用日文字體，行距與字距完全保持預設，不會撐開額外高度。
+:::
+
+<div id="lang-en" class="no-format">
+
+This English paragraph uses `<div id="lang-en" class="no-format">`, applying the English font family while preserving the default line-height and letter-spacing.
+
+</div>
+
 ---
+
+### 1.2 多重分頁切換面板 (Tabbed Panels & Height Sync)
+
+**A. 視窗高度自動鎖定測試（Group 1：搭配 `:::lang[...|no-format]` 與 `.md-divider`）**  
+切換下方三個分頁時，系統會自動測量最長分頁（第一頁）的高度並鎖定，因此下方的分割線與版面絕對不會上下跳動，且點擊上方導覽列的「返回跳轉前」也會連同當下選中的分頁一起復原：
+
+<div class="tab-buttons">
+<button class="tab-btn active" onclick="window.switchTabPanel('p-1', this, 'Group')">中文</button>
+<button class="tab-btn" onclick="window.switchTabPanel('p-2', this, 'Group')">EN</button>
+<button class="tab-btn" onclick="window.switchTabPanel('p-3', this, 'Group')">JP</button>
+</div>
+<div id="p-1" class="tab-panel" data-group="Group" style="display: block;">
+
+:::lang[zh|no-format]
+這裡是第一頁（中文分頁），我們故意多寫幾行文字來撐高這個區塊。
+* 測試項目一：**粗體文字**與 `行內程式碼`
+* 測試項目二：包含防雷貼紙 ||分頁裡面的防雷貼紙也正常運作！||
+* 測試項目三：包含內部跳轉測試 [跳轉到程式碼區塊](#程式碼區塊)（跳轉後可點左上角返回鍵測試分頁記憶復原）
+:::
+
+</div>
+<div id="p-2" class="tab-panel" data-group="Group" style="display: none;">
+
+:::lang[en|no-format]
+"Words" — Even though this tab only has a single line of text, the container height remains locked to match the tallest tab in `Group`!
+:::
+
+</div>
+<div id="p-3" class="tab-panel" data-group="Group" style="display: none;">
+
+:::lang[ja|no-format]
+「^^言葉(ことば)^^」——切換到這頁較短的日文時，下方的 `.md-divider` 依然穩如泰山，不會發生版面收縮跳動。
+:::
+
+</div>
+<div class="md-tab-end divider"></div>
+
+**B. 同文章第二組獨立分頁（Group 2：測試多組互不干擾 & `data-sync="false"` 自由高度）**
+
+<div class="tab-buttons">
+<button class="tab-btn active" onclick="window.switchTabPanel('pov-a', this, 'POV-Group')">視角 A（自由高度）</button>
+<button class="tab-btn" onclick="window.switchTabPanel('pov-b', this, 'POV-Group')">視角 B（自由高度）</button>
+</div>
+
+<div id="pov-a" class="tab-panel" data-group="POV-Group" data-sync="false" style="display: block;">
+
+這是第二組分頁的 **視角 A**。因為加上了 `data-sync="false"`，這組分頁會隨內容自然伸縮，且切換時完全不會影響上方第一組分頁的狀態！
+
+</div>
+
+<div id="pov-b" class="tab-panel" data-group="POV-Group" data-sync="false" style="display: none;">
+
+這是 **視角 B** 的隱藏筆記：
+1. 第二組分頁獨立運作中。
+2. 支援在文章中無限擴充組合。
+3. 捲動長文章時，上方的 `.tab-buttons` 會有與頂部導覽列同等級的毛玻璃黏性吸附效果（Sticky）。
+
+</div>
+
+<div class="md-tab-end divider"></div>
 
 ## 2. 防雷與機密解鎖系統 (Spoilers & Secrets)
 
@@ -64,9 +136,17 @@
   1. 早安早安
   :::
 
+### 2.3 進階金鑰系統：碎片收集與靜音觸發 (Key Fragments & Silent Keys)
+測試需要集滿指定編號碎片（`#1` ~ `#2`）以及隱形靜音金鑰（`|SILENT`）的複合邏輯：
+
+* 狀態檢測：!![FRAG_DEMO|2 && SILENT_DEMO] "需要集滿 2 個碎片與靜音金鑰" 🎉 恭喜！你已集齊所有碎片並觸發了隱形靜音金鑰！ !!
+* 收集碎片一：++[KEY:FRAG_DEMO#1/2]點我或滾動至此取得【碎片 #1/2】++
+* 收集碎片二：++[KEY:FRAG_DEMO#2/2]點我或滾動至此取得【碎片 #2/2】++
+* 靜音金鑰（下方埋藏了一顆 0 體積、不彈出提示窗的隱形金鑰 `KEY:SILENT_DEMO|SILENT`）：++[KEY:SILENT_DEMO|SILENT]++
+
 ---
 ### 鑰匙
-這是一把用來解開本區塊機密的鑰匙： ++[KEY:ALPHA_001]++
+這是一把用來解開 2.2 區塊機密的鑰匙： ++[KEY:ALPHA_001]++
 
 ## 3. 動態高光與 X 光透視跑馬燈 (Highlights & Marquee)
 
@@ -118,21 +198,25 @@
 
 | 功能項目 | 語法格式 | 顯示效果 / 備註 |
 | :--- | :--- | :--- |
-| **防雷貼紙** | `\|\|文字\|\|`| 遮蔽防雷 |
+| **防雷貼紙** | `\|\|文字\|\|`| 遮蔽防雷，點擊撕開 |
 | **日文小字** | `^^漢字(小字)[lang]^^` | 產生上標注音文字 (Ruby)，支援語言變數 |
 | **行內高光** | `++[標籤]文字++` | 帶有跑馬燈透視特效的行內高光 |
-| **解鎖金鑰** | `++[KEY:金鑰代碼]文字++` | 觸發同頁面機密區塊解鎖的鑰匙 |
+| **解鎖金鑰** | `++[KEY:代碼]文字++` | 滾動進入視野時觸發解鎖並彈出系統通知 |
+| **金鑰碎片** | `++[KEY:代碼#1/3]文字++` | 碎片收集系統，支援指定總數 `/N` 或單純編號 `#1` |
+| **靜音金鑰** | `++[KEY:代碼\|SILENT]++` | 不彈出提示窗；若不填文字則化為 0px 隱形觸發點 |
 | **區塊高光** | `:::highlight[標籤]`<br>`多行內容`<br>`:::` | 帶有發光邊框的多行透視區塊 |
 | **摺疊區塊** | `:::details[標題]`<br>`多行內容`<br>`:::` | 點擊展開的收合區塊 (Accordion) |
-| **語言區塊** | `:::lang[語言代碼]`<br>`多行內容`<br>`:::` | 強制套用該語言的專屬字體設定 |
-| **警示機密** *(行內)* | `!![金鑰代碼] "偽裝" 真實內容 !!` | 未解鎖時帶有 `🔒LOCKED` 黑色警示條 |
-| **警示機密** *(區塊)* | `:::secret[金鑰代碼] "偽裝文字"`<br>`真實多行內容`<br>`:::` | 未解鎖時大範圍模糊，並帶有巨型鎖頭 |
-| **無痕偽裝** *(行內)* | `??[金鑰代碼] "偽裝" 真實內容 ??` | 完美隱身於一般段落中，解鎖時亂碼重組 |
-| **無痕偽裝** *(區塊)* | `:::stealth[金鑰代碼]`<br>`偽裝多行內容`<br>`---`<br>`真實多行內容`<br>`:::` | 解鎖前後皆支援完整 Markdown 排版轉換 |
+| **語言區塊** | `:::lang[語言\|no-format]`<br>`多行內容`<br>`:::` | 套用專屬字體；加上 `\|no-format` 則保留預設行距 |
+| **警示機密** *(行內)* | `!![金鑰邏輯] "偽裝" 真實內容 !!` | 未解鎖時帶有 `🔒LOCKED` 黑色警示條（支援 `&&` / `\|\|`） |
+| **警示機密** *(區塊)* | `:::secret[金鑰邏輯] "偽裝文字"`<br>`真實多行內容`<br>`:::` | 未解鎖時大範圍模糊，並帶有巨型鎖頭 |
+| **無痕偽裝** *(行內)* | `??[金鑰邏輯] "偽裝" 真實內容 ??` | 完美隱身於一般段落中，解鎖時亂碼重組 |
+| **無痕偽裝** *(區塊)* | `:::stealth[金鑰邏輯]`<br>`偽裝多行內容`<br>`---`<br>`真實多行內容`<br>`:::` | 解鎖前後皆支援完整 Markdown 排版轉換 |
+| **分頁面板** | `<div class="tab-buttons">` + `.tab-panel` | 支援黏性毛玻璃導覽列、多群組獨立切換與高度自動同步 |
+| **排版結界** | `<div class="md-divider"></div>` | 清除浮動圖片溢出並畫出分隔線（隱形版為 `.md-clear`） |
 
 > **💡 提示：**
 > * 語法中的 `[標籤]`、`[lang]` 與 `"偽裝文字"` 皆為選填項目，若不填寫將套用系統預設設定。
-> * `[金鑰代碼]` 可自定義任何英數組合（例如 `XYZ_001`）。
+> * `[金鑰邏輯]` 支援 `A || (B && C)` 多重邏輯與 `KEY_ID|3`（需集滿 `#1`~`#3` 碎片）驗證。
 
 ---
 

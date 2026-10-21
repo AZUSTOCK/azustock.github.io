@@ -3,5 +3,6 @@
   "title": "md渲染測試",
   "description": "管理員專用",
   "hidden": true,
-  "tags": ["DEV"]
+  "tags": ["DEV"],
+  "min_sys_version": "1.6.1.3"
 }

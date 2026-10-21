@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.2",          // 目前系統版本號
+    VERSION: "U1.6.1.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -404,13 +404,19 @@ window.refreshHomeKeysUI = function() {
 };
 
 // ==========================================
-// ✨ 敏感內容雙軌儲存引擎 (Memory vs Local)
+// ✨ 敏感內容雙軌儲存引擎 (Session vs Local)
 // ==========================================
 window.hasAgreedToSensitive = function(key) {
     if (window._agreedSensitiveTypes && window._agreedSensitiveTypes.has(key)) return true;
+    
+    // ✨ 1. 檢查永久放行紀錄 (LocalStorage)
     const local = JSON.parse(localStorage.getItem('sys_agreed_sensitive') || '[]');
     if (local.includes(key)) return true;
-    // ✨ 拔除 sessionStorage，未勾選時純粹存在記憶體，重整網頁即消失
+    
+    // ✨ 2. 檢查當次瀏覽階段紀錄 (SessionStorage)：確保版本更新重啟或更新失敗重載時不會要求重填！
+    const session = JSON.parse(sessionStorage.getItem('sys_session_agreed_sensitive') || '[]');
+    if (session.includes(key)) return true;
+    
     return false;
 };
 
@@ -418,6 +424,13 @@ window.saveSensitiveAgreement = function(key, permanent) {
     if (!window._agreedSensitiveTypes) window._agreedSensitiveTypes = new Set();
     window._agreedSensitiveTypes.add(key); // 寫入當前記憶體
     
+    // ✨ 同步寫入 sessionStorage，跨越版本更新重載依然有效
+    const session = JSON.parse(sessionStorage.getItem('sys_session_agreed_sensitive') || '[]');
+    if (!session.includes(key)) {
+        session.push(key);
+        sessionStorage.setItem('sys_session_agreed_sensitive', JSON.stringify(session));
+    }
+
     if (permanent) {
         const local = JSON.parse(localStorage.getItem('sys_agreed_sensitive') || '[]');
         if (!local.includes(key)) { 
@@ -438,6 +451,13 @@ window.applyTextScale = function() {
     const sizes = ['100%', '110%', '125%'];
     document.documentElement.style.setProperty('--sys-base-font-size', sizes[window.currentTextScale]);
     
+    // ✨ 字體大小改變時，立即與動畫結束後（350ms）重新計算分頁區塊鎖定高度
+    const viewArticle = document.getElementById('view-article');
+    if (viewArticle && viewArticle.style.display !== 'none' && window.syncTabPanelsHeight) {
+        requestAnimationFrame(() => window.syncTabPanelsHeight(viewArticle));
+        setTimeout(() => window.syncTabPanelsHeight(viewArticle), 350);
+    }
+
     // 防呆設計：推播捲軸事件讓「閱讀進度條」與「捲動提示」重新校正
     const activeContainer = window.getActiveScrollContainer();
     if (activeContainer) {
@@ -3391,25 +3411,34 @@ const rubyExtension = {
 
 // ==========================================
 // ✨ 多語系段落區塊 (Language Block)
+// 語法：:::lang[ja] 或 :::lang[ja|no-format]
 // ==========================================
 const langBlockExtension = {
     name: 'langBlock',
     level: 'block',
-    start(src) { return src.match(/^:::\s*lang/i)?.index; },
+    // ✨ 加上 m (multiline) 旗標並容許空白字元，確保在 div 內部也能精準觸發
+    start(src) { return src.match(/^:::[ \t\u00A0]*lang/im)?.index; },
     tokenizer(src, tokens) {
-        const rule = /^:::\s*lang(?:\[([a-zA-Z\-]+)\])?\n([\s\S]*?)\n:::/i;
+        // ✨ 容許行尾有一般空白、全形/不換行空白 (\u00A0) 或 \r\n
+        const rule = /^:::[ \t\u00A0]*lang(?:\[([^\]]+)\])?[ \t\u00A0]*\r?\n([\s\S]*?)\r?\n[ \t\u00A0]*:::[ \t\u00A0]*(?:\r?\n|$)/i;
         const match = rule.exec(src);
         if (match) {
+            const rawParams = (match[1] || 'ja').split('|').map(s => s.trim());
+            const lang = rawParams[0] || 'ja';
+            const noFormat = rawParams.slice(1).some(p => p.toLowerCase() === 'no-format');
             return {
                 type: 'langBlock',
                 raw: match[0],
-                lang: match[1] || 'ja',
+                lang: lang,
+                noFormat: noFormat,
                 tokens: this.lexer.blockTokens(match[2].trim())
             };
         }
     },
     renderer(token) {
-        return `<div lang="${token.lang}" class="lang-wrapper">${this.parser.parse(token.tokens)}</div>`;
+        const formatClass = token.noFormat ? ' no-format' : '';
+        const formatAttr = token.noFormat ? ' data-no-format="true"' : '';
+        return `<div id="lang-${token.lang}" lang="${token.lang}" class="lang-wrapper lang-${token.lang}${formatClass}"${formatAttr}>${this.parser.parse(token.tokens)}</div>`;
     }
 };
 
@@ -4930,7 +4959,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         }
 
         const projKey = `PROJ_${projectId}`;
-        const artKey = `ART_${projectId}_${articleIndex}`;
+        // ✨ 優先綁定固定不變的 article.id，防止新增文章或更新版本時因陣列順序改變而失效
+        const artSlug = article.id || articleIndex;
+        const artKey = `ART_${projectId}_${artSlug}`;
+        const legacyArtKey = `ART_${projectId}_${articleIndex}`;
         
         let needsPrompt = false;
         let agreeKeyToSave = '';
@@ -4944,7 +4976,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             declineAction = 'close'; 
             finalSType = sTypeProj;
         } 
-        else if (isArtSensitive && !artBypass && !window.hasAgreedToSensitive(artKey)) {
+        else if (isArtSensitive && !artBypass && !window.hasAgreedToSensitive(artKey) && !window.hasAgreedToSensitive(legacyArtKey)) {
             needsPrompt = true;
             agreeKeyToSave = artKey;
             declineAction = 'index'; 
@@ -4956,7 +4988,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 finalSType,
                 (isPermanent) => {
                     window.saveSensitiveAgreement(agreeKeyToSave, isPermanent);
-                    window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls);
+                    window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls, restoreActiveTabs);
                 },
                 () => {
                     if (declineAction === 'close') {
@@ -5020,12 +5052,18 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 viewArticle.style.display = 'block';
                 // ✨ 賦予目前渲染環境的專屬 ID，供解鎖特效記憶使用
                 window._currentRenderPlace = projectId + '_' + articleIndex;
-                viewArticle.innerHTML = marked.parse(markdownContent);
+                // ✨ 核心修復：清除空行上的不換行空白 (\u00A0)，防止 <div class="tab-panel"> 吞掉內部的 :::lang 語法！
+                const cleanMarkdown = markdownContent.replace(/^[ \t\u00A0]+$/gm, '');
+                viewArticle.innerHTML = marked.parse(cleanMarkdown);
             }
             
-            // 建立操作指標
+            /// 建立操作指標
             const activeView = viewArticle || modalBody;
 
+            // ✨ Step 1：自動封裝分頁區塊邊界，並校正預設 .tab-btn.active 顯示狀態
+            window.initTabSections(activeView);
+
+            // ✨ Step 2：若從歷史紀錄返回，覆蓋還原當時選中的 tab-btn
             if (isFromHistory && restoreActiveTabs && restoreActiveTabs.length > 0) {
                 const allTabBtns = activeView.querySelectorAll('.tab-btn');
                 restoreActiveTabs.forEach(idx => {
@@ -5039,6 +5077,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     }
                 });
             }
+
+            // ✨ Step 3：分頁狀態確定後，統一執行高度同步
+            window.syncTabPanelsHeight(activeView);
+            setTimeout(() => window.syncTabPanelsHeight(activeView), 60);
 
             // ==========================================
             // ✨ 啟動進度條引擎 (主進度條 & 直書獨立進度條)
@@ -5293,7 +5335,20 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             }
 
             const topLeft = document.getElementById('modal-top-left');
-            let historyBtnHtml = (window.historyStack && window.historyStack.length > 1) ? `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回跳轉前">${GLOBAL_SVGS.historyBack}</button>` : '';
+            
+            // ✨ 動態抓取歷史堆疊中「上一篇（length - 2）」的文章標題，並透過 TOOLTIP 模式安全解析無痕機密文字
+            let historyBtnHtml = '';
+            if (window.historyStack && window.historyStack.length > 1) {
+                const prevEntry = window.historyStack[window.historyStack.length - 2];
+                const prevProj = window.siteProjects.find(p => p.id === prevEntry.projectId);
+                const prevArt = prevProj && prevProj.articles ? prevProj.articles[prevEntry.articleIndex] : null;
+                const prevTitle = prevArt 
+                    ? window.parseDynamicText(prevArt.title, 'TOOLTIP').replace(/<[^>]+>/g, '').replace(/"/g, '&quot;') 
+                    : '跳轉前頁面';
+                
+                historyBtnHtml = `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回：${prevTitle}">${GLOBAL_SVGS.historyBack}</button>`;
+            }
+
             let sequenceHtml = (flatSequence.length > 1) ? `<div class="capsule-divider"></div>${prevData.btnHtml}<span class="capsule-progress">${seqIndex + 1} / ${flatSequence.length}</span>${nextData.btnHtml}` : '';
 
             // ✨ 新增：動態生成群組標籤 (Group Badge) 邏輯
@@ -6694,26 +6749,143 @@ window.switchBilingualTab = function(lang, btn) {
 // ✨ 通用分頁/視角切換引擎 (Tabbed Content Switcher)
 // ==========================================
 window.switchTabPanel = function(panelId, btn, groupName) {
-    // 1. 尋找所有屬於同一個群組的內容面板並全部隱藏
-    // 限制在當前的文章內搜尋，避免干擾到其他地方的排版
     const container = btn.closest('.markdown-body') || document;
     container.querySelectorAll(`.tab-panel[data-group="${groupName}"]`).forEach(el => {
         el.style.display = 'none';
     });
 
-    // 2. 顯示被點擊的那一個面板
     const targetPanel = document.getElementById(panelId);
     if (targetPanel) {
         targetPanel.style.display = 'block';
     }
 
-    // 3. 更新按鈕的 active 狀態
     const tabs = btn.closest('.tab-buttons') || btn.parentElement;
     if (tabs) {
         tabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     }
     btn.classList.add('active');
 };
+
+// ==========================================
+// ✨ 分頁區塊自動封裝與高度同步引擎
+// ==========================================
+window.initTabSections = function(rootEl = document) {
+    if (!rootEl) return;
+
+    // 1. 將每組 .tab-buttons 一路包覆到 .md-tab-end (若未設置，預設包覆至 .article-nav-cards 或下一組 .tab-buttons 強制結束)
+    const tabBars = Array.from(rootEl.querySelectorAll('.tab-buttons'));
+    tabBars.forEach(bar => {
+        if (bar.parentElement && bar.parentElement.classList.contains('tab-section-wrapper')) return;
+
+        let scan = bar.nextElementSibling;
+        let lastNode = null;
+
+        while (scan) {
+            // ✨ 只有在遇到明確設置的 .md-tab-end、下一組 .tab-buttons、或文章底部的 .article-nav-cards 時才停止！
+            if (
+                scan.classList.contains('md-tab-end') ||
+                scan.classList.contains('tab-buttons') ||
+                scan.classList.contains('article-nav-cards')
+            ) {
+                break;
+            }
+            lastNode = scan;
+            scan = scan.nextElementSibling;
+        }
+
+        if (lastNode) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tab-section-wrapper';
+            bar.parentNode.insertBefore(wrapper, bar);
+
+            let curr = bar;
+            while (curr) {
+                const next = curr.nextElementSibling;
+                wrapper.appendChild(curr);
+                if (curr === lastNode) break;
+                curr = next;
+            }
+        }
+    });
+
+    // 2. 初始載入時自動校正 .tab-btn.active 的顯示狀態
+    rootEl.querySelectorAll('.tab-buttons .tab-btn.active').forEach(btn => {
+        if (typeof btn.onclick === 'function') btn.onclick();
+    });
+};
+
+// ==========================================
+// ✨ 分頁高度強制同步引擎 (鎖定同群組最高高度，防止切換時視窗與下方分割線跳動)
+// ==========================================
+window.syncTabPanelsHeight = function(rootEl = document) {
+    if (!rootEl) return;
+    const panels = Array.from(rootEl.querySelectorAll('.tab-panel[data-group]'));
+    if (panels.length === 0) return;
+
+    const groups = {};
+    panels.forEach(p => {
+        if (p.getAttribute('data-sync') === 'false') return;
+        const g = p.getAttribute('data-group');
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(p);
+    });
+
+    Object.values(groups).forEach(groupPanels => {
+        if (groupPanels.length <= 1) return;
+
+        // 1. 先歸零 min-height，確保字體縮放或視窗調整時能量出最新真實高度
+        groupPanels.forEach(p => { p.style.minHeight = ''; });
+
+        const visiblePanel = groupPanels.find(p => window.getComputedStyle(p).display !== 'none');
+        const refWidth = visiblePanel ? visiblePanel.offsetWidth : (rootEl.clientWidth || 0);
+        if (refWidth === 0) return;
+
+        let maxHeight = 0;
+
+        // 2. 隱形量測所有隱藏分頁的高度 (0 閃爍)
+        groupPanels.forEach(p => {
+            const isHidden = window.getComputedStyle(p).display === 'none';
+            if (isHidden) {
+                const origDisplay = p.style.display;
+                const origVisibility = p.style.visibility;
+                const origPosition = p.style.position;
+                const origWidth = p.style.width;
+
+                p.style.position = 'absolute';
+                p.style.visibility = 'hidden';
+                p.style.display = 'block';
+                p.style.width = `${refWidth}px`;
+
+                const h = p.offsetHeight;
+                if (h > maxHeight) maxHeight = h;
+
+                p.style.display = origDisplay;
+                p.style.visibility = origVisibility;
+                p.style.position = origPosition;
+                p.style.width = origWidth;
+            } else {
+                const h = p.offsetHeight;
+                if (h > maxHeight) maxHeight = h;
+            }
+        });
+
+        // 3. 將最大高度鎖定給該群組的所有分頁
+        if (maxHeight > 0) {
+            groupPanels.forEach(p => {
+                p.style.minHeight = `${maxHeight}px`;
+                p.style.boxSizing = 'border-box';
+            });
+        }
+    });
+};
+
+// 視窗寬度改變時也自動重新計算分頁高度
+window.addEventListener('resize', () => {
+    const viewArticle = document.getElementById('view-article');
+    if (viewArticle && viewArticle.style.display !== 'none' && window.syncTabPanelsHeight) {
+        window.requestAnimationFrame(() => window.syncTabPanelsHeight(viewArticle));
+    }
+});
 
 
 // ==========================================

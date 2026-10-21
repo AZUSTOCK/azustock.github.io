@@ -5,7 +5,7 @@
     <button class="tab-btn" onclick="window.switchTabPanel('p-2', this, 'Group')">內圈</button>
 </div>
 
-<div id="p-1" class="tab-panel" data-group="Group" style="display: block;">
+<div id="p-1" class="tab-panel" data-group="Group" data-sync="false" style="display: block;">
 
 拜託了，  
 明天可不可以不要到來？  
@@ -31,7 +31,7 @@
 
 </div>
 
-<div id="p-2" class="tab-panel" data-group="Group" style="display: none;">
+<div id="p-2" class="tab-panel" data-group="Group" data-sync="false" style="display: none;">
 
 為什麼每天都要碰這個討厭的東西？  
 為什麼？  

@@ -467,10 +467,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     
-    /* ✨ 核心修復 3：利用陰影填補上方與系統列可能產生的 1px 縫隙，防止光暈斷層 */
-    box-shadow: 0 -4px 10px -2px var(--bg);
-    
-    padding-top: 0.8rem; /* 稍微增加上方空間 */
+    padding-top: 0.5rem; /* 稍微增加上方空間 */
     margin-left: -1rem; 
     margin-right: -1rem;
     padding-left: 1rem;
@@ -529,7 +526,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     bottom: 2px; /* 距離底部（文字下方）的距離 */
     left: 10%;   /* 從左側 10% 開始 */
     width: 80%;  /* 只佔寬度的 80%，完美避開左右兩側的框線 */
-    height: 2px;
+    height: 3px;
     background-color: var(--accent);
     border-radius: 2px;
 }
@@ -2940,33 +2937,89 @@ body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):acti
    🌐 多語系專屬字體與排版設定
 ========================================== */
 
-/* 🇹🇼 中文版 (預設繼承全站設定，這裡可做細部微調) */
-#lang-zh {
-    /* 這裡會自動使用你原本網站的中文預設字體 */
-    text-align: justify; /* 讓中文左右對齊，排版更整齊 */
+/* 🇹🇼 中文版 */
+#lang-zh, .lang-zh {
+    text-align: justify;
 }
 
-/* 🇺🇸 英文版 (使用無襯線英文字體，並微調字距) */
-#lang-en {
+/* 🇺🇸 英文版 */
+#lang-en, .lang-en {
     font-family: "Helvetica Neue", Helvetica, Arial, "Segoe UI", Roboto, sans-serif;
-    line-height: 1.6;        /* 英文通常需要比中文稍微緊湊一點的行高 */
-    letter-spacing: 0.02em;  /* 增加一點點字距，讓英文字母閱讀更舒適 */
+    line-height: 1.6;
+    letter-spacing: 0.02em;
     text-align: left;
 }
 
-/* 🇯🇵 日文版 (指定日文專用字體，避免漢字變成中文字型) */
-#lang-ja {
-    /* 優先使用 Mac(Hiragino) 與 Windows(Meiryo) 的內建日文字體，若有 Noto Sans JP 也會優先套用 */
+/* 🇯🇵 日文版 */
+#lang-ja, .lang-ja {
     font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
-    line-height: 1.7;        /* 日文排版行高稍微拉開會更優雅 */
+    line-height: 1.7;
     letter-spacing: 0.03em;
     text-align: justify;
+}
+
+/* ✨ 分頁獨立作用區：限制 sticky 頁籤列只在該分頁區塊內吸附，滑過即隨區塊捲走 */
+.markdown-body .tab-section-wrapper {
+    position: relative;
+    display: flow-root;
+    /* margin-bottom: 1rem; */
+    padding-bottom: 0.25rem; /* ✨ 預留 4px 底部安全緩衝，確保最後一行文字絕不觸碰頁籤底線 */
+}
+
+/* ✨ 核心防漏字：移除 sticky 頁籤列的 margin-bottom，讓它能滑到底部 0px 處才解除吸附，不再提早 24px 煞車切到字！ */
+.markdown-body .tab-section-wrapper > .tab-buttons {
+    margin-bottom: 0;.markdown-body .tab-section-wrapper > .tab-panel {
+    margin-top: 1.5rem;
+}
+}
+
+
+/* ✨ 分頁結束結界：支援隱形結束 (<div class="md-tab-end"></div>) 或帶分隔線 (<div class="md-tab-end divider"></div>) */
+.markdown-body .md-tab-end {
+    clear: both;
+    display: block;
+    width: 100%;
+    height: 0;
+    border: none;
+    margin-left: -1rem; 
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.markdown-body .md-tab-end.divider {
+    border-top: 2px solid var(--card-border);
+    margin-top: 0rem;
+    margin-bottom: 0.8rem;
+}
+
+/* ✨ 隱形分頁高度同步結界 (若不想顯示 md-divider 的橫線時可使用 <div class="md-tab-sync"></div>) */
+.markdown-body .md-tab-sync {
+    clear: both;
+    display: block;
+    width: 100%;
+    height: 0;
+    border: none;
+    margin: 0;
+    padding: 0;
 }
 
 /* 針對英文與日文版內的標題微調字重 */
 #lang-en h1, #lang-en h2, #lang-en h3, 
 #lang-ja h1, #lang-ja h2, #lang-ja h3 {
     font-weight: 700;
+}
+
+/* ✨ 不改行距與排版模式：支援 :::lang[ja|no-format] 與 <div id="lang-en" class="no-format"> */
+#lang-zh:is(.no-format, [data-no-format="true"]),
+#lang-en:is(.no-format, [data-no-format="true"]),
+#lang-ja:is(.no-format, [data-no-format="true"]),
+.lang-wrapper:is(.no-format, [data-no-format="true"]),
+.lang-wrapper:is(.no-format, [data-no-format="true"]) > div {
+    line-height: inherit !important;
+    letter-spacing: inherit !important;
+    text-align: inherit !important;
+    margin: 0 !important;
 }
 
 /* ========================================================================== */
@@ -3460,9 +3513,15 @@ body {
 .toast-x-icon {
     position: absolute; top: 5px; right: 7px; width: 32px; height: 32px; 
     display: flex; justify-content: center; align-items: center; 
-    opacity: 0.9; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer;
+    z-index: 2; /* ✨ 確保 X 的 32x32px 點擊範圍位於最上層，不被標題文字干擾 */
+    opacity: 0.85; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease; cursor: pointer;
 }
-.sys-toast-box:hover .toast-x-icon { transform: rotate(90deg) scale(1.1); }
+
+/* ✨ 修正：只有滑鼠真正進入 X 按鈕的合法點擊範圍時，才觸發旋轉與放大特效 */
+.toast-x-icon:hover { 
+    opacity: 1;
+    transform: rotate(90deg) scale(1.1); 
+}
 
 .toast-title {
     font-size: 1rem; letter-spacing: 0.05em; 

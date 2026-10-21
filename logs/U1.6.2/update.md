@@ -11,6 +11,9 @@
 
 ## adjust
 1. tab-buttons associated
+2. .tab-section-wrapper UI
+3. capsule-btn history-btn tooltip
+4. .toast-x-icon behavior
 
 ## fix
 1. 
