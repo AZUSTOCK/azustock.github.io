@@ -2958,19 +2958,33 @@ body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):acti
     text-align: justify;
 }
 
-/* ✨ 分頁獨立作用區：限制 sticky 頁籤列只在該分頁區塊內吸附，滑過即隨區塊捲走 */
+/* ✨ 分頁獨立作用區：padding-bottom 設為 0，讓 sticky 頁籤列能一路滑到底線才捲走 */
 .markdown-body .tab-section-wrapper {
     position: relative;
     display: flow-root;
-    /* margin-bottom: 1rem; */
-    padding-bottom: 0.25rem; /* ✨ 預留 4px 底部安全緩衝，確保最後一行文字絕不觸碰頁籤底線 */
+    padding-bottom: 0.25rem;
 }
 
-/* ✨ 核心防漏字：移除 sticky 頁籤列的 margin-bottom，讓它能滑到底部 0px 處才解除吸附，不再提早 24px 煞車切到字！ */
+/* ✨ 移除 sticky 頁籤列的 margin-bottom，讓它能滑到底部 0px 處才解除吸附 */
 .markdown-body .tab-section-wrapper > .tab-buttons {
-    margin-bottom: 0;.markdown-body .tab-section-wrapper > .tab-panel {
-    margin-top: 1.5rem;
+    margin-bottom: 0;
 }
+
+/* ✨ 將上下間距交給 .tab-panel：既能撐開文字與底線的視覺距離，又允許頁籤列滑入這段空間貼齊底線！ */
+.markdown-body .tab-section-wrapper > .tab-panel {
+    margin-top: 1.2rem;
+    padding-bottom: 1rem; /* 👈 調整這個數值即可自由控制文字與底線的距離，且不影響頁籤捲走位置 */
+}
+
+/* ✨ 清除 .tab-panel 內部首尾元素（含 .lang-wrapper 與 <p>）的上下外距，防止多餘空白灌入 min-height */
+.markdown-body .tab-panel > :first-child,
+.markdown-body .tab-panel > :first-child > :first-child {
+    margin-top: 0 !important;
+}
+
+.markdown-body .tab-panel > :last-child,
+.markdown-body .tab-panel > :last-child > :last-child {
+    margin-bottom: 0 !important;
 }
 
 

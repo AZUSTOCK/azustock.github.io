@@ -28,5 +28,3 @@
 :::
 
 </div>
-
-<div class="md-tab-end divider"></div>

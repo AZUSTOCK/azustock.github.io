@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.3",          // 目前系統版本號
+    VERSION: "U1.6.1.4",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -6836,33 +6836,23 @@ window.syncTabPanelsHeight = function(rootEl = document) {
         // 1. 先歸零 min-height，確保字體縮放或視窗調整時能量出最新真實高度
         groupPanels.forEach(p => { p.style.minHeight = ''; });
 
+        // 確認容器已進入可視排版狀態
         const visiblePanel = groupPanels.find(p => window.getComputedStyle(p).display !== 'none');
-        const refWidth = visiblePanel ? visiblePanel.offsetWidth : (rootEl.clientWidth || 0);
-        if (refWidth === 0) return;
+        if (visiblePanel && visiblePanel.offsetWidth === 0) return;
 
         let maxHeight = 0;
 
-        // 2. 隱形量測所有隱藏分頁的高度 (0 閃爍)
+        // 2. 直接在原生文件流 (position: static) 下同步量測，確保外距折疊與實際顯示 100% 一致 (0 閃爍)
         groupPanels.forEach(p => {
             const isHidden = window.getComputedStyle(p).display === 'none';
             if (isHidden) {
                 const origDisplay = p.style.display;
-                const origVisibility = p.style.visibility;
-                const origPosition = p.style.position;
-                const origWidth = p.style.width;
-
-                p.style.position = 'absolute';
-                p.style.visibility = 'hidden';
                 p.style.display = 'block';
-                p.style.width = `${refWidth}px`;
-
+                
                 const h = p.offsetHeight;
                 if (h > maxHeight) maxHeight = h;
 
                 p.style.display = origDisplay;
-                p.style.visibility = origVisibility;
-                p.style.position = origPosition;
-                p.style.width = origWidth;
             } else {
                 const h = p.offsetHeight;
                 if (h > maxHeight) maxHeight = h;
