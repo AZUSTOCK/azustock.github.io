@@ -442,60 +442,63 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================================================================== */
 
 /* ==========================================
-   ✨ 通用分頁切換按鈕 (Tab Buttons) - 卡片式頁籤風格
+   ✨ 通用分頁切換按鈕 (Tab Buttons) - 卡片式頁籤風格 (支援窄版橫向滑動)
    ========================================== */
 .tab-buttons {
     display: flex;
-    gap: 4px; /* 縮小頁籤之間的間距，讓它們看起來更緊密 */
+    gap: 4px;
     margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-
-    /* ✨ 底部導覽橫線：這條線會貫穿整個容器底部 */
-    border-bottom: 2px solid var(--card-border);
-    padding-bottom: 0; /* 歸零，讓頁籤直接貼合底線 */
-
-    /* ✨ 黏性定位魔法 */
-    position: sticky;
-    /* 確保它剛好貼在 modal-top-bar 下緣，不會有縫隙讓文字漏出來 */
-    top: calc(var(--top-bar-height, 80px) - 1px); 
     
-    /* ✨ 核心修復 1：提高層級，確保絕對壓過所有 .markdown-body 內的兄弟元素！ */
-    z-index: 100; 
-    
-    /* ✨ 核心修復 2：完美移植 .modal-top-bar 的原生配方 */
-    background: var(--glass-bg);
+    /* ✨ 1. 強制單行不換行，並啟用水平滑動 */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* 隱藏 Firefox 捲軸 */
+
+    /* ✨ 2. 改用內部漸層繪製 2px 底線，避免 overflow-x 裁切掉頁籤的斷線效果 */
+    border-bottom: none;
+    padding-bottom: 0;
+    background: linear-gradient(to top, var(--card-border) 2px, transparent 2px), var(--glass-bg);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    
-    padding-top: 0.5rem; /* 稍微增加上方空間 */
-    margin-left: -1rem; 
+
+    /* 黏性定位 */
+    position: sticky;
+    top: calc(var(--top-bar-height, 80px) - 1px);
+    z-index: 100;
+
+    padding-top: 0.5rem;
+    margin-left: -1rem;
     margin-right: -1rem;
     padding-left: 1rem;
     padding-right: 1rem;
 }
 
+/* 隱藏 Chrome / Safari / Edge 的橫向捲軸 */
+.tab-buttons::-webkit-scrollbar {
+    display: none;
+}
+
 /* 基礎頁籤樣式 */
 .tab-btn {
     background: transparent;
+    border: 2px solid transparent;
+    border-bottom: 2px solid transparent;
 
-    /* ✨ 修復防跳動：上下左右都鎖死 2px 邊框，並將底部設為透明！ */
-    border: 2px solid transparent; 
-    border-bottom: 2px solid transparent; 
-    
     color: var(--muted);
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    
     padding: 0.5rem 1rem;
-    
-    /* ✨ 關鍵魔法：讓按鈕往下「吃掉」底線的空間 */
-    margin-bottom: -2px; 
-    
-    /* ✨ 拔除 all，精準指定顏色過渡，徹底消滅底線漸變閃爍！ */
-    transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 
-    position: relative; /* 供下方的偽元素底線定位使用 */
+    /* ✨ 3. 禁止按鈕被擠壓或文字斷行，並直接貼齊容器底部的 2px 漸層線 */
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin-bottom: 0;
+
+    transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
 }
 
 /* 未選中時的 Hover 狀態：微微變亮 */
@@ -1564,11 +1567,8 @@ span.article-item-date {
 
 /* 6-1. 基礎文字與區塊排版 */
 .markdown-body { 
-    /* ✨ 改用變數，預設為 1rem */
     font-size: var(--content-text-size, 1rem); 
-    /* ✨ 加上字體變換時的平滑過渡 */
-    transition: font-size 0.3s ease; 
-    
+    /* ✨ 移除這裡重複的 font-size transition，避免與 html 的 0.3s 疊加成 600ms 延遲導致換行算錯！ */
     color: var(--text); 
     line-height: 1.8; 
     display: flow-root; 
@@ -2970,10 +2970,18 @@ body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):acti
     margin-bottom: 0;
 }
 
-/* ✨ 將上下間距交給 .tab-panel：既能撐開文字與底線的視覺距離，又允許頁籤列滑入這段空間貼齊底線！ */
+/* ✨ 將上下間距交給 .tab-panel，並設為 flow-root 徹底封鎖內部語系區塊的外距穿透 */
 .markdown-body .tab-section-wrapper > .tab-panel {
+    display: flow-root;
     margin-top: 1.2rem;
-    padding-bottom: 1rem; /* 👈 調整這個數值即可自由控制文字與底線的距離，且不影響頁籤捲走位置 */
+    padding-bottom: 1.2rem;
+    box-sizing: border-box;
+}
+
+/* ✨ 核心魔法：當 .tab-section-wrapper 後方緊接著 .article-nav-cards 時，
+   讓 .tab-panel 的底端 padding 穿透歸零，改由 article-nav-cards 的間距為主！ */
+.markdown-body .tab-section-wrapper:has(+ .article-nav-cards) > .tab-panel {
+    padding-bottom: 0 !important;
 }
 
 /* ✨ 清除 .tab-panel 內部首尾元素（含 .lang-wrapper 與 <p>）的上下外距，防止多餘空白灌入 min-height */
@@ -2992,30 +3000,17 @@ body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):acti
 .markdown-body .md-tab-end {
     clear: both;
     display: block;
-    width: 100%;
+    width: auto; /* ✨ 改為 auto，搭配負外距即可自然與 .tab-buttons 底線同寬 */
     height: 0;
     border: none;
-    margin-left: -1rem; 
-    margin-right: -1rem;
-    padding-left: 1rem;
-    padding-right: 1rem;
+    margin: 0 -1rem; 
+    padding: 0;
 }
 
 .markdown-body .md-tab-end.divider {
     border-top: 2px solid var(--card-border);
-    margin-top: 0rem;
+    margin-top: 0;
     margin-bottom: 0.8rem;
-}
-
-/* ✨ 隱形分頁高度同步結界 (若不想顯示 md-divider 的橫線時可使用 <div class="md-tab-sync"></div>) */
-.markdown-body .md-tab-sync {
-    clear: both;
-    display: block;
-    width: 100%;
-    height: 0;
-    border: none;
-    margin: 0;
-    padding: 0;
 }
 
 /* 針對英文與日文版內的標題微調字重 */

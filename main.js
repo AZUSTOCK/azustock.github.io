@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.4",          // 目前系統版本號
+    VERSION: "U1.6.1.5",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -447,16 +447,29 @@ window.saveSensitiveAgreement = function(key, permanent) {
 window.currentTextScale = parseInt(localStorage.getItem('sys_text_scale')) || 0; 
 
 window.applyTextScale = function() {
-    // ✨ 全站縮放：100% (標準) -> 105% (微放) -> 110% (大字)
+    // ✨ 全站縮放：100% (標準) -> 110% (微放) -> 125% (大字)
     const sizes = ['100%', '110%', '125%'];
     document.documentElement.style.setProperty('--sys-base-font-size', sizes[window.currentTextScale]);
     
-    // ✨ 字體大小改變時，立即與動畫結束後（350ms）重新計算分頁區塊鎖定高度
-    const viewArticle = document.getElementById('view-article');
-    if (viewArticle && viewArticle.style.display !== 'none' && window.syncTabPanelsHeight) {
-        requestAnimationFrame(() => window.syncTabPanelsHeight(viewArticle));
-        setTimeout(() => window.syncTabPanelsHeight(viewArticle), 350);
-    }
+    const recalcTabs = () => {
+        const viewArticle = document.getElementById('view-article');
+        if (viewArticle && viewArticle.style.display !== 'none' && window.syncTabPanelsHeight) {
+            window.syncTabPanelsHeight(viewArticle);
+        }
+    };
+
+    // ✨ 在動畫剛開始、320ms、500ms 以及 html 字體過渡徹底結束 (transitionend) 時同步重算
+    requestAnimationFrame(recalcTabs);
+    setTimeout(recalcTabs, 320);
+    setTimeout(recalcTabs, 500);
+
+    const onFontTransitionEnd = (e) => {
+        if (e.target === document.documentElement && e.propertyName === 'font-size') {
+            document.documentElement.removeEventListener('transitionend', onFontTransitionEnd);
+            recalcTabs();
+        }
+    };
+    document.documentElement.addEventListener('transitionend', onFontTransitionEnd);
 
     // 防呆設計：推播捲軸事件讓「閱讀進度條」與「捲動提示」重新校正
     const activeContainer = window.getActiveScrollContainer();
@@ -6762,6 +6775,12 @@ window.switchTabPanel = function(panelId, btn, groupName) {
     const tabs = btn.closest('.tab-buttons') || btn.parentElement;
     if (tabs) {
         tabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        
+        // ✨ 若頁籤列可橫向滑動，點擊時自動將該顆頁籤平滑移至中間視野
+        if (tabs.scrollWidth > tabs.clientWidth) {
+            const targetScrollLeft = btn.offsetLeft - (tabs.clientWidth / 2) + (btn.offsetWidth / 2);
+            tabs.scrollTo({ left: targetScrollLeft, behavior: 'smooth' });
+        }
     }
     btn.classList.add('active');
 };
@@ -6822,6 +6841,9 @@ window.syncTabPanelsHeight = function(rootEl = document) {
     const panels = Array.from(rootEl.querySelectorAll('.tab-panel[data-group]'));
     if (panels.length === 0) return;
 
+    const scroller = window.getActiveScrollContainer();
+    const savedScrollTop = scroller ? scroller.scrollTop : 0;
+
     const groups = {};
     panels.forEach(p => {
         if (p.getAttribute('data-sync') === 'false') return;
@@ -6833,40 +6855,44 @@ window.syncTabPanelsHeight = function(rootEl = document) {
     Object.values(groups).forEach(groupPanels => {
         if (groupPanels.length <= 1) return;
 
-        // 1. 先歸零 min-height，確保字體縮放或視窗調整時能量出最新真實高度
-        groupPanels.forEach(p => { p.style.minHeight = ''; });
+        // 記錄原本哪個面板是顯示的
+        const origDisplays = groupPanels.map(p => p.style.display);
+        const activeIdx = groupPanels.findIndex(p => window.getComputedStyle(p).display !== 'none');
+        if (activeIdx !== -1 && groupPanels[activeIdx].offsetWidth === 0) return;
 
-        // 確認容器已進入可視排版狀態
-        const visiblePanel = groupPanels.find(p => window.getComputedStyle(p).display !== 'none');
-        if (visiblePanel && visiblePanel.offsetWidth === 0) return;
+        // 1. 先歸零 min-height，才能量出字體縮放或換行後的最新自然高度
+        groupPanels.forEach(p => { p.style.minHeight = ''; });
 
         let maxHeight = 0;
 
-        // 2. 直接在原生文件流 (position: static) 下同步量測，確保外距折疊與實際顯示 100% 一致 (0 閃爍)
-        groupPanels.forEach(p => {
-            const isHidden = window.getComputedStyle(p).display === 'none';
-            if (isHidden) {
-                const origDisplay = p.style.display;
-                p.style.display = 'block';
-                
-                const h = p.offsetHeight;
-                if (h > maxHeight) maxHeight = h;
+        // 2. 在同一個同步執行幀內，逐一單獨設為 display: block 量測 (100% 還原真實切換時的亞像素寬度與換行，且瀏覽器不會重繪閃爍)
+        groupPanels.forEach((p, idx) => {
+            groupPanels.forEach((other, oIdx) => {
+                other.style.display = (oIdx === idx) ? 'block' : 'none';
+            });
 
-                p.style.display = origDisplay;
-            } else {
-                const h = p.offsetHeight;
-                if (h > maxHeight) maxHeight = h;
-            }
+            // 校正可能存在的 Modal 過場 scale 變形，並無條件進位消滅 0.5px 亞像素跳動
+            const rect = p.getBoundingClientRect();
+            const scale = p.offsetWidth > 0 ? (rect.width / p.offsetWidth) : 1;
+            const exactHeight = scale > 0 ? Math.ceil(rect.height / scale) : p.offsetHeight;
+
+            if (exactHeight > maxHeight) maxHeight = exactHeight;
         });
 
-        // 3. 將最大高度鎖定給該群組的所有分頁
-        if (maxHeight > 0) {
-            groupPanels.forEach(p => {
+        // 3. 還原各面板原本的顯示狀態，並鎖定完全一致的整數高度
+        groupPanels.forEach((p, idx) => {
+            p.style.display = origDisplays[idx];
+            if (maxHeight > 0) {
                 p.style.minHeight = `${maxHeight}px`;
                 p.style.boxSizing = 'border-box';
-            });
-        }
+            }
+        });
     });
+
+    // 確保量測過程不會影響外層捲軸位置
+    if (scroller && scroller.scrollTop !== savedScrollTop) {
+        scroller.scrollTop = savedScrollTop;
+    }
 };
 
 // 視窗寬度改變時也自動重新計算分頁高度

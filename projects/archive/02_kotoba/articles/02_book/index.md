@@ -14,7 +14,7 @@
 </div>
 
 <div id="p-2" class="tab-panel" data-group="Group" style="display: none;">
-<div id="lang-en" class="no-format">
+<div id="lang-en">
 
 “The book is still there. Perhaps you will reach the moment when you decide to read it.”
 
@@ -23,8 +23,10 @@
 
 <div id="p-3" class="tab-panel" data-group="Group" style="display: none;">
 
-:::lang[ja|no-format]
+:::lang[ja]
 「本はずっとそこに。いつか、あなたがその本を読もうと決める時が来るかも。」
 :::
 
 </div>
+
+<div class="md-tab-end"></div>

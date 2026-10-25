@@ -14,7 +14,7 @@
 </div>
 
 <div id="p-2" class="tab-panel" data-group="Group" style="display: none;">
-<div id="lang-en" class="no-format">
+<div id="lang-en">
 
 “We met — just in time to say goodbye.”
 
@@ -23,8 +23,10 @@
 
 <div id="p-3" class="tab-panel" data-group="Group" style="display: none;">
 
-:::lang[ja|no-format]
+:::lang[ja]
 「最初の言葉は、『さよなら』だった。」
 :::
 
 </div>
+
+<div class="md-tab-end"></div>
