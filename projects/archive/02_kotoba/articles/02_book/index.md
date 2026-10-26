@@ -3,7 +3,7 @@
 
 <div class="tab-buttons">
 <button class="tab-btn active" onclick="window.switchTabPanel('p-1', this, 'Group')">經過</button>
-<button class="tab-btn" onclick="window.switchTabPanel('p-2', this, 'Group')">while</button>
+<button class="tab-btn" onclick="window.switchTabPanel('p-2', this, 'Group')">While</button>
 <button class="tab-btn" onclick="window.switchTabPanel('p-3', this, 'Group')">しばらく</button>
 </div>
 

@@ -1,4 +1,5 @@
 # 「啟程」
+![float-right](./architecture.webp)
 え...  
 （なんだか、お久しぶり？  
 <br/>
