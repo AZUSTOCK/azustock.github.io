@@ -3830,7 +3830,14 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 /* ✨ PWA 全域狀態列防護盾 (極淨版：統一變數與圖層降級)                           */
 /* ========================================================================== */
 @media (display-mode: standalone) {
-    /* ✨ 加上這一段：徹底封印瀏覽器原生的全畫面橡皮筋回彈效應，讓 JS 100% 接管畫面！ */
+    :root {
+        /* ✨ 核心修復：iPad 沒有瀏海所以 safe-area-inset-top 是 0，
+           但系統狀態列依然佔據了約 24px！這裡用 max() 強制保留最低安全高度，
+           防止內文撞進狀態列觸發 iOS 系統的醜陋模糊遮罩。 */
+        --safe-top: max(24px, env(safe-area-inset-top, 0px));
+    }
+
+    /* 徹底封印瀏覽器原生的全畫面橡皮筋回彈效應，讓 JS 100% 接管畫面！ */
     html, body {
         overscroll-behavior-y: none;
     }

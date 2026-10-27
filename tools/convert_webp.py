@@ -38,6 +38,11 @@ def _convert_single_worker(img_path, force_overwrite, quality, max_size, ratio):
     """單張圖片轉檔 Worker (供 ThreadPoolExecutor 平行呼叫，不直接印出訊息以避免多執行緒輸出交錯)"""
     try:
         file_name, _ = os.path.splitext(img_path)
+        
+        # ✨ 新增：如果檔名結尾或名稱中包含 _ori，直接回傳 IGNORE 狀態，完全不處理
+        if "_ori" in file_name:
+            return ('IGNORE', img_path, None, None)
+            
         webp_path = f"{file_name}.webp"
         existed_before = os.path.exists(webp_path)
         
@@ -122,7 +127,11 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
         ]
         for future in as_completed(futures):
             status, img_path, webp_path, err = future.result()
-            if status == 'SKIPPED':
+            
+            # ✨ 新增：如果是 IGNORE，直接 pass，不計算入 skip_count
+            if status == 'IGNORE':
+                pass
+            elif status == 'SKIPPED':
                 skip_count += 1
             elif status == 'OVERWRITTEN':
                 cout.file_size_action("複寫成功", img_path, webp_path, icon_key='refresh', tree=True)

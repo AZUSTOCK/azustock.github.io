@@ -522,39 +522,56 @@ window.unlockScroll = function() {
 // ✨ PWA 專屬全域下拉重新整理引擎 (Pull-to-Refresh Engine)
 // ==========================================
 window.initPWAPullToRefresh = function() {
-    // 🛡️ 核心防護：只有在 PWA (Standalone) 模式下才啟用，不干擾一般瀏覽器的原生下拉
     if (!window.isPWAEnvironment()) return;
 
-    const indicator = document.createElement('div');
-    indicator.id = 'pwa-refresh-indicator';
-    indicator.className = 'pwa-refresh-indicator';
-    indicator.innerHTML = GLOBAL_SVGS.mermaidReload; // 借用系統的重整 SVG
-    document.body.appendChild(indicator);
+    let indicator = document.getElementById('pwa-refresh-indicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'pwa-refresh-indicator';
+        indicator.className = 'pwa-refresh-indicator';
+        document.body.appendChild(indicator);
+    }
+    indicator.innerHTML = GLOBAL_SVGS.mermaidReload;
 
     let startY = 0;
     let isPulling = false;
     let canRefresh = false;
-    
-    // ✨ 優化 1：降低觸發門檻 (原本 75 -> 改為 60)，輕輕一拉即可觸發
     const threshold = 60; 
 
-    // 初始化時先推播一次 Scroll 事件
-    const activeContainer = window.getActiveScrollContainer();
-    if (activeContainer) {
-        activeContainer.dispatchEvent(new Event('scroll'));
-    }
+    // ✨ 修正 3：精準判斷當前是否允許下拉重整，以及取得正確的捲動容器
+    const getRefreshContext = () => {
+        // 🚨 阻斷條件：如果開啟了任何其他彈窗 (圖片放大、敏感警告、PDF選項、重開機畫面) 則禁止重整
+        if (document.getElementById('lightbox-modal')?.classList.contains('is-active')) return null;
+        if (document.getElementById('sensitive-modal-overlay')) return null;
+        if (document.getElementById('pdf-action-modal')) return null;
+        if (document.getElementById('sys-reboot-screen')) return null;
+
+        // ✅ 情境 A：主頁漢堡選單開啟時
+        const menu = document.getElementById('fullscreen-menu');
+        if (menu && menu.classList.contains('active')) {
+            return { el: menu, scrollTop: menu.scrollTop };
+        }
+
+        // ✅ 情境 B：專案頁、文章頁、特殊頁面 (Modal 開啟時)
+        const modal = document.getElementById('md-modal');
+        const modalContent = document.querySelector('.modal-content');
+        if (modal && modal.classList.contains('active') && modalContent) {
+            return { el: modalContent, scrollTop: modalContent.scrollTop };
+        }
+
+        // ✅ 情境 C：主頁本身 (捲動目標為 window)
+        return { el: document.documentElement, scrollTop: window.scrollY || document.documentElement.scrollTop };
+    };
 
     document.addEventListener('touchstart', (e) => {
-        // ✨ 核心修復 1：將 getScrollContainer() 修正為 window.getActiveScrollContainer()
-        const container = window.getActiveScrollContainer();
-        const scrollTop = container ? (container.scrollTop || window.scrollY || 0) : 0;
+        const ctx = getRefreshContext();
         
-        if (scrollTop <= 0) {
-            // ✨ 優化 2：改用 clientY，避免受手機系統介面 (如網址列伸縮) 影響導致的座標誤差
+        // ✨ 修正 2：加入容錯區間 (<= 1) 解決 iOS 橡皮筋回彈造成的觸發不穩定
+        if (ctx && ctx.scrollTop <= 1) { 
             startY = e.touches[0].clientY; 
             isPulling = true;
             indicator.style.transition = 'none'; 
-            indicator.classList.remove('is-success');
+            indicator.classList.remove('is-success', 'is-reloading', 'ready');
             indicator.innerHTML = GLOBAL_SVGS.mermaidReload;
         }
     }, { passive: true });
@@ -562,14 +579,18 @@ window.initPWAPullToRefresh = function() {
     document.addEventListener('touchmove', (e) => {
         if (!isPulling) return;
         
-        const container = window.getActiveScrollContainer();
-        const currentScrollTop = container ? (container.scrollTop || window.scrollY || 0) : 0;
+        const ctx = getRefreshContext();
+        if (!ctx) {
+            isPulling = false;
+            return;
+        }
+        
         const currentY = e.touches[0].clientY;
         
-        // 如果使用者往上滑 (閱讀文章)，動態更新 startY 錨點
-        if (currentScrollTop > 0) {
+        // 如果使用者往上滑 (閱讀文章)，動態更新 startY 錨點並隱藏
+        if (ctx.scrollTop > 1) {
             startY = currentY; 
-            indicator.style.transform = `translate(-50%, -100%)`;
+            indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
             indicator.style.opacity = '0';
             indicator.classList.remove('ready');
             return;
@@ -577,32 +598,31 @@ window.initPWAPullToRefresh = function() {
 
         const pullDistance = currentY - startY;
 
-        // 只有確實往下拉，且當下位於最頂端時才觸發特效
-        if (pullDistance > 0 && currentScrollTop <= 0) {
-            // 🚨 阻止 PWA 在 iOS/Android 上的原生橡皮筋回彈效應
+        if (pullDistance > 0 && ctx.scrollTop <= 1) {
             if (e.cancelable) e.preventDefault();
             
-            // ✨ 優化 3：改變阻力公式，改用線性係數 (0.45)，讓拉動的手感更輕盈且跟手
             const dampenedDistance = pullDistance * 0.45; 
             const rotation = -Math.min(pullDistance * 1.5, 360);
             
             indicator.style.opacity = Math.min(pullDistance / 40, 1).toString();
-            indicator.style.transform = `translate(-50%, calc(${dampenedDistance}px - 100%))`;
-
+            
             const svgIcon = indicator.querySelector('svg');
             if (svgIcon && !indicator.classList.contains('is-reloading')) {
                 svgIcon.style.transform = `rotate(${rotation}deg)`;
             }
 
+            // ✨ 修正 1：利用 setProperty('...', 'important') 覆寫 CSS，防止拖曳跨越門檻時瞬間跳動
             if (dampenedDistance >= threshold) {
                 canRefresh = true;
                 indicator.classList.add('ready');
+                indicator.style.setProperty('transform', `translate(-50%, calc(${dampenedDistance}px - 100%)) scale(1.1)`, 'important');
             } else {
                 canRefresh = false;
                 indicator.classList.remove('ready');
+                indicator.style.setProperty('transform', `translate(-50%, calc(${dampenedDistance}px - 100%)) scale(1)`, 'important');
             }
         } else {
-            indicator.style.transform = `translate(-50%, -100%)`;
+            indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
             indicator.style.opacity = '0';
             indicator.classList.remove('ready');
         }
@@ -617,23 +637,22 @@ window.initPWAPullToRefresh = function() {
         indicator.classList.remove('ready');
         
         if (canRefresh) {
-            // 1. 達標：鎖定在頂部並開始 CSS 無限旋轉
             indicator.classList.add('is-reloading');
-            indicator.style.transform = `translate(-50%, 30px)`;
+            
+            // ✨ 修正 1：手指放開後，平滑滑動至 30px 定點，取代原本的瞬間跳轉
+            indicator.style.setProperty('transform', `translate(-50%, 30px) scale(1)`, 'important');
             
             const svgIcon = indicator.querySelector('svg');
             if (svgIcon) svgIcon.style.transform = ''; 
 
-            window.triggerHaptic('light'); // 輕微震動提示開始轉
+            window.triggerHaptic('light'); 
             
-            // 2. 轉個 0.7 秒後，漂亮地變成「打勾」圖示！
             setTimeout(() => {
                 indicator.classList.remove('is-reloading');
                 indicator.classList.add('is-success');
                 indicator.innerHTML = GLOBAL_SVGS.check; 
-                window.triggerHaptic('success'); // 強震動提示完成
+                window.triggerHaptic('success'); 
                 
-                // 3. 停頓 0.4 秒讓使用者看清楚打勾，然後才觸發真正的重整
                 setTimeout(() => {
                     if (window.showSystemRebootScreen) {
                         window.showSystemRebootScreen('MANUAL_RELOAD', CONFIG.VERSION, CONFIG.VERSION, 'UPDATING', true);
@@ -644,8 +663,7 @@ window.initPWAPullToRefresh = function() {
             }, 700);
             
         } else {
-            // ❌ 未達門檻：彈回原位隱藏
-            indicator.style.transform = `translate(-50%, -100%)`;
+            indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
             indicator.style.opacity = '0';
             window.triggerHaptic('light');
         }
@@ -1874,7 +1892,7 @@ window.lightboxState = {
     zoom: 1, 
     x: 0, 
     y: 0,
-    maxZoom: 1.5 // 預設 2 倍，之後會動態更新
+    maxZoom: 2 // 預設 2 倍，之後會動態更新
 };
 
 window.openLightbox = function(btn, event) {
@@ -1894,7 +1912,8 @@ window.openLightbox = function(btn, event) {
         zoom: 1, 
         x: 0, 
         y: 0,
-        maxZoom: 2 
+        maxZoom: 2,
+        activeGallery: gallery // ✨ 新增：記錄觸發的相簿容器
     };
 
     // 相簿圖片陣列讀取邏輯
@@ -2151,6 +2170,26 @@ window.closeLightbox = function() {
     const toolbox = document.getElementById('lightbox-toolbox');
     const toggleBtn = document.querySelector('.toolbox-toggle-btn'); // ✨ 抓取按鈕
     
+    // ✨ 新增：退出 Lightbox 前，將最後瀏覽的圖片在背景畫廊中捲動並置中
+    const state = window.lightboxState;
+    if (state && !state.isDomMode) {
+        if (state.activeGallery) {
+            // 畫廊相簿模式：透過 currentIndex 找到對應的 figure 並水平置中
+            const figures = state.activeGallery.querySelectorAll('figure');
+            if (figures[state.currentIndex]) {
+                // inline: 'center' 會完美讓橫向滾軸置中，block: 'nearest' 則避免畫面大幅度上下跳動
+                figures[state.currentIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        } else if (state.images && state.images.length > 0) {
+            // 單張圖片模式：透過 src 尋找對應的圖片並置中
+            const currentItem = state.images[state.currentIndex];
+            const targetImg = document.querySelector(`img[src="${currentItem.src}"], img[data-full="${currentItem.src}"]`);
+            if (targetImg) {
+                targetImg.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+    }
+
     if (lightboxModal) {
         lightboxModal.classList.remove('is-active');
         if (toolbox) toolbox.classList.remove('is-open');
