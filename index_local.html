@@ -44,8 +44,8 @@
       }
   </script>
   <style>
-      /* 如果正在重啟，隱藏 body 內的所有東西，只准顯示黑底遮罩 */
-      html { background-color: #020617; }
+      /* ✨ 修正 2：讓 html 底色跟隨主題變數 var(--bg)，預設深色才退回 #020617 */
+      html { background-color: var(--bg, #020617); transition: background-color 0.5s ease; }
       html.sys-rebooting body > *:not(#sys-reboot-screen) { display: none !important; }
   </style>
   <script>

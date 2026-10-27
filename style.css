@@ -3322,7 +3322,7 @@ body {
     padding-top: var(--safe-top) !important;
 }
 
-/* ✨ 讓所有滿版遮罩「從頭頂 0px 開始」蓋滿，確保毛玻璃與底色涵蓋狀態列 */
+/* 讓所有滿版遮罩「從頭頂 0px 開始」蓋滿 */
 .modal-overlay, 
 #lightbox-modal, 
 #sys-reboot-screen, 
@@ -3336,24 +3336,39 @@ body {
     position: fixed !important;
 }
 
-/* ✨ 遮罩維持滿版，只將內部的容器往下推，完美避開狀態列 */
+/* ✨ 修正 4：將上下對稱設定為 var(--safe-top)，讓桌機/平板的 Modal 在扣掉頂部遮罩後「視覺絕對正中央」！ */
+.modal-overlay {
+    padding-top: var(--safe-top) !important;
+    padding-bottom: var(--safe-top) !important;
+    box-sizing: border-box;
+}
+
 .fullscreen-nav,
-.modal-overlay,
 #pdf-action-modal {
     padding-top: var(--safe-top) !important;
     box-sizing: border-box; 
 }
 
-/* ✨ Lightbox 工具列漸層補全 */
+/* Lightbox 工具列漸層補全 */
 #lightbox-toolbar {
     top: 0 !important;
     padding-top: calc(15px + var(--safe-top)) !important;
     height: calc(70px + var(--safe-top)) !important;
 }
 
-@media (max-width: 600px) {
+/* ✨ 修正 3：手機版 (<= 700px) 讓專案與文章區塊完美填滿「頂部遮罩正下方」直到螢幕最底端！ */
+@media (max-width: 700px) {
+    .modal-overlay {
+        padding-top: var(--safe-top) !important;
+        padding-bottom: 0 !important; /* 移除底部推擠，讓卡片緊貼頂部遮罩下方並填滿畫面 */
+        align-items: stretch !important;
+    }
     .modal-content {
-        max-height: 100% !important; 
+        width: 100% !important;
+        height: calc(var(--vv-height) - var(--safe-top)) !important;
+        max-height: calc(var(--vv-height) - var(--safe-top)) !important;
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
     }
 }
 
@@ -3826,15 +3841,13 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 
 /* ========================================================================== */
-/* ✨ PWA 全域狀態列防護盾 (極窄無痕 + 光球隨內容滾動版)                       */
+/* ✨ PWA 全域狀態列防護盾 (隨主題變色 + 光球隨內容滾動 + 視覺置中版)           */
 /* ========================================================================== */
 @media (display-mode: standalone) {
     :root {
-        /* ✨ 修正 1：縮減至 iPad 狀態列最小極限高度 (20px)，不再多佔畫面空間 */
         --safe-top: max(20px, env(safe-area-inset-top, 0px));
     }
 
-    /* 1. 鎖死 html 根層級捲動，讓 window.scrollY 永遠 = 0，騙過 iPadOS 不產生系統模糊 */
     html {
         position: fixed !important;
         inset: 0 !important;
@@ -3842,9 +3855,9 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         height: 100dvh !important;
         overflow: hidden !important;
         overscroll-behavior: none !important;
+        background-color: var(--bg) !important;
     }
 
-    /* 2. 讓 body 成為內部獨立捲動容器 */
     body {
         width: 100vw !important;
         height: 100dvh !important;
@@ -3854,14 +3867,21 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         -webkit-overflow-scrolling: touch;
         scroll-behavior: smooth;
         box-sizing: border-box;
-
-        /* ✨ 修正 2：關鍵魔法！設定為 local，讓背景光球跟著內部文字一起滾動，不再固定在視野上方！ */
         background-attachment: local !important;
     }
 
-    /* ✨ 修正 1：拔除已經不需要的人工偽元素擋板 (因為 html 已經鎖死，系統不會再觸發模糊遮罩了) */
+    /* ✨ 修正 2：頂部狀態列遮罩綁定 var(--bg)，並設定 z-index: 2000 確保浮在 Modal 上方且隨深淺色主題即時變色 */
     body::after {
-        display: none !important;
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--safe-top);
+        background-color: var(--bg);
+        z-index: 2000;
+        pointer-events: none;
+        transition: background-color 0.5s ease;
     }
 }
 

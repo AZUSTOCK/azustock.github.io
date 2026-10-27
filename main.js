@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.5",          // 目前系統版本號
+    VERSION: "U1.6.1.8",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -2176,27 +2176,21 @@ window.closeLightbox = function() {
     const toolbox = document.getElementById('lightbox-toolbox');
     const toggleBtn = document.querySelector('.toolbox-toggle-btn'); // ✨ 抓取按鈕
     
-    // ✨ 新增：退出 Lightbox 前，將最後瀏覽的圖片在背景畫廊中捲動並置中
+    // ✨ 修正 1：只在「畫廊相簿模式 (activeGallery)」下執行水平置中，
+    // 單張圖片絕對不觸發任何捲動！且改用 gallery.scrollTo 僅移動水平捲軸，徹底防止外層頁面上下跑掉！
     const state = window.lightboxState;
-    if (state && !state.isDomMode) {
-        if (state.activeGallery) {
-            // 畫廊相簿模式：透過 currentIndex 找到對應的 figure 並水平置中
-            const figures = state.activeGallery.querySelectorAll('figure');
-            if (figures[state.currentIndex]) {
-                // inline: 'center' 會完美讓橫向滾軸置中，block: 'nearest' 則避免畫面大幅度上下跳動
-                figures[state.currentIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            }
-        } else if (state.images && state.images.length > 0) {
-            // 單張圖片模式：透過 src 尋找對應的圖片並置中
-            const currentItem = state.images[state.currentIndex];
-            const targetImg = document.querySelector(`img[src="${currentItem.src}"], img[data-full="${currentItem.src}"]`);
-            if (targetImg) {
-                targetImg.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            }
+    if (state && !state.isDomMode && state.activeGallery) {
+        const gallery = state.activeGallery;
+        const figures = gallery.querySelectorAll('figure');
+        const targetFig = figures[state.currentIndex];
+        if (targetFig && gallery.scrollWidth > gallery.clientWidth) {
+            const targetLeft = targetFig.offsetLeft - (gallery.clientWidth / 2) + (targetFig.clientWidth / 2);
+            gallery.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
         }
     }
 
     if (lightboxModal) {
+        lightboxModal.classList.remove('is-active');
         lightboxModal.classList.remove('is-active');
         if (toolbox) toolbox.classList.remove('is-open');
         if (toggleBtn) toggleBtn.classList.remove('is-active'); // ✨ 關閉時拔除狀態
@@ -3574,6 +3568,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
+        const bgHex = theme === 'light' ? '#F1F5F9' : '#020617';
+        document.documentElement.style.backgroundColor = bgHex;
+
+        // ✨ 修正 2：即時更新所有 theme-color meta 標籤，讓頂部狀態列隨深淺色無縫變色
+        document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
+            meta.setAttribute('content', bgHex);
+        });
 
         // ✨ 新增：即時同步 PWA 狀態列主題色，消除系統色差遮罩
         const metaThemeColor = document.getElementById('meta-theme-color');
