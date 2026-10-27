@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.8",          // 目前系統版本號
+    VERSION: "U1.6.1.9",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -3571,10 +3571,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const bgHex = theme === 'light' ? '#F1F5F9' : '#020617';
         document.documentElement.style.backgroundColor = bgHex;
 
-        // ✨ 修正 2：即時更新所有 theme-color meta 標籤，讓頂部狀態列隨深淺色無縫變色
-        document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
-            meta.setAttribute('content', bgHex);
-        });
+        // ✨ 強制觸發 iOS PWA 頂部原生狀態列變色：移除所有舊的 theme-color 並重新建立單一節點
+        document.querySelectorAll('meta[name="theme-color"]').forEach(el => el.remove());
+        const newMeta = document.createElement('meta');
+        newMeta.id = 'meta-theme-color';
+        newMeta.name = 'theme-color';
+        newMeta.content = bgHex;
+        document.head.appendChild(newMeta);
 
         // ✨ 新增：即時同步 PWA 狀態列主題色，消除系統色差遮罩
         const metaThemeColor = document.getElementById('meta-theme-color');

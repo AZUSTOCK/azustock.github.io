@@ -3317,12 +3317,12 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
     --vv-width: 100dvw;
 }
 
-/* 全域限制在頂部工具列下方，完美避開瀏海與 iPad 系統狀態列 */
+/* 全域限制在頂部工具列下方 */
 body {
     padding-top: var(--safe-top) !important;
 }
 
-/* 讓所有滿版遮罩「從頭頂 0px 開始」蓋滿 */
+/* 讓所有滿版遮罩從頭頂 0px 開始蓋滿 */
 .modal-overlay, 
 #lightbox-modal, 
 #sys-reboot-screen, 
@@ -3336,11 +3336,14 @@ body {
     position: fixed !important;
 }
 
-/* ✨ 修正 4：將上下對稱設定為 var(--safe-top)，讓桌機/平板的 Modal 在扣掉頂部遮罩後「視覺絕對正中央」！ */
+/* ✨ 手機與平板統一行為：上下對稱安全內距，讓專案與文章區塊永遠在視覺正中央，且不強制撐滿到底部 */
 .modal-overlay {
-    padding-top: var(--safe-top) !important;
-    padding-bottom: var(--safe-top) !important;
+    padding-top: max(1rem, var(--safe-top)) !important;
+    padding-bottom: max(1rem, var(--safe-bottom)) !important;
     box-sizing: border-box;
+    display: flex;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .fullscreen-nav,
@@ -3356,19 +3359,9 @@ body {
     height: calc(70px + var(--safe-top)) !important;
 }
 
-/* ✨ 修正 3：手機版 (<= 700px) 讓專案與文章區塊完美填滿「頂部遮罩正下方」直到螢幕最底端！ */
 @media (max-width: 700px) {
-    .modal-overlay {
-        padding-top: var(--safe-top) !important;
-        padding-bottom: 0 !important; /* 移除底部推擠，讓卡片緊貼頂部遮罩下方並填滿畫面 */
-        align-items: stretch !important;
-    }
     .modal-content {
-        width: 100% !important;
-        height: calc(var(--vv-height) - var(--safe-top)) !important;
-        max-height: calc(var(--vv-height) - var(--safe-top)) !important;
-        border-bottom-left-radius: 0 !important;
-        border-bottom-right-radius: 0 !important;
+        max-height: 100% !important; 
     }
 }
 
@@ -3841,11 +3834,12 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 
 /* ========================================================================== */
-/* ✨ PWA 全域狀態列防護盾 (隨主題變色 + 光球隨內容滾動 + 視覺置中版)           */
+/* ✨ PWA 全域設定 (移除多餘人工頂部遮罩，交由原生狀態列處理)                   */
 /* ========================================================================== */
 @media (display-mode: standalone) {
     :root {
-        --safe-top: max(20px, env(safe-area-inset-top, 0px));
+        /* ✨ 恢復原生數值 (在 default 狀態列下會自動是 0px)，不再多長出一截空白條！ */
+        --safe-top: env(safe-area-inset-top, 0px);
     }
 
     html {
@@ -3870,18 +3864,9 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         background-attachment: local !important;
     }
 
-    /* ✨ 修正 2：頂部狀態列遮罩綁定 var(--bg)，並設定 z-index: 2000 確保浮在 Modal 上方且隨深淺色主題即時變色 */
+    /* ✨ 徹底關閉人工遮罩，消除圖片中多出來的那條白邊 */
     body::after {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: var(--safe-top);
-        background-color: var(--bg);
-        z-index: 2000;
-        pointer-events: none;
-        transition: background-color 0.5s ease;
+        display: none !important;
     }
 }
 
