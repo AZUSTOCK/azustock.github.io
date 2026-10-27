@@ -536,11 +536,10 @@ window.initPWAPullToRefresh = function() {
     let startY = 0;
     let isPulling = false;
     let canRefresh = false;
-    const threshold = 60; 
+    const threshold = 60; // ✨ 啟動門檻與終點位置上限 (60px)
 
-    // ✨ 修正 3：精準判斷當前是否允許下拉重整，以及取得正確的捲動容器
+    // 精準判斷當前是否允許下拉重整，以及取得正確的捲動容器
     const getRefreshContext = () => {
-        // 🚨 阻斷條件：如果開啟了任何其他彈窗 (圖片放大、敏感警告、PDF選項、重開機畫面) 則禁止重整
         if (document.getElementById('lightbox-modal')?.classList.contains('is-active')) return null;
         if (document.getElementById('sensitive-modal-overlay')) return null;
         if (document.getElementById('pdf-action-modal')) return null;
@@ -559,20 +558,19 @@ window.initPWAPullToRefresh = function() {
             return { el: modalContent, scrollTop: modalContent.scrollTop };
         }
 
-        // ✅ 情境 C：主頁本身 (相容 瀏覽器 window 與 PWA body 捲動)
+        // ✅ 情境 C：主頁本身
         return { 
             el: document.body, 
-            scrollTop: window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0 
+            scrollTop: Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0, document.body.scrollTop || 0)
         };
     };
 
     document.addEventListener('touchstart', (e) => {
         const ctx = getRefreshContext();
-        
-        // ✨ 修正 2：加入容錯區間 (<= 1) 解決 iOS 橡皮筋回彈造成的觸發不穩定
         if (ctx && ctx.scrollTop <= 1) { 
             startY = e.touches[0].clientY; 
             isPulling = true;
+            canRefresh = false;
             indicator.style.transition = 'none'; 
             indicator.classList.remove('is-success', 'is-reloading', 'ready');
             indicator.innerHTML = GLOBAL_SVGS.mermaidReload;
@@ -590,7 +588,6 @@ window.initPWAPullToRefresh = function() {
         
         const currentY = e.touches[0].clientY;
         
-        // 如果使用者往上滑 (閱讀文章)，動態更新 startY 錨點並隱藏
         if (ctx.scrollTop > 1) {
             startY = currentY; 
             indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
@@ -604,8 +601,12 @@ window.initPWAPullToRefresh = function() {
         if (pullDistance > 0 && ctx.scrollTop <= 1) {
             if (e.cancelable) e.preventDefault();
             
-            const dampenedDistance = pullDistance * 0.45; 
-            const rotation = -Math.min(pullDistance * 1.5, 360);
+            const rawDistance = pullDistance * 0.45;
+            // ✨ 核心修正 1：將下拉位移量硬鎖死在 threshold (60px)！到達門檻後絕對不再往下移動
+            const clampedDistance = Math.min(rawDistance, threshold);
+            
+            // ✨ 旋轉角度不受位移上限影響，繼續隨手指下拉距離持續旋轉
+            const rotation = -(pullDistance * 1.8);
             
             indicator.style.opacity = Math.min(pullDistance / 40, 1).toString();
             
@@ -614,15 +615,18 @@ window.initPWAPullToRefresh = function() {
                 svgIcon.style.transform = `rotate(${rotation}deg)`;
             }
 
-            // ✨ 修正 1：利用 setProperty('...', 'important') 覆寫 CSS，防止拖曳跨越門檻時瞬間跳動
-            if (dampenedDistance >= threshold) {
-                canRefresh = true;
-                indicator.classList.add('ready');
-                indicator.style.setProperty('transform', `translate(-50%, calc(${dampenedDistance}px - 100%)) scale(1.1)`, 'important');
+            if (rawDistance >= threshold) {
+                if (!canRefresh) {
+                    canRefresh = true;
+                    indicator.classList.add('ready');
+                    window.triggerHaptic('light'); // 到達門檻瞬間給一次微震動回饋
+                }
+                // 釘死在終點位置 (threshold)，並維持 1.1 倍放大高光
+                indicator.style.setProperty('transform', `translate(-50%, calc(${threshold}px - 100%)) scale(1.1)`, 'important');
             } else {
                 canRefresh = false;
                 indicator.classList.remove('ready');
-                indicator.style.setProperty('transform', `translate(-50%, calc(${dampenedDistance}px - 100%)) scale(1)`, 'important');
+                indicator.style.setProperty('transform', `translate(-50%, calc(${clampedDistance}px - 100%)) scale(1)`, 'important');
             }
         } else {
             indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
@@ -635,15 +639,15 @@ window.initPWAPullToRefresh = function() {
         if (!isPulling) return;
         isPulling = false;
 
-        // 手指離開，恢復 CSS 過渡動畫
+        // 恢復平滑動畫過渡
         indicator.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease';
         indicator.classList.remove('ready');
         
         if (canRefresh) {
             indicator.classList.add('is-reloading');
             
-            // ✨ 修正 1：手指放開後，平滑滑動至 30px 定點，取代原本的瞬間跳轉
-            indicator.style.setProperty('transform', `translate(-50%, 30px) scale(1)`, 'important');
+            // ✨ 手指放開後，因為圖示已經釘在 calc(60px - 100%)，直接原地縮回 scale(1) 開始轉圈，完全不跳動！
+            indicator.style.setProperty('transform', `translate(-50%, calc(${threshold}px - 100%)) scale(1)`, 'important');
             
             const svgIcon = indicator.querySelector('svg');
             if (svgIcon) svgIcon.style.transform = ''; 
@@ -668,7 +672,6 @@ window.initPWAPullToRefresh = function() {
         } else {
             indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
             indicator.style.opacity = '0';
-            window.triggerHaptic('light');
         }
         canRefresh = false;
     });
@@ -3570,7 +3573,13 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (prefersLight) initialTheme = 'light';
 
     function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
+
+        // ✨ 新增：即時同步 PWA 狀態列主題色，消除系統色差遮罩
+        const metaThemeColor = document.getElementById('meta-theme-color');
+        if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', theme === 'light' ? '#F1F5F9' : '#020617');
+        }
 
     if (window.mermaid) {
         window.mermaid.initialize({

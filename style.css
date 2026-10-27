@@ -3780,13 +3780,12 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     transform-origin: center center;
 }
 
-/* 達到重整門檻時的高光與放大 */
+/* 達到重整門檻時的高光與放大 (✨ 移除寫死的 transform !important，交由 JS 精準釘死終點) */
 .pwa-refresh-indicator.ready {
     color: var(--card);
     background: var(--accent-2);
     border-color: var(--accent-2);
     box-shadow: 0 4px 15px var(--glow-1);
-    transform: translate(-50%, calc(75px - 100%)) scale(1.1) !important;
 }
 
 /* ✨ 新增：專屬的逆時針無限旋轉動畫 */
@@ -3827,44 +3826,42 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 
 /* ========================================================================== */
-/* ✨ PWA 全域狀態列防護盾 (極淨無模糊版：鎖定 window.scrollY = 0)              */
+/* ✨ PWA 全域狀態列防護盾 (極窄無痕 + 光球隨內容滾動版)                       */
 /* ========================================================================== */
 @media (display-mode: standalone) {
     :root {
-        /* 保留 iPad 頂部 24px 狀態列安全高度 */
-        --safe-top: max(24px, env(safe-area-inset-top, 0px));
+        /* ✨ 修正 1：縮減至 iPad 狀態列最小極限高度 (20px)，不再多佔畫面空間 */
+        --safe-top: max(20px, env(safe-area-inset-top, 0px));
     }
 
-    /* ✨ 1. 鎖死 html 根層級捲動，讓 window.scrollY 永遠 = 0，徹底騙過 iPadOS 不產生模糊遮罩！ */
+    /* 1. 鎖死 html 根層級捲動，讓 window.scrollY 永遠 = 0，騙過 iPadOS 不產生系統模糊 */
     html {
-        height: 100dvh;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100dvh !important;
         overflow: hidden !important;
-        overscroll-behavior-y: none;
+        overscroll-behavior: none !important;
     }
 
-    /* ✨ 2. 將主頁捲動權交給 body，維持原本絲滑捲動與平滑錨點跳轉 */
+    /* 2. 讓 body 成為內部獨立捲動容器 */
     body {
-        height: 100dvh;
-        overflow-y: auto;
-        overflow-x: hidden;
-        overscroll-behavior-y: none;
+        width: 100vw !important;
+        height: 100dvh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        overscroll-behavior-y: none !important;
         -webkit-overflow-scrolling: touch;
         scroll-behavior: smooth;
         box-sizing: border-box;
+
+        /* ✨ 修正 2：關鍵魔法！設定為 local，讓背景光球跟著內部文字一起滾動，不再固定在視野上方！ */
+        background-attachment: local !important;
     }
 
-    /* ✨ 3. 頂部狀態列純色背景保護層，讓時間與日期永遠清晰 */
+    /* ✨ 修正 1：拔除已經不需要的人工偽元素擋板 (因為 html 已經鎖死，系統不會再觸發模糊遮罩了) */
     body::after {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: var(--safe-top);
-        background-color: var(--bg);
-        z-index: 900; 
-        pointer-events: none;
-        transition: background-color 0.5s ease;
+        display: none !important;
     }
 }
 
