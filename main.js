@@ -559,8 +559,11 @@ window.initPWAPullToRefresh = function() {
             return { el: modalContent, scrollTop: modalContent.scrollTop };
         }
 
-        // ✅ 情境 C：主頁本身 (捲動目標為 window)
-        return { el: document.documentElement, scrollTop: window.scrollY || document.documentElement.scrollTop };
+        // ✅ 情境 C：主頁本身 (相容 瀏覽器 window 與 PWA body 捲動)
+        return { 
+            el: document.body, 
+            scrollTop: window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0 
+        };
     };
 
     document.addEventListener('touchstart', (e) => {
@@ -3764,16 +3767,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // === 2. 返回頂部 (Back to Top) 邏輯 ===
 const bttBtn = document.getElementById('back-to-top');
-window.addEventListener('scroll', () => {
-    // 只要往下捲動超過 300px，就加上 visible，讓它浮現！
+const handleMainScroll = () => {
     if (bttBtn) {
-        bttBtn.classList.toggle('visible', window.scrollY > 300);
+        const currentY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        bttBtn.classList.toggle('visible', currentY > 300);
     }
-});
+};
+window.addEventListener('scroll', handleMainScroll, { passive: true });
+document.body.addEventListener('scroll', handleMainScroll, { passive: true });
 
 if (bttBtn) {
     bttBtn.addEventListener('click', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.body.scrollTo({ top: 0, behavior: 'smooth' });
     });
 }
 

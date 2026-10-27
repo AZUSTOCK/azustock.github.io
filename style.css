@@ -3827,21 +3827,33 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 
 /* ========================================================================== */
-/* ✨ PWA 全域狀態列防護盾 (極淨版：統一變數與圖層降級)                           */
+/* ✨ PWA 全域狀態列防護盾 (極淨無模糊版：鎖定 window.scrollY = 0)              */
 /* ========================================================================== */
 @media (display-mode: standalone) {
     :root {
-        /* ✨ 核心修復：iPad 沒有瀏海所以 safe-area-inset-top 是 0，
-           但系統狀態列依然佔據了約 24px！這裡用 max() 強制保留最低安全高度，
-           防止內文撞進狀態列觸發 iOS 系統的醜陋模糊遮罩。 */
+        /* 保留 iPad 頂部 24px 狀態列安全高度 */
         --safe-top: max(24px, env(safe-area-inset-top, 0px));
     }
 
-    /* 徹底封印瀏覽器原生的全畫面橡皮筋回彈效應，讓 JS 100% 接管畫面！ */
-    html, body {
+    /* ✨ 1. 鎖死 html 根層級捲動，讓 window.scrollY 永遠 = 0，徹底騙過 iPadOS 不產生模糊遮罩！ */
+    html {
+        height: 100dvh;
+        overflow: hidden !important;
         overscroll-behavior-y: none;
     }
-    
+
+    /* ✨ 2. 將主頁捲動權交給 body，維持原本絲滑捲動與平滑錨點跳轉 */
+    body {
+        height: 100dvh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior-y: none;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        box-sizing: border-box;
+    }
+
+    /* ✨ 3. 頂部狀態列純色背景保護層，讓時間與日期永遠清晰 */
     body::after {
         content: '';
         position: fixed;
@@ -3852,6 +3864,7 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         background-color: var(--bg);
         z-index: 900; 
         pointer-events: none;
+        transition: background-color 0.5s ease;
     }
 }
 
