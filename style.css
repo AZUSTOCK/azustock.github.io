@@ -3359,9 +3359,18 @@ body {
     height: calc(70px + var(--safe-top)) !important;
 }
 
+/* ✨ 修正 2：手機窄版 (<= 700px) 解除 1rem 外框限制，讓 md-modal 最大值可以 100% 填滿視窗！ */
 @media (max-width: 700px) {
+    .modal-overlay {
+        padding-top: var(--safe-top) !important;
+        padding-bottom: var(--safe-bottom) !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
     .modal-content {
-        max-height: 100% !important; 
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
     }
 }
 
@@ -3838,7 +3847,6 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 /* ========================================================================== */
 @media (display-mode: standalone) {
     :root {
-        /* ✨ 恢復原生數值 (在 default 狀態列下會自動是 0px)，不再多長出一截空白條！ */
         --safe-top: env(safe-area-inset-top, 0px);
     }
 
@@ -3849,7 +3857,7 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         height: 100dvh !important;
         overflow: hidden !important;
         overscroll-behavior: none !important;
-        background-color: var(--bg) !important;
+        background-color: var(--bg); /* ✨ 移除 !important，讓 JS 能瞬間刷新 iOS 狀態列底色 */
     }
 
     body {

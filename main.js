@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.9",          // 目前系統版本號
+    VERSION: "U1.6.1.10",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -3567,45 +3567,52 @@ document.addEventListener('DOMContentLoaded', () => {
     else if (prefersLight) initialTheme = 'light';
 
     function applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
         const bgHex = theme === 'light' ? '#F1F5F9' : '#020617';
-        document.documentElement.style.backgroundColor = bgHex;
+        const root = document.documentElement;
 
-        // ✨ 強制觸發 iOS PWA 頂部原生狀態列變色：移除所有舊的 theme-color 並重新建立單一節點
-        document.querySelectorAll('meta[name="theme-color"]').forEach(el => el.remove());
-        const newMeta = document.createElement('meta');
-        newMeta.id = 'meta-theme-color';
-        newMeta.name = 'theme-color';
-        newMeta.content = bgHex;
-        document.head.appendChild(newMeta);
-
-        // ✨ 新增：即時同步 PWA 狀態列主題色，消除系統色差遮罩
-        const metaThemeColor = document.getElementById('meta-theme-color');
-        if (metaThemeColor) {
-            metaThemeColor.setAttribute('content', theme === 'light' ? '#F1F5F9' : '#020617');
-        }
-
-    if (window.mermaid) {
-        window.mermaid.initialize({
-            startOnLoad: false,
-            // ✨ 核心修復：將 currentTheme 改為傳進來的 theme
-            theme: theme === 'dark' ? 'dark' : 'default', 
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-            securityLevel: 'loose',
-            useMaxWidth: false,
-            flowchart: { 
-                padding: 15,
-                htmlLabels: false 
-            }
-        });
+        root.style.transition = 'none';
+        root.setAttribute('data-theme', theme);
+        root.style.backgroundColor = bgHex;
+        document.body.style.backgroundColor = bgHex;
         
-        const mermaidEls = document.querySelectorAll('.mermaid');
+        void root.offsetHeight;
+
+        const updateThemeMeta = () => {
+            document.querySelectorAll('meta[name="theme-color"]').forEach(el => el.remove());
+            const newMeta = document.createElement('meta');
+            newMeta.id = 'meta-theme-color';
+            newMeta.name = 'theme-color';
+            newMeta.content = bgHex;
+            document.head.appendChild(newMeta);
+        };
+        
+        updateThemeMeta();
+        // ✨ 雙重保險：在 30ms 後再次強制重新插入一次 Meta，徹底打碎 iOS 狀態列的渲染快取！
+        setTimeout(updateThemeMeta, 30);
+
+        requestAnimationFrame(() => {
+            updateThemeMeta();
+            root.style.transition = '';
+        });
+
+        if (window.mermaid) {
+            window.mermaid.initialize({
+                startOnLoad: false,
+                theme: theme === 'dark' ? 'dark' : 'default',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
+                securityLevel: 'loose',
+                useMaxWidth: false,
+                flowchart: { 
+                    padding: 15,
+                    htmlLabels: false 
+                }
+            });
+            
+            const mermaidEls = document.querySelectorAll('.mermaid');
             if (mermaidEls.length > 0) {
                 mermaidEls.forEach(el => {
-                    // 取出含有 var() 的備份原文
                     const originalText = decodeURIComponent(el.getAttribute('data-original-text') || '');
                     if (originalText) {
-                        // ✨ 魔法發生：重新丟進翻譯蒟蒻，這時它會抓到新主題的 CSS 色碼！
                         el.textContent = window.processMermaidCssVars(originalText); 
                         el.removeAttribute('data-processed'); 
                     }
