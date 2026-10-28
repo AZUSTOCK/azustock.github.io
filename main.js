@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.10",          // 目前系統版本號
+    VERSION: "U1.6.1.11",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -558,16 +558,16 @@ window.initPWAPullToRefresh = function() {
             return { el: modalContent, scrollTop: modalContent.scrollTop };
         }
 
-        // ✅ 情境 C：主頁本身
+        // ✅ 情境 C：主頁本身 (支援 iOS 頂部回彈時的負數 scrollY)
         return { 
             el: document.body, 
-            scrollTop: Math.max(window.scrollY || 0, document.documentElement.scrollTop || 0, document.body.scrollTop || 0)
+            scrollTop: window.scrollY !== undefined ? window.scrollY : (document.documentElement.scrollTop || document.body.scrollTop || 0)
         };
     };
 
     document.addEventListener('touchstart', (e) => {
         const ctx = getRefreshContext();
-        if (ctx && ctx.scrollTop <= 1) { 
+        if (ctx && ctx.scrollTop <= 0) { // ✨ 改為 <= 0
             startY = e.touches[0].clientY; 
             isPulling = true;
             canRefresh = false;
@@ -588,7 +588,7 @@ window.initPWAPullToRefresh = function() {
         
         const currentY = e.touches[0].clientY;
         
-        if (ctx.scrollTop > 1) {
+        if (ctx.scrollTop > 2) {
             startY = currentY; 
             indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
             indicator.style.opacity = '0';
@@ -598,8 +598,11 @@ window.initPWAPullToRefresh = function() {
 
         const pullDistance = currentY - startY;
 
-        if (pullDistance > 0 && ctx.scrollTop <= 1) {
-            if (e.cancelable) e.preventDefault();
+        if (pullDistance > 0 && ctx.scrollTop <= 0) {
+            // ✨ 關鍵修改：當處於主頁 (ctx.el === document.body) 時，不呼叫 preventDefault()，讓主頁擁有原生的滾過頭回彈！
+            if (ctx.el !== document.body && e.cancelable) {
+                e.preventDefault();
+            }
             
             const rawDistance = pullDistance * 0.45;
             // ✨ 核心修正 1：將下拉位移量硬鎖死在 threshold (60px)！到達門檻後絕對不再往下移動
@@ -3570,13 +3573,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const bgHex = theme === 'light' ? '#F1F5F9' : '#020617';
         const root = document.documentElement;
 
-        root.style.transition = 'none';
+        // ✨ 1. 切換 data-theme，讓 CSS 變數 (--bg) 與 0.5s transition 自然運作，不強制寫死 body inline style
         root.setAttribute('data-theme', theme);
-        root.style.backgroundColor = bgHex;
-        document.body.style.backgroundColor = bgHex;
-        
-        void root.offsetHeight;
 
+        // ✨ 2. 同步更新 PWA 頂部狀態列 Meta 色碼 (保留您原本破除 iOS 快取的雙重保險機制)
         const updateThemeMeta = () => {
             document.querySelectorAll('meta[name="theme-color"]').forEach(el => el.remove());
             const newMeta = document.createElement('meta');
@@ -3587,7 +3587,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         updateThemeMeta();
-        // ✨ 雙重保險：在 30ms 後再次強制重新插入一次 Meta，徹底打碎 iOS 狀態列的渲染快取！
         setTimeout(updateThemeMeta, 30);
 
         requestAnimationFrame(() => {

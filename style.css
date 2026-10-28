@@ -864,7 +864,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* ========================================================================== */
 .new-jump-toast { 
     position: fixed; 
-    bottom: 55px; 
+    bottom: 65px; 
     
     /* ✨ 1. 拔除 translateX(-50%)，改用物理邊界置中，不管寬度怎麼變都絕對不會滑動 */
     left: 0;
@@ -2731,7 +2731,7 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
     .toc-dropdown { right: -0.2rem; width: min(260px, calc(100dvw - 4.5rem)); }
     #article-list-container { transition: opacity 0.2s ease; padding-bottom: 20px; }
     .new-jump-toast {
-        bottom: max(25px, calc(var(--safe-bottom) + 13px));
+        bottom: max(40px, calc(var(--safe-bottom) + 13px));
     }
 
     /* Markdown 排版優化 */
@@ -3843,7 +3843,7 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 
 /* ========================================================================== */
-/* ✨ PWA 全域設定 (移除多餘人工頂部遮罩，交由原生狀態列處理)                   */
+/* ✨ PWA 全域設定 (支援滾動回彈 + 頂部安全區隨主題變色遮罩)                  */
 /* ========================================================================== */
 @media (display-mode: standalone) {
     :root {
@@ -3851,30 +3851,37 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     }
 
     html {
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100vw !important;
-        height: 100dvh !important;
-        overflow: hidden !important;
-        overscroll-behavior: none !important;
-        background-color: var(--bg); /* ✨ 移除 !important，讓 JS 能瞬間刷新 iOS 狀態列底色 */
+        /* ✨ 拔除 position: fixed 與 overflow: hidden，釋放給系統原生捲軸 */
+        width: 100%;
+        min-height: 100dvh;
+        background-color: var(--bg);
+        overscroll-behavior-y: auto !important; /* 恢復滾過頭回彈 (Rubber-band bounce) */
     }
 
     body {
-        width: 100vw !important;
-        height: 100dvh !important;
-        overflow-y: auto !important;
+        width: 100%;
+        min-height: 100dvh;
         overflow-x: hidden !important;
-        overscroll-behavior-y: none !important;
+        /* ✨ 移除內部獨立捲軸與 overscroll 限制，讓整頁自然回彈 */
+        overscroll-behavior-y: auto !important;
         -webkit-overflow-scrolling: touch;
         scroll-behavior: smooth;
         box-sizing: border-box;
-        background-attachment: local !important;
     }
 
-    /* ✨ 徹底關閉人工遮罩，消除圖片中多出來的那條白邊 */
+    /* ✨ PWA 上方遮罩：保護頂部狀態列(時間/電量)，並隨主題平滑切換顏色 */
     body::after {
-        display: none !important;
+        content: "";
+        display: block !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--safe-top);
+        background-color: var(--bg); /* 自動跟隨深色 #020617 / 淺色 #F1F5F9 */
+        z-index: 9990; /* 確保壓在主頁內容與漢堡按鈕之上，但低於 Lightbox */
+        pointer-events: none;
+        transition: background-color 0.5s ease; /* 與 body 主題切換同步漸變 */
     }
 }
 

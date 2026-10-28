@@ -18,6 +18,7 @@
 ## fix
 1. PWA Pull-to-Refresh Engine
 2. PWA UI
+3. new-jump-toast UI
 
 ## deprecate
 1. 
