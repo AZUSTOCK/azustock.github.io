@@ -3894,8 +3894,17 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         left: 0 !important;
         right: 0 !important;
         width: 100vw !important;
-        height: var(--safe-top) !important;
+        /* 保持盒子高於 10px，讓 WebKit 有機會辨識這個頂部固定色塊。
+           透明下邊框不繪製底色；實際色帶只覆蓋安全區，安全區為 0 時保留 1px。
+           這是針對 WebKit 取樣行為的相容處理，需以實機驗證。 */
+        --shield-paint-height: max(1px, var(--safe-top));
+        --shield-box-height: max(12px, var(--shield-paint-height));
+        height: var(--shield-box-height) !important;
+        box-sizing: border-box !important;
+        border: 0 solid transparent !important;
+        border-bottom-width: calc(var(--shield-box-height) - var(--shield-paint-height)) !important;
         background-color: var(--bg);
+        background-clip: padding-box;
         z-index: 999999 !important; /* 壓過主頁目錄 (999)、文章 (1050)、Lightbox (9999) */
         pointer-events: none !important;
         transition: background-color 0.5s ease;
