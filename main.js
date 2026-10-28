@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.15",          // 目前系統版本號
+    VERSION: "U1.6.1.17",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -56,7 +56,7 @@ const GLOBAL_SVGS = {
     meatballMenu: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle class="dot-1" cx="5" cy="12" r="2.5"/><circle class="dot-2" cx="12" cy="12" r="2.5"/><circle class="dot-3" cx="19" cy="12" r="2.5"/></svg>`,
     link: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     linkLg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
-    extLinkSm: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -2px; opacity: 0.8;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
+    extLinkSm: `<svg width="24" height="24" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -4px; opacity: 0.8;">><path d="M9.665 -8.175L1.065 7.265M1.065 7.265L-5.695 3.945M-5.695 3.945L9.665 -8.175M9.665 -8.175L-9.175 -3.175M-9.175 -3.175L-10.735 1.905M-10.735 1.905L-1.135 0.345M-8.655 1.665L-7.975 8.865M-7.975 8.865L-5.695 3.945"/></svg>`,
     newTab: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
     
     // 📌 圖釘與機密
@@ -76,7 +76,7 @@ const GLOBAL_SVGS = {
     // 🗂️ 首頁專案卡片
     folderClosed: `<svg class="icon-book-closed" style="position: absolute; transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>`,
     folderOpen: `<svg class="icon-book-open" style="position: absolute; opacity: 0; transform: scale(0.8); transition: opacity 0.2s ease, transform 0.2s ease;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
-    arrowUpRight: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>`,
+    arrowUpRight: `<svg width="24" height="24" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M9.665 -8.175L1.065 7.265M1.065 7.265L-5.695 3.945M-5.695 3.945L9.665 -8.175M9.665 -8.175L-9.175 -3.175M-9.175 -3.175L-10.735 1.905M-10.735 1.905L-1.135 0.345M-8.655 1.665L-7.975 8.865M-7.975 8.865L-5.695 3.945"/></svg>`,
     
     // ⬅️ 導覽與操作方向
     arrowLeft: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
@@ -2127,6 +2127,18 @@ window.lightboxAction = function(action, event) {
                         window.mermaid.run({ querySelector: '#lightbox-active-mermaid' })
                             .catch(e => console.warn('Mermaid reload failed:', e))
                             .finally(() => {
+                                const svg = activeMermaid.querySelector('svg');
+                                if (svg) {
+                                    const vb = svg.getAttribute('viewBox');
+                                    if (vb) {
+                                        const [, , vbW, vbH] = vb.trim().split(/[\s,]+/).map(Number);
+                                        const maxW = window.innerWidth * 0.85;
+                                        const maxH = window.innerHeight - 220;
+                                        const fitScale = Math.min(maxW / vbW, maxH / vbH, 1.5);
+                                        svg.style.width = `${Math.round(Math.max(Math.min(vbW * fitScale, maxW), Math.min(280, maxW)))}px`;
+                                        svg.style.height = 'auto';
+                                    }
+                                }
                                 activeMermaid.style.opacity = '1';
                             });
                     } else {
@@ -2498,7 +2510,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (initialPinchDistance) {
                     let newZoom = initialZoom * (currentDistance / initialPinchDistance);
-                    newZoom = Math.max(1, Math.min(newZoom, window.lightboxState.maxZoom)); 
+                    newZoom = Math.max(0.5, Math.min(newZoom, window.lightboxState.maxZoom)); 
                     const centerX = (activePointers[0].x + activePointers[1].x) / 2;
                     const centerY = (activePointers[0].y + activePointers[1].y) / 2;
                     const ratio = newZoom / window.lightboxState.zoom - 1;
@@ -2579,7 +2591,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const state = window.lightboxState;
             const delta = e.deltaY < 0 ? 1 : -1;
             
-            let newZoom = Math.max(1, Math.min(state.zoom * (1 + delta * 0.15), state.maxZoom));
+            let newZoom = Math.max(0.5, Math.min(state.zoom * (1 + delta * 0.15), state.maxZoom));
             newZoom = Math.max(1, Math.min(newZoom, state.maxZoom));
             
             const ratio = newZoom / state.zoom - 1;
@@ -4129,7 +4141,7 @@ async function loadProjects() {
                         const a = document.createElement('a'); a.href = data.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
                         document.body.appendChild(a); a.click(); document.body.removeChild(a);
                     };
-                    actionText = `<div class="card-action-btn">${GLOBAL_SVGS.linkLg} 前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span></div>`;
+                    actionText = `<div class="card-action-btn">前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span></div>`;
                 } else {
                     card.onclick = (e) => { 
                         if (isLocked && !document.body.classList.contains('system-override-active')) {
@@ -5947,7 +5959,7 @@ document.addEventListener('keydown', (e) => {
             const state = window.lightboxState;
             if (toolbox && toolbox.classList.contains('is-open')) {
                 toolbox.classList.remove('is-open'); 
-            } else if (state.zoom > 1) {
+            } else if (state.zoom !== 1) {
                 window.lightboxAction('reset');      
             } else {
                 window.closeLightbox();              
@@ -6108,11 +6120,33 @@ window.fullscreenMermaid = function(btn) {
         lightboxWrapper.appendChild(customContainer);
     }
 
-    // 2. 完美克隆圖表，並掛上 CSS 類別
+    // 2. 完美克隆圖表，並根據 SVG 的 viewBox 計算不撐破畫面的最佳初始尺寸
     const clonedMermaid = mermaidDiv.cloneNode(true);
     clonedMermaid.id = 'lightbox-active-mermaid';
-    clonedMermaid.className = 'lightbox-mermaid-clone'; // ✨ 只用這一行取代下面所有 style
-    clonedMermaid.style.transform = 'translate(0px, 0px) scale(1)'; // 座標初始化仍須 JS
+    clonedMermaid.className = 'lightbox-mermaid-clone';
+    clonedMermaid.style.width = '';
+    clonedMermaid.style.height = '';
+    clonedMermaid.style.transform = 'translate(0px, 0px) scale(1)';
+
+    const clonedSvg = clonedMermaid.querySelector('svg');
+    if (clonedSvg) {
+        const vb = clonedSvg.getAttribute('viewBox');
+        if (vb) {
+            const parts = vb.trim().split(/[\s,]+/).map(Number);
+            const vbW = parts[2];
+            const vbH = parts[3];
+            if (vbW > 0 && vbH > 0) {
+                // 扣除上下工具列與邊距後的安全可視範圍
+                const maxW = window.innerWidth * 0.85;
+                const maxH = window.innerHeight - 220;
+                // 允許適度放大以看清細節，但絕不超過視窗安全邊界，最小也不低於 280px
+                const fitScale = Math.min(maxW / vbW, maxH / vbH, 1.5);
+                const targetW = Math.max(Math.min(vbW * fitScale, maxW), Math.min(280, maxW));
+                clonedSvg.style.width = `${Math.round(targetW)}px`;
+                clonedSvg.style.height = 'auto';
+            }
+        }
+    }
     
     customContainer.innerHTML = '';
     customContainer.appendChild(clonedMermaid);

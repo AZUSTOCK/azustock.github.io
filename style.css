@@ -3988,13 +3988,32 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 /* Mermaid 全螢幕大圖克隆體 */
 .lightbox-mermaid-clone {
     pointer-events: auto;
-    padding: 20px;
+    padding: 24px;
     border-radius: 12px;
     box-shadow: 0 10px 40px var(--shadow-base);
-    max-height: 90vh;
-    max-width: 90vw;
+    width: fit-content !important;
+    height: fit-content !important;
+    max-width: min(90vw, 1200px) !important;
+    max-height: calc(var(--vv-height, 100vh) - 200px) !important;
+    box-sizing: border-box;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
     background-color: var(--card); /* 淺色模式預設 */
-    transition: background-color 0.5s ease;
+    transition: transform 0.15s var(--ease-smooth), opacity 0.3s ease, background-color 0.5s ease;
+    transform-origin: center center;
+    cursor: grab;
+}
+.lightbox-img-wrapper.is-dragging .lightbox-mermaid-clone {
+    cursor: grabbing;
+    transition: none !important;
+}
+.lightbox-mermaid-clone svg {
+    display: block;
+    max-width: calc(min(90vw, 1200px) - 48px) !important;
+    max-height: calc(var(--vv-height, 100vh) - 248px) !important;
+    width: auto;
+    height: auto !important;
 }
 [data-theme="dark"] .lightbox-mermaid-clone {
     background-color: var(--bg); /* 深色模式自動切換 */

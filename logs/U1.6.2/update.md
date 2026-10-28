@@ -14,11 +14,13 @@
 2. .tab-section-wrapper UI
 3. capsule-btn history-btn tooltip
 4. .toast-x-icon behavior
+5. UI
 
 ## fix
 1. PWA Pull-to-Refresh Engine
 2. PWA UI
 3. new-jump-toast UI
+4. mermaid
 
 ## deprecate
 1. 
