@@ -3854,15 +3854,15 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 }
 
 
+/* Preset: 非 PWA 模式下隱藏實體遮罩 */
+#pwa-status-bar-shield {
+    display: none;
+}
+
 /* ========================================================================== */
-/* ✨ PWA 全域設定 (維持頂部遮罩，位置與高度 100% 貼齊瀏覽器原生狀態列)        */
+/* ✨ PWA 全域設定 (實體 DOM 頂部遮罩永不消失 + 位置高度 1:1 貼齊原生狀態列)  */
 /* ========================================================================== */
 @media (display-mode: standalone) {
-    :root {
-        /* ✨ 100% 採用瀏覽器原生回報的狀態列高度，不額外加數值 */
-        --safe-top: env(safe-area-inset-top, 0px);
-    }
-
     html {
         width: 100%;
         min-height: 100dvh;
@@ -3873,7 +3873,6 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     body {
         width: 100%;
         min-height: 100dvh;
-        /* ✨ 內容剛好推開原生狀態列的高度，直接貼齊遮罩下緣 */
         padding-top: var(--safe-top) !important;
         overflow-x: hidden !important;
         overscroll-behavior-y: auto !important;
@@ -3882,19 +3881,29 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         box-sizing: border-box;
     }
 
-    /* ✨ PWA 上方遮罩：從螢幕絕對頂端 (top: 0) 畫出與原生狀態列一模一樣的高度 */
+    /* 關閉舊的虛擬元素，避免重疊 */
     body::after {
-        content: "";
+        display: none !important;
+    }
+
+    /* ✨ 實體 DOM 頂部遮罩：獨立 GPU 合成層，切換主題 100 次也絕對不會消失！ */
+    #pwa-status-bar-shield {
         display: block !important;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: var(--safe-top);      /* 高度與原生狀態列 1:1 一致 */
-        background-color: var(--bg);  /* 隨深淺色主題自由切換 (#020617 / #F1F5F9) */
-        z-index: 99995 !important;    /* 蓋過主頁、漢堡選單、Modal 與 Lightbox */
-        pointer-events: none;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100vw !important;
+        height: var(--safe-top) !important;
+        background-color: var(--bg);
+        z-index: 999999 !important; /* 壓過主頁目錄 (999)、文章 (1050)、Lightbox (9999) */
+        pointer-events: none !important;
         transition: background-color 0.5s ease;
+        /* ✨ 關鍵：強制鎖定獨立 GPU 圖層，防止 body overflow 切換或主題變色時被 WebKit 回收 */
+        transform: translate3d(0, 0, 0) !important;
+        -webkit-backface-visibility: hidden !important;
+        backface-visibility: hidden !important;
+        will-change: background-color;
     }
 }
 

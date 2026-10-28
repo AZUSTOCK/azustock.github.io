@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.13",          // 目前系統版本號
+    VERSION: "U1.6.1.14",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -2353,16 +2353,47 @@ window.downloadMermaidPNG = function(btn) {
 };
 
 // ==========================================
-// ✨ 全域視窗安全高度與座標引擎 (解決 iPad/iOS PWA 遮罩漏底與工具列偏移)
+// ✨ 全域視窗安全高度與座標引擎 + PWA 頂部實體遮罩守護器
 // ==========================================
+window.initPWATopShield = function() {
+    // 1. 建立真實的 DOM 遮罩節點（徹底取代容易在 iOS 被繪圖引擎吃掉的 body::after）
+    if (!document.getElementById('pwa-status-bar-shield')) {
+        const shield = document.createElement('div');
+        shield.id = 'pwa-status-bar-shield';
+        shield.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(shield);
+    }
+
+    // 2. 偵測並鎖死頂部安全區高度（防止切換主題或視窗變化時 iOS 把 env 歸零）
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed; top:0; left:0; width:0; height:env(safe-area-inset-top, 0px); pointer-events:none; visibility:hidden; z-index:-1;';
+    document.body.appendChild(probe);
+    const measuredTop = probe.offsetHeight;
+    probe.remove();
+
+    if (measuredTop > 0) {
+        // 一旦抓到真實高度（例如 iPad 24px、iPhone 47px/59px），就永久存入變數鎖死！
+        window._lockedSafeTop = measuredTop;
+        document.documentElement.style.setProperty('--safe-top', measuredTop + 'px');
+    } else if (window._lockedSafeTop) {
+        // 萬一 iOS 突然失憶回報 0，立刻用鎖定的高度補回
+        document.documentElement.style.setProperty('--safe-top', window._lockedSafeTop + 'px');
+    } else if (window.isPWAEnvironment()) {
+        // 若在 PWA 模式下連初始值都被 iOS 吃掉，給予保底高度 (iPad 24px / iPhone 44px)
+        const fallbackTop = /iPad/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ? 24 : 44;
+        document.documentElement.style.setProperty('--safe-top', `max(env(safe-area-inset-top, 0px), ${fallbackTop}px)`);
+    }
+};
+
 window.adjustModalViewports = function() {
-    // 同時抓取真實的高度與寬度
     const vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
     const vw = window.visualViewport ? window.visualViewport.width : window.innerWidth;
     
-    // 即時注入給 CSS 使用
     document.documentElement.style.setProperty('--vv-height', vh + 'px');
     document.documentElement.style.setProperty('--vv-width', vw + 'px');
+
+    // ✨ 每次校正視窗時，順便守護頂部安全高度
+    if (window.initPWATopShield) window.initPWATopShield();
 };
 
 // ✨ 專治蘋果 iOS/iPadOS 旋轉延遲的「多段式校正引擎」
@@ -3573,26 +3604,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const bgHex = theme === 'light' ? '#F1F5F9' : '#020617';
         const root = document.documentElement;
 
-        // ✨ 1. 切換 data-theme，讓 CSS 變數 (--bg) 與 0.5s transition 自然運作，不強制寫死 body inline style
+        // ✨ 1. 切換 data-theme
         root.setAttribute('data-theme', theme);
 
-        // ✨ 2. 同步更新 PWA 頂部狀態列 Meta 色碼 (保留您原本破除 iOS 快取的雙重保險機制)
-        const updateThemeMeta = () => {
-            document.querySelectorAll('meta[name="theme-color"]').forEach(el => el.remove());
-            const newMeta = document.createElement('meta');
-            newMeta.id = 'meta-theme-color';
-            newMeta.name = 'theme-color';
-            newMeta.content = bgHex;
-            document.head.appendChild(newMeta);
-        };
-        
-        updateThemeMeta();
-        setTimeout(updateThemeMeta, 30);
+        // ✨ 2. 原地更新 meta 屬性（嚴禁 remove() 重建，避免觸發 iOS WebKit 將 env(safe-area-inset-top) 歸零的 Bug！）
+        let metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
+        if (metaTheme) {
+            metaTheme.setAttribute('content', bgHex);
+        }
 
-        requestAnimationFrame(() => {
-            updateThemeMeta();
-            root.style.transition = '';
-        });
+        // ✨ 3. 強制同步刷新實體遮罩的底色與 GPU 重繪，確保 100% 不消失
+        const shield = document.getElementById('pwa-status-bar-shield');
+        if (shield) {
+            shield.style.backgroundColor = bgHex;
+        }
 
         if (window.mermaid) {
             window.mermaid.initialize({
