@@ -16,9 +16,23 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   
-  <!-- 設定 iOS 頂部時間/電量狀態列的風格 -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- 使用系統預設狀態列樣式；保留 theme-color 與頁首實體遮罩。 -->
   <meta id="meta-theme-color" name="theme-color" content="#020617">
+  <script>
+    // 在首次繪製前同步主題，讓系統取得目前的頁面底色。
+    (function () {
+      var savedTheme = null;
+      try { savedTheme = localStorage.getItem('theme'); } catch (error) { /* 使用系統偏好 */ }
+      var prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+      var theme = savedTheme || (prefersLight ? 'light' : 'dark');
+      var bgHex = theme === 'light' ? '#F1F5F9' : '#020617';
+      var root = document.documentElement;
+      root.setAttribute('data-theme', theme);
+      root.style.backgroundColor = bgHex;
+      root.style.colorScheme = theme === 'light' ? 'light' : 'dark';
+      document.getElementById('meta-theme-color').setAttribute('content', bgHex);
+    })();
+  </script>
   
   <!-- 設定安裝在桌面時的 App 顯示名稱 -->
   <meta name="apple-mobile-web-app-title" content="Azustock">
@@ -80,10 +94,12 @@
   
   <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <link rel="stylesheet" href="./style.css?u=U1.5.7.5-pwa-top-fix" onerror="handleAssetLoadError('CSS 樣式表')" />
-  <script defer src="./main.js?u=U1.5.7.5-pwa-top-fix" onerror="handleAssetLoadError('JavaScript 核心')" ></script>
+  <link rel="stylesheet" href="./style.css?u=U1.5.7.5-statusbar-default" onerror="handleAssetLoadError('CSS 樣式表')" />
+  <script defer src="./main.js?u=U1.5.7.5-statusbar-default" onerror="handleAssetLoadError('JavaScript 核心')" ></script>
 </head>
 <body>
+  <!-- 實體遮罩從第一幀起保留；initPWATopShield 會重用此節點。 -->
+  <div id="pwa-status-bar-shield" aria-hidden="true"></div>
   <!-- ========================================== -->
   <!-- ✨ 資源載入失敗的保護罩 (預設隱藏) -->
   <!-- ========================================== -->

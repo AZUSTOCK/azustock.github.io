@@ -3587,8 +3587,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const bgHex = theme === 'light' ? '#F1F5F9' : '#020617';
         const root = document.documentElement;
 
-        // ✨ 1. 切換 data-theme
+        // 同步頁面底色及原生色彩提示，避免初始行內顏色在切換主題後停留舊值。
         root.setAttribute('data-theme', theme);
+        root.style.backgroundColor = bgHex;
+        root.style.colorScheme = theme === 'light' ? 'light' : 'dark';
 
         // ✨ 2. 原地更新 meta 屬性（嚴禁 remove() 重建，避免觸發 iOS WebKit 將 env(safe-area-inset-top) 歸零的 Bug！）
         let metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
