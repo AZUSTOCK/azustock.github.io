@@ -3336,9 +3336,8 @@ body {
     position: fixed !important;
 }
 
-/* ✨ 強制所有彈窗與選單預留頂部安全距離 (--safe-top) */
 .modal-overlay {
-    padding-top: calc(var(--safe-top) + 1rem) !important;
+    padding-top: max(1rem, var(--safe-top)) !important;
     padding-bottom: max(1rem, var(--safe-bottom)) !important;
     box-sizing: border-box;
     display: flex;
@@ -3856,12 +3855,12 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 
 /* ========================================================================== */
-/* ✨ PWA 全域設定 (支援滾動回彈 + 頂部實心遮罩防穿透 + 全元件 Safe-Top 下推)  */
+/* ✨ PWA 全域設定 (維持頂部遮罩，位置與高度 100% 貼齊瀏覽器原生狀態列)        */
 /* ========================================================================== */
 @media (display-mode: standalone) {
     :root {
-        /* ✨ 關鍵防禦：確保 iPadOS 即使回報 0px，也強制保底 24px 狀態列安全高度 */
-        --safe-top: max(env(safe-area-inset-top, 0px), 24px);
+        /* ✨ 100% 採用瀏覽器原生回報的狀態列高度，不額外加數值 */
+        --safe-top: env(safe-area-inset-top, 0px);
     }
 
     html {
@@ -3874,6 +3873,8 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     body {
         width: 100%;
         min-height: 100dvh;
+        /* ✨ 內容剛好推開原生狀態列的高度，直接貼齊遮罩下緣 */
+        padding-top: var(--safe-top) !important;
         overflow-x: hidden !important;
         overscroll-behavior-y: auto !important;
         -webkit-overflow-scrolling: touch;
@@ -3881,7 +3882,7 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         box-sizing: border-box;
     }
 
-    /* ✨ PWA 頂部實心防護遮罩：蓋過主頁、漢堡目錄、文章 Modal 與 Lightbox，並隨主題變色 */
+    /* ✨ PWA 上方遮罩：從螢幕絕對頂端 (top: 0) 畫出與原生狀態列一模一樣的高度 */
     body::after {
         content: "";
         display: block !important;
@@ -3889,33 +3890,11 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         top: 0;
         left: 0;
         right: 0;
-        height: var(--safe-top);
-        background-color: var(--bg); /* 自動跟隨深色 #020617 / 淺色 #F1F5F9 */
-        z-index: 99995 !important;   /* ✨ 高於 Lightbox (9999) 與所有導覽列，徹底杜絕頂部穿透！ */
+        height: var(--safe-top);      /* 高度與原生狀態列 1:1 一致 */
+        background-color: var(--bg);  /* 隨深淺色主題自由切換 (#020617 / #F1F5F9) */
+        z-index: 99995 !important;    /* 蓋過主頁、漢堡選單、Modal 與 Lightbox */
         pointer-events: none;
         transition: background-color 0.5s ease;
-    }
-
-    /* ✨ 將所有頂部固定定位的按鈕與指示器，嚴格加上 --safe-top 往下推開 */
-    .menu-btn,
-    .theme-btn {
-        top: calc(var(--safe-top) + 0.75rem) !important;
-    }
-
-    .pwa-refresh-indicator {
-        top: calc(var(--safe-top) + 10px) !important;
-    }
-
-    #sys-loader {
-        top: calc(var(--safe-top) + 16px) !important;
-    }
-
-    #sys-global-toast {
-        top: calc(var(--safe-top) + 75px) !important;
-    }
-
-    .video-exit-fullscreen-btn {
-        top: calc(var(--safe-top) + 12px) !important;
     }
 }
 
