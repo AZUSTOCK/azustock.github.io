@@ -3916,10 +3916,15 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     }
 
     @media (max-width: 700px) {
-    .modal-overlay {
-        /* 僅調整頂部推開距離：狀態列安全區 + 0.6rem 呼吸邊界，其餘 padding 維持原設定 */
-        padding-top: calc(var(--safe-top) + 0.6rem) !important;
-    }
+        .modal-overlay {
+            /* 頂部推開 0.6rem 避開遮罩 */
+            padding-top: calc(var(--safe-top) + 0.6rem) !important;
+        }
+
+        .modal-content {
+            /* ✨ 同步扣掉多出來的 0.6rem，保證底部完全貼合在安全區內，不被推出去 */
+            max-height: calc(var(--vv-height) - var(--safe-top) - var(--safe-bottom) - 0.6rem) !important;
+        }
     }
 }
 

@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.19",          // 目前系統版本號
+    VERSION: "U1.6.1.20",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1184,7 +1184,6 @@ window.getQuotesList = async function() {
 
 // 1. 判斷是否為 PWA (Standalone) 模式
 window.isPWAEnvironment = function() {
-    return true
     return Boolean((typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone);
 };
 
