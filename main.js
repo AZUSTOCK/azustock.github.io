@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.17",          // 目前系統版本號
+    VERSION: "U1.6.1.18",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -519,10 +519,11 @@ window.unlockScroll = function() {
 };
 
 // ==========================================
-// ✨ PWA 專屬全域下拉重新整理引擎 (Pull-to-Refresh Engine)
+// ✨ PWA 下拉重整：手勢鎖定與平滑回原點引擎
 // ==========================================
 window.initPWAPullToRefresh = function() {
-    if (!window.isPWAEnvironment()) return;
+    if (!window.isPWAEnvironment() || window.__pwaPullToRefreshInitialized) return;
+    window.__pwaPullToRefreshInitialized = true;
 
     let indicator = document.getElementById('pwa-refresh-indicator');
     if (!indicator) {
@@ -532,153 +533,294 @@ window.initPWAPullToRefresh = function() {
         document.body.appendChild(indicator);
     }
     indicator.innerHTML = GLOBAL_SVGS.mermaidReload;
+    indicator.setAttribute('aria-hidden', 'true');
 
-    let startY = 0;
-    let isPulling = false;
-    let canRefresh = false;
-    const threshold = 60; // ✨ 啟動門檻與終點位置上限 (60px)
+    const deadZone = 25; // 指示器的視覺死區；觸控攔截需要更早判定
+    const directionTolerance = 6;
+    const returnTransition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease';
+    const hiddenTransform = 'translate(-50%, -100%) scale(1)';
+    const ignoredTargets = '.gallery, .vertical-wrapper, .tab-buttons, .grid, .mermaid-wrapper, ' +
+        'input, textarea, select, [contenteditable]:not([contenteditable="false"]), ' +
+        'video, audio, canvas, [data-pwa-pull-ignore]';
 
-    // 精準判斷當前是否允許下拉重整，以及取得正確的捲動容器
-    const getRefreshContext = () => {
+    let gesture = null;
+    let ignoreUntilAllReleased = false;
+    let isRefreshing = false;
+    let lastPullEndTime = null;
+
+    const getDynamicThreshold = () => Math.max(Math.min(Math.round(window.innerHeight * 0.12), 100), 50);
+
+    const hideIndicator = (animate = true) => {
+        indicator.style.transition = animate ? returnTransition : 'none';
+        indicator.style.setProperty('transform', hiddenTransform, 'important');
+        indicator.style.opacity = '0';
+        indicator.classList.remove('ready', 'is-reloading', 'is-success');
+    };
+
+    const cancelGesture = (animate = true) => {
+        gesture = null;
+        hideIndicator(animate);
+    };
+
+    const getRefreshContext = (target) => {
         if (document.getElementById('lightbox-modal')?.classList.contains('is-active')) return null;
         if (document.getElementById('sensitive-modal-overlay')) return null;
         if (document.getElementById('pdf-action-modal')) return null;
         if (document.getElementById('sys-reboot-screen')) return null;
+        if (document.fullscreenElement || document.querySelector('video.is-web-fullscreen')) return null;
 
-        // ✅ 情境 A：主頁漢堡選單開啟時
         const menu = document.getElementById('fullscreen-menu');
         if (menu && menu.classList.contains('active')) {
-            return { el: menu, scrollTop: menu.scrollTop };
+            return menu.contains(target) ? { el: menu, scrollTop: menu.scrollTop } : null;
         }
 
-        // ✅ 情境 B：專案頁、文章頁、特殊頁面 (Modal 開啟時)
         const modal = document.getElementById('md-modal');
         const modalContent = document.querySelector('.modal-content');
-        if (modal && modal.classList.contains('active') && modalContent) {
-            return { el: modalContent, scrollTop: modalContent.scrollTop };
+        if (modal && modal.classList.contains('active')) {
+            return modalContent && modalContent.contains(target)
+                ? { el: modalContent, scrollTop: modalContent.scrollTop }
+                : null;
         }
 
-        // ✅ 情境 C：主頁本身 (支援 iOS 頂部回彈時的負數 scrollY)
-        return { 
-            el: document.body, 
-            scrollTop: window.scrollY !== undefined ? window.scrollY : (document.documentElement.scrollTop || document.body.scrollTop || 0)
+        const root = document.scrollingElement || document.documentElement;
+        if (!root.contains(target)) return null;
+        return {
+            el: root,
+            scrollTop: window.scrollY !== undefined ? window.scrollY : (root.scrollTop || 0)
         };
     };
 
-    document.addEventListener('touchstart', (e) => {
-        const ctx = getRefreshContext();
-        if (ctx && ctx.scrollTop <= 0) { // ✨ 改為 <= 0
-            startY = e.touches[0].clientY; 
-            isPulling = true;
-            canRefresh = false;
-            indicator.style.transition = 'none'; 
-            indicator.classList.remove('is-success', 'is-reloading', 'ready');
-            indicator.innerHTML = GLOBAL_SVGS.mermaidReload;
+    // 只在 touchstart 搜尋捲動祖先；後續移動時僅檢查已找到的容器。
+    const getNestedScrollers = (target, contextElement) => {
+        const result = [];
+        for (let node = target; node && node !== contextElement; node = node.parentElement) {
+            const overflowY = window.getComputedStyle(node).overflowY;
+            if (/^(auto|scroll|overlay)$/.test(overflowY) && node.scrollHeight > node.clientHeight + 1) {
+                result.push(node);
+            }
         }
+        return result;
+    };
+
+    const contextStillAtTop = (currentGesture) => {
+        if (currentGesture.target.isConnected === false) return false;
+        const ctx = getRefreshContext(currentGesture.target);
+        return !!ctx && ctx.el === currentGesture.contextElement && ctx.scrollTop <= 0 &&
+            currentGesture.nestedScrollers.every(el => el.scrollTop <= 0);
+    };
+
+    const findTouch = (touches, identifier) => {
+        for (let i = 0; i < touches.length; i++) {
+            if (touches[i].identifier === identifier) return touches[i];
+        }
+        return null;
+    };
+
+    const haptic = (type) => {
+        if (typeof window.triggerHaptic === 'function') window.triggerHaptic(type);
+    };
+
+    const beginReload = (threshold) => {
+        isRefreshing = true;
+        indicator.style.transition = returnTransition;
+        indicator.classList.remove('ready', 'is-success');
+        indicator.classList.add('is-reloading');
+        indicator.style.setProperty('transform', `translate(-50%, calc(${threshold}px - 100%)) scale(1)`, 'important');
+        const icon = indicator.querySelector('svg');
+        if (icon) icon.style.transform = '';
+        haptic('light');
+
+        // 顯示處理中，不在 reload 前顯示「已成功」的勾號。
+        setTimeout(() => {
+            // 若其他更新流程已建立重開機畫面，交由該流程繼續處理。
+            if (document.getElementById('sys-reboot-screen')) {
+                isRefreshing = false;
+                hideIndicator();
+                return;
+            }
+
+            const previousOverflow = document.body.style.overflow;
+            let ownRebootScreen = null;
+            try {
+                const showReboot = typeof window.showSystemRebootScreen === 'function'
+                    ? window.showSystemRebootScreen
+                    : (typeof showSystemRebootScreen === 'function' ? showSystemRebootScreen : null);
+                if (showReboot) {
+                    showReboot('MANUAL_RELOAD', CONFIG.VERSION, 'N/A', 'RELOADING', true);
+                    ownRebootScreen = document.getElementById('sys-reboot-screen');
+                }
+            } catch (error) {
+                ownRebootScreen = document.getElementById('sys-reboot-screen');
+                console.warn('[PWA_REFRESH] 無法顯示重整畫面，仍會嘗試重新載入。', error);
+            }
+
+            const restoreAfterFailure = () => {
+                if (!isRefreshing) return;
+                isRefreshing = false;
+                if (ownRebootScreen && document.getElementById('sys-reboot-screen') === ownRebootScreen) {
+                    ownRebootScreen.remove();
+                }
+                if (!document.getElementById('sys-reboot-screen') && document.body.style.overflow === 'hidden' &&
+                    !document.querySelector('.modal-overlay.active') &&
+                    !document.querySelector('video.is-web-fullscreen') &&
+                    !document.getElementById('fullscreen-menu')?.classList.contains('active')) {
+                    document.body.style.overflow = previousOverflow;
+                }
+                hideIndicator();
+                if (typeof window.showSystemToast === 'function') {
+                    window.showSystemToast('>_ RELOAD_INCOMPLETE', '重新整理尚未完成', '請再次嘗試。', 6000, 'error');
+                }
+            };
+
+            // 留一個繪製機會給過場畫面；若導覽遭取消或長時間未完成，允許重試。
+            setTimeout(() => {
+                const retryTimer = setTimeout(restoreAfterFailure, 15000);
+                try {
+                    window.location.reload();
+                } catch (error) {
+                    clearTimeout(retryTimer);
+                    console.warn('[PWA_REFRESH] 重新整理失敗。', error);
+                    restoreAfterFailure();
+                }
+            }, 400);
+        }, 700);
+    };
+
+    hideIndicator(false);
+
+    document.addEventListener('touchstart', (e) => {
+        if (isRefreshing) return;
+        if (e.touches.length !== 1) {
+            if (gesture) cancelGesture();
+            ignoreUntilAllReleased = true;
+            return;
+        }
+        if (ignoreUntilAllReleased) return;
+
+        // 任何提前返回都不能沿用上一次的手勢。
+        if (gesture) cancelGesture(false);
+        const target = e.target && e.target.nodeType === 1 ? e.target : e.target?.parentElement;
+        if (!target || target.closest(ignoredTargets)) return;
+
+        const ctx = getRefreshContext(target);
+        if (!ctx || ctx.scrollTop > 0) return;
+        const nestedScrollers = getNestedScrollers(target, ctx.el);
+        if (nestedScrollers.some(el => el.scrollTop > 0)) return;
+
+        const touch = e.touches[0];
+        const startedAt = Date.now();
+        const repeatedPull = lastPullEndTime !== null && startedAt - lastPullEndTime < 500;
+        gesture = {
+            id: touch.identifier,
+            target,
+            contextElement: ctx.el,
+            nestedScrollers,
+            startX: touch.clientX,
+            startY: touch.clientY,
+            threshold: getDynamicThreshold() * (repeatedPull ? 1.2 : 1),
+            phase: 'tracking',
+            startedPull: false,
+            canRefresh: false
+        };
+        hideIndicator(false);
+        indicator.innerHTML = GLOBAL_SVGS.mermaidReload;
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
-        if (!isPulling) return;
-        
-        const ctx = getRefreshContext();
-        if (!ctx) {
-            isPulling = false;
+        if (isRefreshing || ignoreUntilAllReleased || !gesture) return;
+        if (e.touches.length !== 1) {
+            cancelGesture();
+            ignoreUntilAllReleased = e.touches.length > 0;
             return;
         }
-        
-        const currentY = e.touches[0].clientY;
-        
-        if (ctx.scrollTop > 2) {
-            startY = currentY; 
-            indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
+        const touch = findTouch(e.touches, gesture.id);
+        if (!touch || !contextStillAtTop(gesture)) {
+            cancelGesture();
+            return;
+        }
+
+        const diffX = Math.abs(touch.clientX - gesture.startX);
+        const diffY = touch.clientY - gesture.startY;
+
+        if (gesture.phase === 'tracking') {
+            // 水平或向上的意圖明確時退出；微小的水平漂移先不攔截。
+            if (diffY <= 0 || diffX >= diffY) {
+                if (diffX > directionTolerance || -diffY > directionTolerance) cancelGesture(false);
+                return;
+            }
+            // 瀏覽器已接管或其他元件已處理時，不顯示無法真正接管的下拉動畫。
+            if (!e.cancelable || e.defaultPrevented) {
+                cancelGesture(false);
+                return;
+            }
+            e.preventDefault();
+            if (!e.defaultPrevented) {
+                cancelGesture(false);
+                return;
+            }
+            gesture.phase = 'pulling';
+        } else if (diffY > 0 && e.cancelable) {
+            // 已接管後，往下拉和往回推都維持攔截，避免原生捲動搶走手勢。
+            e.preventDefault();
+        }
+
+        if (diffY <= 0) {
+            gesture.canRefresh = false;
+            indicator.style.setProperty('transform', hiddenTransform, 'important');
             indicator.style.opacity = '0';
             indicator.classList.remove('ready');
             return;
         }
 
-        const pullDistance = currentY - startY;
+        if (diffY > deadZone) gesture.startedPull = true;
+        const effectivePull = Math.max(0, diffY - deadZone);
+        const rawDistance = effectivePull * 0.4;
+        const displayedDistance = Math.min(rawDistance, gesture.threshold);
+        indicator.style.opacity = Math.min(diffY / 30, 1).toString();
+        const icon = indicator.querySelector('svg');
+        if (icon) icon.style.transform = `rotate(${-effectivePull * 1.8}deg)`;
 
-        if (pullDistance > 0 && ctx.scrollTop <= 0) {
-            // ✨ 關鍵修改：當處於主頁 (ctx.el === document.body) 時，不呼叫 preventDefault()，讓主頁擁有原生的滾過頭回彈！
-            if (ctx.el !== document.body && e.cancelable) {
-                e.preventDefault();
-            }
-            
-            const rawDistance = pullDistance * 0.45;
-            // ✨ 核心修正 1：將下拉位移量硬鎖死在 threshold (60px)！到達門檻後絕對不再往下移動
-            const clampedDistance = Math.min(rawDistance, threshold);
-            
-            // ✨ 旋轉角度不受位移上限影響，繼續隨手指下拉距離持續旋轉
-            const rotation = -(pullDistance * 1.8);
-            
-            indicator.style.opacity = Math.min(pullDistance / 40, 1).toString();
-            
-            const svgIcon = indicator.querySelector('svg');
-            if (svgIcon && !indicator.classList.contains('is-reloading')) {
-                svgIcon.style.transform = `rotate(${rotation}deg)`;
-            }
-
-            if (rawDistance >= threshold) {
-                if (!canRefresh) {
-                    canRefresh = true;
-                    indicator.classList.add('ready');
-                    window.triggerHaptic('light'); // 到達門檻瞬間給一次微震動回饋
-                }
-                // 釘死在終點位置 (threshold)，並維持 1.1 倍放大高光
-                indicator.style.setProperty('transform', `translate(-50%, calc(${threshold}px - 100%)) scale(1.1)`, 'important');
-            } else {
-                canRefresh = false;
-                indicator.classList.remove('ready');
-                indicator.style.setProperty('transform', `translate(-50%, calc(${clampedDistance}px - 100%)) scale(1)`, 'important');
-            }
-        } else {
-            indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
-            indicator.style.opacity = '0';
-            indicator.classList.remove('ready');
+        const ready = rawDistance >= gesture.threshold;
+        if (ready !== gesture.canRefresh) {
+            gesture.canRefresh = ready;
+            indicator.classList.toggle('ready', ready);
+            haptic('light');
         }
+        indicator.style.setProperty('transform',
+            `translate(-50%, calc(${displayedDistance}px - 100%)) scale(${ready ? 1.1 : 1})`, 'important');
     }, { passive: false });
 
-    document.addEventListener('touchend', () => {
-        if (!isPulling) return;
-        isPulling = false;
-
-        // 恢復平滑動畫過渡
-        indicator.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease';
-        indicator.classList.remove('ready');
-        
-        if (canRefresh) {
-            indicator.classList.add('is-reloading');
-            
-            // ✨ 手指放開後，因為圖示已經釘在 calc(60px - 100%)，直接原地縮回 scale(1) 開始轉圈，完全不跳動！
-            indicator.style.setProperty('transform', `translate(-50%, calc(${threshold}px - 100%)) scale(1)`, 'important');
-            
-            const svgIcon = indicator.querySelector('svg');
-            if (svgIcon) svgIcon.style.transform = ''; 
-
-            window.triggerHaptic('light'); 
-            
-            setTimeout(() => {
-                indicator.classList.remove('is-reloading');
-                indicator.classList.add('is-success');
-                indicator.innerHTML = GLOBAL_SVGS.check; 
-                window.triggerHaptic('success'); 
-                
-                setTimeout(() => {
-                    if (window.showSystemRebootScreen) {
-                        window.showSystemRebootScreen('MANUAL_RELOAD', CONFIG.VERSION, CONFIG.VERSION, 'UPDATING', true);
-                    }
-                    window.location.reload();
-                }, 400);
-
-            }, 700);
-            
-        } else {
-            indicator.style.setProperty('transform', `translate(-50%, -100%) scale(1)`, 'important');
-            indicator.style.opacity = '0';
+    document.addEventListener('touchend', (e) => {
+        if (isRefreshing) return;
+        if (ignoreUntilAllReleased) {
+            if (e.touches.length === 0) ignoreUntilAllReleased = false;
+            return;
         }
-        canRefresh = false;
+        if (!gesture || !findTouch(e.changedTouches, gesture.id)) return;
+        if (e.touches.length > 0 || !contextStillAtTop(gesture)) {
+            cancelGesture();
+            ignoreUntilAllReleased = e.touches.length > 0;
+            return;
+        }
+
+        const completed = gesture;
+        gesture = null;
+        if (completed.startedPull) lastPullEndTime = Date.now();
+        if (completed.phase === 'pulling' && completed.canRefresh) beginReload(completed.threshold);
+        else hideIndicator();
+    });
+
+    document.addEventListener('touchcancel', (e) => {
+        if (isRefreshing) return;
+        if (gesture) cancelGesture();
+        ignoreUntilAllReleased = e.touches.length > 0;
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && gesture && !isRefreshing) cancelGesture();
     });
 };
+
 
 // ==========================================
 // ✨ 系統版本比對引擎 (SemVer)
@@ -1042,7 +1184,8 @@ window.getQuotesList = async function() {
 
 // 1. 判斷是否為 PWA (Standalone) 模式
 window.isPWAEnvironment = function() {
-    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    return true
+    return Boolean((typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone);
 };
 
 // 2. 突破 PWA 限制的 Blob 下載/開新分頁引擎
