@@ -3867,7 +3867,7 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         width: 100%;
         min-height: 100dvh;
         background-color: var(--bg);
-        overscroll-behavior-y: auto !important;
+        overscroll-behavior-y: auto !important; /* 恢復主頁滾過頭回彈 */
     }
 
     body {
@@ -3881,7 +3881,12 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         box-sizing: border-box;
     }
 
-    /* 實體 DOM 頂部遮罩 */
+    /* 關閉舊的虛擬元素，避免重疊 */
+    body::after {
+        display: none !important;
+    }
+
+    /* ✨ 實體 DOM 頂部遮罩：獨立 GPU 合成層，切換主題 100 次也絕對不會消失！ */
     #pwa-status-bar-shield {
         display: block !important;
         position: fixed !important;
@@ -3889,38 +3894,32 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
         left: 0 !important;
         right: 0 !important;
         width: 100vw !important;
-        height: var(--safe-top) !important;
+        /* 保持盒子高於 10px，讓 WebKit 有機會辨識這個頂部固定色塊。
+           透明下邊框不繪製底色；實際色帶只覆蓋安全區，安全區為 0 時保留 1px。
+           這是針對 WebKit 取樣行為的相容處理，需以實機驗證。 */
+        --shield-paint-height: max(1px, var(--safe-top));
+        --shield-box-height: max(12px, var(--shield-paint-height));
+        height: var(--shield-box-height) !important;
+        box-sizing: border-box !important;
+        border: 0 solid transparent !important;
+        border-bottom-width: calc(var(--shield-box-height) - var(--shield-paint-height)) !important;
         background-color: var(--bg);
-        z-index: 999999 !important;
+        background-clip: padding-box;
+        z-index: 999999 !important; /* 壓過主頁目錄 (999)、文章 (1050)、Lightbox (9999) */
         pointer-events: none !important;
-        transition: background-color 0.5s ease;
+        transition: none; /* 保持純色，讓 WebKit 在主題切換時有機會取樣。 */
+        /* ✨ 關鍵：強制鎖定獨立 GPU 圖層，防止 body overflow 切換或主題變色時被 WebKit 回收 */
         transform: translate3d(0, 0, 0) !important;
         -webkit-backface-visibility: hidden !important;
         backface-visibility: hidden !important;
         will-change: background-color;
     }
 
-    /* ✨ 核心調整：僅在【有遮罩且窄版螢幕 (<= 700px)】時，將 Modal 頂部推開並重新計算最大高度 */
     @media (max-width: 700px) {
-        .modal-overlay {
-            /* 頂部推開：遮罩高度 + 0.6rem 呼吸邊界，徹底露出圓角與外框 */
-            padding-top: calc(var(--safe-top) + 0.6rem) !important;
-            padding-bottom: max(0.6rem, var(--safe-bottom)) !important;
-            padding-left: 0.6rem !important;
-            padding-right: 0.6rem !important;
-            align-items: flex-start !important; /* 改為靠上排列，避免撐滿時上下置中擠入遮罩 */
-        }
-
-        .modal-content {
-            /* 扣除頂部遮罩與上下邊界，防止底部溢出視窗 */
-            max-height: calc(var(--vv-height) - var(--safe-top) - 1.2rem) !important;
-            border-radius: 1.1rem !important;
-        }
-
-        /* 讓 Modal 內部的黏性標題列緊貼彈窗頂端，不被重複下推 */
-        .modal-top-bar {
-            top: 0 !important;
-        }
+    .modal-overlay {
+        /* 僅調整頂部推開距離：狀態列安全區 + 0.6rem 呼吸邊界，其餘 padding 維持原設定 */
+        padding-top: calc(var(--safe-top) + 0.6rem) !important;
+    }
     }
 }
 
