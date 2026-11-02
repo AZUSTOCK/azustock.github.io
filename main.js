@@ -4775,21 +4775,16 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             const shareUrl = window.updateRouteState(projectId);
 
-            // 2. 將目錄標題與功能按鈕直接注入 modal-top-left (完全還原原始樣式)
+            // 2. 將目錄標題與功能按鈕直接注入 modal-top-left
             document.getElementById('modal-top-left').innerHTML = `
                 <div class="index-header-container">
-                    <h1 class="index-header-title">${window.parseDynamicText(proj.title, 'INDEX_HEADER')} - 目錄</h1>
+                    <h1 class="index-header-title">${window.parseDynamicText(proj.title, 'INDEX_HEADER')}<span style="white-space: nowrap;"> - 目錄</span></h1>
                     <div class="index-header-actions">
-                        <!-- ✨ 使用 visibleCount 替換掉原本的 proj.articles.length -->
                         <span class="article-count-badge">共 ${visibleCount} 篇</span>
-                        
-                        <!-- ✨ 拔除 data-tooltip -->
                         <button id="toggle-sort-btn" class="share-link-btn responsive-share-btn" style="margin: 0;">
                             <svg class="sort-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path class="sort-arr-left" d="M 4 9 L 9 4 L 9 20"></path><path class="sort-arr-right" d="M 20 15 L 15 20 L 15 4"></path></svg>
                             <span id="sort-btn-text" class="btn-text-hideable"></span>
                         </button>
-                        
-                        <!-- ✨ 拔除 data-tooltip -->
                         <button class="share-link-btn responsive-share-btn" id="index-share-btn" style="margin: 0;">
                             ${GLOBAL_SVGS.link}
                             <span class="btn-text-hideable">複製連結</span>

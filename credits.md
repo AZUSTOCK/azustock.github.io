@@ -4,12 +4,11 @@
 * **Marked.js** - Markdown Rendering Engine
 * **Mermaid.js** - Diagram & Visualization Engine
 * **rjsmin & rcssmin** - Asset Minification & Code Compression
-* **AI** - Code Implementation (website build only)
+* **LLM** - Code Implementation
 * **風川梓** - System Architect
 
 ### Content Creation
 * **風川梓** - Text and media creation
-* **AI** - Website development assistance only
 
 ### Automation & Data
 * **Python** - Core Automation Pipeline
