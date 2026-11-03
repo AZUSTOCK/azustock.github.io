@@ -15,12 +15,14 @@
 3. capsule-btn history-btn tooltip
 4. .toast-x-icon behavior
 5. UI
+6. Keyboard Engine
 
 ## fix
 1. PWA Pull-to-Refresh Engine
 2. PWA UI
 3. new-jump-toast UI
 4. mermaid
+5. zoom-btn UI
 
 ## deprecate
 1. 

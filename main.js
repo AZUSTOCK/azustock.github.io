@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.20",          // 目前系統版本號
+    VERSION: "U1.6.1.21",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -6089,6 +6089,20 @@ document.addEventListener('keydown', (e) => {
         return; 
     }
 
+    // ==========================================
+    // ✨ 全域通用快捷鍵 (Global Shortcuts)
+    // ==========================================
+    // 按 [M] 鍵：一鍵切換深淺色主題 (確保沒有在輸入文字時觸發)
+    if (e.key.toLowerCase() === 'm' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        const themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn) themeBtn.click();
+    }
+
+    // ✨ 新增：按 [T] 鍵：一鍵切換全站字體大小
+    if (e.key.toLowerCase() === 't' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        window.toggleTextScale();
+    }
+
     // --- 🥊 第一層：Lightbox 大圖預覽 ---
     if (isLightboxOpen) {
         if (e.key === 'Escape') {
@@ -6146,20 +6160,6 @@ document.addEventListener('keydown', (e) => {
                 e.preventDefault();
             }
         }
-    }
-
-    // ==========================================
-    // ✨ 全域通用快捷鍵 (Global Shortcuts)
-    // ==========================================
-    // 按 [M] 鍵：一鍵切換深淺色主題 (確保沒有在輸入文字時觸發)
-    if (e.key.toLowerCase() === 'm' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-        const themeBtn = document.getElementById('theme-toggle');
-        if (themeBtn) themeBtn.click();
-    }
-
-    // ✨ 新增：按 [T] 鍵：一鍵切換全站字體大小
-    if (e.key.toLowerCase() === 't' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-        window.toggleTextScale();
     }
 });
 

@@ -2323,27 +2323,27 @@ span.article-item-date {
 /* 放大鏡互動按鈕 */
 .zoom-btn { background: transparent; border: none; color: var(--muted); border-radius: 6px; padding: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.25s var(--ease-smooth), color 0.25s ease, background-color 0.25s ease, opacity 0.25s ease; vertical-align: middle; position: relative; top: -2px; transform: translateZ(0) scale(1); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .zoom-btn svg { pointer-events: none; display: block; }
-.zoom-btn:hover { color: var(--accent); transform: translateZ(0) scale(1.15); }
+.zoom-btn:hover { color: var(--accent-2); transform: translateZ(0) scale(1.15); }
 .zoom-btn::after, .zoom-btn::before { display: none !important; }
 figure.no-caption { position: relative; display: inline-block; margin: 1.5rem auto; max-width: 100%; }
 figure.no-caption img { margin: 0 !important; display: block; }
 .zoom-btn.floating { position: absolute; top: 10px; right: 10px; margin: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); color: rgba(255, 255, 255, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0.6; z-index: 10; transform: translateZ(0) scale(1); }
 figure.no-caption:hover .zoom-btn.floating { opacity: 1; }
-.zoom-btn.floating:hover { background: var(--accent); color: #fff; opacity: 1; transform: translateZ(0) scale(1.15); }
+.zoom-btn.floating:hover { background: var(--accent-2); color: var(--card); opacity: 1; transform: translateZ(0) scale(1.15); }
 /* ==========================================
    ✨ 圖片 Hover 與放大鏡的完美視覺連動 (僅限獨立圖片)
    ========================================== */
 /* 1. 帶有圖說的獨立圖片：滑鼠移到圖片上時，放大鏡跟著亮起 */
 figure.standalone-figure:has(img:hover) .zoom-btn {
-    color: var(--accent); 
+    color: var(--accent-2);
     transform: translateZ(0) scale(1.15); 
 }
 
 /* 2. 無圖說獨立圖片/影片：滑鼠移到媒體上時，懸浮放大鏡跟著填滿顏色並發光 */
 figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 .video-wrapper:has(video:hover) .zoom-btn.floating { 
-    background: var(--accent); 
-    color: #fff; 
+    background: var(--accent-2); 
+    color: var(--card);
     opacity: 1; 
     transform: translateZ(0) scale(1.15); 
 }
