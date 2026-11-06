@@ -1,4 +1,4 @@
-# 『足立レイ』
+# 『足立レイ』++[KEY:rei]++
 <figure class="float-right">
   <img src="./basic.webp" alt="主視覺" loading="lazy" decoding="async">
   <figcaption>基礎方塊</figcaption>

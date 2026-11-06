@@ -1,4 +1,4 @@
-# 『初音ミク』
+# 『初音ミク』++[KEY:miku]++
 <figure class="float-right">
   <img src="./basic.webp" alt="主視覺" loading="lazy" decoding="async">
   <figcaption>基礎方塊</figcaption>
