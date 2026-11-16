@@ -13,16 +13,16 @@
 自訂目錄：python track_tags.py --projects ./projects --output ./tools/tracker/reports/tag_dashboard.html
 """
 
-import argparse
 import json
 import os
 import re
 import sys
-import tempfile
 import urllib.parse
-import webbrowser
 from datetime import datetime
 from pathlib import Path
+
+
+from tracker_common import (TrackerApp, styled, classify_detail_path, json_field_spans, apply_changes, source_path)
 
 PROJECTS_DIR = 'projects'
 OUTPUT_FILE = './tools/tracker/reports/tag_dashboard.html'
@@ -55,15 +55,9 @@ scanned = False
 USE_COLOR = sys.stdout.isatty() and 'NO_COLOR' not in os.environ
 
 
-def styled(value, color='cyan'):
-    codes = {'cyan': '36', 'green': '32', 'yellow': '33', 'red': '31', 'bold': '1'}
-    value = re.sub(r'[\x00-\x08\x0b-\x1f\x7f-\x9f]', '', str(value))
-    return '\033[' + codes[color] + 'm' + value + '\033[0m' if USE_COLOR else value
-
-
 def detect_tag_expire_days():
     """從 main.js 讀取 CONFIG.TAG_EXPIRE_DAYS，預設為 14 天。"""
-    main_js = Path('main.js')
+    main_js = source_path(PROJECTS_DIR, 'main.js')
     if main_js.is_file():
         try:
             text = main_js.read_text(encoding='utf-8-sig')
@@ -73,79 +67,6 @@ def detect_tag_expire_days():
         except (OSError, UnicodeError, ValueError):
             pass
     return 14
-
-
-def parse_folder_id(folder_name):
-    match = re.match(r'^(-?\d+)_+(.*)$', folder_name)
-    return match.group(2) if match else folder_name
-
-
-def classify_detail_path(path_obj, root_path):
-    """區分 detail.json 為 category (略過)、projects (專案層級) 或 articles (文章層級)。"""
-    rel_parts = path_obj.parent.relative_to(root_path).parts
-    if len(rel_parts) <= 1:
-        return 'category', None, None
-    if 'articles' in rel_parts:
-        art_idx = rel_parts.index('articles')
-        proj_folder = rel_parts[art_idx - 1] if art_idx >= 1 else rel_parts[1]
-        art_folder = rel_parts[-1]
-        return 'articles', parse_folder_id(proj_folder), parse_folder_id(art_folder)
-    return 'projects', parse_folder_id(rel_parts[-1]), None
-
-
-def json_field_spans(text):
-    """以 JSON 解碼器逐一走過頂層欄位，記錄各欄位的起訖索引與行號。"""
-    decoder = json.JSONDecoder()
-    stripped = text.lstrip()
-    if not stripped.startswith('{'):
-        raise ValueError('detail.json 的頂層必須是物件')
-    open_brace_idx = len(text) - len(stripped)
-    index = open_brace_idx + 1
-    fields = []
-    while index < len(text):
-        while index < len(text) and text[index].isspace():
-            index += 1
-        if index >= len(text) or text[index] == '}':
-            break
-        key_start = index
-        name, index = decoder.raw_decode(text, index)
-        key_end = index
-        while index < len(text) and text[index].isspace():
-            index += 1
-        if index >= len(text) or text[index] != ':':
-            raise ValueError('JSON 欄位語法錯誤')
-        colon_idx = index
-        index += 1
-        while index < len(text) and text[index].isspace():
-            index += 1
-        val_start = index
-        value, index = decoder.raw_decode(text, index)
-        val_end = index
-        while index < len(text) and text[index].isspace():
-            index += 1
-        comma_idx = None
-        if index < len(text) and text[index] == ',':
-            comma_idx = index
-            index += 1
-        line = text.count('\n', 0, key_start) + 1
-        column = key_start - text.rfind('\n', 0, key_start)
-        val_line = text.count('\n', 0, val_start) + 1
-        val_column = val_start - text.rfind('\n', 0, val_start)
-        fields.append({
-            'name': name,
-            'value': value,
-            'key_start': key_start,
-            'key_end': key_end,
-            'colon_idx': colon_idx,
-            'val_start': val_start,
-            'val_end': val_end,
-            'comma_idx': comma_idx,
-            'line': line,
-            'column': column,
-            'val_line': val_line,
-            'val_column': val_column,
-        })
-    return open_brace_idx, fields
 
 
 def json_array_item_spans(text, val_start, val_end):
@@ -464,26 +385,6 @@ def collect_tags():
     scan_info['files'] = total_files
     scan_info['md_files'] = total_md_files
     scanned = True
-    return results
-
-
-def scan_tags(generate_html=True):
-    print(styled('\n標籤雷達 · 掃描 ' + os.path.abspath(PROJECTS_DIR), 'bold'))
-    collect_tags()
-    proj_count = sum(len(v['projects']) for v in results.values())
-    art_count = sum(len(v['articles']) for v in results.values())
-    md_count = sum(len(v['markdown']) for v in results.values())
-    exp_days = scan_info.get('expire_days', 14)
-    print(styled('完成', 'green') + '  狀態時效：{} 天 / {} 個 detail.json ({} 篇 .md) / {} 種標籤 / 專案 {} 筆 / 文章 {} 筆 / 內文高光 {} 筆'.format(
-        styled(str(exp_days), 'cyan'), scan_info['files'], scan_info['md_files'],
-        len(results), proj_count, art_count, md_count))
-    print('未設定 detail.json 標籤：專案 {} 個 / 文章 {} 篇'.format(
-        scan_info['unset_projects'], scan_info['unset_articles']))
-    for error in scan_info['errors']:
-        print(styled('略過：' + error, 'yellow'))
-    if generate_html:
-        write_dashboard()
-        print('HTML：' + styled(os.path.abspath(OUTPUT_FILE)))
     return results
 
 
@@ -837,46 +738,6 @@ def plan_tag_changes(action, target_tag=None, new_tag=None, file_filter='', kind
     return plans
 
 
-def apply_tag_changes(plans):
-    """先檢查檔案有無變動，再逐檔建立 .tag.bak 備份並以原子替換寫回。"""
-    global scanned
-    for plan in plans:
-        if plan['path'].read_bytes() != plan['before']:
-            raise ValueError('檔案已變動，請重新預覽：' + str(plan['path']))
-    changed_files = 0
-    errors = []
-    for plan in plans:
-        path = plan['path']
-        temporary = None
-        try:
-            if path.read_bytes() != plan['before']:
-                raise ValueError('預覽後檔案已變動')
-            backup = Path(str(path) + '.tag.bak')
-            index = 1
-            while True:
-                try:
-                    with backup.open('xb') as stream:
-                        stream.write(plan['before'])
-                    break
-                except FileExistsError:
-                    backup = Path(str(path) + f'.tag.{index}.bak')
-                    index += 1
-            with tempfile.NamedTemporaryFile(mode='wb', dir=path.parent, delete=False) as stream:
-                temporary = Path(stream.name)
-                stream.write(plan['after'])
-            temporary.chmod(path.stat().st_mode)
-            os.replace(temporary, path)
-            scanned = False
-            changed_files += 1
-            print('  已更新：' + styled(path.resolve()) + f" [{plan['target_id']}]（備份：" + styled(backup) + '）')
-        except (OSError, UnicodeError, ValueError) as error:
-            errors.append(str(path) + ': ' + str(error))
-        finally:
-            if temporary is not None:
-                temporary.unlink(missing_ok=True)
-    return changed_files, errors
-
-
 def replace_tag_interactive(generate_html=True):
     """將特定的舊標籤批次替換為新標籤（含 detail.json 與 Markdown 內文高光）。"""
     if not scanned:
@@ -966,311 +827,104 @@ def manage_target_tags(generate_html=True):
         scan_tags(generate_html=generate_html)
 
 
+class TagsTracker(TrackerApp):
+    slug = 'tags'
+    title = '標籤追蹤管理員'
+    description = '追蹤 tags、系統狀態、時效與 Markdown 高光。'
+    kinds = ('projects','articles','markdown')
+    backup_tag = 'tag'
+    mutation_label = '批次替換標籤（含 detail.json 與 Markdown）'
+    manage_label = '管理 detail.json 標籤（新增／移除）'
+    filters = (dict(key='category', label='標籤分類', options=[['all','全部分類'],['status','系統狀態'],['custom','自訂標籤'],['markdown','內文高光'],['expired','已過期']]),)
+
+    def add_arguments(self, parser):
+        parser.add_argument('--category', choices=['all','status','custom','markdown','expired'], default='all')
+        parser.add_argument('--add', metavar='TAG')
+        parser.add_argument('--remove', metavar='TAG')
+        parser.add_argument('--replace', nargs=2, metavar=('OLD_TAG','NEW_TAG'))
+
+    def validate(self, args, parser):
+        if sum(x is not None for x in (args.add,args.remove,args.replace))>1:
+            parser.error('--add、--remove 與 --replace 每次只能擇一')
+        if (args.add is not None or args.remove is not None) and not args.file:
+            parser.error('修改請搭配 --file；套用全部請使用 --file "*"')
+        if (args.add is not None or args.remove is not None) and args.kind=='markdown':
+            parser.error('--add／--remove 操作 detail.json；Markdown 請使用 --replace')
+
+    def collect(self):
+        collect_tags()
+
+    def report(self):
+        groups=[]
+        for name,entry in sorted(results.items(),key=lambda p:tag_sort_key(p[0])):
+            records=[]
+            for kind,items in entry.items():
+                for item in items:
+                    categories = ['status' if name.upper() in STATUS_TAGS else 'custom']
+                    if kind=='markdown': categories.append('markdown')
+                    if item.get('is_expired'): categories.append('expired')
+                    # 一筆紀錄可同時是系統狀態與過期；HTML 使用 categories 集合篩選。
+                    records.append(dict(item, category=categories[0], categories=categories, badges=categories,
+                                        meta={'來源':item.get('source_type',''), '原始標籤':item.get('raw_tag',''),
+                                              '目標':item.get('target_id','')}))
+            groups.append(dict(name=name, records=records))
+        unset=[dict(t, raw='(未設定 detail.json 標籤)', badges=['未設定']) for t in all_targets if not t.get('tags')]
+        return dict(groups=groups, unset=unset)
+
+    def query(self,args):
+        print_query(args.query or '',args.file,args.kind,args.exact,args.list,args.category)
+
+    def unset(self,args):
+        return super().unset(args)
+
+    def mutate_cli(self,args):
+        if args.add is None and args.remove is None and args.replace is None:
+            return None
+        file_filter='' if args.file=='*' else args.file
+        if args.replace:
+            plans=plan_tag_changes('replace',target_tag=args.replace[0],new_tag=args.replace[1],file_filter=file_filter,kind=args.kind)
+        elif args.add is not None:
+            plans=plan_tag_changes('add',new_tag=args.add,file_filter=file_filter,kind=args.kind)
+        else:
+            plans=plan_tag_changes('remove',target_tag=args.remove,file_filter=file_filter,kind=args.kind)
+        return self.apply(plans,args.yes,not args.no_html)
+
+    def interactive_query(self):
+        query_tags_interactive()
+
+    def interactive_mutate(self):
+        replace_tag_interactive(generate_html=not self.no_html)
+
+    def interactive_manage(self):
+        manage_target_tags(generate_html=not self.no_html)
+
+
+APP=TagsTracker(globals())
+
+
+def scan_tags(generate_html=True):
+    return APP.scan(generate_html)
+
+
 def write_dashboard():
-    out_path = Path(OUTPUT_FILE)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps({
-        'tags': results,
-        'targets': all_targets,
-        'scan': scan_info,
-        'status_tags': sorted(STATUS_TAGS),
-    }, ensure_ascii=False)
-    payload = payload.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
-    out_path.write_text(HTML_TEMPLATE.replace('@@PAYLOAD@@', payload), encoding='utf-8')
-
-
-HTML_TEMPLATE = r'''<!DOCTYPE html>
-<html lang="zh-Hant" data-theme="dark">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Azustock · 標籤追蹤管理員</title>
-<style>
-:root{color-scheme:dark;--bg:#111716;--panel:#19211f;--card:#1f2926;--text:#e9eee9;--muted:#9aa9a1;--line:#32413a;--accent:#b5d99a;--soft:#2c3e2e;--gold:#edc887;--bad:#e9a39c;--shadow:0 12px 36px #0002}
-[data-theme=light]{color-scheme:light;--bg:#f4f5ef;--panel:#fafbf6;--card:#fff;--text:#26332c;--muted:#64736a;--line:#dce3d7;--accent:#436c37;--soft:#e8f0df;--gold:#8c6223;--bad:#a0493e;--shadow:0 12px 36px #2b42200a}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select{font:inherit}button,a,input,select{-webkit-tap-highlight-color:transparent}button{cursor:pointer}a{color:var(--accent);text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}button:disabled{opacity:.4;cursor:default}
-.shell{display:grid;grid-template-columns:300px minmax(0,1fr);height:100vh;height:100dvh}.sidebar{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}.brand{padding:30px 24px 22px;border-bottom:1px solid var(--line)}.eyebrow{font-size:10px;letter-spacing:2.5px;color:var(--accent);font-weight:700}.brand h1{font-size:22px;letter-spacing:-.7px;margin:6px 0 0}.brand p{margin:3px 0;color:var(--muted);font-size:12px}.search-area{padding:20px 18px 12px}.search-area label{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}input,select{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px 12px;width:100%;min-width:0}input::placeholder{color:var(--muted)}.search-area select{margin-top:10px}.list-label{display:flex;justify-content:space-between;padding:8px 24px;color:var(--muted);font-size:11px}.key-list{overflow-y:auto;padding:0 12px 18px;flex:1;min-height:100px}.key-item{display:block;width:100%;text-align:left;padding:13px 14px;margin:3px 0;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--text)}.key-item:hover{background:var(--card)}.key-item.active{background:var(--soft);border-color:var(--line)}.key-name{display:block;font-weight:650;overflow-wrap:anywhere}.key-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}.dot{color:var(--bad)}.status-pill{color:var(--gold);font-size:10px;border:1px solid var(--line);border-radius:4px;padding:1px 5px;margin-left:6px}.side-footer{padding:15px 24px;border-top:1px solid var(--line);color:var(--muted);font-size:11px;overflow-wrap:anywhere;white-space:pre-line}.main{overflow-y:auto;padding:32px 40px 48px;min-width:0}.topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:24px}.topbar h2{font-size:24px;font-weight:600;margin:0;letter-spacing:-.6px}.topbar p{font-size:12px;color:var(--muted);margin:3px 0 0}.button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:8px;padding:7px 11px;color:var(--text);background:var(--panel);font-size:12px;white-space:nowrap}.button:hover{background:var(--soft);border-color:var(--accent)}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:30px}.stat{padding:16px 20px;background:var(--panel);border:1px solid var(--line);border-radius:12px}.stat span{font-size:11px;color:var(--muted)}.stat strong{display:block;font-size:28px;line-height:1.5;font-weight:550}.stat small{font-size:11px;color:var(--muted)}.stat.warning strong{color:var(--bad)}.detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}.detail-head h3{font-size:25px;margin:0;letter-spacing:-.7px;overflow-wrap:anywhere}.detail-head p{color:var(--muted);font-size:12px;margin:6px 0}.badge{display:inline-flex;border:1px solid var(--line);border-radius:30px;padding:3px 10px;font-size:11px;color:var(--accent);white-space:nowrap;margin-right:6px}.badge.warn{color:var(--bad);border-color:var(--bad)}.badge.gold{color:var(--gold);border-color:var(--gold)}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-bottom:20px;border-bottom:1px solid var(--line)}.tab{border:1px solid var(--line);border-radius:8px;padding:7px 14px;color:var(--muted);background:transparent;font-size:12px}.tab.active{background:var(--soft);color:var(--accent);border-color:var(--accent)}.toolbar input{margin-left:auto;width:min(100%,280px);font-size:12px;padding:8px 12px}.section-title{display:flex;gap:10px;align-items:center;margin:24px 0 12px;font-size:14px;font-weight:600}.section-title span{font-size:11px;font-weight:400;color:var(--muted)}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:12px}.card{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:18px;box-shadow:var(--shadow);min-width:0}.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.path{font:12px/1.7 ui-monospace,Consolas,monospace;overflow-wrap:anywhere;color:var(--accent)}.line{font-size:10px;color:var(--muted);white-space:nowrap;background:var(--bg);border-radius:5px;padding:3px 7px}.raw{font:12px/1.7 ui-monospace,Consolas,monospace;color:var(--gold);margin:10px 0 8px;overflow-wrap:anywhere}.context{background:var(--bg);border-radius:7px;padding:12px;margin:8px 0 0;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.8 ui-monospace,Consolas,monospace}.actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}.actions .button{font-size:11px}.notice{border:1px dashed var(--line);border-radius:10px;padding:16px;color:var(--muted);font-size:12px}.notice.warn{color:var(--gold)}.empty{padding:60px 20px;text-align:center;color:var(--muted)}.empty strong{display:block;font-size:20px;color:var(--text);margin-bottom:8px}.navigation{display:flex;gap:6px}#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:10px;box-shadow:var(--shadow);z-index:10;max-width:90%;font-size:12px}.errors{margin-bottom:20px;color:var(--gold);font-size:12px}.errors pre{white-space:pre-wrap;overflow-wrap:anywhere}.tip{font-size:11px;color:var(--muted);margin-top:24px}#count{font-variant-numeric:tabular-nums}
-@media(min-width:1500px){.main{padding-left:64px;padding-right:64px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:900px){.shell{grid-template-columns:245px minmax(0,1fr)}.main{padding:24px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:12px 16px}}
-@media(max-width:640px){.shell{display:block;height:auto}.sidebar{border-right:0;border-bottom:1px solid var(--line)}.brand{padding:18px 20px 12px}.search-area{padding:14px 18px 8px}.key-list{max-height:220px;flex:auto}.side-footer{display:none}.main{overflow:visible;padding:22px 18px 40px}.topbar{align-items:flex-start}.topbar h2{font-size:22px}.stats{gap:8px;margin-bottom:24px}.stat strong{font-size:24px}.toolbar input{width:100%;margin-left:0}.detail-head h3{font-size:22px}}
-</style>
-</head>
-<body>
-<div class="shell">
-<aside class="sidebar">
- <header class="brand"><div class="eyebrow">AZUSTOCK / TAG RADAR</div><h1>標籤追蹤管理員</h1><p>追蹤 detail.json 標籤、狀態時效與 Markdown 內文高光語法。</p></header>
- <div class="search-area"><label for="search">搜尋標籤、標題與 detail.json 位置</label><input id="search" type="search" placeholder="標籤、專案、文章或 detail.json…"><select id="category" aria-label="標籤分類"><option value="all">全部標籤類型</option><option value="status">系統狀態標籤 (STATUS)</option><option value="custom">自訂主題標籤 (CUSTOM)</option><option value="markdown">含 Markdown 內文高光</option><option value="expired">含有已過期時效設定</option></select><select id="level" aria-label="設定層級"><option value="all">全部來源層級</option><option value="projects">僅專案層級 (Project)</option><option value="articles">僅文章層級 (Article)</option><option value="markdown">僅內文高光 (Markdown)</option></select></div>
- <div class="list-label"><span>標籤索引</span><span id="count"></span></div><nav class="key-list" id="tagList" aria-label="標籤索引"></nav>
- <footer class="side-footer" id="scanMeta"></footer>
-</aside>
-<main class="main">
- <header class="topbar"><div><h2>Tags, Status & Highlights 總覽</h2><p id="bannerText">檢視各專案與文章 detail.json 定義的標籤、狀態欄位與內文高光。</p></div><button id="theme" class="button" type="button">切換主題</button></header>
- <div class="stats" id="stats"></div><details id="errors" class="errors" hidden><summary></summary><pre></pre></details>
- <div id="detail"></div><p class="tip">本頁為掃描時的快照；使用 track_tags.py 修改 detail.json 後請重新掃描。VS Code / Cursor 連結會直接開啟該項目所屬的 detail.json 或 Markdown 檔案。</p>
-</main></div><div id="toast" role="status" hidden></div>
-<script id="scanData" type="application/json">@@PAYLOAD@@</script>
-<script>
-'use strict';
-const payload=JSON.parse(document.getElementById('scanData').textContent),db=payload.tags,scan=payload.scan,statusSet=new Set((payload.status_tags||[]).map(s=>s.toUpperCase()));
-const records=tag=>[...db[tag].projects,...db[tag].articles,...(db[tag].markdown||[])];
-const isStatus=tag=>statusSet.has(String(tag).toUpperCase());
-const hasExpired=tag=>records(tag).some(r=>r.is_expired);
-const tags=Object.keys(db).sort((a,b)=>{const diff=records(b).length-records(a).length;if(diff!==0)return diff;if(isStatus(a)!==isStatus(b))return isStatus(a)?-1:1;return a.localeCompare(b);});
-const list=document.getElementById('tagList'),detail=document.getElementById('detail');
-let active=null,visible=[],kind='all',locationQuery='',toastTimer;
-const esc=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const matches=(item,q)=>[item.file,item.raw_abs,item.raw,item.context,item.title,item.target_id,item.raw_tag,item.md_file].some(value=>String(value||'').toLowerCase().includes(q));
-const total=type=>tags.reduce((sum,t)=>sum+(db[t][type]?db[t][type].length:0),0);
-const expiredTotal=()=>tags.reduce((sum,t)=>sum+records(t).filter(r=>r.is_expired).length,0);
-const levelMatches=item=>{const lv=document.getElementById('level').value;return lv==='all'||item.kind===lv;};
-document.getElementById('bannerText').textContent=`狀態標籤時效 (TAG_EXPIRE_DAYS)：${scan.expire_days} 天 · 未設定 detail.json 標籤：專案 ${scan.unset_projects} 個 / 文章 ${scan.unset_articles} 篇`;
-document.getElementById('stats').innerHTML=[['標籤種類總數',tags.length,`系統狀態 ${tags.filter(isStatus).length} 種 · 自訂 ${tags.filter(t=>!isStatus(t)).length} 種`],['detail.json 標記',total('projects')+total('articles'),`專案 ${total('projects')} 筆 · 文章 ${total('articles')} 筆`],['Markdown 內文高光',total('markdown'),`掃描 ${scan.md_files||0} 篇 .md 檔案`],['已過期時效標籤',expiredTotal(),`超過 ${scan.expire_days} 天將自動隱藏`]].map((s,i)=>`<div class="stat ${i===3&&s[1]>0?'warning':''}"><span>${s[0]}</span><strong>${s[1]}</strong><small>${s[2]}</small></div>`).join('');
-document.getElementById('scanMeta').textContent=`掃描 ${scan.files} 個 detail.json (${scan.md_files||0} 篇 .md) · ${scan.time}\n${scan.root}`;
-if(scan.errors.length){const el=document.getElementById('errors');el.hidden=false;el.querySelector('summary').textContent=`有 ${scan.errors.length} 項掃描失敗（點擊查看）`;el.querySelector('pre').textContent=scan.errors.join('\n');}
-function renderList(){
- const q=document.getElementById('search').value.trim().toLowerCase(),cat=document.getElementById('category').value;
- visible=tags.filter(tag=>{
-  if(cat==='status'&&!isStatus(tag))return false;
-  if(cat==='custom'&&isStatus(tag))return false;
-  if(cat==='markdown'&&!(db[tag].markdown&&db[tag].markdown.length))return false;
-  if(cat==='expired'&&!hasExpired(tag))return false;
-  const eligible=records(tag).filter(item=>levelMatches(item)&&(cat!=='expired'||item.is_expired)&&(cat!=='markdown'||item.kind==='markdown'));
-  return eligible.length>0&&(!q||tag.toLowerCase().includes(q)||eligible.some(item=>matches(item,q)));
- });
- if(!visible.includes(active)){active=visible[0]||null;kind='all';locationQuery='';}
- document.getElementById('count').textContent=`${visible.length} / ${tags.length}`;
- list.replaceChildren();
- for(const tag of visible){
-  const button=document.createElement('button');button.type='button';button.className='key-item'+(tag===active?' active':'');button.setAttribute('aria-current',tag===active?'true':'false');
-  const pill=isStatus(tag)?'<span class="status-pill">STATUS</span>':'';
-  const expDot=hasExpired(tag)?' <span class="dot" title="含有已過期項目">●</span>':'';
-  const mdCount=db[tag].markdown?db[tag].markdown.length:0;
-  button.innerHTML=`<span class="key-name">${esc(tag)}${pill}${expDot}</span><span class="key-meta"><span>專案 ${db[tag].projects.length}</span><span>文章 ${db[tag].articles.length}</span>${mdCount?`<span>高光 ${mdCount}</span>`:''}</span>`;
-  button.addEventListener('click',()=>{active=tag;kind='all';locationQuery='';renderList();});
-  list.append(button);
- }
- if(!visible.length)list.innerHTML='<div class="notice">沒有符合條件的標籤紀錄。</div>';
- renderDetail();
-}
-function createCard(item){
- const line=item.line,column=item.column||1,path=`${item.raw_abs}:${line}:${column}`;
- const badgeLabel=item.kind==='projects'?'專案層級 (Project)':item.kind==='articles'?'文章層級 (Article)':'內文高光 (Markdown)';
- const srcBadge=item.source_type==='bool_flag'?`<span class="badge gold">狀態欄位 (${esc(item.raw_tag)})</span>`:item.source_type==='tags_array'?`<span class="badge">tags 陣列元素</span>`:`<span class="badge gold">${esc(item.raw_tag)}</span>`;
- const expBadge=item.is_expired?`<span class="badge warn">已超過 ${scan.expire_days} 天時效</span>`:'';
- const mdActions=item.md_abs_path?`<a class="button" href="${esc('vscode://file/'+item.md_abs_path+':'+item.md_line+':'+item.md_column)}">開啟 .md (L${item.md_line}) ↗</a>`:'';
- return `<article class="card"><div class="card-header"><div class="path">${esc(item.file)}</div><span class="line">${item.md_line?`MD L${item.md_line}:${item.md_column}`:`L${line} : ${column}`}</span></div><div class="raw">${esc(item.target_id)} · ${esc(item.title)}</div><div><span class="badge">${badgeLabel}</span>${srcBadge}${expBadge}</div><pre class="context">${esc(item.context)}</pre><div class="actions"><a class="button" href="${esc('vscode://file/'+item.abs_path+':'+line+':'+column)}">detail.json (VS Code) ↗</a><a class="button" href="${esc('cursor://file/'+item.abs_path+':'+line+':'+column)}">detail.json (Cursor) ↗</a>${mdActions}<button class="button" type="button" data-copy="${esc(path)}">複製 detail.json 位置</button></div></article>`;
-}
-function renderDetail(){
- if(!active){detail.innerHTML=`<div class="empty"><strong>${tags.length?'沒有符合條件的標籤':'尚未發現任何標籤設定'}</strong>${tags.length?'試著縮短搜尋文字，或切換篩選條件。':'可使用 python track_tags.py 選單 [6] 為專案或文章 detail.json 新增標籤。'}</div>`;return;}
- const entry=db[active],index=visible.indexOf(active);
- const typeBadge=isStatus(active)?'<span class="badge gold">系統狀態徽章 (STATUS_LIST)</span>':'<span class="badge">自訂主題標籤 (CUSTOM)</span>';
- const expCount=records(active).filter(r=>r.is_expired).length;
- const expBadge=expCount?`<span class="badge warn">含 ${expCount} 筆已過期時效設定</span>`:'';
- const mdLen=entry.markdown?entry.markdown.length:0;
- detail.innerHTML=`<div class="detail-head"><div><div class="eyebrow">TAG RADAR / ${index+1} OF ${visible.length}</div><h3>${esc(active)}</h3><p>專案層級 ${entry.projects.length} 筆 · 文章層級 ${entry.articles.length} 筆 · 內文高光 ${mdLen} 筆 · 共 ${records(active).length} 處引用</p>${typeBadge}${expBadge}</div><div class="navigation"><button type="button" class="button" id="previous" aria-label="上一個標籤" ${index===0?'disabled':''}>←</button><button type="button" class="button" id="next" aria-label="下一個標籤" ${index===visible.length-1?'disabled':''}>→</button></div></div><div class="toolbar"><button type="button" data-kind="all" class="tab">全部來源</button><button type="button" data-kind="projects" class="tab">專案層級</button><button type="button" data-kind="articles" class="tab">文章層級</button><button type="button" data-kind="markdown" class="tab">內文高光</button><input id="location" type="search" aria-label="篩選這個標籤的位置" placeholder="篩選標題、ID 或 detail.json 路徑…" value="${esc(locationQuery)}"></div><div id="recordSections"></div>`;
- detail.querySelectorAll('[data-kind]').forEach(button=>{const lv=document.getElementById('level').value;button.disabled=lv!=='all'&&button.dataset.kind!=='all'&&button.dataset.kind!==lv;button.classList.toggle('active',button.dataset.kind===kind);button.setAttribute('aria-pressed',String(button.dataset.kind===kind));button.addEventListener('click',()=>{kind=button.dataset.kind;detail.querySelectorAll('[data-kind]').forEach(b=>{b.classList.toggle('active',b.dataset.kind===kind);b.setAttribute('aria-pressed',String(b.dataset.kind===kind));});renderRecords();});});
- document.getElementById('location').addEventListener('input',event=>{locationQuery=event.target.value;renderRecords();});
- for(const [id,offset] of [['previous',-1],['next',1]])document.getElementById(id).addEventListener('click',()=>{active=visible[index+offset];locationQuery='';renderList();});
- renderRecords();
-}
-function renderRecords(){
- const entry=db[active],q=locationQuery.trim().toLowerCase(),search=document.getElementById('search').value.trim().toLowerCase(),cat=document.getElementById('category').value;
- const limitGlobal=search&&!active.toLowerCase().includes(search);
- let html='';
- const sections=[
-  ['projects','專案層級 (Projects detail.json)','定義於專案目錄下的 detail.json，顯示於首頁卡片與跑馬燈'],
-  ['articles','文章層級 (Articles detail.json)','定義於文章目錄下的 detail.json，顯示於系列目錄與文章標題旁並向上冒泡'],
-  ['markdown','內文高光 (Markdown ++[TAG]++ / :::highlight[TAG])','定義於文章或專案的 .md 內文中，路徑綁定至所屬的 detail.json']
- ];
- for(const [type,title,explanation] of sections){
-  if(kind!=='all'&&kind!==type)continue;
-  const lv=document.getElementById('level').value;
-  if(lv!=='all'&&lv!==type)continue;
-  if(cat==='markdown'&&type!=='markdown')continue;
-  const listArr=entry[type]||[];
-  const items=listArr.filter(item=>levelMatches(item)&&(cat!=='expired'||item.is_expired)&&(!q||matches(item,q))&&(!limitGlobal||matches(item,search)));
-  html+=`<div class="section-title">${title}<span>${items.length} / ${listArr.length} 筆 · ${explanation}</span></div>`;
-  if(items.length)html+=`<div class="cards">${items.map(createCard).join('')}</div>`;
-  else if(listArr.length)html+='<div class="notice">沒有符合篩選條件的 detail.json 位置。</div>';
-  else html+=`<div class="notice">此標籤目前沒有在${type==='projects'?'專案 detail.json':type==='articles'?'文章 detail.json':' Markdown 內文高光'}中使用。</div>`;
- }
- const el=document.getElementById('recordSections');el.innerHTML=html;
- el.querySelectorAll('[data-copy]').forEach(button=>button.addEventListener('click',()=>copyText(button.dataset.copy)));
-}
-async function copyText(value){
- try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(value);else{const input=document.createElement('textarea');input.value=value;input.style.position='fixed';input.style.opacity='0';document.body.append(input);input.select();let ok;try{ok=document.execCommand('copy');}finally{input.remove();}if(!ok)throw new Error('copy unavailable');}toast('已複製 detail.json 位置與行號');}
- catch(error){window.prompt('請手動複製位置：',value);}
-}
-function toast(message){const el=document.getElementById('toast');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,2300);}
-function setTheme(theme){document.documentElement.dataset.theme=theme;document.getElementById('theme').textContent=theme==='dark'?'☀ 淺色模式':'☾ 深色模式';try{localStorage.setItem('tag-radar-theme',theme);}catch(error){}}
-let theme='dark';try{theme=localStorage.getItem('tag-radar-theme')||theme;}catch(error){}setTheme(theme==='light'?'light':'dark');
-document.getElementById('theme').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
-document.getElementById('search').addEventListener('input',renderList);document.getElementById('category').addEventListener('change',renderList);document.getElementById('level').addEventListener('change',()=>{kind='all';locationQuery='';renderList();});
-document.addEventListener('keydown',event=>{if(event.key==='/'&&!['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName)){event.preventDefault();document.getElementById('search').focus();}});
-renderList();
-</script></body></html>'''
+    return APP.write_dashboard()
 
 
 def open_dashboard():
-    """用系統預設瀏覽器開啟面板；尚未生成時先掃描生成。"""
-    dashboard = Path(OUTPUT_FILE).resolve()
-    if not dashboard.is_file():
-        print('尚未生成 HTML 儀表板，先掃描並生成…')
-        scan_tags(generate_html=True)
-    if not dashboard.is_file():
-        print(styled('HTML 儀表板未成功生成：' + str(dashboard), 'red'))
-        return False
-    try:
-        opened = webbrowser.open(dashboard.as_uri(), new=2)
-    except (webbrowser.Error, OSError) as error:
-        print(styled('無法自動開啟瀏覽器：' + str(error), 'yellow'))
-        opened = False
-    if opened:
-        print(styled('已請求預設瀏覽器開啟：' + str(dashboard), 'green'))
-    else:
-        print('請手動在瀏覽器開啟：' + str(dashboard))
-    return opened
+    return APP.open_dashboard()
+
+
+def apply_tag_changes(plans):
+    global scanned
+    count,_,errors=apply_changes(plans,'tag')
+    if count:
+        scanned=False
+    return count,errors
 
 
 def main(argv=None):
-    global PROJECTS_DIR, OUTPUT_FILE, USE_COLOR
-    parser = argparse.ArgumentParser(description='Azustock 標籤 (tags & Markdown 高光) 掃描、detail.json 定位、修改與 HTML 儀表板')
-    parser.add_argument('--projects', default=PROJECTS_DIR, help='專案目錄（預設 projects）')
-    parser.add_argument('--output', default=OUTPUT_FILE, help='HTML 輸出位置（預設 ./tools/tracker/reports/tag_dashboard.html）')
-    parser.add_argument('--scan', action='store_true', help='掃描並結束，不進入選單')
-    parser.add_argument('--open', action='store_true', help='使用預設瀏覽器開啟 HTML；檔案不存在時先生成')
-    parser.add_argument('--query', help='搜尋標籤名稱、標題、detail.json 路徑或內文（不分大小寫）')
-    parser.add_argument('--file', default='', help='只顯示或修改 detail.json 路徑／ID／標題含此文字的位置')
-    parser.add_argument('--kind', choices=['all', 'projects', 'articles', 'markdown'], default='all',
-                        help='顯示或修改全部／專案層級(projects)／文章層級(articles)／內文高光(markdown)')
-    parser.add_argument('--category', choices=['all', 'status', 'custom', 'markdown', 'expired'], default='all',
-                        help='all 全部／status 系統狀態／custom 自訂標籤／markdown 內文高光／expired 已過期時效')
-    parser.add_argument('--exact', action='store_true', help='只查詢完整標籤名稱')
-    parser.add_argument('--list', action='store_true', help='只列出標籤與關聯 detail.json 數量摘要')
-    parser.add_argument('--unset', action='store_true', help='列出未設定任何標籤的專案與文章 detail.json')
-    parser.add_argument('--add', metavar='TAG', help='將指定標籤新增至符合 --file 與 --kind 的 detail.json tags 陣列')
-    parser.add_argument('--remove', metavar='TAG', help='從符合 --file 與 --kind 的 detail.json tags 陣列移除指定標籤')
-    parser.add_argument('--replace', nargs=2, metavar=('OLD_TAG', 'NEW_TAG'),
-                        help='將 detail.json 與 Markdown 內文高光中的舊標籤批次替換為新標籤')
-    parser.add_argument('--yes', '-y', action='store_true', help='搭配 --add / --remove / --replace 時略過確認提示')
-    parser.add_argument('--no-html', action='store_true', help='不產生 HTML')
-    parser.add_argument('--plain', action='store_true', help='關閉終端機色彩')
-    args = parser.parse_args(argv)
-
-    if args.exact and args.query is None:
-        parser.error('--exact 需搭配 --query')
-    if args.open and args.no_html:
-        parser.error('--open 不能搭配 --no-html')
-    if sum(bool(x) for x in (args.add, args.remove, args.replace)) > 1:
-        parser.error('--add、--remove 與 --replace 每次只能擇一使用')
-    if (args.add or args.remove) and not args.file:
-        parser.error('使用 --add 或 --remove 時請搭配 --file 指定目標（若要套用全部請傳入 --file *）')
-
-    PROJECTS_DIR, OUTPUT_FILE = args.projects, args.output
-    USE_COLOR = USE_COLOR and not args.plain
-    if USE_COLOR and os.name == 'nt':
-        try:
-            import ctypes
-            handle = ctypes.windll.kernel32.GetStdHandle(-11)
-            mode = ctypes.c_ulong()
-            USE_COLOR = bool(ctypes.windll.kernel32.GetConsoleMode(handle, ctypes.byref(mode))
-                             and ctypes.windll.kernel32.SetConsoleMode(handle, mode.value | 4))
-        except (AttributeError, OSError):
-            USE_COLOR = False
-
-    try:
-        # CLI 直接修改模式 (--add / --remove / --replace)
-        if args.add or args.remove or args.replace:
-            target_filter = '' if args.file == '*' else args.file
-            if args.replace:
-                old_t, new_t = args.replace
-                plans = plan_tag_changes('replace', target_tag=old_t, new_tag=new_t,
-                                         file_filter=target_filter, kind=args.kind)
-            elif args.add:
-                plans = plan_tag_changes('add', new_tag=args.add,
-                                         file_filter=target_filter, kind=args.kind)
-            else:
-                plans = plan_tag_changes('remove', target_tag=args.remove,
-                                         file_filter=target_filter, kind=args.kind)
-            if not plans:
-                print('沒有需要修改的檔案。')
-                return 0
-            for plan in plans:
-                c = plan['change']
-                print('  ' + styled(plan['path'].resolve()) + f":{c['line']}:{c['column']} ({plan['target_id']} · {plan['title']})")
-                print('    ' + styled(c['before'], 'yellow') + ' → ' + styled(c['after'], 'green'))
-            if not args.yes:
-                if input(f'共 {len(plans)} 個檔案，套用以上修改？[y/N] > ').strip().lower() not in ('y', 'yes'):
-                    print('已取消，檔案未修改。')
-                    return 0
-            files, errors = apply_tag_changes(plans)
-            print(f'完成：修改 {files} 個檔案。')
-            for err in errors:
-                print(styled('更新失敗：' + err, 'red'))
-            scan_tags(generate_html=not args.no_html)
-            if args.open:
-                return 0 if open_dashboard() else 1
-            return 0 if not errors else 1
-
-        # CLI 直接查詢／掃描模式
-        direct_query = (
-            args.query is not None or bool(args.file) or args.kind != 'all'
-            or args.list or args.category != 'all' or args.unset
-        )
-        if args.scan or direct_query:
-            scan_tags(generate_html=not args.no_html)
-            if args.unset:
-                print_unset_targets(args.query or args.file, args.kind)
-            elif direct_query:
-                print_query(args.query or '', args.file, args.kind, args.exact, args.list, args.category)
-            if args.open:
-                return 0 if open_dashboard() else 1
-            return 0
-        if args.open:
-            return 0 if open_dashboard() else 1
-
-        # 互動式選單模式
-        while True:
-            exp_days = detect_tag_expire_days()
-            print(styled('\n─────────────────────────────────────\n'
-                         f'  AZUSTOCK · 標籤追蹤管理員 (時效: {exp_days} 天)\n'
-                         '─────────────────────────────────────', 'bold'))
-            print('  [0] 離開')
-            print('  [1] 掃描 detail.json 標籤與 .md 高光並生成 HTML（預設）')
-            print('  [2] 列出標籤數量統計摘要')
-            print('  [3] 批次替換標籤 (舊 Tag → 新 Tag，含 detail.json 與 .md 高光)')
-            print('  [4] 查詢標籤與所在 detail.json 位置 (含內文高光、未設定與過期查詢)')
-            print('  [5] 開啟 HTML 儀表板')
-            print('  [6] 管理 detail.json 標籤（新增／移除指定目標 Tag）')
-            choice = input('\n操作 [0/1/2/3/4/5/6] > ').strip().lower()
-            try:
-                match choice:
-                    case '0' | 'q':
-                        return 0
-                    case '' | '1':
-                        scan_tags(generate_html=not args.no_html)
-                    case '2':
-                        if not scanned:
-                            scan_tags(generate_html=False)
-                        print_query(summary_only=True)
-                    case '3':
-                        replace_tag_interactive(generate_html=not args.no_html)
-                    case '4':
-                        query_tags_interactive()
-                    case '5':
-                        open_dashboard()
-                    case '6':
-                        manage_target_tags(generate_html=not args.no_html)
-                    case _:
-                        print('請輸入 0～6，或 q 離開。')
-            except (OSError, UnicodeError, ValueError) as error:
-                print(styled('操作失敗：' + str(error), 'red'))
-    except (OSError, UnicodeError, ValueError) as error:
-        print(styled('操作失敗：' + str(error), 'red'), file=sys.stderr)
-        return 1
-    except (EOFError, KeyboardInterrupt):
-        print('\n已離開標籤追蹤管理員。')
-        return 0
+    return APP.run(argv)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

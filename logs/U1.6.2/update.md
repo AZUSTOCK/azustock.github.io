@@ -17,6 +17,7 @@
 4. .toast-x-icon behavior
 5. UI
 6. Keyboard Engine
+7. extract main.js
 
 ## fix
 1. PWA Pull-to-Refresh Engine

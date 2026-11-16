@@ -137,24 +137,23 @@ window.triggerHaptic = function(type = 'light') {
 // ✨ 新增：動態非同步引入 Mermaid 引擎 (ESM 模組)
 // ==========================================
 window.mermaid = null;
+window.initMermaidWithTheme = function(theme) {
+    window.mermaid.initialize({
+        startOnLoad: false,
+        theme: theme === 'dark' ? 'dark' : 'default',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
+        securityLevel: 'loose',
+        useMaxWidth: false,
+        flowchart: {
+            padding: 15,
+            htmlLabels: false
+        }
+    });
+};
 import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs').then(m => {
     window.mermaid = m.default;
     const currentTheme = document.documentElement.getAttribute('data-theme') || CONFIG.DEFAULT_THEME;
-    // 第一個地方 (約在上方動態引入 import 的區塊) 和 第二個地方 (約在 applyTheme 函數內)
-    // 請將這兩處的 initialize 都改成這樣：
-    window.mermaid.initialize({
-    startOnLoad: false,
-    theme: currentTheme === 'dark' ? 'dark' : 'default',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-    securityLevel: 'loose',
-    useMaxWidth: false,
-
-    // ✨ 請務必補上這一段：強制四周留白 25px，並使用純向量繪製標籤外框，保證文字絕對不被裁切！
-    flowchart: { 
-        padding: 15,
-        htmlLabels: false 
-    }
-});
+    window.initMermaidWithTheme(currentTheme);
 }).catch(err => console.error("Mermaid 引擎載入失敗:", err));
 
 // 共用函數：自動判斷物件屬性並回傳對應的 HTML 徽章 (✨ 支援互斥與優先級)
@@ -1312,19 +1311,23 @@ window.refreshUIAfterOverrideToggle = function() {
 // ==========================================
 // ✨ 獨立檔案快取系統 (Singleton Pattern + Hash)
 // ==========================================
-window.cachedKotobaList = null;
-window.getKotobaList = async function() {
-    if (window.cachedKotobaList !== null) return window.cachedKotobaList;
+window.loadDelimitedMarkdown = async function(filename, cacheKey) {
+    if (window[cacheKey] !== null) return window[cacheKey];
     try {
-        const res = await fetch(`./kotoba.md?v=${window.getResVersion('kotoba.md')}`);
+        const res = await fetch(`./${filename}?v=${window.getResVersion(filename)}`);
         if (res.ok) {
             const text = await res.text();
-            window.cachedKotobaList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
+            window[cacheKey] = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
         } else {
-            window.cachedKotobaList = [];
+            window[cacheKey] = [];
         }
-    } catch (err) { window.cachedKotobaList = []; }
-    return window.cachedKotobaList;
+    } catch (err) { window[cacheKey] = []; }
+    return window[cacheKey];
+};
+
+window.cachedKotobaList = null;
+window.getKotobaList = async function() {
+    return window.loadDelimitedMarkdown('kotoba.md', 'cachedKotobaList');
 };
 
 window.cachedMermaidStyles = null;
@@ -1343,17 +1346,7 @@ window.getMermaidStyles = async function() {
 
 window.cachedQuotesList = null;
 window.getQuotesList = async function() {
-    if (window.cachedQuotesList !== null) return window.cachedQuotesList;
-    try {
-        const res = await fetch(`./quotes.md?v=${window.getResVersion('quotes.md')}`);
-        if (res.ok) {
-            const text = await res.text();
-            window.cachedQuotesList = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
-        } else {
-            window.cachedQuotesList = [];
-        }
-    } catch (err) { window.cachedQuotesList = []; }
-    return window.cachedQuotesList;
+    return window.loadDelimitedMarkdown('quotes.md', 'cachedQuotesList');
 };
 
 // ==========================================
@@ -1706,18 +1699,7 @@ window._mermaidRetryCount = 0;
 window.renderAllMermaidCharts = function(rootElement = document, onComplete = null) {
     if (window.mermaid) {
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-        window.mermaid.initialize({
-            startOnLoad: false,
-            theme: currentTheme === 'dark' ? 'dark' : 'default', 
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-            securityLevel: 'loose',
-            useMaxWidth: false,
-            // ✨ 務必把這段補進去這兩個地方！
-            flowchart: { 
-                padding: 15,
-                htmlLabels: false 
-            }
-        });
+        window.initMermaidWithTheme(currentTheme);
 
         rootElement.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
         
@@ -3534,6 +3516,18 @@ const spoilerExtension = {
 // ==========================================
 // ✨ 機密隱藏區塊 (Secret Block)
 // ==========================================
+window.getSecretRenderState = function(secretId) {
+    const isUnlocked = window.isSecretUnlocked(secretId);
+    const placeId = window._currentRenderPlace + '_' + secretId;
+    const animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
+    const hasAnimatedHere = animatedPlaces.includes(placeId);
+    let statusClass = 'is-locked';
+    if (isUnlocked) {
+        statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
+    }
+    return { placeId, statusClass };
+};
+
 const secretBlockExtension = {
     name: 'secretBlock',
     level: 'block',
@@ -3552,15 +3546,7 @@ const secretBlockExtension = {
         }
     },
     renderer(token) {
-        const isUnlocked = window.isSecretUnlocked(token.secretId);
-        const placeId = window._currentRenderPlace + '_' + token.secretId;
-        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
-        const hasAnimatedHere = animatedPlaces.includes(placeId);
-
-        let statusClass = 'is-locked';
-        if (isUnlocked) {
-            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
-        }
+        const { placeId, statusClass } = window.getSecretRenderState(token.secretId);
 
         const lockIcon = `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
         
@@ -3599,15 +3585,7 @@ const inlineSecretExtension = {
         }
     },
     renderer(token) {
-        const isUnlocked = window.isSecretUnlocked(token.secretId);
-        const placeId = window._currentRenderPlace + '_' + token.secretId;
-        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
-        const hasAnimatedHere = animatedPlaces.includes(placeId);
-
-        let statusClass = 'is-locked';
-        if (isUnlocked) {
-            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
-        }
+        const { placeId, statusClass } = window.getSecretRenderState(token.secretId);
         
         const lockIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
 
@@ -3637,15 +3615,7 @@ const stealthSecretExtension = {
         }
     },
     renderer(token) {
-        const isUnlocked = window.isSecretUnlocked(token.secretId);
-        const placeId = window._currentRenderPlace + '_' + token.secretId;
-        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
-        const hasAnimatedHere = animatedPlaces.includes(placeId);
-
-        let statusClass = 'is-locked';
-        if (isUnlocked) {
-            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
-        }
+        const { placeId, statusClass } = window.getSecretRenderState(token.secretId);
 
         const parsedCover = this.parser.parseInline(token.coverTokens);
         const parsedReal = this.parser.parseInline(token.tokens);
@@ -3685,15 +3655,7 @@ const stealthBlockExtension = {
         }
     },
     renderer(token) {
-        const isUnlocked = window.isSecretUnlocked(token.secretId);
-        const placeId = window._currentRenderPlace + '_' + token.secretId;
-        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
-        const hasAnimatedHere = animatedPlaces.includes(placeId);
-
-        let statusClass = 'is-locked';
-        if (isUnlocked) {
-            statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
-        }
+        const { placeId, statusClass } = window.getSecretRenderState(token.secretId);
 
         const parsedCover = this.parser.parse(token.coverTokens);
         const parsedReal = this.parser.parse(token.tokens);
@@ -3977,17 +3939,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (window.mermaid) {
-            window.mermaid.initialize({
-                startOnLoad: false,
-                theme: theme === 'dark' ? 'dark' : 'default',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif',
-                securityLevel: 'loose',
-                useMaxWidth: false,
-                flowchart: { 
-                    padding: 15,
-                    htmlLabels: false 
-                }
-            });
+            window.initMermaidWithTheme(theme);
             
             const mermaidEls = document.querySelectorAll('.mermaid');
             if (mermaidEls.length > 0) {
@@ -6016,6 +5968,21 @@ window.currentCardIndex = 0;
 // ==========================================
 window.isKotobaActive = false;
 
+window.centerMarqueeTarget = function(targetTagEl, firstContent) {
+    const contentWidth = firstContent.offsetWidth;
+    void firstContent.offsetWidth;
+
+    // 使用標籤本身的左側座標，避免 wrapper 位移干擾。
+    let absoluteLeft = targetTagEl.offsetLeft;
+    if (absoluteLeft === 0) {
+        absoluteLeft = targetTagEl.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
+    }
+
+    let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
+    if (targetX > 0) targetX -= contentWidth;
+    window.scrollMarqueeTo(targetX, contentWidth);
+};
+
 window.centerKotobaTag = function(event) {
     if (event) event.stopPropagation();
     
@@ -6036,20 +6003,7 @@ window.centerKotobaTag = function(event) {
             t.classList.add('is-active');
         });
 
-        const contentWidth = firstContent.offsetWidth;
-        
-        void firstContent.offsetWidth;
-        
-        // ✨ 核心修復：直接抓取文字標籤本身的左側座標，徹底拔除 wrapper 帶來的偏移干擾！
-        let absoluteLeft = targetTagEl.offsetLeft;
-        if (absoluteLeft === 0) {
-            absoluteLeft = targetTagEl.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
-        }
-        
-        let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
-        if (targetX > 0) targetX -= contentWidth;
-        
-        window.scrollMarqueeTo(targetX, contentWidth);
+        window.centerMarqueeTarget(targetTagEl, firstContent);
     }
 };
 
@@ -6108,19 +6062,7 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     }
     
     if (targetTagEl && firstContent) {
-        const contentWidth = firstContent.offsetWidth;
-        void firstContent.offsetWidth;
-
-        // ✨ 核心修復：直接抓取標籤本身的左側座標，徹底拔除 wrapper 帶來的偏移干擾！
-        let absoluteLeft = targetTagEl.offsetLeft;
-        if (absoluteLeft === 0) {
-            absoluteLeft = targetTagEl.getBoundingClientRect().left - firstContent.getBoundingClientRect().left + firstContent.scrollLeft;
-        }
-        
-        let targetX = ((firstContent.parentElement.clientWidth / 2) - (absoluteLeft + (targetTagEl.offsetWidth / 2))) % contentWidth;
-        if (targetX > 0) targetX -= contentWidth;
-        
-        window.scrollMarqueeTo(targetX, contentWidth);
+        window.centerMarqueeTarget(targetTagEl, firstContent);
     }
 
     document.querySelectorAll(`[data-tag="${targetTag}"]`).forEach(t => t.classList.add('active-tag'));
