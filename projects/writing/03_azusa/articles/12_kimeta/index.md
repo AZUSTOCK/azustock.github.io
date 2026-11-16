@@ -1,4 +1,4 @@
-# 「啟程」++[KEY:kimeta]++
+# 「啟程」
 ![float-right](./architecture.webp)
 
 <div id="lang-ja">

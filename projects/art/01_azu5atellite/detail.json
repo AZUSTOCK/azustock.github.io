@@ -7,6 +7,7 @@
   "cover": "architecture.webp",
   "pinned": true,
   "default_sort": "asc",
+  "min_sys_version": "1.6.1.22",
   "groups": {
     "trpg": {
       "title": "TRPG",

@@ -1,7 +1,6 @@
 # 一個人
 <div class="vertical-wrapper">
 
-++[KEY:StoryOFDiary#11|SILENT]++
 日記到底要寫什麼？  
 寫一些抱怨來發洩情緒？  
 寫一些紀錄來留下心情？  

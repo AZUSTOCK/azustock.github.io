@@ -694,10 +694,10 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 
             if proj_data.get('link'): clean_proj_data['link'] = proj_data.get('link')
             
-            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive', 'required_key', 'lock_mode']:
+            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive', 'required_key', 'lock_mode', 'key']:
                 val = proj_data.get(key) or proj_data.get(key.upper())
                 if val is not None: 
-                    if key in ['required_key', 'lock_mode']:
+                    if key in ['required_key', 'lock_mode', 'key']:
                         clean_proj_data[key] = val
                     elif key == 'sensitive':
                         clean_proj_data['is_sensitive'] = val
@@ -1255,10 +1255,10 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         clean_tags.append(t)
                                 article_obj["tags"] = clean_tags
                             
-                            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive', 'required_key', 'lock_mode']:
+                            for key in ['pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive', 'required_key', 'lock_mode', 'key']:
                                 val = sub_data.get(key) or sub_data.get(key.upper())
                                 if val is not None: 
-                                    if key in ['required_key', 'lock_mode']:
+                                    if key in ['required_key', 'lock_mode', 'key']:
                                         article_obj[key] = val
                                     elif key == 'sensitive':
                                         article_obj['is_sensitive'] = val

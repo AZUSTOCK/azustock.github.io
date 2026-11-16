@@ -298,6 +298,74 @@ window.unlockSecret = function(rawKey) {
     return { status: 'GRANTED', baseId };
 };
 
+// detail.json 的 key：沿用既有金鑰／碎片資料與靜音語法。
+window.grantDetailKeys = function(spec) {
+    const entries = Array.isArray(spec) ? spec.flat() : [spec];
+    const received = [];
+    for (const entry of entries) {
+        if (typeof entry !== 'string' || !entry.trim()) continue;
+        const silent = /\|\s*SILENT\s*$/i.test(entry);
+        const rawKey = entry.replace(/\|\s*SILENT\s*$/i, '').trim();
+        const match = /^([^#|]+)(?:#([^/#|]+)(?:\/(\d+))?)?$/.exec(rawKey);
+        if (!match || !match[1].trim() || (match[2] && !match[2].trim()) || (match[3] && Number(match[3]) < 1)) {
+            console.warn('[SYS] 已略過無效的 detail.json key 設定。');
+            continue;
+        }
+        const result = window.unlockSecret(rawKey);
+        if (result && result.status !== 'ALREADY_HAVE') received.push({ result, silent });
+    }
+    if (!received.length) return false;
+
+    // 已經渲染的機密區塊與新金鑰同步，不必重新解析整篇 Markdown。
+    const locked = document.querySelectorAll('.md-secret-block.is-locked, .md-inline-secret.is-locked, .md-stealth-secret.is-locked, .md-stealth-block.is-locked, .pending-auto-unlock');
+    locked.forEach(block => {
+        const reqId = block.getAttribute('data-secret-id');
+        if (!reqId || !window.isSecretUnlocked(reqId)) return;
+        block.classList.remove('is-locked', 'pending-auto-unlock');
+        block.classList.add('is-unlocked');
+        const placeId = block.getAttribute('data-place-id');
+        if (placeId) {
+            const places = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
+            if (!places.includes(placeId)) {
+                places.push(placeId);
+                localStorage.setItem('sys_animated_secrets', JSON.stringify(places));
+            }
+        }
+    });
+
+    const visible = received.filter(item => !item.silent);
+    if (visible.length) {
+        // showSystemToast 會插入 HTML；金鑰名稱在顯示前必須先轉義。
+        const escape = value => String(value).replace(/[&<>"']/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[char]);
+        let title = '>_ ACCESS_GRANTED';
+        let msg = '取得授權金鑰';
+        let subMsg;
+        if (visible.length === 1) {
+            const result = visible[0].result;
+            const baseId = escape(result.baseId);
+            subMsg = `已解鎖機密 [${baseId}]`;
+            if (result.status === 'ACQUIRED_FRAGMENT') {
+                title = '>_ FRAGMENT_ACQUIRED';
+                msg = '取得金鑰碎片';
+                subMsg = result.hasExplicitTotal
+                    ? `進度: ${result.currentCount}/${result.reqCount} [${baseId}]`
+                    : `已取得碎片 [${baseId}#${escape(result.fragIndex)}]`;
+            } else if (result.status === 'GRANTED_FRAGMENTS_COMPLETE') {
+                msg = '金鑰合成完畢';
+                subMsg = `權限已解開！(${result.currentCount}/${result.reqCount}) [${baseId}]`;
+            }
+        } else {
+            msg = `取得 ${visible.length} 個金鑰或碎片`;
+            subMsg = visible.map(({result}) => `[${escape(result.baseId)}${result.fragIndex ? '#' + escape(result.fragIndex) : ''}]`).join('、');
+        }
+        if (window.showSystemToast) window.showSystemToast(title, msg, subMsg, 6000, 'success');
+        if (window.triggerHaptic) window.triggerHaptic('success');
+    }
+    return true;
+};
+
 // ✨ 動態文字解析引擎 (Dynamic Text Engine - 完美防重複特效版)
 window.parseDynamicText = function(text, renderContext = 'DEFAULT') {
     if (!text || typeof text !== 'string') return text;
@@ -373,6 +441,7 @@ window.refreshHomeKeysUI = function() {
                         if (window.currentActiveTag) window.clearFilter();
                         const a = document.createElement('a'); a.href = proj.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
                         document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                        window.grantDetailKeys(proj.key);
                     };
                 } else {
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
@@ -450,9 +519,58 @@ window.saveSensitiveAgreement = function(key, permanent) {
 };
 
 
-// 將警告類型及可選的略過金鑰分開；單獨的 | 是分隔符，|| 可用於多個警告或金鑰條件。
+// 解析舊版警告設定，以及每個警告各自設定略過條件的物件格式。
 window.parseSensitiveSetting = function(setting) {
     if (!setting) return { types: [], bypassKey: null };
+
+    if (typeof setting === 'object' && !Array.isArray(setting)) {
+        // 此檢查僅用在新版物件格式，不改變既有 required_key 的行為。
+        // 空條件在 isSecretUnlocked 中會被視為通過，因此不能直接交給它。
+        const validAtom = atom => {
+            if (typeof atom !== 'string' || !atom.trim()) return false;
+            const parts = atom.trim().split('|');
+            if (parts.length > 2 || !parts[0].trim()) return false;
+            return parts.length === 1 || (/^\d+$/.test(parts[1].trim()) && parseInt(parts[1], 10) > 0);
+        };
+        const validCondition = value => {
+            if (typeof value === 'string') {
+                if (!value.trim()) return false;
+                return value.split('||').every(rawGroup => {
+                    let group = rawGroup.trim();
+                    if (!group) return false;
+                    if (group.startsWith('(') && group.endsWith(')')) group = group.slice(1, -1).trim();
+                    // 與既有 DNF 語法一致：僅接受整個 AND 群組的外層括號。
+                    if (!group || /[()]/.test(group)) return false;
+                    return group.split('&&').every(validAtom);
+                });
+            }
+            if (!Array.isArray(value) || !value.length) return false;
+            if (value.every(item => typeof item === 'string')) return value.every(validAtom);
+            return value.every(group => Array.isArray(group) && group.length > 0 && group.every(validAtom));
+        };
+
+        const types = [];
+        const bypassByType = Object.create(null);
+        for (const [rawType, condition] of Object.entries(setting)) {
+            if (condition === false) continue;
+            const name = rawType.trim().toUpperCase();
+            const known = Object.prototype.hasOwnProperty.call(window.SENSITIVE_TEMPLATES, name);
+            const type = known ? name : 'DEFAULT';
+            if (!known) console.warn(`[SYS] 未知的 sensitive 警告類型「${rawType}」，改顯示 DEFAULT。`);
+            if (Object.prototype.hasOwnProperty.call(bypassByType, type)) {
+                // 相同類型若被重複定義，保留警告並停用此類型的略過條件。
+                bypassByType[type] = null;
+                console.warn(`[SYS] sensitive 警告類型「${type}」重複，已停用其略過條件。`);
+                continue;
+            }
+            types.push(type);
+            bypassByType[type] = null;
+            if (!known || condition === true) continue;
+            if (validCondition(condition)) bypassByType[type] = condition;
+            else console.warn(`[SYS] sensitive 警告「${type}」的略過條件無效，將顯示警告。`);
+        }
+        return { types, bypassKey: null, bypassByType };
+    }
 
     let bypassKey = null;
     let values;
@@ -486,13 +604,16 @@ window.parseSensitiveSetting = function(setting) {
 };
 
 window.getPendingSensitiveWarning = function(setting, agreePrefix, legacyKeys = []) {
-    const { types, bypassKey } = window.parseSensitiveSetting(setting);
+    const { types, bypassKey, bypassByType } = window.parseSensitiveSetting(setting);
     if (bypassKey && window.isSecretUnlocked(bypassKey)) return null;
     // 保留舊紀錄原本的有效期限，避免把工作階段的同意自動變成永久同意。
     if (legacyKeys.some(key => window.hasAgreedToSensitive(key))) return null;
     for (const type of types) {
         const key = `${agreePrefix}_${type}`;
-        if (!window.hasAgreedToSensitive(key)) return { type, key };
+        if (window.hasAgreedToSensitive(key)) continue;
+        const condition = bypassByType && bypassByType[type];
+        if (condition && window.isSecretUnlocked(condition)) continue;
+        return { type, key };
     }
     return null;
 };
@@ -4381,6 +4502,7 @@ async function loadProjects() {
                         if (window.currentActiveTag) window.clearFilter(); 
                         const a = document.createElement('a'); a.href = data.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
                         document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                        window.grantDetailKeys(data.key);
                     };
                     actionText = `<div class="card-action-btn">前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span></div>`;
                 } else {
@@ -5129,7 +5251,22 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             });
 
             modalOverlay.classList.add('active');
-            window.lockScroll(); 
+            window.lockScroll();
+            if (window.grantDetailKeys(proj.key)) {
+                const header = document.getElementById('modal-top-left');
+                const title = header && header.querySelector('.index-header-title');
+                if (title) title.innerHTML = `${window.parseDynamicText(proj.title, 'INDEX_HEADER')}<span style="white-space: nowrap;"> - 目錄</span>`;
+                const badge = header && header.querySelector('.article-count-badge');
+                if (badge) {
+                    const count = proj.articles.filter(art => {
+                        const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key);
+                        if (artLocked && (art.lock_mode || 'visible') === 'hidden') return false;
+                        return isUnlockedSys || !art.is_hidden;
+                    }).length;
+                    badge.textContent = `共 ${count} 篇`;
+                }
+                renderList(true);
+            }
         },
         () => {
             const modalContainer = document.querySelector('.modal-content'); 
@@ -5179,7 +5316,14 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 // ==========================================
 window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0, targetHash = null, restoreInnerScrolls = [], restoreActiveTabs = []) {
     const proj = window.siteProjects.find(p => p.id === projectId);
+    if (!proj || !Array.isArray(proj.articles)) return;
     const article = proj.articles[articleIndex];
+    if (!article) return;
+    if (proj.required_key && !window.isSecretUnlocked(proj.required_key)) {
+        const lockPrompt = proj.lock_prompt || `需要金鑰 [${proj.required_key}]`;
+        if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
+        return;
+    }
 
     // ✨ 新增：版本相容性防護網 (文章層級，同時比對專案與文章的要求，取較高者)
     let targetVersion = proj.min_sys_version || null;
@@ -5193,10 +5337,6 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         window.triggerSystemUpdate(targetVersion);
         return;
     }
-
-    const jumpToast = document.getElementById('new-jump-toast');
-    if (jumpToast) jumpToast.classList.remove('is-visible');
-
 
     // ✨ 文章金鑰權限驗證 (支援動態鎖定提示與陣列解析)
     const isUnlockedSys = document.body.classList.contains('system-override-active');
@@ -5237,6 +5377,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     const viewIndex = document.getElementById('view-index');
                     if (viewIndex && viewIndex.dataset.projectId === projectId && viewIndex.style.display !== 'none') {
                         window.updateRouteState(projectId);
+                        // 警告關閉後，立即依目前目錄位置更新新內容提示。
+                        if (typeof window.indexScrollHandler === 'function') window.indexScrollHandler();
                     } else {
                         window.openProjectIndex(projectId, true);
                     }
@@ -5335,6 +5477,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const cleanMarkdown = markdownContent.replace(/^[ \t\u00A0]+$/gm, '');
                 viewArticle.innerHTML = marked.parse(cleanMarkdown);
                 window.applyArticleDefaultLanguage(viewArticle, article, proj);
+                if (fetchResult.success) window.grantDetailKeys([proj.key, article.key]);
             }
             
             /// 建立操作指標

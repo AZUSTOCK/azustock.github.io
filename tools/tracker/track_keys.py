@@ -10,6 +10,7 @@
 """
 
 import argparse
+import bisect
 import json
 import os
 import re
@@ -22,15 +23,17 @@ from pathlib import Path
 
 PROJECTS_DIR = 'projects'
 OUTPUT_FILE = './tools/tracker/reports/key_dashboard.html'
-RE_KEY = re.compile(r'\+\+\[KEY:([^\]]+)\]')
-# SILENT 是發放點屬性；完整旗標才匹配，避免把 SILENTLY 當作 SILENT。
-RE_SILENT = re.compile(r'\|SILENT(?=\s*(?:\||$))', re.IGNORECASE)
-RE_SEC_BLK = re.compile(r':::secret\[([^\]]+)\]', re.IGNORECASE)
-RE_STL_BLK = re.compile(r':::stealth\[([^\]]+)\]', re.IGNORECASE)
-RE_SEC_INL = re.compile(r'!!\[([^\]]+)\]')
-RE_STL_INL = re.compile(r'\?\?\[([^\]]+)\]')
-LOCK_PATTERNS = [(RE_SEC_BLK, 'Secret Block'), (RE_STL_BLK, 'Stealth Block'),
-                 (RE_SEC_INL, 'Secret Inline'), (RE_STL_INL, 'Stealth Inline')]
+RE_SILENT = re.compile(r'\|SILENT', re.IGNORECASE)
+RE_DETAIL_SILENT = re.compile(r'\|\s*SILENT\s*$', re.IGNORECASE)
+RE_HIGHLIGHT = re.compile(r'\+\+(?:\[([^\]\n]*)\])?((?:(?!\r?\n[ \t]*\r?\n)[\s\S])*?)\+\+')
+RE_INLINE = [
+    (re.compile(r'!!\[([^\]\n]*)\](?:[ \t]*"[^"\n]+")?\s*((?:(?!\n[ \t]*\n)[\s\S])*?)!!'), 'Secret Inline'),
+    (re.compile(r'\?\?\[([^\]\n]*)\](?:[ \t]*"[^"\n]+")?\s*((?:(?!\n[ \t]*\n)[\s\S])*?)\?\?'), 'Stealth Inline'),
+]
+RE_BLOCK = re.compile(r'^[ \t]*(?:>[ \t]*)*(?:(?:[-+*]|\d+[.)])[ \t]+)?:::[ \t]*(secret|stealth)(?:\[([^\]\n]*)\])?([^\n]*)$', re.IGNORECASE | re.MULTILINE)
+RE_BLOCK_CLOSE = re.compile(r'^[ \t]*(?:>[ \t]*)*:::[ \t]*$', re.MULTILINE)
+RE_BLOCK_CLOSE_TOP = re.compile(r'^:::[ \t]*$', re.MULTILINE)
+DEFAULT_SENSITIVE_TEMPLATES = {'DEFAULT', 'MAIN', 'INSIDE'}
 results = {}
 scan_info = {}
 scanned = False
@@ -39,21 +42,59 @@ USE_COLOR = sys.stdout.isatty() and 'NO_COLOR' not in os.environ
 
 def styled(value, color='cyan'):
     codes = {'cyan': '36', 'green': '32', 'yellow': '33', 'red': '31', 'bold': '1'}
-    # Prevent file text from injecting terminal control sequences.
     value = re.sub(r'[\x00-\x08\x0b-\x1f\x7f-\x9f]', '', str(value))
     return '\033[' + codes[color] + 'm' + value + '\033[0m' if USE_COLOR else value
 
 
+def extract_single_condition(raw):
+    """依前端 isSingleKeyUnlocked 取得條件使用的基礎名稱。"""
+    if not isinstance(raw, str):
+        return None
+    base = raw.split('|', 1)[0].strip()
+    if '#' in base:
+        base = base.split('#', 1)[0].strip()
+    return base or None
+
+
 def extract_bases(raw_str):
-    """拆解原有金鑰語法；依出現順序去重，不改變原有 ASCII 名稱規則。"""
-    value = RE_SILENT.sub('', raw_str)
-    value = re.sub(r'\|\s*\d+', '', value)
-    value = re.sub(r'#\d+(/\d+)?', '', value)
-    return list(dict.fromkeys(w for w in re.findall(r'[A-Za-z0-9_]+', value)
-                              if not w.isdigit()))
+    """依前端字串條件語法解析 OR/AND，保留 Unicode、符號及數字金鑰。"""
+    if not isinstance(raw_str, str):
+        return []
+    found = []
+    for group in raw_str.split('||'):
+        group = group.strip()
+        if group.startswith('(') and group.endswith(')'):
+            group = group[1:-1].strip()
+        for part in group.split('&&'):
+            base = extract_single_condition(part.strip())
+            if base and base not in found:
+                found.append(base)
+    return found
 
 
-def add_record(base_key, record_type, file_path, line_num, raw_str, context, column=1):
+def parse_grant(raw, detail=False):
+    """回傳單一發放語法的基礎金鑰與靜音狀態；依來源採用對應前端規則。"""
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    if detail:
+        silent = bool(RE_DETAIL_SILENT.search(raw))
+        key = RE_DETAIL_SILENT.sub('', raw, count=1).strip()
+        match = re.fullmatch(r'([^#|]+)(?:#([^/#|]+)(?:/(\d+))?)?', key)
+        if not match or not match.group(1).strip() or (match.group(2) and not match.group(2).strip()):
+            return None
+        if match.group(3) and int(match.group(3)) < 1:
+            return None
+    else:
+        silent = bool(RE_SILENT.search(raw))
+        key = RE_SILENT.sub('', raw, count=1).strip()
+        if not key:
+            return None
+        match = re.fullmatch(r'([^#]+)(?:#([^/]+)(?:/(\d+))?)?', key)
+    base = match.group(1).strip() if match else key
+    return (base, silent) if base else None
+
+
+def add_record(base_key, record_type, file_path, line_num, raw_str, context, column=1, silent=None):
     entry = results.setdefault(base_key, {'getters': [], 'locks': []})
     abs_path = os.path.abspath(file_path)
     context = context.strip()
@@ -61,37 +102,304 @@ def add_record(base_key, record_type, file_path, line_num, raw_str, context, col
         'file': str(file_path).replace('\\', '/'), 'line': line_num, 'column': column,
         'raw': raw_str, 'context': context[:240] + ('…' if len(context) > 240 else ''),
         'abs_path': urllib.parse.quote(abs_path.replace('\\', '/'), safe='/:'),
-        'raw_abs': abs_path,
-        'kind': record_type,
-        'silent': bool(RE_SILENT.search(raw_str)) if record_type == 'getters' else None,
+        'raw_abs': abs_path, 'kind': record_type,
+        'silent': bool(silent) if record_type == 'getters' else None,
     })
 
 
-def json_field_positions(text):
-    """以 JSON 解碼器逐一走過頂層欄位，避開巢狀同名欄位或字串。"""
+def json_field_positions(text, start=0):
+    """讀取 JSON 物件的直接欄位及值的位置；重複欄位保留最後一個。"""
     decoder = json.JSONDecoder()
-    index = len(text) - len(text.lstrip()) + 1  # 已驗證為頂層物件，跳過 {
+    index = start
+    while index < len(text) and text[index].isspace():
+        index += 1
+    if index >= len(text) or text[index] != '{':
+        return {}
+    index += 1
     positions = {}
     while index < len(text):
         while index < len(text) and text[index].isspace():
             index += 1
         if index >= len(text) or text[index] == '}':
             break
-        start = index
+        field_start = index
         name, index = decoder.raw_decode(text, index)
         while text[index].isspace():
             index += 1
-        index += 1  # colon
+        index += 1
         while text[index].isspace():
             index += 1
-        _, index = decoder.raw_decode(text, index)
-        positions[name] = (text.count('\n', 0, start) + 1,
-                           start - text.rfind('\n', 0, start))
+        value_start = index
+        value, index = decoder.raw_decode(text, index)
+        positions[name] = {'field_start': field_start, 'value_start': value_start, 'value': value}
         while index < len(text) and text[index].isspace():
             index += 1
         if index < len(text) and text[index] == ',':
             index += 1
     return positions
+
+
+def json_string_leaves(text, start, max_depth=2):
+    """取得字串及精確的引號位置；不把物件裡的其他字串視為金鑰。"""
+    decoder = json.JSONDecoder()
+    def walk(index, depth):
+        while index < len(text) and text[index].isspace():
+            index += 1
+        if text[index] != '[':
+            value, end = decoder.raw_decode(text, index)
+            if isinstance(value, str):
+                yield value, index, depth
+            return end
+        index += 1
+        while True:
+            while index < len(text) and text[index].isspace():
+                index += 1
+            if text[index] == ']':
+                return index + 1
+            if depth < max_depth:
+                index = yield from walk(index, depth + 1)
+            else:
+                _, index = decoder.raw_decode(text, index)
+            while index < len(text) and text[index].isspace():
+                index += 1
+            if text[index] == ',':
+                index += 1
+    yield from walk(start, 0)
+
+
+def _escaped(text, pos):
+    count = 0
+    pos -= 1
+    while pos >= 0 and text[pos] == '\\':
+        count += 1
+        pos -= 1
+    return bool(count % 2)
+
+
+def mask_markdown_code(text):
+    """遮蔽程式碼與註解，保留每個字元的位置和換行供定位。"""
+    chars = list(text)
+    def hide(start, end):
+        for i in range(start, end):
+            if chars[i] not in '\r\n':
+                chars[i] = ' '
+
+    fence = None
+    fence_re = re.compile(r'^[ \t]*(?:>[ \t]*)*(?:(?:[-+*]|\d+[.)])[ \t]+)?(`{3,}|~{3,})([^\n]*)$')
+    offset = 0
+    for line in text.splitlines(keepends=True):
+        body = line.rstrip('\r\n')
+        match = fence_re.match(body)
+        if fence:
+            hide(offset, offset + len(line))
+            if match and match.group(1)[0] == fence[0] and len(match.group(1)) >= fence[1] and not match.group(2).strip():
+                fence = None
+        elif match:
+            fence = (match.group(1)[0], len(match.group(1)))
+            hide(offset, offset + len(line))
+        offset += len(line)
+
+    masked = ''.join(chars)
+    html_code = re.compile(r'<!--[\s\S]*?(?:-->|$)|<(pre|script|style)\b[^>]*>[\s\S]*?(?:</\1\s*>|$)', re.IGNORECASE)
+    for match in html_code.finditer(masked):
+        hide(match.start(), match.end())
+
+    # 常見 HTML 區塊連續行由 Marked 原樣輸出；空行後的 Markdown 才重新解析。
+    html_block = re.compile(r'^[ \t]*(?:>[ \t]*)*</?(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[\s/>])', re.IGNORECASE)
+    in_html, offset = False, 0
+    for line in ''.join(chars).splitlines(keepends=True):
+        if in_html and not line.strip():
+            in_html = False
+        elif in_html or html_block.match(line):
+            in_html = True
+            hide(offset, offset + len(line))
+        offset += len(line)
+
+    masked = ''.join(chars)
+    paragraph_breaks = [match.start() for match in re.finditer(r'\r?\n[ \t]*\r?\n', masked)]
+    index = 0
+    while index < len(masked):
+        if masked[index] != '`' or _escaped(masked, index):
+            index += 1
+            continue
+        end_run = index
+        while end_run < len(masked) and masked[end_run] == '`':
+            end_run += 1
+        size = end_run - index
+        break_index = bisect.bisect_left(paragraph_breaks, end_run)
+        limit = paragraph_breaks[break_index] if break_index < len(paragraph_breaks) else len(masked)
+        cursor, closing = end_run, None
+        while cursor < limit:
+            candidate = masked.find('`', cursor, limit)
+            if candidate < 0:
+                break
+            run_end = candidate
+            while run_end < limit and masked[run_end] == '`':
+                run_end += 1
+            if run_end - candidate == size:
+                closing = run_end
+                break
+            cursor = run_end
+        if closing is None:
+            index = end_run
+        else:
+            hide(index, closing)
+            index = closing
+    return ''.join(chars)
+
+
+def markdown_grants(text, masked=None):
+    """提供有效 KEY 高光的原始內容與精確範圍，也供 SILENT 預覽使用。"""
+    masked = mask_markdown_code(text) if masked is None else masked
+    for match in RE_HIGHLIGHT.finditer(masked):
+        if _escaped(masked, match.start()) or match.group(1) is None:
+            continue
+        badge = match.group(1)
+        prefix = re.match(r'\s*KEY:', badge)
+        if not prefix:
+            continue
+        start, end = match.start(1) + prefix.end(), match.end(1)
+        raw = text[start:end]
+        parsed = parse_grant(raw)
+        if parsed:
+            yield {'start': start, 'end': end, 'token_start': match.start(), 'raw': raw,
+                   'base': parsed[0], 'silent': parsed[1]}
+
+
+def sensitive_bypass(value, templates):
+    """對照前端的單一 | 分隔與多模板判斷。"""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    value = value.strip()
+    match = re.match(r'^(.*?)\s+\|\s+(.*)$', value)
+    if match:
+        return match.group(2).strip() or None
+    types = [part.strip().upper() for part in re.split(r'\|\||[,+&]', value)]
+    return None if any(part in templates for part in types) else value
+
+
+def valid_sensitive_condition(value):
+    """對照新版前端驗證；空條件不會意外略過警告。"""
+    def valid_atom(atom):
+        if not isinstance(atom, str) or not atom.strip():
+            return False
+        parts = atom.strip().split('|')
+        if len(parts) > 2 or not parts[0].strip():
+            return False
+        if len(parts) == 1:
+            return True
+        count = parts[1].strip()
+        return bool(re.fullmatch(r'[0-9]+', count) and any(char != '0' for char in count))
+
+    if isinstance(value, str):
+        if not value.strip():
+            return False
+        for raw_group in value.split('||'):
+            group = raw_group.strip()
+            if not group:
+                return False
+            if group.startswith('(') and group.endswith(')'):
+                group = group[1:-1].strip()
+            if not group or '(' in group or ')' in group:
+                return False
+            if not all(valid_atom(atom) for atom in group.split('&&')):
+                return False
+        return True
+    if not isinstance(value, list) or not value:
+        return False
+    if all(isinstance(item, str) for item in value):
+        return all(valid_atom(item) for item in value)
+    return all(isinstance(group, list) and group and all(valid_atom(atom) for atom in group)
+               for group in value)
+
+
+def markdown_block_context(text, match):
+    """辨識一般區塊、引言及清單縮排，排除未被 Markdown 解析的縮排範例。"""
+    header = match.group(0)
+    prefix = header[:header.find(':::')]
+    if '>' in prefix or re.search(r'(?:[-+*]|\d+[.)])[ \t]+$', prefix):
+        return True
+    indent = len(prefix.expandtabs(4))
+    def previous_line(end):
+        if end <= 0:
+            return None, 0
+        if text[end - 1] == '\n':
+            end -= 1
+        start = text.rfind('\n', 0, end) + 1
+        return text[start:end].rstrip('\r'), start
+    line, cursor = previous_line(match.start())
+    if indent:
+        while line is not None:
+            if not line.strip():
+                line, cursor = previous_line(cursor)
+                continue
+            line_indent = len(line) - len(line.lstrip(' '))
+            if line_indent < indent:
+                return bool(re.match(r'^[ \t]*(?:[-+*]|\d+[.)])[ \t]+', line))
+            line, cursor = previous_line(cursor)
+        return False
+    if line is None or not line.strip():
+        return True
+    return bool(re.match(r'^[ \t]*(?:#{1,6}[ \t]|(?:[-+*]|\d+[.)])[ \t]+|(?:---+|\*\*\*+|___+)[ \t]*$)', line))
+
+
+def discover_sensitive_templates():
+    """優先讀取主站 SENSITIVE_TEMPLATES 頂層名稱；找不到時使用現有內建值。"""
+    parents = [Path(PROJECTS_DIR).resolve().parent, Path.cwd()]
+    seen = set()
+    for parent in parents:
+        for filename in ('main.js', 'main.min.js'):
+            path = parent / filename
+            if path in seen or not path.is_file():
+                continue
+            seen.add(path)
+            try:
+                text = path.read_text(encoding='utf-8-sig')
+            except (OSError, UnicodeError):
+                continue
+            match = re.search(r'window\.SENSITIVE_TEMPLATES\s*=\s*\{', text)
+            if not match:
+                continue
+            index, depth, expect_key, names = match.end(), 1, True, set()
+            while index < len(text) and depth:
+                if text.startswith('//', index):
+                    end = text.find('\n', index + 2)
+                    index = len(text) if end < 0 else end + 1
+                    continue
+                if text.startswith('/*', index):
+                    end = text.find('*/', index + 2)
+                    index = len(text) if end < 0 else end + 2
+                    continue
+                char = text[index]
+                if depth == 1 and expect_key and not char.isspace():
+                    key_match = re.match(r'''(?:"([^"\\]*)"|'([^'\\]*)'|([A-Za-z_$][\w$]*))\s*:''', text[index:])
+                    if key_match:
+                        names.add(next(part for part in key_match.groups() if part is not None).upper())
+                        index += key_match.end()
+                        expect_key = False
+                        continue
+                if char in "\"'`":
+                    quote = char
+                    index += 1
+                    while index < len(text):
+                        if text[index] == '\\':
+                            index += 2
+                        elif text[index] == quote:
+                            index += 1
+                            break
+                        else:
+                            index += 1
+                    continue
+                if char == '{':
+                    depth += 1
+                elif char == '}':
+                    depth -= 1
+                elif char == ',' and depth == 1:
+                    expect_key = True
+                index += 1
+            if names:
+                return names
+    return set(DEFAULT_SENSITIVE_TEMPLATES)
 
 
 def collect_keys():
@@ -101,8 +409,8 @@ def collect_keys():
     results = {}
     scanned = False
     total_files, errors = 0, []
-    for root, dirs, files in os.walk(PROJECTS_DIR,
-                                     onerror=lambda error: errors.append(str(error))):
+    templates = discover_sensitive_templates()
+    for root, dirs, files in os.walk(PROJECTS_DIR, onerror=lambda error: errors.append(str(error))):
         dirs.sort()
         for name in sorted(files):
             if not (name.lower().endswith('.md') or name == 'detail.json'):
@@ -112,41 +420,118 @@ def collect_keys():
             try:
                 text = Path(path).read_text(encoding='utf-8-sig')
                 lines = text.splitlines()
+                starts = [0] + [match.end() for match in re.finditer('\n', text)]
+                def record(base, kind, raw, offset, silent=None):
+                    line = bisect.bisect_right(starts, offset)
+                    column = offset - starts[line - 1] + 1
+                    context = lines[line - 1] if line <= len(lines) else ''
+                    add_record(base, kind, path, line, raw, context, column, silent)
+
                 if name.lower().endswith('.md'):
-                    for line_num, line in enumerate(lines, 1):
-                        for pattern, kind, label in [(RE_KEY, 'getters', '')] + [
-                                (pat, 'locks', label) for pat, label in LOCK_PATTERNS]:
-                            for match in pattern.finditer(line):
-                                raw = match.group(1)
-                                for key in extract_bases(raw):
-                                    add_record(key, kind, path, line_num,
-                                               ('[' + label + '] ' if label else '') + raw,
-                                               line, match.start() + 1)
+                    masked = mask_markdown_code(text)
+                    for item in markdown_grants(text, masked):
+                        record(item['base'], 'getters', item['raw'], item['token_start'], item['silent'])
+                    for pattern, label in RE_INLINE:
+                        for match in pattern.finditer(masked):
+                            if _escaped(masked, match.start()):
+                                continue
+                            raw = text[match.start(1):match.end(1)] or 'DEFAULT_KEY'
+                            for base in extract_bases(raw):
+                                record(base, 'locks', '[' + label + '] ' + raw, match.start())
+                    for match in RE_BLOCK.finditer(masked):
+                        if not markdown_block_context(masked, match):
+                            continue
+                        prefix = match.group(0)[:match.group(0).find(':::')]
+                        close_pattern = RE_BLOCK_CLOSE if prefix else RE_BLOCK_CLOSE_TOP
+                        if not close_pattern.search(masked, match.end()):
+                            continue
+                        kind = match.group(1).lower()
+                        tail = match.group(3)
+                        if tail and (kind != 'secret' or not re.fullmatch(r'[ \t]*"[^"\n]+"', tail)):
+                            continue
+                        raw = text[match.start(2):match.end(2)] if match.group(2) is not None else ''
+                        raw = raw or 'DEFAULT_KEY'
+                        for base in extract_bases(raw):
+                            record(base, 'locks', '[' + kind.title() + ' Block] ' + raw,
+                                   match.start() + match.group(0).find(':::'))
                 else:
                     data = json.loads(text)
                     if not isinstance(data, dict):
                         raise ValueError('detail.json 的頂層必須是物件')
-                    positions = json_field_positions(text)
-                    for field in ('required_key', 'sensitive'):
-                        if field not in data or data[field] is None or isinstance(data[field], bool):
+                    fields = json_field_positions(text)
+                    for field in ('key', 'required_key', 'sensitive'):
+                        name_used = field if data.get(field) else field.upper()
+                        item = fields.get(name_used)
+                        if not item or not item['value'] or isinstance(item['value'], bool):
                             continue
-                        raw = str(data[field])
-                        logic = raw
-                        label = 'JSON required_key'
-                        if field == 'sensitive':
-                            if '|' not in raw:
-                                continue
-                            logic = raw.split('|', 1)[1]
-                            label = 'JSON sensitive Bypass'
-                        line, column = positions[field]
-                        for key in extract_bases(logic):
-                            add_record(key, 'locks', path, line, '[' + label + '] ' + raw,
-                                       lines[line - 1], column)
-            except (OSError, UnicodeError, ValueError) as error:
+                        value, start = item['value'], item['value_start']
+                        if field == 'key' and isinstance(value, (str, list)):
+                            for raw, offset, _ in json_string_leaves(text, start, max_depth=1):
+                                parsed = parse_grant(raw, detail=True)
+                                if parsed:
+                                    record(parsed[0], 'getters', '[JSON key] ' + raw, offset, parsed[1])
+                        elif field == 'required_key' and isinstance(value, (str, list)):
+                            for raw, offset, depth in json_string_leaves(text, start):
+                                bases = extract_bases(raw) if depth == 0 else [extract_single_condition(raw)]
+                                for base in bases:
+                                    if base:
+                                        record(base, 'locks', '[JSON required_key] ' + raw, offset)
+                        elif field == 'sensitive':
+                            if isinstance(value, dict):
+                                rules = {}
+                                for raw_type, rule in json_field_positions(text, start).items():
+                                    condition = rule['value']
+                                    if condition is False:
+                                        continue
+                                    name = raw_type.strip().upper()
+                                    known = name in templates
+                                    warning_type = name if known else 'DEFAULT'
+                                    if not known:
+                                        errors.append(path + ': 未知的 sensitive 類型 ' + raw_type + '；將顯示 DEFAULT。')
+                                    if warning_type in rules:
+                                        rules[warning_type] = None
+                                        errors.append(path + ': sensitive 類型 ' + warning_type + ' 重複；其略過條件無效。')
+                                        continue
+                                    rules[warning_type] = rule if known else None
+                                    if known and condition is not True and not valid_sensitive_condition(condition):
+                                        rules[warning_type] = None
+                                        errors.append(path + ': sensitive 類型 ' + warning_type + ' 的略過條件無效；將顯示警告。')
+                                for warning_type, rule in rules.items():
+                                    if not rule or rule['value'] is True:
+                                        continue
+                                    for raw, offset, depth in json_string_leaves(text, rule['value_start']):
+                                        bases = extract_bases(raw) if depth == 0 else [extract_single_condition(raw)]
+                                        for base in bases:
+                                            if base:
+                                                record(base, 'locks', '[JSON sensitive ' + warning_type + ' bypass] ' + raw, offset)
+                            else:
+                                bypass = sensitive_bypass(value, templates)
+                                for base in extract_bases(bypass):
+                                    record(base, 'locks', '[JSON sensitive Bypass] ' + str(value), start)
+
+                    # 前端會解析專案／文章標題、簡介和群組文字中的 ??[key] 偽裝。
+                    dynamic_fields = []
+                    for field in ('title', 'description'):
+                        if field in fields:
+                            dynamic_fields.append(fields[field])
+                    groups = fields.get('groups')
+                    if groups and isinstance(groups['value'], dict):
+                        for group in json_field_positions(text, groups['value_start']).values():
+                            if isinstance(group['value'], dict):
+                                inner = json_field_positions(text, group['value_start'])
+                                dynamic_fields.extend(inner[field] for field in ('title', 'description') if field in inner)
+                    for item in dynamic_fields:
+                        if not isinstance(item['value'], str):
+                            continue
+                        for match in RE_INLINE[1][0].finditer(item['value']):
+                            raw = match.group(1) or 'DEFAULT_KEY'
+                            for base in extract_bases(raw):
+                                record(base, 'locks', '[JSON dynamic text] ' + raw, item['value_start'])
+            except (OSError, UnicodeError, ValueError, TypeError) as error:
                 errors.append(path + ': ' + str(error))
     scan_info = {'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                  'files': total_files, 'errors': errors,
-                 'root': os.path.abspath(PROJECTS_DIR)}
+                 'root': os.path.abspath(PROJECTS_DIR), 'sensitive_templates': sorted(templates)}
     scanned = True
     return results
 
@@ -241,7 +626,9 @@ def write_dashboard():
     # HTML parser 會辨識 script 結束標籤，必須先跳脫 JSON 中的 <。
     payload = json.dumps({'keys': results, 'scan': scan_info}, ensure_ascii=False)
     payload = payload.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
-    Path(OUTPUT_FILE).write_text(HTML_TEMPLATE.replace('@@PAYLOAD@@', payload), encoding='utf-8')
+    output_path = Path(OUTPUT_FILE)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(HTML_TEMPLATE.replace('@@PAYLOAD@@', payload), encoding='utf-8')
 
 
 HTML_TEMPLATE = r'''<!DOCTYPE html>
@@ -288,7 +675,7 @@ const silentCount=key=>db[key].getters.filter(item=>item.silent===true).length;
 const modeMatches=item=>{const mode=document.getElementById('silent').value;return mode==='all'||(item.kind==='getters'&&Boolean(item.silent)===(mode==='on'));};
 document.getElementById('stats').innerHTML=[['金鑰總數',keys.length,'不重複金鑰'],['發放關聯',total('getters'),`金鑰與發放位置 · 靜默 ${keys.reduce((sum,key)=>sum+silentCount(key),0)}`],['上鎖關聯',total('locks'),'金鑰與上鎖位置'],['缺少發放點',keys.filter(key=>state(key)==='missing').length,'需確認其他取得方式']].map((s,i)=>`<div class="stat ${i===3?'warning':''}"><span>${s[0]}</span><strong>${s[1]}</strong><small>${s[2]}</small></div>`).join('');
 document.getElementById('scanMeta').textContent=`掃描 ${scan.files} 個檔案 · ${scan.time}\n${scan.root}`;
-if(scan.errors.length){const el=document.getElementById('errors');el.hidden=false;el.querySelector('summary').textContent=`有 ${scan.errors.length} 項掃描失敗（點擊查看）`;el.querySelector('pre').textContent=scan.errors.join('\n');}
+if(scan.errors.length){const el=document.getElementById('errors');el.hidden=false;el.querySelector('summary').textContent=`有 ${scan.errors.length} 項掃描提示或失敗（點擊查看）`;el.querySelector('pre').textContent=scan.errors.join('\n');}
 function renderList(){
  const q=document.getElementById('search').value.trim().toLowerCase(),status=document.getElementById('status').value;
  visible=keys.filter(key=>{const eligible=records(key).filter(modeMatches);return (status==='all'||state(key)===status)&&eligible.length>0&&(!q||key.toLowerCase().includes(q)||eligible.some(item=>matches(item,q)));});
@@ -364,9 +751,9 @@ def open_dashboard():
 
 
 def plan_silent_changes(key, enabled, file_filter=''):
-    """只修改指定基礎金鑰的 ++[KEY:...]，保留碎片、內文、換行及 BOM。"""
-    if not re.fullmatch(r'[A-Za-z0-9_]+', key) or key.isdigit():
-        raise ValueError('請輸入基礎金鑰名稱，不含 #碎片 或 |SILENT。')
+    """只修改實際 Markdown 發放點，保留其他內容、換行及 BOM。"""
+    if not isinstance(key, str) or not key.strip() or key != key.strip() or any(mark in key for mark in ('#', '|', '&&')):
+        raise ValueError('請輸入基礎金鑰名稱，不含 #碎片、條件運算子或 |SILENT。')
     root_path = Path(PROJECTS_DIR)
     if not root_path.is_dir():
         raise FileNotFoundError('找不到專案目錄：' + str(root_path.resolve()))
@@ -381,26 +768,23 @@ def plan_silent_changes(key, enabled, file_filter=''):
                 continue
             original = path.read_bytes()
             text = original.decode('utf-8-sig')
-            changes = []
-
-            def replace(match):
-                raw = match.group(1)
-                if key not in extract_bases(raw):
-                    return match.group(0)
-                silent = bool(RE_SILENT.search(raw))
-                if silent == enabled:
-                    return match.group(0)
+            changes, edits = [], []
+            for item in markdown_grants(text):
+                if item['base'] != key or item['silent'] == enabled:
+                    continue
+                raw = item['raw']
                 if enabled:
                     content = raw.rstrip()
                     new_raw = content + '|SILENT' + raw[len(content):]
                 else:
-                    new_raw = RE_SILENT.sub('', raw)
-                changes.append({'line': text.count('\n', 0, match.start()) + 1,
+                    new_raw = RE_SILENT.sub('', raw, count=1)
+                changes.append({'line': text.count('\n', 0, item['token_start']) + 1,
                                 'before': raw, 'after': new_raw})
-                return match.group(0)[:match.start(1) - match.start()] + new_raw + ']'
-
-            modified = RE_KEY.sub(replace, text)
+                edits.append((item['start'], item['end'], new_raw))
             if changes:
+                modified = text
+                for start, end, new_raw in reversed(edits):
+                    modified = modified[:start] + new_raw + modified[end:]
                 bom = b'\xef\xbb\xbf' if original.startswith(b'\xef\xbb\xbf') else b''
                 plans.append({'path': path, 'before': original,
                               'after': bom + modified.encode('utf-8'), 'changes': changes})
@@ -449,7 +833,7 @@ def apply_silent_changes(plans):
 
 
 def manage_silent(generate_html=True):
-    print(styled('\nSILENT 管理 · 靜默發放仍會取得金鑰，僅略過取得提示與震動。', 'bold'))
+    print(styled('\nSILENT 管理 · 僅修改 Markdown 發放點；detail.json 的 key 請手動修改。', 'bold'))
     key = input('基礎金鑰名稱（空白返回） > ').strip()
     if not key:
         return
@@ -481,7 +865,8 @@ def manage_silent(generate_html=True):
 def rename_key():
     global scanned
     print(f"\n==========================================")
-    print(f"🔄 [金鑰替換引擎] 安全修改金鑰名稱")
+    print(f"🔄 [金鑰替換引擎] 全文替換金鑰名稱")
+    print("⚠️ 會替換所有符合的文字，包含內文與範例；請先備份。")
     print(f"==========================================")
     old_key = input("👉 請輸入要替換的【舊】金鑰名稱: ").strip()
     if not old_key: return
