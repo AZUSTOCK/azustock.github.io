@@ -1,5 +1,8 @@
-# 「啟程」
+# 「啟程」++[KEY:kimeta]++
 ![float-right](./architecture.webp)
+
+<div id="lang-ja">
+
 え...  
 （なんだか、お久しぶり？  
 <br/>
@@ -27,3 +30,5 @@
 <br/>  
 せめて今日だけは、  
 そんな未来を思い描かせて！  
+
+</div>

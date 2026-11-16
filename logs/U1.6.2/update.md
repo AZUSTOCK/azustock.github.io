@@ -3,6 +3,7 @@
 
 ## add
 1. switchTabPanel
+2. "lang" in detail.json
 
 ## change / update
 1. tools
@@ -23,6 +24,7 @@
 3. new-jump-toast UI
 4. mermaid
 5. zoom-btn UI
+6. sensitive & lock associated
 
 ## deprecate
 1. 

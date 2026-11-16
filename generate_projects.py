@@ -47,6 +47,21 @@ stats = {
 
 SYS_TAGS = {'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED', 'WIP', 'OC', 'FANART'}
 
+# 專案可指定文章的預設語言，文章可個別覆寫；無設定時保留原本顯示方式。
+def get_content_language(data, context):
+    value = data.get('lang')
+    if value is None or value == '':
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+        if re.fullmatch(r'[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*', value):
+            return value
+    cout.warn(f"{context} 的 lang 語言代碼無效，已略過：{value!r}")
+    return None
+
+
 # ==========================================
 # ✨ 動態讀取前端設定 (Sync with main.js)
 # ==========================================
@@ -661,6 +676,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 'default_sort': proj_data.get('default_sort', 'desc')
             }
             
+            project_lang = get_content_language(proj_data, f"專案 {proj_folder}")
+            if project_lang: clean_proj_data['lang'] = project_lang
             if proj_data.get('min_sys_version'): clean_proj_data['min_sys_version'] = str(proj_data.get('min_sys_version'))
             if proj_data.get('description'): clean_proj_data['description'] = proj_data.get('description')
             if proj_data.get('date'): clean_proj_data['date'] = proj_data.get('date')
@@ -1218,6 +1235,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 "content_path": f"./api/{proj_id}/{art_id}/{content_filename}"
                             }
                             
+                            article_lang = get_content_language(sub_data, f"文章 {proj_folder}/{item}")
+                            if article_lang: article_obj['lang'] = article_lang
                             if sub_data.get('min_sys_version'): article_obj["min_sys_version"] = str(sub_data.get('min_sys_version'))
                             if meta_desc: article_obj["description"] = meta_desc
                             if meta_cover:

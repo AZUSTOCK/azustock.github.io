@@ -1177,33 +1177,48 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 
 /* 🔴 2. 機密圖釘外殼 (Secret & Key Lock) */
 .card-secret-pin, .modal-secret-pin { background: var(--error-color); color: #fff; }
-.card-secret-pin { top: -14px; left: -14px; width: 34px; height: 34px; box-shadow: 0 4px 10px rgba(0,0,0,0.15), 0 0 8px var(--error-color); z-index: 10; }
+
+/* ✨ 預設與 .card-pin 同位置（右上角） */
+.card-secret-pin { 
+    top: -14px; 
+    right: -14px; 
+    width: 34px; 
+    height: 34px; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15), 0 0 8px var(--error-color); 
+    z-index: 10; 
+}
+
+/* ✨ 當卡片同時擁有置頂圖釘 (.card-pin) 時，自動往下移到置頂圖釘正下方 */
+.card:has(.card-pin) .card-secret-pin {
+    top: 26px; /* -14px + 34px(圖釘高度) + 6px(間距) = 26px */
+}
+
 .modal-secret-pin { top: -12px; right: -12px; width: 24px; height: 24px; box-shadow: 0 0 8px var(--error-color); z-index: 1; }
 
 /* ==========================================
    ✨ 權限狀態：Hover 外殼物理特效
    ========================================== */
-/* 👉 狀態 A：一般隱藏模式 (.is_hidden) — Hover 時外殼旋轉並放大 */
-.card:hover .card-secret-pin:not(.key-lock-pin),
-body.system-override-active .card:hover .card-secret-pin.key-lock-pin { 
-    transform: scale(1.15) rotate(-8deg) translate(-10%, -10%); 
+/* 👉 狀態 A：一般隱藏模式 (.is_hidden 的鑰匙圖示) — Hover 時外殼旋轉並放大彈出 */
+.card:hover .card-secret-pin:not(.key-lock-pin) { 
+    transform: scale(1.15) rotate(8deg) translate(10%, -10%); 
     box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--error-color); 
 }
+.card:has(.card-pin):hover .card-secret-pin:not(.key-lock-pin) {
+    transform: scale(1.15) rotate(8deg) translate(12%, 4%);
+}
 .modal-content a:hover .modal-secret-pin:not(.key-lock-pin),
-.article-li.simulate-hover a .modal-secret-pin:not(.key-lock-pin),
-body.system-override-active .modal-content a:hover .modal-secret-pin.key-lock-pin,
-body.system-override-active .article-li.simulate-hover a .modal-secret-pin.key-lock-pin { 
+.article-li.simulate-hover a .modal-secret-pin:not(.key-lock-pin) { 
     transform: scale(1.15) rotate(8deg) translate(10%, -10%); 
     box-shadow: 0 4px 10px rgba(0,0,0,0.2), 0 0 10px var(--error-color); 
 }
 
-/* 👉 狀態 B：金鑰鎖定模式 (.key-lock-pin) — Hover 時外殼「單純放大」，禁止旋轉！ */
-body:not(.system-override-active) .card:hover .card-secret-pin.key-lock-pin {
+/* 👉 狀態 B：金鑰鎖定模式 (.key-lock-pin 的鎖頭圖示) — 無論何種權限，Hover 時一律單純放大、鎖頭緊閉！ */
+.card:hover .card-secret-pin.key-lock-pin {
     transform: scale(1.15); 
     box-shadow: 0 8px 15px rgba(0,0,0,0.2), 0 0 15px var(--error-color);
 }
-body:not(.system-override-active) .modal-content a:hover .modal-secret-pin.key-lock-pin,
-body:not(.system-override-active) .article-li.simulate-hover a .modal-secret-pin.key-lock-pin {
+.modal-content a:hover .modal-secret-pin.key-lock-pin,
+.article-li.simulate-hover a .modal-secret-pin.key-lock-pin {
     transform: scale(1.15); 
     box-shadow: 0 4px 10px rgba(0,0,0,0.2), 0 0 10px var(--error-color);
 }
@@ -1221,22 +1236,20 @@ body:not(.system-override-active) .article-li.simulate-hover a .modal-secret-pin
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4'/%3E%3C/svg%3E") center / contain no-repeat;
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4'/%3E%3C/svg%3E") center / contain no-repeat;
     transition: transform 0.4s var(--ease-bounce); transform-origin: center;
+    /* ✨ 因為現在統一都在右側，直接與 modal-secret-pin 同步水平翻轉向內 */
+    transform: scaleX(-1);
 }
 .card-secret-pin:not(.key-lock-pin)::before { width: 18px; height: 18px; }
-.modal-secret-pin:not(.key-lock-pin)::before { transform: scaleX(-1); }
 
-/* 🔑 鑰匙 Hover：轉動解鎖 (支援左右對稱翻轉) */
-.card:hover .card-secret-pin:not(.key-lock-pin)::before { transform: rotate(45deg) scale(1.15); }
+/* 🔑 鑰匙 Hover：轉動解鎖（統一為右側翻轉角度） */
+.card:hover .card-secret-pin:not(.key-lock-pin)::before,
 .modal-content a:hover .modal-secret-pin:not(.key-lock-pin)::before,
-.article-li.simulate-hover a .modal-secret-pin:not(.key-lock-pin)::before { transform: scaleX(-1) rotate(45deg) scale(1.15); }
+.article-li.simulate-hover a .modal-secret-pin:not(.key-lock-pin)::before { 
+    transform: scaleX(-1) rotate(45deg) scale(1.15); 
+}
 
 /* 🔒 2. 鎖頭模式 (.key-lock-pin) */
 .secret-shackle { transition: transform 0.4s var(--ease-bounce); transform-origin: 12px 12px; }
-
-/* 🔒 鎖頭 Hover：管理員專屬暴力彈開 (訪客無動作，由外部 scale 處理) */
-body.system-override-active .card:hover .key-lock-pin .secret-shackle { transform: translateY(-6px) translateX(-2px) rotate(-12deg); }
-body.system-override-active .modal-content a:hover .key-lock-pin .secret-shackle,
-body.system-override-active .article-li.simulate-hover a .key-lock-pin .secret-shackle { transform: translateY(-6px) translateX(2px) rotate(12deg); }
 
 /* 🔒 縮圖中央巨大鎖頭：訪客滑過單純放大 */
 body:not(.system-override-active) .card.is-key-locked:hover .locked-cover-overlay svg,
@@ -1251,7 +1264,7 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
 .card.highlighted { border-color: var(--accent-2) !important; box-shadow: 0 0 15px var(--accent-2); z-index: 10; position: relative; }
 .card.highlighted:hover { transform: translateY(-6px) translateZ(0); box-shadow: 0 8px 25px var(--accent-2); }
 @keyframes card-bump { 0% { translate: 0 0; } 50% { translate: 0 -12px; } 100% { translate: 0 0; } }
-.card.highlighted.jump-bump { z-index: 20; animation: card-bump 0.6s var(--ease-smooth); }
+.card.jump-bump { z-index: 20; animation: card-bump 0.6s var(--ease-smooth); }
 
 .card:hover .card-action-btn { color: var(--card-glow) !important; }
 .card:hover .card-action-arrow { transform: translate(4px, -4px) translateZ(0) !important; } 
@@ -3038,59 +3051,20 @@ body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):acti
 /* 1. 預設狀態：披上隱形斗篷，不佔用任何版面空間 */
 .sys-hidden-card,
 .sys-hidden-item,
+.key-hidden-card,
+.key-hidden-item,
 .sys-hidden-ticker,
 .sys-hidden-tag { 
     display: none !important; 
 }
 
-/* 2. 解鎖狀態：強制顯示，並套用原生的平滑上浮進場 */
-body.system-override-active .card.sys-hidden-card {
+/* 2. 解鎖狀態：強制顯示（但如果同時帶有 key-hidden 則維持隱藏！） */
+body.system-override-active .card.sys-hidden-card:not(.key-hidden-card) {
     display: block !important;
 }
 
-body.system-override-active .article-li.sys-hidden-item {
+body.system-override-active .article-li.sys-hidden-item:not(.key-hidden-item) {
     display: block !important;
-}
-
-/* 讓跑馬燈裡的機密標籤也跟著解鎖出現 */
-body.system-override-active .sys-hidden-ticker {
-    display: inline-block !important;
-}
-
-/* ✨ 讓卡片上的機密標籤解鎖後出現 */
-body.system-override-active .sys-hidden-tag {
-    display: inline-flex !important;
-}
-
-
-/* ========================================================================== */
-/* ✨ 管理員最高權限 (System Override) 強制解除鑰匙鎖定視覺                     */
-/* ========================================================================== */
-body.system-override-active .is-key-locked {
-    filter: grayscale(0%);
-    opacity: 1;
-}
-body.system-override-active .is-key-locked .card-image img {
-    filter: blur(0px);
-}
-body.system-override-active .is-key-locked-item {
-    opacity: 1;
-    filter: grayscale(0%);
-}
-body.system-override-active .locked-cover-overlay {
-    display: none !important; /* 直接消滅鎖頭遮罩 */
-}
-/* 最高權限下 Hover 恢復原狀，不顯示紅色錯誤框 */
-body.system-override-active .is-key-locked:hover {
-    border-color: var(--accent-2) !important;
-    box-shadow: 0 8px 25px var(--accent-2) !important;
-}
-body.system-override-active .is-key-locked-item:hover {
-    border-left-color: var(--accent) !important;
-}
-body.system-override-active .is-key-locked-item:hover .article-item-title {
-    color: var(--accent-2) !important;
-    text-shadow: 0 0 8px var(--glow-1) !important;
 }
 
 
@@ -4364,8 +4338,49 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 }
 
 /* ========================================================================== */
-/* ✨ 鑰匙鎖定模式 (Key Locked Engine)                                          */
+/* ✨ 鑰匙鎖定模式 (Key Locked Engine - 支援深淺主題變數版)                     */
 /* ========================================================================== */
+.card.is-key-locked {
+    /* 🎨 背景色：將主題卡片色 (--card) 混入 6% 的主題警告色 (--error-color) */
+    background: color-mix(in srgb, var(--card) 94%, var(--error-color)) !important;
+    
+    /* 🎨 邊框色：平常就帶有微弱的警告紅邊框，取代死板的灰色邊框 */
+    border-color: color-mix(in srgb, var(--error-color) 35%, var(--card-border)) !important;
+    
+    /* 🎨 陰影與卡片光暈變數：統一綁定為警告色 */
+    --card-glow: var(--error-color);
+    box-shadow: 0 10px 30px var(--shadow-base), inset 0 0 20px color-mix(in srgb, var(--error-color) 5%, transparent) !important;
+    
+    /* 保留適度的低飽和度，讓未解鎖狀態有「封印感」，但不會死灰 */
+    filter: grayscale(40%);
+    opacity: 0.9;
+    transition: all 0.4s var(--ease-smooth);
+}
+
+/* 讓卡片內的標題在鎖定時呈現低調的次要文字色 (--muted) */
+.card.is-key-locked h3 {
+    color: var(--muted);
+    transition: color 0.3s ease;
+}
+
+.card.is-key-locked .card-image img {
+    filter: blur(5px) grayscale(60%);
+    transition: filter 0.4s ease;
+}
+
+/* ✨ Hover 時：完全恢復色彩，標題變回主文字色 (--text)，外框與陰影爆發紅光 */
+.is-key-locked:hover,
+.is-key-locked.simulate-hover {
+    filter: grayscale(0%);
+    opacity: 1;
+    border-color: var(--error-color) !important;
+    box-shadow: 0 8px 25px var(--error-shadow) !important;
+}
+
+.card.is-key-locked:hover h3 {
+    color: var(--text);
+}
+
 .is-key-locked {
     filter: grayscale(80%);
     opacity: 0.85;
