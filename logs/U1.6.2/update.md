@@ -4,11 +4,13 @@
 ## add
 1. switchTabPanel
 2. "lang" in detail.json
+3. webp_manifest.py
 
 ## change / update
 1. tools
 2. dev output (apply cout)
 3. tracker tools
+4. png cache
 
 ## adjust
 1. tab-buttons associated

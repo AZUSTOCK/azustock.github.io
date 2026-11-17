@@ -18,3 +18,5 @@ main.min.js
 style.min.css
 /tools/tracker/reports
 desktop.ini
+# Local WebP incremental build cache
+/tools/.cache/webp_manifest.json

@@ -6,7 +6,8 @@ import hashlib
 from PIL import Image
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from tools.convert_webp import convert_to_webp_with_protection, generate_cover_thumbnail, get_copyright_exif
+from tools.convert_webp import (convert_to_webp_with_protection, generate_cover_thumbnail,
+                               get_copyright_exif, MAX_SIZE, RATIO)
 from tools.update_paths import update_extensions_to_webp
 from tools.cout import cout  # ✨ 引入 Cout 全域實例
 import rjsmin # type: ignore
@@ -21,6 +22,29 @@ import rcssmin # type: ignore
 API_LOGIC_VERSION = "U2026-09-24"    # ✨ 修改 Markdown 解析、contents.json 結構時改這個
 HTML_LOGIC_VERSION = "U2026-09-24"   # ✨ 修改 index.html 跳轉模板時改這個
 IMAGE_LOGIC_VERSION = "U2026-09-24"  # ✨ 修改 OG圖合成、圖片轉檔品質時改這個
+
+# 本地原圖轉檔設定：改動這些值會由本地 manifest 判斷是否重建。
+# 不自動以套件版本或年份觸發重建；演算法有改動時手動調整此版號。
+WEBP_LOGIC_VERSION = "1"
+WEBP_QUALITY = 90
+WEBP_MAX_SIZE = MAX_SIZE
+WEBP_RATIO = RATIO
+
+
+def convert_project_images(is_github_actions, overwrite_webp=False, target_folders=None):
+    if is_github_actions:
+        # CI 沿用原版轉檔器，不讀寫本地 manifest。
+        return convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
+    from tools.webp_manifest import convert_local_webp
+    report = convert_local_webp(
+        directory="projects", quality=WEBP_QUALITY, max_size=WEBP_MAX_SIZE,
+        ratio=WEBP_RATIO, logic_version=WEBP_LOGIC_VERSION,
+        force_overwrite=overwrite_webp, target_folders=target_folders,
+    )
+    if report['errors']:
+        raise RuntimeError("本地 WebP 處理失敗，已停止後續生成；請修正錯誤後重試。")
+    return report
+
 
 CACHE_FILE = '.build_cache.json'
 
@@ -1438,7 +1462,7 @@ if __name__ == "__main__":
 
     build_start_time = time.perf_counter()
 
-    convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
+    convert_project_images(is_github_actions, overwrite_webp, target_folders)
     
     cout.stage("第二階段", "開始解析 Markdown 並打包 JSON 資料庫...", icon_key='stage')
     generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb, overwrite_pdf_thumb=overwrite_pdf_thumb, target_folders=target_folders)
