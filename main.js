@@ -577,81 +577,84 @@ window.parseDynamicText = function(text, renderContext = 'DEFAULT') {
     });
 };
 
+window.syncProjectCardUI = function(card, proj) {
+    if (!card || !proj) return;
+    const pid = proj.id;
+    const isLocked = proj.required_key && !window.isSecretUnlocked(proj.required_key);
+    const isHiddenLock = (proj.lock_mode || 'visible') === 'hidden';
+    const lockPrompt = window.getLockPromptText(proj);
+
+    card.classList.toggle('sys-hidden-card', !!proj.is_hidden);
+    card.classList.toggle('is-key-locked', !!(isLocked && !isHiddenLock));
+    card.classList.toggle('key-hidden-card', !!(isLocked && isHiddenLock));
+
+    let pin = card.querySelector('.card-secret-pin');
+    if (isLocked || proj.is_hidden || proj.required_key) {
+        if (!pin) {
+            card.insertAdjacentHTML('afterbegin', `<div class="card-secret-pin">${GLOBAL_SVGS.secretPin}</div>`);
+            pin = card.querySelector('.card-secret-pin');
+        }
+        pin.classList.toggle('key-lock-pin', !!isLocked);
+    } else if (pin) {
+        pin.remove();
+    }
+
+    const titleH3 = card.querySelector('.card-text h3');
+    if (titleH3) {
+        const cardMetaHtml = proj.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(proj.meta, 'CARD_META')}</span>` : '';
+        titleH3.innerHTML = `${window.parseDynamicText(proj.title, 'CARD_TITLE')} ${cardMetaHtml}`;
+    }
+
+    const descP = card.querySelector('.card-desc-text');
+    if (descP) descP.innerHTML = window.parseDynamicText(proj.description, 'CARD_DESC');
+
+    const actionBtn = card.querySelector('.card-action-btn');
+    if (isLocked) {
+        card.onclick = (e) => {
+            e.stopPropagation();
+            window.showSystemToast?.('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
+        };
+        if (actionBtn) {
+            if (!isHiddenLock && proj.articles?.length) {
+                actionBtn.style.color = 'var(--error-color)';
+                actionBtn.innerHTML = `<div class="card-action-icon-wrap">${GLOBAL_SVGS.secretPinSmall}</div>${window.escapeHtml(lockPrompt)}解鎖`;
+            } else if (proj.link) {
+                actionBtn.style.color = '';
+                actionBtn.innerHTML = `前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span>`;
+            }
+        }
+    } else {
+        if (proj.articles && proj.articles.length > 0) {
+            card.style.cursor = 'pointer';
+            card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.openProjectIndex(pid); };
+            if (actionBtn) {
+                actionBtn.style.color = '';
+                const visibleCount = window.getVisibleArticleCount(proj);
+                actionBtn.innerHTML = `<div class="card-action-icon-wrap">${GLOBAL_SVGS.folderClosed}${GLOBAL_SVGS.folderOpen}</div>展開系列 (${visibleCount})`;
+            }
+        } else if (proj.link) {
+            card.style.cursor = 'pointer';
+            card.onclick = () => {
+                if (window.currentActiveTag) window.clearFilter();
+                const a = document.createElement('a'); a.href = proj.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                window.grantDetailKeys(proj.key);
+            };
+            if (actionBtn) {
+                actionBtn.style.color = '';
+                actionBtn.innerHTML = `前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span>`;
+            }
+        } else {
+            card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
+        }
+    }
+};
+
 window.refreshHomeKeysUI = function() {
     document.querySelectorAll('.card').forEach(card => {
         const pid = card.getAttribute('data-project-id');
         const proj = window.siteProjects.find(p => p.id === pid);
-        if (!proj) return;
-
-        const keyAttr = card.getAttribute('data-required-key');
-        if (keyAttr) {
-            let keyData = keyAttr;
-            try { if (keyAttr.startsWith('[')) keyData = JSON.parse(keyAttr); } catch(e) {}
-
-            if (window.isSecretUnlocked(keyData)) {
-                card.classList.remove('is-key-locked', 'key-hidden-card');
-
-                const pin = card.querySelector('.card-secret-pin');
-                if (proj.is_hidden || proj.required_key) {
-                    if (pin) pin.classList.remove('key-lock-pin');
-                    else card.insertAdjacentHTML('afterbegin', `<div class="card-secret-pin">${GLOBAL_SVGS.secretPin}</div>`);
-                } else if (pin) {
-                    pin.remove();
-                }
-
-                if (proj.articles && proj.articles.length > 0) {
-                    card.style.cursor = 'pointer';
-                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.openProjectIndex(pid); };
-                } else if (proj.link) {
-                    card.style.cursor = 'pointer';
-                    card.onclick = () => {
-                        if (window.currentActiveTag) window.clearFilter();
-                        const a = document.createElement('a'); a.href = proj.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
-                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                        window.grantDetailKeys(proj.key);
-                    };
-                } else {
-                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
-                }
-            } else if (proj.required_key) {
-                const hidden = (proj.lock_mode || 'visible') === 'hidden';
-                card.classList.toggle('is-key-locked', !hidden);
-                card.classList.toggle('key-hidden-card', hidden);
-                card.querySelector('.card-secret-pin')?.classList.add('key-lock-pin');
-                const prompt = window.getLockPromptText(proj);
-                card.onclick = event => {
-                    event.stopPropagation();
-                    window.showSystemToast?.('>_ ACCESS_DENIED', '存取被拒', prompt + ' 才能解鎖', 4000, 'error');
-                };
-                const button = card.querySelector('.card-action-btn');
-                if (!hidden && button && proj.articles?.length) {
-                    button.style.color = 'var(--error-color)';
-                    button.innerHTML = '<div class="card-action-icon-wrap">' + GLOBAL_SVGS.secretPinSmall + '</div>' + window.escapeHtml(prompt) + '解鎖';
-                }
-            }
-        }
-
-        const titleH3 = card.querySelector('.card-text h3');
-        if (titleH3) {
-            const cardMetaHtml = proj.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(proj.meta, 'CARD_META')}</span>` : '';
-            titleH3.innerHTML = `${window.parseDynamicText(proj.title, 'CARD_TITLE')} ${cardMetaHtml}`;
-        }
-
-        const descP = card.querySelector('.card-desc-text');
-        if (descP) descP.innerHTML = window.parseDynamicText(proj.description, 'CARD_DESC');
-
-        const isStillLocked = proj.required_key && !window.isSecretUnlocked(proj.required_key);
-        const actionBtn = card.querySelector('.card-action-btn');
-
-        if (!isStillLocked && actionBtn) {
-            actionBtn.style.color = '';
-            if (proj.articles && proj.articles.length > 0) {
-                const visibleCount = window.getVisibleArticleCount(proj);
-                actionBtn.innerHTML = `<div class="card-action-icon-wrap">${GLOBAL_SVGS.folderClosed}${GLOBAL_SVGS.folderOpen}</div>展開系列 (${visibleCount})`;
-            } else if (proj.link) {
-                actionBtn.innerHTML = `前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span>`;
-            }
-        }
+        if (proj) window.syncProjectCardUI(card, proj);
     });
 };
 
@@ -792,10 +795,12 @@ window.applyTextScale = function() {
         }
     };
 
-    // ✨ 在動畫剛開始、320ms、500ms 以及 html 字體過渡徹底結束 (transitionend) 時同步重算
     requestAnimationFrame(recalcTabs);
-    setTimeout(recalcTabs, 320);
-    setTimeout(recalcTabs, 500);
+    setTimeout(() => {
+        recalcTabs();
+        const activeContainer = window.getActiveScrollContainer();
+        if (activeContainer) activeContainer.dispatchEvent(new Event('scroll'));
+    }, 350);
 
     const onFontTransitionEnd = (e) => {
         if (e.target === document.documentElement && e.propertyName === 'font-size') {
@@ -804,12 +809,6 @@ window.applyTextScale = function() {
         }
     };
     document.documentElement.addEventListener('transitionend', onFontTransitionEnd);
-
-    // 防呆設計：推播捲軸事件讓「閱讀進度條」與「捲動提示」重新校正
-    const activeContainer = window.getActiveScrollContainer();
-    if (activeContainer) {
-        setTimeout(() => activeContainer.dispatchEvent(new Event('scroll')), 350);
-    }
 };
 
 window.toggleTextScale = function(event) {
@@ -830,26 +829,19 @@ document.addEventListener('DOMContentLoaded', () => window.applyTextScale());
 // ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
 window.lockScroll = function() {
-    if (document.body.style.overflow === 'hidden') return;
     document.body.style.overflow = 'hidden';
-    
-    // ✨ 確保如果獨立的 activeContainer 存在，也暫時凍結它的捲動
-    const activeContainer = window.getActiveScrollContainer();
-    if (activeContainer && activeContainer !== document.querySelector('.modal-content')) {
-        activeContainer.dataset.lockedOverflow = window.getComputedStyle(activeContainer).overflowY;
-        activeContainer.style.overflowY = 'hidden';
-    }
 };
 
-window.unlockScroll = function() {
-    document.body.style.overflow = '';
-    
-    // ✨ 解除 activeContainer 的凍結
-    const activeContainer = window.getActiveScrollContainer();
-    if (activeContainer && activeContainer.dataset.lockedOverflow) {
-        activeContainer.style.overflowY = activeContainer.dataset.lockedOverflow;
-        delete activeContainer.dataset.lockedOverflow;
-    }
+// 延遲動畫可能交錯；以仍在畫面上的捲動鎖定層為準。
+function hasActiveScrollLock() {
+    return !!document.querySelector(
+        '#fullscreen-menu.active, #pdf-action-modal, #md-modal.active, .modal-overlay.active, ' +
+        '#sensitive-modal-overlay, video.is-web-fullscreen, #sys-reboot-screen'
+    );
+}
+
+window.unlockScroll = function(overflow = '') {
+    if (!hasActiveScrollLock()) document.body.style.overflow = overflow;
 };
 
 // ==========================================
@@ -973,7 +965,7 @@ window.initPWAPullToRefresh = function() {
                 return;
             }
 
-            const previousOverflow = document.body.style.overflow;
+            const previousOverflow = hasActiveScrollLock() ? '' : document.body.style.overflow;
             let ownRebootScreen = null;
             try {
                 const showReboot = typeof window.showSystemRebootScreen === 'function'
@@ -994,12 +986,7 @@ window.initPWAPullToRefresh = function() {
                 if (ownRebootScreen && document.getElementById('sys-reboot-screen') === ownRebootScreen) {
                     ownRebootScreen.remove();
                 }
-                if (!document.getElementById('sys-reboot-screen') && document.body.style.overflow === 'hidden' &&
-                    !document.querySelector('.modal-overlay.active') &&
-                    !document.querySelector('video.is-web-fullscreen') &&
-                    !document.getElementById('fullscreen-menu')?.classList.contains('active')) {
-                    document.body.style.overflow = previousOverflow;
-                }
+                if (document.body.style.overflow === 'hidden') window.unlockScroll(previousOverflow);
                 hideIndicator();
                 if (typeof window.showSystemToast === 'function') {
                     window.showSystemToast('>_ RELOAD_INCOMPLETE', '重新整理尚未完成', '請再次嘗試。', 6000, 'error');
@@ -1180,11 +1167,24 @@ window.getCleanBasePath = function() {
     return basePath.endsWith('/') ? basePath : basePath + '/';
 };
 
+window.resolveRouteTarget = function(pParam, aParam) {
+    if (!pParam) return { project: null, article: null, aIndex: -1 };
+    const cleanProjectId = pParam.replace(/^\d+_/, '');
+    const project = window.siteProjects.find(proj => proj.id === cleanProjectId) || null;
+    let aIndex = -1, article = null;
+    if (project && Array.isArray(project.articles) && aParam !== null && aParam !== undefined) {
+        aIndex = project.articles.findIndex(art => art.id === aParam);
+        if (aIndex === -1 && !isNaN(parseInt(aParam, 10))) aIndex = parseInt(aParam, 10);
+        if (aIndex >= 0 && aIndex < project.articles.length) article = project.articles[aIndex];
+        else aIndex = -1;
+    }
+    return { project, article, aIndex };
+};
+
 window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     if (!pParam) return;
     
-    const cleanProjectId = pParam.replace(/^\d+_/, '');
-    const project = window.siteProjects.find(proj => proj.id === cleanProjectId);
+    const { project, article, aIndex } = window.resolveRouteTarget(pParam, aParam);
     
     if (!project) {
         show404Modal('404 Project Not Found', '無法找到您指定的專案。<br/>可能不存在或已被移除');
@@ -1204,11 +1204,7 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     }
 
     if (aParam !== null && aParam !== undefined) {
-        let aIndex = project.articles.findIndex(art => art.id === aParam);
-        if (aIndex === -1 && !isNaN(parseInt(aParam))) aIndex = parseInt(aParam, 10);
-        
-        if (aIndex !== -1 && aIndex < project.articles.length) {
-            const article = project.articles[aIndex];
+        if (article) {
             
             // ✨ 2. 文章層級：只要文章未公開 (is_hidden) 或金鑰未解鎖 (artLocked)，從網址進入同樣先攔截顯示 403
             const artLocked = article.required_key && !window.isSecretUnlocked(article.required_key);
@@ -2127,7 +2123,6 @@ window.retryMedia = function(btnEl, origSrc, ext, isVideo) {
 window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = 'error') {
     // 1. 決定顏色主題 (未來可擴充 'success' 等)
     const themeClass = type === 'error' ? 'error' : 'success';
-    const shadowColor = type === 'error' ? 'var(--error-shadow)' : 'var(--glow-1)';
 
     // 2. 移除畫面上舊的提示 (避免重疊堆高)
     const oldToast = document.getElementById('sys-global-toast');
@@ -2569,18 +2564,7 @@ window.lightboxAction = function(action, event) {
                         window.mermaid.run({ querySelector: '#lightbox-active-mermaid' })
                             .catch(e => console.warn('Mermaid reload failed:', e))
                             .finally(() => {
-                                const svg = activeMermaid.querySelector('svg');
-                                if (svg) {
-                                    const vb = svg.getAttribute('viewBox');
-                                    if (vb) {
-                                        const [, , vbW, vbH] = vb.trim().split(/[\s,]+/).map(Number);
-                                        const maxW = window.innerWidth * 0.85;
-                                        const maxH = window.innerHeight - 220;
-                                        const fitScale = Math.min(maxW / vbW, maxH / vbH, 1.5);
-                                        svg.style.width = `${Math.round(Math.max(Math.min(vbW * fitScale, maxW), Math.min(280, maxW)))}px`;
-                                        svg.style.height = 'auto';
-                                    }
-                                }
+                                window.fitMermaidToLightbox(activeMermaid.querySelector('svg'));
                                 activeMermaid.style.opacity = '1';
                             });
                     } else {
@@ -3032,8 +3016,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const state = window.lightboxState;
             const delta = e.deltaY < 0 ? 1 : -1;
             
-            let newZoom = Math.max(0.5, Math.min(state.zoom * (1 + delta * 0.15), state.maxZoom));
-            newZoom = Math.max(1, Math.min(newZoom, state.maxZoom));
+            const newZoom = Math.max(0.5, Math.min(state.zoom * (1 + delta * 0.15), state.maxZoom));
             
             const ratio = newZoom / state.zoom - 1;
             const centerX = window.innerWidth / 2;
@@ -3619,9 +3602,9 @@ renderer.heading = function(token_or_text, level, raw) {
     }
 
     // 將最乾淨的標題文字存入全域，給 Mermaid 抓取當作圖表預設標題
-    window._lastMarkdownHeadings.push(rawText.replace(/<[^>]+>/g, '')); 
+    window._lastMarkdownHeadings.push(window.stripHtml(rawText)); 
     
-    const id = customId || rawText.toLowerCase().replace(/\s+/g, '-').replace(/<[^>]+>/g, '');
+    const id = customId || window.stripHtml(rawText).toLowerCase().replace(/\s+/g, '-');
     
     // ✨ 輸出時，畫面上的內容使用已渲染的 parsedText！
     return `<h${depth} id="md-sys-${id}" data-raw-title="${encodeURIComponent(rawText)}">${parsedText}</h${depth}>`;
@@ -4018,7 +4001,7 @@ const detailsBlockExtension = {
         return `
         <details class="md-details">
             <summary>
-                <svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                ${GLOBAL_SVGS.detailsArrow}
                 <span style="flex-grow: 1;">${token.summaryText}</span>
             </summary>
             <div class="md-details-content">
@@ -4125,6 +4108,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fullscreenMenu = document.getElementById('fullscreen-menu');
 
     menuToggle.addEventListener('click', () => {
+        if (document.getElementById('pdf-action-modal')) return;
         menuToggle.classList.toggle('open');
         fullscreenMenu.classList.toggle('active');
         if (fullscreenMenu.classList.contains('active')) {
@@ -4139,11 +4123,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // ✨ 漢堡選單：事件代理 (Event Delegation) 與同頁面強制跳轉/動畫重播
     // ==========================================
     fullscreenMenu.addEventListener('click', (e) => {
+        // 開啟操作面板的點擊仍會冒泡；不要讓它同時導覽或收起選單。
+        if (document.getElementById('pdf-action-modal')) {
+            e.preventDefault();
+            return;
+        }
         const navItem = e.target.closest('.nav-item');
         if (navItem) {
             e.preventDefault(); 
             
             const targetHash = navItem.getAttribute('href');
+            if (!targetHash?.startsWith('#')) return;
             const targetId = targetHash.substring(1);
             const targetSection = document.getElementById(targetId);
             
@@ -4530,17 +4520,9 @@ async function loadProjects() {
             const card = document.createElement('div');
             card.className = 'card';
             
-            const isLocked = data.required_key && !window.isSecretUnlocked(data.required_key);
-            const lockMode = data.lock_mode || 'visible';
-            const lockPrompt = window.getLockPromptText(data);
-
             card.setAttribute('data-required-key', typeof data.required_key === 'string' ? data.required_key : JSON.stringify(data.required_key || ''));
             card.setAttribute('data-project-id', data.id);
             card.setAttribute('data-tags', (data.tags || []).join(','));
-
-            if (data.is_hidden) card.classList.add('sys-hidden-card');
-            if (isLocked && lockMode === 'hidden') card.classList.add('key-hidden-card');
-            if (isLocked && lockMode === 'visible') card.classList.add('is-key-locked');
             
             const tagsHTML = (data.tags || []).map(tag => {
                 const isSecretTag = data.secret_tags && data.secret_tags.includes(tag);
@@ -4548,54 +4530,15 @@ async function loadProjects() {
                 const statusAttr = flatList.includes(tag) ? ` data-status="${tag}" class="tag status-tag${secretClass}"` : ` class="tag${secretClass}"`;
                 return `<span${statusAttr} data-tag="${tag}" onclick="window.filterByTag('${tag}', event, this)">${tag}</span>`;
             }).join('');
-            
-            let actionText = '';
-            const denyLockedClick = (e) => {
-                e.stopPropagation();
-                if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
-            };
 
-            if (data.articles && data.articles.length > 0) {
-                card.style.cursor = 'pointer';
-                card.onclick = (e) => { 
-                    if (isLocked) return denyLockedClick(e);
-                    if (window.currentActiveTag) window.clearFilter(); 
-                    window.openProjectIndex(data.id); 
-                };
-                
-                const visibleCount = window.getVisibleArticleCount(data);
-                actionText = (isLocked && lockMode === 'visible')
-                    ? `<div class="card-action-btn" style="color: var(--error-color);"><div class="card-action-icon-wrap">${GLOBAL_SVGS.secretPinSmall}</div>${lockPrompt}解鎖</div>`
-                    : `<div class="card-action-btn"><div class="card-action-icon-wrap">${GLOBAL_SVGS.folderClosed}${GLOBAL_SVGS.folderOpen}</div>展開系列 (${visibleCount})</div>`;
-            } else if (data.link) {
-                card.style.cursor = 'pointer';
-                card.onclick = (e) => { 
-                    if (isLocked) return denyLockedClick(e);
-                    if (window.currentActiveTag) window.clearFilter(); 
-                    const a = document.createElement('a'); a.href = data.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
-                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                    window.grantDetailKeys(data.key);
-                };
-                actionText = `<div class="card-action-btn">前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span></div>`;
-            } else {
-                card.onclick = (e) => { 
-                    if (isLocked) return denyLockedClick(e);
-                    if (window.currentActiveTag) window.clearFilter(); 
-                };
+            const hasAction = (data.articles && data.articles.length > 0) || data.link;
+            if (!hasAction) {
                 card.addEventListener('mouseenter', () => { card.style.cursor = window.currentActiveTag ? 'pointer' : 'default'; });
             }
 
             const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="card-thumb-img is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : '';
-            const cardMetaHtml = data.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(data.meta, 'CARD_META')}</span>` : '';
-            const cardDescHtml = data.description ? `<p class="card-desc-text">${window.parseDynamicText(data.description, 'CARD_DESC')}</p>` : '';
+            const cardDescHtml = data.description ? `<p class="card-desc-text"></p>` : '';
             const absolutePinHtml = data.pinned ? `<div class="card-pin">${GLOBAL_SVGS.pin}</div>` : '';
-            
-            let absoluteSecretHtml = '';
-            if (isLocked) {
-                absoluteSecretHtml = `<div class="card-secret-pin key-lock-pin">${GLOBAL_SVGS.secretPin}</div>`;
-            } else if (data.is_hidden || data.required_key) {
-                absoluteSecretHtml = `<div class="card-secret-pin">${GLOBAL_SVGS.secretPin}</div>`;
-            }
 
             const metaParts = [];
             if (data.date) metaParts.push(data.date);
@@ -4603,12 +4546,13 @@ async function loadProjects() {
             const cardDateHtml = metaParts.length > 0 ? `<div class="card-date-badge">[${metaParts.join(' • ')}]</div>` : '';
 
             card.innerHTML = `
-                ${absolutePinHtml}${absoluteSecretHtml}${cardDateHtml} 
+                ${absolutePinHtml}${cardDateHtml} 
                 <div class="card-content-wrapper">
-                    <div class="card-text"><h3 style="margin-top: 0; margin-bottom: 0.4rem;">${window.parseDynamicText(data.title, 'CARD_TITLE')} ${cardMetaHtml}</h3>${cardDescHtml}</div>
+                    <div class="card-text"><h3 style="margin-top: 0; margin-bottom: 0.4rem;"></h3>${cardDescHtml}</div>
                     ${cardImageHtml ? `<div class="card-image">${cardImageHtml}</div>` : ''}
                 </div>
-                <div class="tags-container">${tagsHTML}</div>${actionText}`;
+                <div class="tags-container">${tagsHTML}</div>${hasAction ? '<div class="card-action-btn"></div>' : ''}`;
+            window.syncProjectCardUI(card, data);
             
             targetGrid.appendChild(card);
         });
@@ -4675,7 +4619,7 @@ async function loadProjects() {
 // ==========================================
 // ✨ 共用引擎：平滑淡入 / 無縫接軌的終端機重開機畫面
 // ==========================================
-function showSystemRebootScreen(title, localV, remoteV, msg, immediate = false) {
+window.showSystemRebootScreen = function(title, localV, remoteV, msg, immediate = false) {
     document.body.style.overflow = 'hidden'; 
     let screen = document.getElementById('sys-reboot-screen');
     
@@ -4700,16 +4644,13 @@ function showSystemRebootScreen(title, localV, remoteV, msg, immediate = false) 
 // ==========================================
 // ✨ 移除遮罩的函數 (加入成功/失敗的主動狀態切換！)
 // ==========================================
-function hideSystemRebootScreen(isSuccess = true) {
+window.hideSystemRebootScreen = function(isSuccess = true) {
     const screen = document.getElementById('sys-reboot-screen');
     
     // 如果沒有遮罩 (一般訪客)，直接解除防護並返回
     if (!screen) {
         document.documentElement.classList.remove('sys-rebooting');
-        // ✨ 修正：判斷沒有開啟任何 Modal 時，才恢復背景捲軸
-        if (!document.querySelector('.modal-overlay.active')) {
-            document.body.style.overflow = '';
-        }
+        window.unlockScroll();
         return;
     }
 
@@ -4730,14 +4671,12 @@ function hideSystemRebootScreen(isSuccess = true) {
         // 瞬間拔除 HTML 的隱形斗篷，讓底層早就畫好的新版網站準備就緒
         document.documentElement.classList.remove('sys-rebooting');
         
-        // ✨ 修正：動畫結束後，同樣判斷沒有 Modal 時才恢復捲軸
-        if (!document.querySelector('.modal-overlay.active')) {
-            document.body.style.overflow = '';
-        }
-
         screen.style.transition = 'opacity 0.5s ease';
         screen.style.opacity = '0';
-        setTimeout(() => { screen.remove(); }, 500);
+        setTimeout(() => {
+            screen.remove();
+            window.unlockScroll();
+        }, 500);
     }, 600);
 }
 
@@ -4943,14 +4882,6 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
             modalContainer.style.transition = 'none'; 
             modalContainer.style.height = ''; 
             
-            const viewIndex = document.getElementById('view-index');
-            const viewArticle = document.getElementById('view-article');
-            const origIndexOverflow = viewIndex ? viewIndex.style.overflowY : '';
-            const origArticleOverflow = viewArticle ? viewArticle.style.overflowY : '';
-            
-            if (viewIndex) viewIndex.style.overflowY = 'hidden';
-            if (viewArticle) viewArticle.style.overflowY = 'hidden';
-            
             // 執行 DOM 替換
             updateDOMCallback();
             
@@ -4965,9 +4896,6 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
             if (animateTopBar && topLeft) {
                 topLeft.classList.remove('content-fade-out');
             }
-
-            if (viewIndex) viewIndex.style.overflowY = origIndexOverflow;
-            if (viewArticle) viewArticle.style.overflowY = origArticleOverflow;
             
             setTimeout(() => { 
                 modalContainer.style.transition = ''; 
@@ -5591,7 +5519,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 }
                 
                 // ✨ 安全解析：TOOLTIP 不消耗特效額度，NAV_BTN 觸發獨立特效
-                const plainTitle = window.parseDynamicText(item.art.title, 'TOOLTIP').replace(/<[^>]+>/g, '');
+                const plainTitle = window.stripHtml(window.parseDynamicText(item.art.title, 'TOOLTIP'));
                 const tooltipText = plainTitle.replace(/"/g, '&quot;');
                 const uiTitle = window.formatArticleTitleLanguage(window.parseDynamicText(item.art.title, 'NAV_BTN'), item.art, proj);
                 
@@ -5636,37 +5564,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                         if (!entry.isIntersecting) return;
                         const keyEl = entry.target;
                         const secretId = keyEl.getAttribute('data-secret-key');
-                        const result = window.unlockSecret(secretId);
-                        
-                        if (result && result.status !== 'ALREADY_HAVE') {
-                            let title = '>_ ACCESS_GRANTED';
-                            let msg = '取得授權金鑰';
-                            let subMsg = `已解鎖機密 [${result.baseId}]`;
-                            
-                            if (result.status === 'ACQUIRED_FRAGMENT') {
-                                title = '>_ FRAGMENT_ACQUIRED';
-                                msg = '取得金鑰碎片';
-                                subMsg = result.hasExplicitTotal 
-                                    ? `進度: ${result.currentCount}/${result.reqCount} [${result.baseId}]`
-                                    : `已取得碎片 [${result.baseId}#${result.fragIndex}]`;
-                            } else if (result.status === 'GRANTED_FRAGMENTS_COMPLETE') {
-                                msg = '金鑰合成完畢';
-                                subMsg = `權限已解開！(${result.currentCount}/${result.reqCount}) [${result.baseId}]`;
-                            }
-                            
-                            const isSilent = keyEl.getAttribute('data-silent') === 'true';
-                            if (!isSilent) {
-                                if (window.showSystemToast) window.showSystemToast(title, msg, subMsg, 6000, 'success');
-                                window.triggerHaptic('success');
-                            }
-                            keyEl.classList.add('is-key-triggered');
-                            
-                            if (result.status === 'GRANTED' || result.status === 'GRANTED_FRAGMENTS_COMPLETE') {
-                                window.revealUnlockedSecretNodes(document);
-                            }
-                        } else if (result && result.status === 'ALREADY_HAVE') {
-                            keyEl.classList.add('is-key-triggered'); 
-                        }
+                        const isSilent = keyEl.getAttribute('data-silent') === 'true';
+                        window.grantDetailKeys(isSilent ? `${secretId}|SILENT` : secretId);
+                        keyEl.classList.add('is-key-triggered');
                         keyObserver.unobserve(keyEl);
                     });
                 }, { threshold: 0.5 }));
@@ -5763,7 +5663,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const prevProj = window.siteProjects.find(p => p.id === prevEntry.projectId);
                 const prevArt = prevProj && prevProj.articles ? prevProj.articles[prevEntry.articleIndex] : null;
                 const prevTitle = prevArt 
-                    ? window.parseDynamicText(prevArt.title, 'TOOLTIP').replace(/<[^>]+>/g, '').replace(/"/g, '&quot;') 
+                    ? window.stripHtml(window.parseDynamicText(prevArt.title, 'TOOLTIP')).replace(/"/g, '&quot;') 
                     : '跳轉前頁面';
                 
                 historyBtnHtml = `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回：${prevTitle}">${GLOBAL_SVGS.historyBack}</button>`;
@@ -6395,6 +6295,20 @@ window.reloadMermaid = function(btn) {
     }, 50); 
 };
 
+window.fitMermaidToLightbox = function(svg) {
+    if (!svg) return;
+    const vb = svg.getAttribute('viewBox');
+    if (!vb) return;
+    const [, , vbW, vbH] = vb.trim().split(/[\s,]+/).map(Number);
+    if (vbW > 0 && vbH > 0) {
+        const maxW = window.innerWidth * 0.85;
+        const maxH = window.innerHeight - 220;
+        const fitScale = Math.min(maxW / vbW, maxH / vbH, 1.5);
+        svg.style.width = `${Math.round(Math.max(Math.min(vbW * fitScale, maxW), Math.min(280, maxW)))}px`;
+        svg.style.height = 'auto';
+    }
+};
+
 // ✨ 全新：完美偽裝成 Lightbox 的 Mermaid 全螢幕引擎
 window.fullscreenMermaid = function(btn) {
     const container = btn.closest('.mermaid-container');
@@ -6422,25 +6336,7 @@ window.fullscreenMermaid = function(btn) {
     clonedMermaid.style.height = '';
     clonedMermaid.style.transform = 'translate(0px, 0px) scale(1)';
 
-    const clonedSvg = clonedMermaid.querySelector('svg');
-    if (clonedSvg) {
-        const vb = clonedSvg.getAttribute('viewBox');
-        if (vb) {
-            const parts = vb.trim().split(/[\s,]+/).map(Number);
-            const vbW = parts[2];
-            const vbH = parts[3];
-            if (vbW > 0 && vbH > 0) {
-                // 扣除上下工具列與邊距後的安全可視範圍
-                const maxW = window.innerWidth * 0.85;
-                const maxH = window.innerHeight - 220;
-                // 允許適度放大以看清細節，但絕不超過視窗安全邊界，最小也不低於 280px
-                const fitScale = Math.min(maxW / vbW, maxH / vbH, 1.5);
-                const targetW = Math.max(Math.min(vbW * fitScale, maxW), Math.min(280, maxW));
-                clonedSvg.style.width = `${Math.round(targetW)}px`;
-                clonedSvg.style.height = 'auto';
-            }
-        }
-    }
+    window.fitMermaidToLightbox(clonedMermaid.querySelector('svg'));
     
     customContainer.innerHTML = '';
     customContainer.appendChild(clonedMermaid);
@@ -6631,22 +6527,7 @@ function show404Modal(title, message) {
             const pParam = urlParams.get('p');
             const aParam = urlParams.get('a');
             const hashParam = window.location.hash || null;
-            
-            let project = null;
-            let article = null;
-            let aIndex = -1;
-
-            if (pParam) {
-                const cleanProjectId = pParam.replace(/^\d+_/, '');
-                project = window.siteProjects.find(proj => proj.id === cleanProjectId);
-                if (project && aParam !== null && aParam !== undefined && project.articles) {
-                    aIndex = project.articles.findIndex(art => art.id === aParam);
-                    if (aIndex === -1 && !isNaN(parseInt(aParam))) aIndex = parseInt(aParam, 10);
-                    if (aIndex !== -1 && aIndex < project.articles.length) {
-                        article = project.articles[aIndex];
-                    }
-                }
-            }
+            const { project, article, aIndex } = window.resolveRouteTarget(pParam, aParam);
 
             // 1. 啟動 System Override 並重刷首頁 UI
             document.body.classList.add('system-override-active');
@@ -6727,16 +6608,7 @@ function show404Modal(title, message) {
             }
 
             if (targetVersion && window.compareVersions(CONFIG.VERSION, targetVersion) < 0) {
-                closeModal();
-                sessionStorage.setItem('sys_reboot_count', '1');
-                sessionStorage.setItem('sys_is_rebooting', 'true');
-                sessionStorage.setItem('sys_expected_version', targetVersion);
-                showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, targetVersion, 'UPDATING', true);
-                setTimeout(() => {
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('v', new Date().getTime());
-                    window.location.replace(newUrl.toString());
-                }, 1200);
+                window.triggerSystemUpdate(targetVersion);
                 return;
             }
 
@@ -6749,7 +6621,6 @@ function show404Modal(title, message) {
 // ==========================================
 // ✨ 敏感內容/使用者協議攔截引擎 (Content Warning Engine)
 // ==========================================
-window._hasAgreedSensitiveContent = false;
 
 window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, onDeclineCallback) {
     if (document.getElementById('sensitive-modal-overlay')) return;
@@ -7469,9 +7340,7 @@ window.addEventListener('hashchange', () => {
         const modalOverlay = document.getElementById('md-modal');
         if (modalOverlay && modalOverlay.classList.contains('active')) {
             setTimeout(() => {
-                // ✨ 傳入 true, true -> 瞬間移動、且「絕對不啟動追蹤引擎」！
-                // 瀏覽器已經原生跳轉完了，我們只做一次瞬間微調修正導覽列高度，絕不上下拉扯。
-                window.executeAnchorScroll(hash, true, true);
+                window.executeAnchorScroll(hash, true);
             }, 10);
         }
     }
@@ -7559,28 +7428,55 @@ window.addEventListener('offline', () => {
 // ==========================================
 // ✨ 手機/PWA 專屬 PDF 安全互動選單 (強制下載與瀏覽器穿透版)
 // ==========================================
-window.showPdfActionModal = function(href, title) {
-    const existing = document.getElementById('pdf-action-modal');
-    if (existing) existing.remove();
-
+function openPdfActionSheet(markup) {
+    const previous = document.getElementById('pdf-action-modal');
     const overlay = document.createElement('div');
     overlay.id = 'pdf-action-modal';
+    overlay.innerHTML = markup;
+    const sheet = overlay.querySelector('.pdf-action-sheet');
+    if (previous) previous.replaceWith(overlay);
+    else document.body.appendChild(overlay);
+    window.lockScroll();
 
+    // 全螢幕選單保留原位；若選單或它的容器層級較高，僅提高這個面板。
+    const menu = document.querySelector('#fullscreen-menu.active');
+    if (menu) {
+        const currentZ = Number.parseInt(getComputedStyle(overlay).zIndex, 10) || 0;
+        let z = currentZ;
+        for (let node = menu; node && node !== document.body; node = node.parentElement) {
+            const menuZ = Number.parseInt(getComputedStyle(node).zIndex, 10);
+            if (menuZ >= z) z = menuZ + 1;
+        }
+        if (z !== currentZ) overlay.style.zIndex = String(z);
+    }
 
-    // 關閉 Modal 的輔助函式 (✨ 加入捲軸狀態防呆)
-    const closeModal = () => {
+    const enterTimer = setTimeout(() => {
+        if (!overlay.isConnected) return;
+        overlay.style.opacity = '1';
+        sheet.style.transform = 'translateY(0)';
+    }, 10);
+
+    let closing = false;
+    const close = () => {
+        if (closing || !overlay.isConnected) return;
+        closing = true;
+        clearTimeout(enterTimer);
+        sheet.querySelectorAll('button').forEach(button => { button.disabled = true; });
         overlay.style.opacity = '0';
-        overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(100%)';
+        sheet.style.transform = 'translateY(100%)';
         setTimeout(() => {
+            if (!overlay.isConnected) return; // 已被新的面板取代。
             overlay.remove();
-            // ✨ 核心修復：檢查背後的文章 Modal 是否還開著，如果開著就保持鎖定狀態
-            const mdModal = document.getElementById('md-modal');
-            if (!mdModal || !mdModal.classList.contains('active')) {
-                window.unlockScroll();
-            }
+            window.unlockScroll();
         }, 300);
     };
 
+    overlay.querySelector('.cancel').onclick = close;
+    overlay.onclick = (event) => { if (event.target === overlay) close(); };
+    return { overlay, close };
+}
+
+window.showPdfActionModal = function(href, title) {
     // ✨ 判斷是否為 PWA (Standalone) 模式
     const isPWA = window.isPWAEnvironment();
     
@@ -7589,7 +7485,7 @@ window.showPdfActionModal = function(href, title) {
     const viewBtnIcon = GLOBAL_SVGS.newTab;
     const downloadBtnDisplay = isPWA ? 'none' : 'flex';
 
-    overlay.innerHTML = `
+    const { overlay, close } = openPdfActionSheet(`
         <div class="pdf-action-sheet">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title">${title}</div>
@@ -7604,15 +7500,7 @@ window.showPdfActionModal = function(href, title) {
                 <button id="pdf-modal-close" class="pdf-action-btn cancel">取消</button>
             </div>
         </div>
-    `;
-
-    document.body.appendChild(overlay);
-    window.lockScroll();
-
-    setTimeout(() => {
-        overlay.style.opacity = '1';
-        overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(0)';
-    }, 10);
+    `);
 
     // 綁定事件
     overlay.querySelector('#pdf-view-btn').onclick = () => {
@@ -7623,19 +7511,16 @@ window.showPdfActionModal = function(href, title) {
             // 普通瀏覽器直接另開分頁即可
             window.open(href, '_blank');
         }
-        closeModal();
+        close();
     };
 
     if (!isPWA) {
         overlay.querySelector('#pdf-download-btn').onclick = () => {
             // ✨ 單純下載 PDF，傳入 false
             window.triggerSecureDownload(href, title, false);
-            closeModal();
+            close();
         };
     }
-
-    overlay.querySelector('#pdf-modal-close').onclick = closeModal;
-    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
 };
 
 
@@ -7701,39 +7586,12 @@ window.toggleWebFullscreen = function(videoEl) {
 // 🖥️ 系統重載與記憶重置底部選單 (完美借用 PDF Modal UI)
 // ==========================================
 window.showSystemReloadModal = function() {
-    // 1. 強制隱藏漢堡選單抽屜
-    if (typeof window.closeDrawer === 'function') window.closeDrawer();
-    if (typeof window.closeMenu === 'function') window.closeMenu();
-    document.querySelectorAll('.drawer, #drawer, #category-drawer, #nav-drawer, #menu-drawer, .nav-menu').forEach(el => {
-        el.classList.remove('is-open', 'active', 'open');
-    });
-    document.querySelectorAll('.drawer-overlay, #drawer-overlay, #overlay, .menu-overlay').forEach(el => {
-        el.classList.remove('is-active', 'active', 'show');
-    });
-
-    // 2. 防呆：移除已存在的彈窗
-    const existing = document.getElementById('pdf-action-modal');
-    if (existing) existing.remove();
-
-    // 3. 建立 Overlay (✨ 核心魔法：直接掛上 PDF 彈窗的 ID，完美繼承排版與遮罩樣式)
-    const overlay = document.createElement('div');
-    overlay.id = 'pdf-action-modal';
-
-    const closeModal = () => {
-        overlay.style.opacity = '0';
-        const sheet = overlay.querySelector('.pdf-action-sheet');
-        if (sheet) sheet.style.transform = 'translateY(100%)';
-        setTimeout(() => {
-            overlay.remove();
-        }, 300);
-    };
-
     // 準備 SVG 圖示
     const refreshIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>`;
     const trashIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
 
     // 套用與 PDF 彈窗 100% 相同的 HTML 結構 (pdf-action-sheet, pdf-action-btn)
-    overlay.innerHTML = `
+    const { overlay, close } = openPdfActionSheet(`
         <div class="pdf-action-sheet">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title" style="color: var(--accent); font-family: monospace;">&gt;_ 系統維護控制台</div>
@@ -7748,22 +7606,13 @@ window.showSystemReloadModal = function() {
                 <button id="sys-modal-close" class="pdf-action-btn cancel">取消</button>
             </div>
         </div>
-    `;
+    `);
 
-    document.body.appendChild(overlay);
-
-    // ✨ 進入動畫
-    setTimeout(() => {
-        overlay.style.opacity = '1';
-        const sheet = overlay.querySelector('.pdf-action-sheet');
-        if (sheet) sheet.style.transform = 'translateY(0)';
-    }, 10);
-
-    // 4. 綁定事件
+    // 綁定維護操作
     overlay.querySelector('#sys-btn-soft-reload').onclick = (e) => {
         e.stopPropagation();
         if (typeof window.triggerHaptic === 'function') window.triggerHaptic('selection');
-        closeModal();
+        close();
         setTimeout(() => window.location.reload(), 300);
     };
 
@@ -7788,23 +7637,15 @@ window.showSystemReloadModal = function() {
         if (savedTheme) localStorage.setItem('theme', savedTheme);
         if (savedTextScale) localStorage.setItem('sys_text_scale', savedTextScale);
 
-        closeModal();
+        close();
 
         setTimeout(() => {
             try {
-                if (typeof window.showSystemRebootScreen === 'function' || typeof showSystemRebootScreen === 'function') {
-                    const rebootFn = window.showSystemRebootScreen || showSystemRebootScreen;
-                    rebootFn("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE", true);
-                    setTimeout(() => { window.location.reload(); }, 1200);
-                } else {
-                    window.location.reload();
-                }
+                window.showSystemRebootScreen("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE", true);
+                setTimeout(() => { window.location.reload(); }, 1200);
             } catch (error) {
                 window.location.reload();
             }
         }, 300);
     };
-
-    overlay.querySelector('#sys-modal-close').onclick = closeModal;
-    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
 };

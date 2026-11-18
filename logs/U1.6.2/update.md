@@ -1,5 +1,7 @@
 ## refactor
-1. 
+1. api path
+2. main.js
+3. generate_projects.py
 
 ## add
 1. switchTabPanel
