@@ -320,8 +320,8 @@ def minify_assets():
             with open('index.html', 'r', encoding='utf-8') as f:
                 html = f.read()
 
-            html = re.sub(r'src="(\./)?main\.js', r'src="\g<1>main.min.js', html)
-            html = re.sub(r'href="(\./)?style\.css', r'href="\g<1>style.min.css', html)
+            html = re.sub(r'src="(\./)?main\.js([?"#])', r'src="\g<1>main.min.js\g<2>', html)
+            html = re.sub(r'href="(\./)?style\.css([?"#])', r'href="\g<1>style.min.css\g<2>', html)
 
             for resource in ('main.min.js', 'style.min.css'):
                 pattern = r'((?:src|href)=")((?:\./)?' + re.escape(resource) + r'(?:\?[^"#]*)?(?:#[^"]*)?)(")'
@@ -411,7 +411,8 @@ def resolve_media_reference(url, base_dir):
     else:
         joined = posixpath.normpath(posixpath.join(str(base_dir).replace('\\', '/'), raw_path))
         local_path = joined
-        web_path = './' + quote(joined.lstrip('./'), safe='/')
+        clean_joined = joined[2:] if joined.startswith('./') else joined.lstrip('/')
+        web_path = './' + quote(clean_joined, safe='/')
     return os.path.normpath(local_path), urlunsplit(('', '', web_path, parts.query, parts.fragment))
 
 def resolve_content_tokens(content, replacements):
@@ -807,6 +808,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
         return
 
     og_settings = {'size': OG_OUTPUT_SIZE, 'content_size': OG_CONTENT_SIZE, 'quality': OG_QUALITY}
+    seen_proj_ids = set()
 
     # 1. 掃描大分類 (Categories)
     for cat_folder in sorted(os.listdir(base_dir)):
@@ -821,7 +823,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
         cat_cover_url = None
         if cat_cover:
             cat_cover_path = os.path.join(cat_path, cat_cover)
-            cat_cover_url = get_hash_url(cat_cover_path, f"{base_dir}/{cat_folder}/{cat_cover}")
+            cat_cover_url = get_hash_url(cat_cover_path, quote(f"{base_dir}/{cat_folder}/{cat_cover}", safe='/'))
 
         output_data["categories"].append({
             "order": cat_data.get('order', default_order),
@@ -882,6 +884,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             apply_normalized_meta(proj_data, clean_proj_data)
 
             proj_id = clean_proj_title
+            if proj_id in seen_proj_ids:
+                raise ValueError(f"偵測到重複的專案 ID '{proj_id}' (路徑: {proj_path})，這會導致 API 產物互相覆寫！")
+            seen_proj_ids.add(proj_id)
             proj_title = clean_proj_data['title']
             proj_desc = proj_data.get('description', '查看專案內容')
 
@@ -995,7 +1000,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 def _make_proj_html_updater(p_title=proj_title, p_desc=proj_desc, p_og_local=proj_og_local_path,
                                             p_cov=local_proj_cover, p_img_b=proj_img_base, p_t_url=proj_target_url, p_s_url=proj_share_url):
                     if p_cov:
-                        hashed = resolve_hashed_asset(p_og_local, p_img_b, p_cov, f"{BASE_URL}/{p_cov}")
+                        hashed = resolve_hashed_asset(p_og_local, p_img_b, p_cov, f"{BASE_URL}/{quote(p_cov, safe='/')}")
                     else:
                         hashed = resolve_hashed_asset("assets/og.png", p_img_b)
                     return html_template.format(
@@ -1019,6 +1024,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             # 3. 掃描專案底下的文章 (Articles)
             articles_dir = os.path.join(proj_path, 'articles')
             if os.path.isdir(articles_dir):
+                seen_art_ids = set()
                 art_folders = [
                     root for root, _, files in os.walk(articles_dir)
                     if 'detail.json' in files
@@ -1060,6 +1066,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     try:
                         stats["art_total"] += 1
                         art_id = clean_art_title
+                        if art_id in seen_art_ids:
+                            raise ValueError(f"專案 '{proj_id}' 內偵測到重複的文章 ID '{art_id}' (路徑: {item_path})")
+                        seen_art_ids.add(art_id)
                         art_dir = os.path.join("api", proj_id, art_id)
                         os.makedirs(art_dir, exist_ok=True)
 
@@ -1294,9 +1303,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                         art_share_url = f"{BASE_URL}/api/{proj_id}/{art_id}/index.html"
                         art_html_path = os.path.join(art_dir, "index.html")
 
+                        grp_cover_dep = None
+                        if art_group and 'groups' in proj_data:
+                            g_cov_rel = proj_data['groups'].get(art_group, {}).get('cover')
+                            if g_cov_rel:
+                                grp_cover_dep = os.path.normpath(os.path.join(proj_path, g_cov_rel))
+
                         art_html_status, art_detail_hash = check_hash_status(
                             art_detail_path, art_html_path, art_cache, 'art_detail', a_overwrite_json,
-                            dependencies=[md_file_path, proj_detail_path, local_cover_path, local_proj_cover, bg_image_path, 'assets/og.png'],
+                            dependencies=[md_file_path, proj_detail_path, local_cover_path, grp_cover_dep, local_proj_cover, bg_image_path, 'assets/og.png'],
                             settings={'template': html_template, 'base_url': BASE_URL}
                         )
                         current_hashes['art_detail'] = art_detail_hash
@@ -1311,14 +1326,14 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 a_t_url=art_target_url, a_s_url=art_share_url
                             ):
                                 if m_cov:
-                                    a_img_b = f"{BASE_URL}/api/{p_id}/{a_id}/og.webp"
-                                    hashed = resolve_hashed_asset(a_og_local, a_img_b, l_cov, f"{BASE_URL}/{r_base}/{m_cov}")
+                                    a_img_b = f"{BASE_URL}/api/{quote(str(p_id), safe='')}/{quote(str(a_id), safe='')}/og.webp"
+                                    hashed = resolve_hashed_asset(a_og_local, a_img_b, l_cov, f"{BASE_URL}/{quote(f'{r_base}/{m_cov}', safe='/')}")
                                 else:
                                     grp_og = p_data.get('groups', {}).get(a_grp, {}).get('og_image') if a_grp else None
                                     if grp_og:
                                         hashed = grp_og
                                     elif p_cov:
-                                        hashed = resolve_hashed_asset(p_og_local, p_img_b, p_cov, f"{BASE_URL}/{p_cov}")
+                                        hashed = resolve_hashed_asset(p_og_local, p_img_b, p_cov, f"{BASE_URL}/{quote(p_cov, safe='/')}")
                                     else:
                                         hashed = resolve_hashed_asset("assets/og.png", p_img_b)
                                 return html_template.format(
@@ -1441,11 +1456,11 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     g_obj['og_image'] = get_hash_url(o_local, o_base)
         if '_cover_meta' in proj:
             t_local, t_base, orig_cov = proj.pop('_cover_meta')
-            proj['cover_image'] = resolve_hashed_asset(t_local, t_base, orig_cov, orig_cov)
+            proj['cover_image'] = resolve_hashed_asset(t_local, t_base, orig_cov, quote(orig_cov, safe='/'))
         for art in proj.get('articles', []):
             if '_cover_meta' in art:
                 t_local, t_base, l_cov, rel_cov = art.pop('_cover_meta')
-                art['cover_image'] = resolve_hashed_asset(t_local, t_base, l_cov, rel_cov)
+                art['cover_image'] = resolve_hashed_asset(t_local, t_base, l_cov, quote(rel_cov, safe='/'))
 
     # 寫入所有需要更新的 contents.json 與 index.html
     resolved_contents = []

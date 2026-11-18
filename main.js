@@ -188,13 +188,16 @@ document.documentElement.style.setProperty('--marquee-speed', `${CONFIG.MARQUEE_
 window.siteProjects = [];
 
 // ✨ 取得細項檔案的專屬 Cache Hash
-window.getResVersion = function(key) {
+window.readDataVersions = function() {
     try {
-        const versions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
-        return versions[key] || CONFIG.VERSION;
-    } catch (e) {
-        return CONFIG.VERSION;
+        const data = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
+        return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+    } catch (_) {
+        return {};
     }
+};
+window.getResVersion = function(key) {
+    return window.readDataVersions()[key] || CONFIG.VERSION;
 };
 
 // ==========================================
@@ -204,18 +207,32 @@ window.getResVersion = function(key) {
 // 1. 記憶體快取版 Storage 管理器 (消滅重複的 JSON.parse 與同步 I/O 阻塞)
 window.SysStorage = {
     _cache: new Map(),
-    _getCacheKey(key, storage) {
-        return `${storage === sessionStorage ? 'S' : 'L'}_${key}`;
+    _prefix: 'sys_set_member:',
+    _cacheKey(key, storage) {
+        return (storage === localStorage ? 'L:' : 'S:') + key;
+    },
+    _members(key, storage, markers = null) {
+        let list;
+        try { list = JSON.parse(storage.getItem(key) || '[]'); } catch (_) {}
+        const members = new Set(Array.isArray(list) ? list.filter(v => typeof v === 'string') : []);
+        if (storage === localStorage) {
+            const prefix = this._prefix + key + ':';
+            for (let i = 0; i < storage.length; i++) {
+                const name = storage.key(i);
+                if (name && name.startsWith(prefix)) {
+                    members.add(name.slice(prefix.length));
+                    if (markers) markers.push(name);
+                }
+            }
+        }
+        return members;
     },
     getSet(key, storage = localStorage) {
-        const ck = this._getCacheKey(key, storage);
+        const ck = this._cacheKey(key, storage);
         if (!this._cache.has(ck)) {
-            try {
-                const raw = JSON.parse(storage.getItem(key) || '[]');
-                this._cache.set(ck, new Set(Array.isArray(raw) ? raw : []));
-            } catch (e) {
-                this._cache.set(ck, new Set());
-            }
+            let set;
+            try { set = this._members(key, storage); } catch (_) { set = new Set(); }
+            this._cache.set(ck, set);
         }
         return this._cache.get(ck);
     },
@@ -225,18 +242,73 @@ window.SysStorage = {
     add(key, val, storage = localStorage) {
         const set = this.getSet(key, storage);
         if (set.has(val)) return false;
-        set.add(val);
         try {
-            storage.setItem(key, JSON.stringify([...set]));
-        } catch (e) {
-            console.warn('[SysStorage] 寫入失敗:', e);
+            // 即使另一個分頁的 storage 事件還沒送達，新增前也會看到它的金鑰／碎片。
+            const latest = this._members(key, storage);
+            latest.forEach(member => set.add(member));
+            if (latest.has(val)) return false;
+            if (storage !== localStorage) {
+                latest.add(val);
+                storage.setItem(key, JSON.stringify([...latest]));
+            } else {
+                // 各成員先各存一筆；兩個分頁即使同時寫，或在等鎖時關頁也不會互蓋。
+                const marker = this._prefix + key + ':' + val;
+                storage.setItem(marker, '1');
+                const merge = compact => {
+                    if (storage.getItem(marker) === null) return; // 已合併或使用者已重設
+                    const markers = compact ? [] : null;
+                    storage.setItem(key, JSON.stringify([...this._members(key, storage, markers)]));
+                    // 同時收攏上次關頁留下的紀錄；只清除本次已寫入陣列的成員。
+                    if (markers) markers.forEach(name => storage.removeItem(name));
+                };
+                if (window.navigator?.locks?.request) {
+                    // 所有正常寫入在同一把鎖內合併回原本的陣列。若鎖被拒，獨立紀錄仍有效。
+                    window.navigator.locks.request(this._prefix + key, () => merge(true))
+                        .catch(err => console.warn('[SysStorage] 保留未合併的成員:', err));
+                } else {
+                    // 沒有 Web Locks 時保留成員紀錄，下一次讀取會與相容用陣列取聯集。
+                    merge(false);
+                }
+            }
+        } catch (err) {
+            console.warn('[SysStorage] 寫入失敗:', err);
         }
+        set.add(val);
         return true;
     },
-    clearCache() {
-        this._cache.clear();
-    }
+    invalidate(key, storage) {
+        if (key === null) {
+            const scope = this._cacheKey('', storage);
+            for (const name of this._cache.keys()) if (name.startsWith(scope)) this._cache.delete(name);
+        } else {
+            this._cache.delete(this._cacheKey(key, storage));
+        }
+    },
+    removeLocalSet(key) {
+        const prefix = this._prefix + key + ':';
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const name = localStorage.key(i);
+            if (name && name.startsWith(prefix)) localStorage.removeItem(name);
+        }
+        localStorage.removeItem(key);
+        this.invalidate(key, localStorage);
+    },
+    clearCache() { this._cache.clear(); }
 };
+window.addEventListener('storage', event => {
+    const storage = event.storageArea;
+    if (storage !== localStorage && storage !== sessionStorage) return;
+    const prefix = window.SysStorage._prefix;
+    const key = event.key?.startsWith(prefix) ? event.key.slice(prefix.length).split(':', 1)[0] : event.key;
+    window.SysStorage.invalidate(key, storage);
+    if (storage === localStorage && (key === null || key === 'sys_unlocked_secrets')) {
+        window._keysUnlockedSinceLastIndex = true;
+        if (!window._keysRefreshFrame) window._keysRefreshFrame = requestAnimationFrame(() => {
+            window._keysRefreshFrame = 0;
+            window.refreshHomeKeysUI();
+        });
+    }
+});
 
 // 2. HTML 字串安全跳脫與標籤剝除工具
 window.escapeHtml = function(str) {
@@ -328,6 +400,21 @@ window.clearArticleObservers = function() {
 };
 
 
+// 每次確定要離開目前畫面時更新代號，讓先前的下載與延後的畫面切換一起失效。
+window._modalNavigation = 0;
+window.beginModalNavigation = function() {
+    const navigation = ++window._modalNavigation;
+    if (window._activeFetcher) {
+        window._activeFetcher.abort();
+        window._activeFetcher = null;
+        window.toggleLoading(false);
+    }
+    if (document.body.style.cursor === 'wait') document.body.style.cursor = '';
+    window._cancelModalTransition?.();
+    window.clearArticleObservers();
+    return navigation;
+};
+
 // ==========================================
 // ✨ 機密檔案解鎖記憶引擎 (支援碎片收集 Key Fragments & 多重邏輯 DNF)
 // ==========================================
@@ -379,6 +466,7 @@ window.unlockSecret = function(rawKey) {
     if (!spec) return null;
     const { baseId, fragIndex, reqCount, hasExplicitTotal, storeKey } = spec;
 
+    const acquired = window.SysStorage.add('sys_unlocked_secrets', storeKey);
     const unlockedSet = window.SysStorage.getSet('sys_unlocked_secrets');
     const countFragments = () => {
         let count = 0;
@@ -387,11 +475,10 @@ window.unlockSecret = function(rawKey) {
         return count;
     };
 
-    if (unlockedSet.has(storeKey)) {
+    if (!acquired) {
         return { status: 'ALREADY_HAVE', baseId, currentCount: countFragments(), reqCount, hasExplicitTotal, fragIndex };
     }
     
-    window.SysStorage.add('sys_unlocked_secrets', storeKey);
     window._keysUnlockedSinceLastIndex = true;
     setTimeout(() => { if (window.refreshHomeKeysUI) window.refreshHomeKeysUI(); }, 500);
     
@@ -525,6 +612,21 @@ window.refreshHomeKeysUI = function() {
                     };
                 } else {
                     card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
+                }
+            } else if (proj.required_key) {
+                const hidden = (proj.lock_mode || 'visible') === 'hidden';
+                card.classList.toggle('is-key-locked', !hidden);
+                card.classList.toggle('key-hidden-card', hidden);
+                card.querySelector('.card-secret-pin')?.classList.add('key-lock-pin');
+                const prompt = window.getLockPromptText(proj);
+                card.onclick = event => {
+                    event.stopPropagation();
+                    window.showSystemToast?.('>_ ACCESS_DENIED', '存取被拒', prompt + ' 才能解鎖', 4000, 'error');
+                };
+                const button = card.querySelector('.card-action-btn');
+                if (!hidden && button && proj.articles?.length) {
+                    button.style.color = 'var(--error-color)';
+                    button.innerHTML = '<div class="card-action-icon-wrap">' + GLOBAL_SVGS.secretPinSmall + '</div>' + window.escapeHtml(prompt) + '解鎖';
                 }
             }
         }
@@ -1573,21 +1675,23 @@ window.safeFetchWithGuard = async function(url, options = {}) {
     document.body.style.cursor = 'wait';
 
     let isTimeout = false;
+    let status = null;
     const timeoutId = setTimeout(() => { isTimeout = true; controller.abort(); }, 8000);
 
     try {
         await window.debugDelay();
         const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (!res.ok) throw new Error('Fetch failed');
+        status = res.status;
+        if (!res.ok) throw new Error(`HTTP ${status}`);
         const data = await (options.isJson ? res.json() : res.text());
-        return { success: true, data, controller };
+        if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        return { success: true, data, status, controller };
     } catch (error) {
-        clearTimeout(timeoutId);
-        const aborted = error.name === 'AbortError' && !isTimeout;
+        const aborted = controller.signal.aborted && !isTimeout;
         const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
-        return { success: false, aborted, isTimeout, isOffline, error, controller };
+        return { success: false, aborted, isTimeout, isOffline, status, error, controller };
     } finally {
+        clearTimeout(timeoutId);
         if (window._activeFetcher === controller) {
             document.body.style.cursor = '';
             window.toggleLoading(false);
@@ -1732,20 +1836,13 @@ window.initJumpToast = function(container, itemSelector) {
 window._mermaidRetryCount = 0;
 window.renderAllMermaidCharts = function(rootElement = document, onComplete = null) {
     if (window.mermaid) {
+        const charts = Array.from(rootElement.querySelectorAll('.mermaid'));
+        if (!charts.length) { if (onComplete) onComplete(); return; }
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
         window.initMermaidWithTheme(currentTheme);
-
-        rootElement.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
+        // 已渲染的 SVG 不再當成 Mermaid 原始碼；單圖重整會自行還原原文。
         
-        // 支援局部重繪，避免重繪時干擾其他圖表
-        let queryTarget = '.mermaid';
-        if (rootElement.classList && rootElement.classList.contains('mermaid-container')) {
-            const tempId = 'mermaid-reload-' + Date.now();
-            const mDiv = rootElement.querySelector('.mermaid');
-            if (mDiv) { mDiv.id = tempId; queryTarget = `#${tempId}`; }
-        }
-
-        window.mermaid.run({ querySelector: queryTarget })
+        return window.mermaid.run({ nodes: charts })
         .catch(e => console.warn('Mermaid 語法錯誤:', e))
         .finally(() => {
             // ✨ 核心修復：強制 SVG 補上 height: auto，解決大小自適應錯亂
@@ -1753,13 +1850,8 @@ window.renderAllMermaidCharts = function(rootElement = document, onComplete = nu
                 svg.style.maxWidth = '100%'; svg.style.height = 'auto';
             });
             rootElement.querySelectorAll('.mermaid').forEach(el => window.applyMermaidAspectRatio(el));
-            rootElement.querySelectorAll('.mermaid-container').forEach(c => c.classList.remove('drag-initialized'));
-            window.initMermaidDrag();
+            window.initMermaidDrag(rootElement);
             
-            if (queryTarget.startsWith('#')) {
-                const mDiv = document.querySelector(queryTarget);
-                if(mDiv) mDiv.removeAttribute('id');
-            }
             if (onComplete) onComplete();
         });
     } else if (window._mermaidRetryCount < 10) {
@@ -1774,40 +1866,46 @@ window.renderAllMermaidCharts = function(rootElement = document, onComplete = nu
 // ==========================================
 // ✨ 共用捲軸陰影提示系統 (Scroll Hints Engine - rAF 節流整合版)
 // ==========================================
-window.initScrollHints = function(container, hintLeft, hintRight, onUpdate = null) {
+window.initScrollHints = function(container, hintLeft, hintRight, beforeMeasure = null) {
     if (!container || !hintLeft || !hintRight) return;
-
-    let ticking = false;
-    const checkScroll = () => {
-        if (typeof onUpdate === 'function') onUpdate();
-
+    if (container._scrollHintsCleanup) container._scrollHintsCleanup();
+    let frame = null, needsLayout = false, disposed = false;
+    const update = () => {
+        frame = null;
+        if (disposed) return;
+        const measureLayout = needsLayout;
+        needsLayout = false;
+        if (measureLayout && beforeMeasure) beforeMeasure();
         const isScrollable = container.scrollWidth > container.clientWidth + 5;
-        const isAtEnd = Math.ceil(container.scrollLeft + container.clientWidth) >= Math.floor(container.scrollWidth) - 10;
-        const isAtStart = container.scrollLeft <= 10;
-
-        hintRight.classList.toggle('visible', isScrollable && !isAtEnd);
-        hintLeft.classList.toggle('visible', isScrollable && !isAtStart);
-        ticking = false;
+        const atEnd = Math.ceil(container.scrollLeft + container.clientWidth) >= Math.floor(container.scrollWidth) - 10;
+        hintRight.classList.toggle('visible', isScrollable && !atEnd);
+        hintLeft.classList.toggle('visible', isScrollable && container.scrollLeft > 10);
     };
-
-    const requestCheck = () => {
-        if (!ticking) {
-            window.requestAnimationFrame(checkScroll);
-            ticking = true;
-        }
+    const schedule = (layout = false) => {
+        if (disposed) return;
+        needsLayout = needsLayout || layout;
+        if (frame === null) frame = window.requestAnimationFrame(update);
     };
-
-    container.addEventListener('scroll', requestCheck, { passive: true });
-    container.querySelectorAll('img').forEach(img => {
-        if (img.complete) requestCheck();
-        else img.addEventListener('load', requestCheck, { once: true });
-    });
-
-    const ro = new ResizeObserver(requestCheck);
-    ro.observe(container);
-    if (container.closest('#view-article')) window.registerArticleObserver(ro);
-
-    setTimeout(checkScroll, 100);
+    const onScroll = () => schedule(false);
+    const onImageLoad = () => schedule(true);
+    const observer = new ResizeObserver(() => schedule(true));
+    container.addEventListener('scroll', onScroll, { passive: true });
+    const images = Array.from(container.querySelectorAll('img'));
+    images.forEach(img => { if (!img.complete) img.addEventListener('load', onImageLoad); });
+    observer.observe(container);
+    const cleanup = () => {
+        if (disposed) return;
+        disposed = true;
+        observer.disconnect();
+        container.removeEventListener('scroll', onScroll);
+        images.forEach(img => img.removeEventListener('load', onImageLoad));
+        if (frame !== null) window.cancelAnimationFrame(frame);
+        if (container._scrollHintsCleanup === cleanup) delete container._scrollHintsCleanup;
+    };
+    container._scrollHintsCleanup = cleanup;
+    if (container.closest('#view-article')) window.registerArticleObserver({ disconnect: cleanup });
+    schedule(true);
+    return cleanup;
 };
 
 // ==========================================
@@ -4675,7 +4773,7 @@ async function checkSystemVersionAndBoot() {
         }
         // 2. 檢查內容層級更新 (如果系統無需更新，才檢查 projects 目錄的 Hash 是否改變)
         else if (contentData && contentData.projects) {
-            const localDataVersions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
+            const localDataVersions = window.readDataVersions();
             
             // ✨ 如果本地有舊紀錄，且專案 (projects) 的 Hash 發生改變，才需要強制重開機刷新首頁
             if (localDataVersions.projects && localDataVersions.projects !== contentData.projects) {
@@ -4818,6 +4916,7 @@ if (!window.modalBodyObserver) {
 }
 
 function switchModalContent(updateDOMCallback, afterUpdateCallback = null, animateTopBar = true) {
+    window._cancelModalTransition?.();
     const isModalOpen = modalOverlay.classList.contains('active');
     const topLeft = document.getElementById('modal-top-left');
     const modalContainer = document.querySelector('.modal-content');
@@ -4839,7 +4938,8 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
             topLeft.classList.add('content-fade-out');
         }
         
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+            window._cancelModalTransition = null;
             modalContainer.style.transition = 'none'; 
             modalContainer.style.height = ''; 
             
@@ -4873,6 +4973,12 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
                 modalContainer.style.transition = ''; 
             }, 50);
         }, 120);
+        window._cancelModalTransition = () => {
+            clearTimeout(timer);
+            window._cancelModalTransition = null;
+            modalBody.classList.remove('content-fade-out');
+            if (topLeft) topLeft.classList.remove('content-fade-out');
+        };
     } else {
         updateDOMCallback();
         window.updateTopBarHeight(); // ✨ 第一次開啟也要更新
@@ -4889,12 +4995,6 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
 // 打開該專案的「目錄頁面」
 // ==========================================
 window.openProjectIndex = function(projectId, restoreScroll = false) {
-    // 🔥 全域中斷防護：退回目錄時，立刻中斷任何下載！
-    if (window._activeFetcher) {
-        window._activeFetcher.abort();
-        window._activeFetcher = null;
-    }
-    if (window.toggleLoading) window.toggleLoading(false);
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !proj.articles) return;
 
@@ -4927,6 +5027,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         return;
     }
 
+    window.beginModalNavigation();
     window.isRendering = false; 
     window.historyStack = []; 
 
@@ -5375,18 +5476,12 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     
     // 驗證 contents.json，失敗時保留文章操作，只替換內文。
     const hasContentPath = typeof article.content_path === 'string' && article.content_path.trim() !== '';
-    if (!hasContentPath && window._activeFetcher) {
-        window._activeFetcher.abort();
-        window._activeFetcher = null;
-        window.toggleLoading(false);
-        document.body.style.cursor = '';
-    }
+    const navigation = window.beginModalNavigation();
     const fetchResult = hasContentPath
         ? await window.safeFetchWithGuard(article.content_path, { isJson: true })
         : { success: false, isInvalidData: true };
 
-    if (fetchResult.aborted) return;
-    if (window._activeFetcher) return; // 保留切換文章時的中斷防護
+    if (fetchResult.aborted || navigation !== window._modalNavigation) return;
 
     const hasContent = fetchResult.success && fetchResult.data && typeof fetchResult.data.content === 'string';
     if (!hasContent) {
@@ -5412,7 +5507,6 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             // ✨ 隱藏目錄，顯示並注入文章
             if (viewIndex) viewIndex.style.display = 'none';
             if (viewArticle) {
-                window.clearArticleObservers();
                 viewArticle.style.display = 'block';
                 // ✨ 賦予目前渲染環境的專屬 ID，供解鎖特效記憶使用
                 window._currentRenderPlace = projectId + '_' + articleIndex;
@@ -5537,6 +5631,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             const keys = activeView.querySelectorAll('[data-secret-key]');
             if (keys.length > 0) {
                 const keyObserver = window.registerArticleObserver(new IntersectionObserver((entries) => {
+                    if (navigation !== window._modalNavigation) return;
                     entries.forEach(entry => {
                         if (!entry.isIntersecting) return;
                         const keyEl = entry.target;
@@ -5578,7 +5673,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
 
                 keys.forEach(k => {
                     const spec = window.parseKeySpec(k.getAttribute('data-secret-key'));
-                    if (spec && !window.SysStorage.has('sys_unlocked_secrets', spec.storeKey)) {
+                    if (!spec) return;
+                    if (!window.SysStorage.has('sys_unlocked_secrets', spec.storeKey)) {
                         keyObserver.observe(k);
                     } else {
                         k.classList.add('is-key-triggered');
@@ -5592,6 +5688,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             const autoUnlockBlocks = activeView.querySelectorAll('.pending-auto-unlock');
             if (autoUnlockBlocks.length > 0) {
                 const autoObserver = window.registerArticleObserver(new IntersectionObserver((entries) => {
+                    if (navigation !== window._modalNavigation) return;
                     entries.forEach(entry => {
                         if (!entry.isIntersecting) return;
                         const block = entry.target;
@@ -6073,12 +6170,7 @@ window.goBackInHistory = function() {
 };
 
 function closeModal() {
-    // 🔥 全域中斷防護：關閉視窗時，立刻中斷任何下載！
-    if (window._activeFetcher) {
-        window._activeFetcher.abort();
-        window._activeFetcher = null;
-    }
-    if (window.toggleLoading) window.toggleLoading(false);
+    window.beginModalNavigation();
 
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
@@ -6371,17 +6463,15 @@ window.fullscreenMermaid = function(btn) {
 // ==========================================
 // ✨ Mermaid 專業控制台引擎 (支援手機點擊與桌機絲滑拖曳)
 // ==========================================
-window.initMermaidDrag = function() {
-    document.querySelectorAll('.mermaid-container').forEach(container => {
-        // 🔥 修復 1：移除 dataset.engineInit 的直接 return 阻斷
-        // 改為判斷是否已經有我們自定義的標記，如果有，代表已經綁定過了，跳過。
-        // 但我們允許在「重整」時強制重新綁定（因為重整時我們會手動清除這個標記）
-        if (container.classList.contains('drag-initialized')) return;
-        container.classList.add('drag-initialized');
-
+window.initMermaidDrag = function(rootElement = document) {
+    const containers = Array.from(rootElement.querySelectorAll('.mermaid-container'));
+    if (rootElement.classList?.contains('mermaid-container')) containers.unshift(rootElement);
+    containers.forEach(container => {
         const wrapper = container.querySelector('.mermaid-wrapper');
         const mermaidDiv = container.querySelector('.mermaid');
-        if (!wrapper || !mermaidDiv) return;
+        if (!wrapper || !mermaidDiv || container._mermaidDragWrapper === wrapper) return;
+        container._mermaidDragWrapper = wrapper;
+        container.classList.add('drag-initialized');
 
         // ✨ 觸控版專屬：點擊直接進入大圖預覽
         wrapper.addEventListener('click', (e) => {
@@ -6469,6 +6559,7 @@ window.initMermaidDrag = function() {
 };
 
 function show404Modal(title, message) {
+    window.beginModalNavigation();
     const modalOverlay = document.getElementById('md-modal');
     const viewIndex = document.getElementById('view-index');
     const viewArticle = document.getElementById('view-article');
@@ -6813,8 +6904,7 @@ window.applyIndentToVerticalWrapper = function(container) {
 window.cachedMarkdownFiles = {}; // 統一管理快取
 
 window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cacheKey, extraHtml = '') {
-    if (window._activeFetcher) { window._activeFetcher.abort(); window._activeFetcher = null; }
-    window.toggleLoading(false);
+    const navigation = window.beginModalNavigation();
 
     let mdText = "載入失敗"; let isError = false;
 
@@ -6833,7 +6923,7 @@ window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cach
         }
     }
 
-    if (window._activeFetcher !== null) return;
+    if (navigation !== window._modalNavigation) return;
 
     switchModalContent(
         () => {
@@ -6906,11 +6996,10 @@ window.showLicenseModal = () => window.showSystemMarkdownModal(
 window.cachedChangelogs = null; 
 
 window.showChangelogModal = async function(isSystemFallback = false) {
+    const navigation = window.beginModalNavigation();
     document.body.style.cursor = 'wait';
     window.toggleLoading(true, 'FETCHING_DATA...');
     
-    // 🔥 攔截前次請求
-    if (window._activeFetcher) window._activeFetcher.abort();
     window._activeFetcher = new AbortController();
     const controller = window._activeFetcher;
     
@@ -6925,6 +7014,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
             });
             if (vRes && vRes.ok) {
                 const vData = await vRes.json();
+                if (navigation !== window._modalNavigation) return;
                 if (vData.version && vData.version !== CONFIG.VERSION) {
                     console.warn(`[MANUAL_UPDATE] 發現新版本 ${vData.version}，準備強制更新...`);
                     sessionStorage.setItem('sys_intent', 'changelog');
@@ -6957,7 +7047,9 @@ window.showChangelogModal = async function(isSystemFallback = false) {
             // 🔥 第二個 Fetch 綁定 signal
             const response = await fetch(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`, { signal: controller.signal });
             if (!response.ok) throw new Error('找不到 changelogs.json');
-            window.cachedChangelogs = await response.json();
+            const logs = await response.json();
+            if (navigation !== window._modalNavigation) return;
+            window.cachedChangelogs = logs;
         }
 
     } catch (error) {
@@ -6972,8 +7064,8 @@ window.showChangelogModal = async function(isSystemFallback = false) {
         }
     }
 
-    // 🔥 幽靈渲染防護
-    if (window._activeFetcher !== null) return;
+    // 另一個頁面或錯誤畫面已接手時，不再更新 DOM。
+    if (navigation !== window._modalNavigation) return;
 
     // 共用標題渲染 (邏輯同步精簡)
     function renderChangelogHeader(isDetail = false, logData = null) {
@@ -7253,29 +7345,26 @@ window.syncTabPanelsHeight = function(rootEl = document) {
         groupPanels.forEach(p => { p.style.minHeight = ''; });
 
         let maxHeight = 0;
-
-        // 2. 在同一個同步執行幀內，逐一單獨設為 display: block 量測 (100% 還原真實切換時的亞像素寬度與換行，且瀏覽器不會重繪閃爍)
-        groupPanels.forEach((p, idx) => {
-            groupPanels.forEach((other, oIdx) => {
-                other.style.display = (oIdx === idx) ? 'block' : 'none';
+        groupPanels.forEach(p => { p.style.display = 'none'; });
+        try {
+            groupPanels.forEach(p => {
+                p.style.display = 'block';
+                const rect = p.getBoundingClientRect();
+                const width = p.offsetWidth;
+                const scale = width > 0 ? rect.width / width : 1;
+                const height = scale > 0 ? Math.ceil(rect.height / scale) : p.offsetHeight;
+                maxHeight = Math.max(maxHeight, height);
+                p.style.display = 'none';
             });
-
-            // 校正可能存在的 Modal 過場 scale 變形，並無條件進位消滅 0.5px 亞像素跳動
-            const rect = p.getBoundingClientRect();
-            const scale = p.offsetWidth > 0 ? (rect.width / p.offsetWidth) : 1;
-            const exactHeight = scale > 0 ? Math.ceil(rect.height / scale) : p.offsetHeight;
-
-            if (exactHeight > maxHeight) maxHeight = exactHeight;
-        });
-
-        // 3. 還原各面板原本的顯示狀態，並鎖定完全一致的整數高度
-        groupPanels.forEach((p, idx) => {
-            p.style.display = origDisplays[idx];
-            if (maxHeight > 0) {
-                p.style.minHeight = `${maxHeight}px`;
-                p.style.boxSizing = 'border-box';
-            }
-        });
+        } finally {
+            groupPanels.forEach((p, idx) => {
+                p.style.display = origDisplays[idx];
+                if (maxHeight > 0) {
+                    p.style.minHeight = `${maxHeight}px`;
+                    p.style.boxSizing = 'border-box';
+                }
+            });
+        }
     });
 
     // 確保量測過程不會影響外層捲軸位置
@@ -7285,11 +7374,14 @@ window.syncTabPanelsHeight = function(rootEl = document) {
 };
 
 // 視窗寬度改變時也自動重新計算分頁高度
+let tabHeightFrame = null;
 window.addEventListener('resize', () => {
-    const viewArticle = document.getElementById('view-article');
-    if (viewArticle && viewArticle.style.display !== 'none' && window.syncTabPanelsHeight) {
-        window.requestAnimationFrame(() => window.syncTabPanelsHeight(viewArticle));
-    }
+    if (tabHeightFrame !== null) return;
+    tabHeightFrame = window.requestAnimationFrame(() => {
+        tabHeightFrame = null;
+        const viewArticle = document.getElementById('view-article');
+        if (viewArticle && viewArticle.style.display !== 'none') window.syncTabPanelsHeight(viewArticle);
+    });
 });
 
 
@@ -7710,13 +7802,14 @@ window.showSystemReloadModal = function() {
         const savedTextScale = localStorage.getItem('sys_text_scale');
 
         // ✨ 徹底清除所有由系統寫入的權限與快取紀錄
-        localStorage.removeItem('sys_unlocked_secrets');
-        localStorage.removeItem('sys_animated_secrets');
+        window.SysStorage.removeLocalSet('sys_unlocked_secrets');
+        window.SysStorage.removeLocalSet('sys_animated_secrets');
         localStorage.removeItem('sys_data_versions');
-        localStorage.removeItem('sys_agreed_sensitive'); // ✨ 新增：清除永久同意的敏感內容紀錄
+        window.SysStorage.removeLocalSet('sys_agreed_sensitive'); // ✨ 新增：清除永久同意的敏感內容紀錄
         
         sessionStorage.clear();
         window.SysStorage.clearCache();
+        window._agreedSensitiveTypes?.clear();
 
         // 恢復無關權限的外觀偏好設定
         if (savedTheme) localStorage.setItem('theme', savedTheme);
