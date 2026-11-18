@@ -24,8 +24,8 @@ import rcssmin  # type: ignore
 # ==========================================
 # 🧠 細項 Hash 快取與版本控制引擎 (Fine-Grained State Cache)
 # ==========================================
-API_LOGIC_VERSION = "U2026-11-18-meta-v2"    # ✨ 修改 Markdown 解析、contents.json 結構時改這個
-HTML_LOGIC_VERSION = "U2026-09-24"   # ✨ 修改 index.html 跳轉模板時改這個
+API_LOGIC_VERSION = "U2026-11-18"    # ✨ 修改 Markdown 解析、contents.json 結構時改這個
+HTML_LOGIC_VERSION = "U2026-11-18"  # 修改分享頁模板或網址生成規則時更新
 IMAGE_LOGIC_VERSION = "U2026-09-24"  # ✨ 修改 OG圖合成、圖片轉檔品質時改這個
 
 # 本地原圖轉檔設定：改動這些值會由本地 manifest 判斷是否重建。
@@ -129,6 +129,14 @@ def parse_folder_meta(folder_name):
     if match:
         return int(match.group(1)), match.group(2)
     return 999, folder_name
+
+
+def register_api_id(identifier, source_dir, seen_ids):
+    if identifier.strip() in ('', '.', '..'):
+        raise ValueError(f"來源資料夾 {source_dir!r} 的 ID {identifier!r} 無法作為獨立的 API 目錄。")
+    if identifier in seen_ids:
+        raise ValueError(f"重複的 API ID {identifier!r} (路徑: {source_dir})，產物會互相覆寫。")
+    seen_ids.add(identifier)
 
 
 def load_detail_json(json_path):
@@ -359,8 +367,7 @@ def get_file_hash(filepath, logic_version=""):
 
 
 def get_hash_url(local_path, base_url):
-    clean_path = local_path.split('?')[0].split('#')[0]
-    version = get_file_hash(clean_path)
+    version = get_file_hash(local_path)
     if not version:
         return base_url
     parts = urlsplit(base_url)
@@ -704,6 +711,9 @@ def _execute_img_task(task):
 
 
 def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_thumb=False, overwrite_pdf_thumb=False, target_folders=None):
+    base_dir = 'projects'
+    # 來源不可讀時讓建置在清空合法產物清單前中止。
+    cat_folders = sorted(os.listdir(base_dir))
     if target_folders is None:
         target_folders = set()
     _FILE_HASH_MEMO.clear()
@@ -717,7 +727,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
     valid_api_files.clear()
     protected_api_dirs.clear()
 
-    base_dir = 'projects'
     output_data = {"categories": [], "projects": []}
     BASE_URL = "https://azustock.github.io"
 
@@ -803,15 +812,15 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 </body>
 </html>"""
 
-    if not os.path.exists(base_dir):
-        cout.error(f"Directory '{base_dir}' not found.")
-        return
-
     og_settings = {'size': OG_OUTPUT_SIZE, 'content_size': OG_CONTENT_SIZE, 'quality': OG_QUALITY}
     seen_proj_ids = set()
 
+    def raise_scan_error(error):
+        # os.walk 預設會略過讀取失敗的目錄，清理階段可能因此誤刪既有產物。
+        raise error
+
     # 1. 掃描大分類 (Categories)
-    for cat_folder in sorted(os.listdir(base_dir)):
+    for cat_folder in cat_folders:
         cat_path = os.path.join(base_dir, cat_folder)
         if not os.path.isdir(cat_path):
             continue
@@ -822,8 +831,14 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
         cat_cover_url = None
         if cat_cover:
-            cat_cover_path = os.path.join(cat_path, cat_cover)
-            cat_cover_url = get_hash_url(cat_cover_path, quote(f"{base_dir}/{cat_folder}/{cat_cover}", safe='/'))
+            # 既有設定可直接填實體檔名，包含字面上的 # 或 %。
+            literal_path = os.path.join(cat_path, cat_cover)
+            if not os.path.isabs(cat_cover) and os.path.isfile(literal_path):
+                cat_cover = quote(literal_path.replace(os.sep, '/'), safe='/')
+            cat_cover_path, cover_url = resolve_media_reference(cat_cover, cat_path)
+            if cover_url.startswith('./'):
+                cover_url = cover_url[2:]
+            cat_cover_url = get_hash_url(cat_cover_path, cover_url)
 
         output_data["categories"].append({
             "order": cat_data.get('order', default_order),
@@ -837,7 +852,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
         # 2. 掃描分類底下的專案 (Projects)
         proj_folders = []
-        for root, dirs, files in os.walk(cat_path):
+        for root, dirs, files in os.walk(cat_path, onerror=raise_scan_error):
             if 'articles' in dirs:
                 dirs.remove('articles')
             if 'detail.json' in files and root != cat_path:
@@ -884,13 +899,12 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             apply_normalized_meta(proj_data, clean_proj_data)
 
             proj_id = clean_proj_title
-            if proj_id in seen_proj_ids:
-                raise ValueError(f"偵測到重複的專案 ID '{proj_id}' (路徑: {proj_path})，這會導致 API 產物互相覆寫！")
-            seen_proj_ids.add(proj_id)
+            register_api_id(proj_id, proj_path, seen_proj_ids)
             proj_title = clean_proj_data['title']
             proj_desc = proj_data.get('description', '查看專案內容')
 
-            proj_api_dir = os.path.join(API_DIR, str(proj_id))
+            proj_api_dir = os.path.join(API_DIR, proj_id)
+            proj_api_url = f"api/{quote(proj_id, safe='')}"
             os.makedirs(proj_api_dir, exist_ok=True)
 
             bg_image_path = os.path.join("assets", "og_base.png")
@@ -911,7 +925,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     if g_cover:
                         g_cover_local_path = os.path.normpath(os.path.join(proj_path, g_cover))
                         if os.path.exists(g_cover_local_path):
-                            thumb_dir = os.path.join(API_DIR, proj_id, "thumbnails")
+                            thumb_dir = os.path.join(proj_api_dir, "thumbnails")
                             os.makedirs(thumb_dir, exist_ok=True)
 
 
@@ -927,7 +941,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 settings={'profile': IMAGE_PROFILES['group_thumb']}
                             ):
                                 proj_needs_update = True
-                            group_obj['_cover_meta'] = (thumb_local_path, f"./api/{proj_id}/thumbnails/{quote(thumb_filename, safe='/')}")
+                            group_obj['_cover_meta'] = (thumb_local_path, f"./{proj_api_url}/thumbnails/{quote(thumb_filename, safe='/')}")
 
                             # (B) 群組 OG 分享圖
                             og_filename = thumbnail_name(g_cover_local_path, proj_path, 'group_og')
@@ -941,7 +955,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 dependencies=[bg_image_path], settings=og_settings
                             ):
                                 proj_needs_update = True
-                            group_obj['_og_meta'] = (og_local_path, f"{BASE_URL}/api/{proj_id}/{quote(og_filename, safe='/')}")
+                            group_obj['_og_meta'] = (og_local_path, f"{BASE_URL}/{proj_api_url}/{quote(og_filename, safe='/')}")
 
                     processed_groups[g_id] = group_obj
                 clean_proj_data['groups'] = processed_groups
@@ -967,7 +981,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     dependencies=[bg_image_path], settings=og_settings
                 ):
                     proj_needs_update = True
-                proj_img_base = f"{BASE_URL}/api/{proj_id}/{proj_og_filename}"
+                proj_img_base = f"{BASE_URL}/{proj_api_url}/{proj_og_filename}"
 
                 proj_thumb_filename = "cover_thumb.webp"
                 proj_thumb_local_path = os.path.join(proj_api_dir, proj_thumb_filename)
@@ -980,12 +994,12 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     settings={'profile': IMAGE_PROFILES['project_thumb']}
                 ):
                     proj_needs_update = True
-                proj_data['_cover_meta'] = (proj_thumb_local_path, f"./api/{proj_id}/{proj_thumb_filename}", local_proj_cover)
+                proj_data['_cover_meta'] = (proj_thumb_local_path, f"./{proj_api_url}/{proj_thumb_filename}", local_proj_cover)
             else:
                 proj_img_base = f"{BASE_URL}/assets/og.png"
 
-            proj_target_url = f"/?p={proj_id}"
-            proj_share_url = f"{BASE_URL}/api/{proj_id}/index.html"
+            proj_target_url = "/?" + urlencode({'p': proj_id})
+            proj_share_url = f"{BASE_URL}/{proj_api_url}/index.html"
             proj_html_path = os.path.join(proj_api_dir, "index.html")
 
             proj_html_status, detail_hash = check_hash_status(
@@ -1026,7 +1040,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             if os.path.isdir(articles_dir):
                 seen_art_ids = set()
                 art_folders = [
-                    root for root, _, files in os.walk(articles_dir)
+                    root for root, _, files in os.walk(articles_dir, onerror=raise_scan_error)
                     if 'detail.json' in files
                 ]
 
@@ -1066,10 +1080,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     try:
                         stats["art_total"] += 1
                         art_id = clean_art_title
-                        if art_id in seen_art_ids:
-                            raise ValueError(f"專案 '{proj_id}' 內偵測到重複的文章 ID '{art_id}' (路徑: {item_path})")
-                        seen_art_ids.add(art_id)
-                        art_dir = os.path.join("api", proj_id, art_id)
+                        register_api_id(art_id, item_path, seen_art_ids)
+                        art_dir = os.path.join(proj_api_dir, art_id)
+                        art_api_url = f"{proj_api_url}/{quote(art_id, safe='')}"
                         os.makedirs(art_dir, exist_ok=True)
 
                         content_filename = "contents.json"
@@ -1157,7 +1170,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     dims = get_image_dimensions(local_main_path)
                                     ar_str = f"&w={dims[0]}&h={dims[1]}" if dims else ""
 
-                                    base_thumb_url = f"./api/{proj_id}/{art_id}/thumbnails/{quote(thumb_filename, safe='/')}"
+                                    base_thumb_url = f"./{art_api_url}/thumbnails/{quote(thumb_filename, safe='/')}"
                                     token = f"__THUMB_URL_{len(pending_replacements)}__"
                                     pending_replacements.append((token, lambda t_p=thumb_local_path, b_u=base_thumb_url: get_hash_url(t_p, b_u)))
 
@@ -1184,7 +1197,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         ):
                                             art_needs_update = True
 
-                                        base_thumb_url = f"./api/{proj_id}/{art_id}/thumbnails/{quote(thumb_filename, safe='/')}"
+                                        base_thumb_url = f"./{art_api_url}/thumbnails/{quote(thumb_filename, safe='/')}"
                                         token = f"__PDF_POSTER_{len(pending_replacements)}__"
                                         def _resolve_pdf_poster(t_p=thumb_local_path, b_u=base_thumb_url):
                                             if not os.path.exists(t_p):
@@ -1241,7 +1254,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                     dims = get_image_dimensions(local_img_path)
                                     size_attrs = f' width="{dims[0]}" height="{dims[1]}" style="aspect-ratio: {dims[0]}/{dims[1]};"' if dims else ""
 
-                                    base_thumb_url = f"./api/{proj_id}/{art_id}/thumbnails/{quote(thumb_filename, safe='/')}"
+                                    base_thumb_url = f"./{art_api_url}/thumbnails/{quote(thumb_filename, safe='/')}"
                                     token = f"__HTML_THUMB_{len(pending_replacements)}__"
                                     pending_replacements.append((token, lambda t_p=thumb_local_path, b_u=base_thumb_url: get_hash_url(t_p, b_u)))
 
@@ -1299,8 +1312,8 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             ):
                                 art_needs_update = True
 
-                        art_target_url = f"/?p={proj_id}&a={art_id}"
-                        art_share_url = f"{BASE_URL}/api/{proj_id}/{art_id}/index.html"
+                        art_target_url = "/?" + urlencode({'p': proj_id, 'a': art_id})
+                        art_share_url = f"{BASE_URL}/{art_api_url}/index.html"
                         art_html_path = os.path.join(art_dir, "index.html")
 
                         grp_cover_dep = None
@@ -1321,12 +1334,12 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             def _make_art_html_updater(
                                 a_title=art_title, p_title=proj_title, a_desc=art_desc,
                                 m_cov=meta_cover, a_og_local=og_local_path, l_cov=local_cover_path,
-                                r_base=rel_base, p_id=proj_id, a_id=art_id, a_grp=art_group,
+                                r_base=rel_base, a_api=art_api_url, a_grp=art_group,
                                 p_data=proj_data, p_og_local=proj_og_local_path, p_cov=local_proj_cover, p_img_b=proj_img_base,
                                 a_t_url=art_target_url, a_s_url=art_share_url
                             ):
                                 if m_cov:
-                                    a_img_b = f"{BASE_URL}/api/{quote(str(p_id), safe='')}/{quote(str(a_id), safe='')}/og.webp"
+                                    a_img_b = f"{BASE_URL}/{a_api}/og.webp"
                                     hashed = resolve_hashed_asset(a_og_local, a_img_b, l_cov, f"{BASE_URL}/{quote(f'{r_base}/{m_cov}', safe='/')}")
                                 else:
                                     grp_og = p_data.get('groups', {}).get(a_grp, {}).get('og_image') if a_grp else None
@@ -1354,7 +1367,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                         # 所有媒體與尺寸回填完成後比較最終內容，避免漏掉只改音訊／影片的更新。
                         def _resolve_all_content(raw_c=content, repls=pending_replacements):
                             return resolve_content_tokens(raw_c, repls)
-                        deferred_content_writes.append((content_filepath, _resolve_all_content, previous_document, a_overwrite_json))
+                        deferred_content_writes.append((content_filepath, _resolve_all_content, previous_document))
                         if art_needs_update or current_hashes != art_cache or not os.path.isfile(article_meta_path):
                             deferred_meta_writes.append((article_meta_path, current_hashes))
                         valid_api_files.add(os.path.abspath(article_meta_path))
@@ -1365,7 +1378,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             "id": art_id,
                             "sort_order": meta_order,
                             "title": meta_title,
-                            "content_path": f"./api/{proj_id}/{art_id}/{content_filename}",
+                            "content_path": f"./{art_api_url}/{content_filename}",
                             "_content_local": content_filepath
                         }
 
@@ -1378,7 +1391,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             article_obj["description"] = meta_desc
                         if meta_cover:
                             article_obj["_cover_meta"] = (
-                                art_thumb_local_path, f"./api/{proj_id}/{art_id}/{art_thumb_filename}",
+                                art_thumb_local_path, f"./{art_api_url}/{art_thumb_filename}",
                                 local_cover_path, f"{rel_base}/{meta_cover}"
                             )
                         if sub_data.get('date'):
@@ -1462,21 +1475,20 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 t_local, t_base, l_cov, rel_cov = art.pop('_cover_meta')
                 art['cover_image'] = resolve_hashed_asset(t_local, t_base, l_cov, quote(rel_cov, safe='/'))
 
-    # 寫入所有需要更新的 contents.json 與 index.html
+    # 先解析所有待寫的內文與分享頁，解析途中失敗時保留舊文字產物。
     resolved_contents = []
-    for path, resolve, previous, force_json in deferred_content_writes:
+    for path, resolve, previous in deferred_content_writes:
         content = resolve()
-        if not force_json and isinstance(previous, dict) and previous.get('content') == content:
+        if previous.get('content') == content:
             stats['json_skipped'] += 1
             continue
         status = 'new' if not os.path.isfile(path) else 'updated'
-        resolved_contents.append((path, json.dumps({'content': content}, ensure_ascii=False), status, force_json))
-
-    for path, payload, status, force_json in resolved_contents:
-        changed = atomic_write(path, payload, _FILE_HASH_MEMO)
-        stats[f"json_{status if (changed or force_json) else 'skipped'}"] += 1
+        resolved_contents.append((path, json.dumps({'content': content}, ensure_ascii=False), status))
 
     resolved_html = [(path, fn()) for path, fn in deferred_html_writes]
+    for path, payload, status in resolved_contents:
+        changed = atomic_write(path, payload, _FILE_HASH_MEMO)
+        stats[f"json_{status if changed else 'skipped'}"] += 1
     for path, html in resolved_html:
         atomic_write(path, html, _FILE_HASH_MEMO)
     for path, hashes in deferred_meta_writes:

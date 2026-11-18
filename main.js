@@ -4100,7 +4100,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         el.removeAttribute('data-processed'); 
                     }
                 });
-                window.mermaid.run({ querySelector: '.mermaid' }).catch(() => {});
+                window.renderAllMermaidCharts(document);
             }
         }
         //主題網頁標籤示切換//
@@ -6997,70 +6997,43 @@ window.cachedChangelogs = null;
 
 window.showChangelogModal = async function(isSystemFallback = false) {
     const navigation = window.beginModalNavigation();
-    document.body.style.cursor = 'wait';
-    window.toggleLoading(true, 'FETCHING_DATA...');
-    
-    window._activeFetcher = new AbortController();
-    const controller = window._activeFetcher;
-    
     let fetchError = false;
 
-    try {
-        if (!isSystemFallback) {
-            // 🔥 第一個 Fetch 綁定 signal
-            const vRes = await fetch(`./version.json?t=${new Date().getTime()}`, { signal: controller.signal }).catch(e => {
-                if (e.name === 'AbortError') throw e; 
-                return null;
-            });
-            if (vRes && vRes.ok) {
-                const vData = await vRes.json();
-                if (navigation !== window._modalNavigation) return;
-                if (vData.version && vData.version !== CONFIG.VERSION) {
-                    console.warn(`[MANUAL_UPDATE] 發現新版本 ${vData.version}，準備強制更新...`);
-                    sessionStorage.setItem('sys_intent', 'changelog');
-                    sessionStorage.removeItem('sys_reboot_count');
+    if (!isSystemFallback) {
+        const vResult = await window.safeFetchWithGuard(`./version.json?t=${new Date().getTime()}`, { isJson: true });
+        if (vResult.aborted || navigation !== window._modalNavigation) return;
+        if (vResult.success && vResult.data && vResult.data.version && vResult.data.version !== CONFIG.VERSION) {
+            const nextVer = vResult.data.version;
+            console.warn(`[MANUAL_UPDATE] 發現新版本 ${nextVer}，準備強制更新...`);
+            sessionStorage.setItem('sys_intent', 'changelog');
+            sessionStorage.removeItem('sys_reboot_count');
 
-                    // 🔥 直接呼叫共用過場畫面引擎
-                    window.showSystemRebootScreen(
-                        'MANUAL_OVERRIDE : UPDATE', 
-                        CONFIG.VERSION, 
-                        vData.version, 
-                        'FETCHING_AND_REBOOTING', 
-                        true
-                    );
-                    
-                    setTimeout(() => {
-                        const newUrl = new URL(window.location.href);
-                        newUrl.searchParams.set('v', new Date().getTime());
-                        window.location.replace(newUrl.toString());
-                    }, 1800);
-                    return;
-                }
-            }
+            // 🔥 直接呼叫共用過場畫面引擎
+            window.showSystemRebootScreen(
+                'MANUAL_OVERRIDE : UPDATE', 
+                CONFIG.VERSION, 
+                nextVer, 
+                'FETCHING_AND_REBOOTING', 
+                true
+            );
+            
+            setTimeout(() => {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('v', new Date().getTime());
+                window.location.replace(newUrl.toString());
+            }, 1800);
+            return;
         }
+    }
 
-        await window.debugDelay();
-
-        if (window.cachedChangelogs !== null) {
-            // 已有快取
+    if (window.cachedChangelogs === null) {
+        const logResult = await window.safeFetchWithGuard(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`, { isJson: true });
+        if (logResult.aborted || navigation !== window._modalNavigation) return;
+        if (logResult.success && Array.isArray(logResult.data)) {
+            window.cachedChangelogs = logResult.data;
         } else {
-            // 🔥 第二個 Fetch 綁定 signal
-            const response = await fetch(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`, { signal: controller.signal });
-            if (!response.ok) throw new Error('找不到 changelogs.json');
-            const logs = await response.json();
-            if (navigation !== window._modalNavigation) return;
-            window.cachedChangelogs = logs;
-        }
-
-    } catch (error) {
-        if (error.name === 'AbortError') return; // 🔥 被中斷就安靜退出
-        console.error("日誌讀取或更新檢查失敗:", error);
-        fetchError = true;
-    } finally {
-        if (window._activeFetcher === controller) {
-            document.body.style.cursor = '';
-            window.toggleLoading(false);
-            window._activeFetcher = null;
+            console.error("日誌讀取或更新檢查失敗:", logResult.error || '無法載入 changelogs.json');
+            fetchError = true;
         }
     }
 
