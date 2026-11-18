@@ -5,12 +5,15 @@
 1. switchTabPanel
 2. "lang" in detail.json
 3. webp_manifest.py
+4. build_cache.py
 
 ## change / update
 1. tools
 2. dev output (apply cout)
 3. tracker tools
 4. png cache
+5. hash behavior
+6. check_exif tools
 
 ## adjust
 1. tab-buttons associated
@@ -28,6 +31,7 @@
 4. mermaid
 5. zoom-btn UI
 6. sensitive & lock associated
+7. contents loading error hint behavior
 
 ## deprecate
 1. 

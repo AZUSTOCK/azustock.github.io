@@ -5380,29 +5380,26 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     // ✨ 進入文章的瞬間，預先計算並快取好返回目錄時的最佳捲軸位置
     window._indexScrollTopCache = window.calculateIdealScrollCache('view-index', `article-item-${articleIndex}`, window._indexScrollTopCache);
     
-    let markdownContent = "載入失敗";
-    const fetchResult = await window.safeFetchWithGuard(article.content_path, { isJson: true });
-
-    if (fetchResult.aborted) {
-        console.log("[SYS] Fetching 任務已由使用者切換中斷。");
-        return;
+    // 驗證 contents.json，失敗時保留文章操作，只替換內文。
+    const hasContentPath = typeof article.content_path === 'string' && article.content_path.trim() !== '';
+    if (!hasContentPath && window._activeFetcher) {
+        window._activeFetcher.abort();
+        window._activeFetcher = null;
+        window.toggleLoading(false);
+        document.body.style.cursor = '';
     }
+    const fetchResult = hasContentPath
+        ? await window.safeFetchWithGuard(article.content_path, { isJson: true })
+        : { success: false, isInvalidData: true };
 
-    if (fetchResult.success) {
-        markdownContent = fetchResult.data.content;
-    } else {
-        console.error("無法載入文章內容:", fetchResult.error);
-        let errTitle = '404 NOT_FOUND';
-        let errMsg = '無法載入文章內容。';
-        if (fetchResult.isTimeout) {
-            errTitle = 'ERR_CONNECTION_TIMED_OUT'; errMsg = '伺服器回應逾時 (大於 8 秒)，請檢查網路連線後再試。';
-        } else if (fetchResult.isOffline) {
-            errTitle = 'ERR_INTERNET_DISCONNECTED'; errMsg = '網路連線中斷，請檢查您的網路狀態。';
-        }
-        markdownContent = `\n# ${article.title}\n\n${window.getSystemErrorHtml(errTitle, errMsg)}`;
+    if (fetchResult.aborted) return;
+    if (window._activeFetcher) return; // 保留切換文章時的中斷防護
+
+    const hasContent = fetchResult.success && fetchResult.data && typeof fetchResult.data.content === 'string';
+    if (!hasContent) {
+        console.error('無法載入文章 contents.json:', fetchResult.error || '缺少有效的 content_path 或 content 欄位');
     }
-    
-    if (window._activeFetcher !== null) return; // 幽靈渲染防護
+    const markdownContent = hasContent ? fetchResult.data.content : '';
 
     // ✨ 智慧判斷：如果彈窗是開著的... (這行以下維持原樣)
     // 代表這是「文章切換文章」，我們就把頂部列的動畫關掉！
@@ -5426,10 +5423,20 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 // ✨ 賦予目前渲染環境的專屬 ID，供解鎖特效記憶使用
                 window._currentRenderPlace = projectId + '_' + articleIndex;
                 // ✨ 核心修復：清除空行上的不換行空白 (\u00A0)，防止 <div class="tab-panel"> 吞掉內部的 :::lang 語法！
-                const cleanMarkdown = markdownContent.replace(/^[ \t\u00A0]+$/gm, '');
-                viewArticle.innerHTML = marked.parse(cleanMarkdown);
-                window.applyArticleDefaultLanguage(viewArticle, article, proj);
-                if (fetchResult.success) window.grantDetailKeys([proj.key, article.key]);
+                if (hasContent) {
+                    const cleanMarkdown = markdownContent.replace(/^[ \t\u00A0]+$/gm, '');
+                    viewArticle.innerHTML = marked.parse(cleanMarkdown);
+                    window.applyArticleDefaultLanguage(viewArticle, article, proj);
+                    window.grantDetailKeys([proj.key, article.key]);
+                } else {
+                    const escapeText = text => String(text).replace(/[&<>"']/g, char => ({
+                        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+                    }[char]));
+                    const projectName = escapeText(window.parseDynamicText(String(proj.title || proj.id), 'TOOLTIP'));
+                    const articleName = escapeText(window.parseDynamicText(String(article.title || article.id || articleIndex), 'TOOLTIP'));
+                    viewArticle.innerHTML = window.getSystemErrorHtml('載入失敗', `文章「${articleName}」載入失敗。`);
+                    window.updateRouteState(projectId, article.id || articleIndex, targetHash);
+                }
             }
             
             /// 建立操作指標
@@ -5496,7 +5503,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const text = isPrev ? '上一篇' : '下一篇'; 
                 
                 if (!item) {
-                    return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled>${iconSvg}</button>` };
+                    return { cardHtml: '', btnHtml: `<button class="capsule-btn ${type} disabled" disabled>${iconSvg}</button>` };
                 }
                 
                 // ✨ 安全解析：TOOLTIP 不消耗特效額度，NAV_BTN 觸發獨立特效
@@ -5506,7 +5513,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 
                 const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `${iconSvg}${text}` : `${text}${iconSvg}`}</div><div class="nav-title">${uiTitle}</div></a>`;
                 
-                const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${tooltipText}">${iconSvg}</button>`;
+                const btnHtml = `<button class="capsule-btn ${type}" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${tooltipText}">${iconSvg}</button>`;
                 
                 return { cardHtml, btnHtml };
             };
@@ -5514,7 +5521,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             const prevData = seqIndex > 0 ? generateNavBtn(flatSequence[seqIndex - 1], 'prev') : generateNavBtn(null, 'prev');
             const nextData = seqIndex < flatSequence.length - 1 ? generateNavBtn(flatSequence[seqIndex + 1], 'next') : generateNavBtn(null, 'next');
 
-            if (prevData.cardHtml || nextData.cardHtml) {
+            if (hasContent && (prevData.cardHtml || nextData.cardHtml)) {
                 const navContainer = document.createElement('div');
                 navContainer.className = 'article-nav-cards';
                 navContainer.innerHTML = prevData.cardHtml + nextData.cardHtml;
@@ -6274,11 +6281,11 @@ document.addEventListener('keydown', (e) => {
         const viewArticle = document.getElementById('view-article');
         if (viewArticle && viewArticle.style.display !== 'none') {
             if (e.key === 'ArrowLeft') {
-                const prevBtn = document.querySelector('.nav-card.prev');
+                const prevBtn = document.querySelector('#modal-top-left .unified-nav-capsule .capsule-btn.prev:not(:disabled)');
                 if (prevBtn) { prevBtn.click(); e.preventDefault(); }
             }
             if (e.key === 'ArrowRight') {
-                const nextBtn = document.querySelector('.nav-card.next');
+                const nextBtn = document.querySelector('#modal-top-left .unified-nav-capsule .capsule-btn.next:not(:disabled)');
                 if (nextBtn) { nextBtn.click(); e.preventDefault(); }
             }
         }

@@ -3,6 +3,10 @@ import json
 import re
 import time
 import hashlib
+import tempfile
+from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+from tools.build_cache import stat_key, invalidate, atomic_write, signature, file_lock
 from PIL import Image
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -48,9 +52,23 @@ def convert_project_images(is_github_actions, overwrite_webp=False, target_folde
 
 CACHE_FILE = '.build_cache.json'
 
-# 🔥 記憶體快取池：徹底消除同一檔案重複計算 MD5 與重複讀取圖片寬高的磁碟 I/O
-_FILE_HASH_MEMO = {}  # key: (abs_path, mtime, logic_version) -> md5_hex[:8]
-_IMG_DIM_MEMO = {}    # key: (abs_path, mtime) -> (width, height)
+# 實際生成參數與更新簽章共用同一份設定。
+IMAGE_PROFILES = {
+    'group_thumb': (200, 85),
+    'project_thumb': (180, 90),
+    'article_thumb': (160, 90),
+    'inline_thumb': (800, 85),
+    'pdf_thumb': (800, 85),
+}
+OG_OUTPUT_SIZE = (1200, 630)
+OG_CONTENT_SIZE = (1100, 600)
+OG_QUALITY = 90
+PDF_RENDER_SCALE = 4
+
+
+# 同一次建置的內容／寬高 memo；寫回產物後依路徑清除。
+_FILE_HASH_MEMO = {}  # key: (abs_path, dev, ino, size, mtime_ns, ctime_ns, logic) -> sha256[:16]
+_IMG_DIM_MEMO = {}    # key: (abs_path, dev, ino, size, mtime_ns, ctime_ns) -> (width, height)
 
 # 準備一個 Set 來記錄所有合法的 API 檔案絕對路徑，用於最後的清理階段
 valid_api_files = set()
@@ -119,10 +137,8 @@ def minify_assets():
         min_js = rjsmin.jsmin(js_content)
         min_css = rcssmin.cssmin(css_content)
         
-        with open('main.min.js', 'w', encoding='utf-8') as f:
-            f.write(min_js)
-        with open('style.min.css', 'w', encoding='utf-8') as f:
-            f.write(min_css)
+        atomic_write('main.min.js', min_js, _FILE_HASH_MEMO)
+        atomic_write('style.min.css', min_css, _FILE_HASH_MEMO)
             
         cout.size_action("JS 壓縮成功", "main.min.js", len(js_content)/1024, len(min_js)/1024, icon_key='stage')
         cout.size_action("CSS 壓縮成功", "style.min.css", len(css_content)/1024, len(min_css)/1024, icon_key='stage')
@@ -134,12 +150,15 @@ def minify_assets():
             html = re.sub(r'src="(\./)?main\.js', r'src="\g<1>main.min.js', html)
             html = re.sub(r'href="(\./)?style\.css', r'href="\g<1>style.min.css', html)
 
-            with open('index.html', 'w', encoding='utf-8') as f:
-                f.write(html)
-            cout.action("網頁掛載成功", "index.html 已自動切換為壓縮版資源。", color='green')
+            for resource in ('main.min.js', 'style.min.css'):
+                pattern = r'((?:src|href)=")((?:\./)?' + re.escape(resource) + r'(?:\?[^"#]*)?(?:#[^"]*)?)(")'
+                html = re.sub(pattern, lambda match: match.group(1) + get_hash_url(resource, match.group(2)) + match.group(3), html)
+            atomic_write('index.html', html, _FILE_HASH_MEMO)
+            cout.action("網頁掛載成功", "index.html 已切換為帶內容 Hash 的壓縮資源。", color='green')
             
     except Exception as e:
         cout.warn(f"壓縮失敗: {e}")
+        raise RuntimeError("資源壓縮失敗，停止發布版本清單。") from e
 
 # ==========================================
 # 🛠️ 輔助與快取系統 (Helper & Memoization Functions)
@@ -152,19 +171,14 @@ def clean_dynamic_text(text):
     return re.sub(r'\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?', repl, text)
 
 def get_image_dimensions(img_path):
-    """🔥 快取版圖片寬高讀取器：僅讀取 Header 且記憶結果，避免重複開啟圖片"""
-    if not img_path or not os.path.exists(img_path):
+    if not img_path or not os.path.isfile(img_path):
         return None
-    try:
-        abs_p = os.path.abspath(img_path)
-        mtime = os.path.getmtime(abs_p)
-        cache_key = (abs_p, mtime)
-        if cache_key not in _IMG_DIM_MEMO:
-            with Image.open(abs_p) as tmp_img:
-                _IMG_DIM_MEMO[cache_key] = (tmp_img.width, tmp_img.height)
-        return _IMG_DIM_MEMO[cache_key]
-    except Exception:
-        return None
+    absolute = os.path.abspath(img_path)
+    key = (absolute, *stat_key(absolute))
+    if key not in _IMG_DIM_MEMO:
+        with Image.open(absolute) as image:
+            _IMG_DIM_MEMO[key] = (image.width, image.height)
+    return _IMG_DIM_MEMO[key]
 
 def print_conversion(tag, src_path, dest_path, context=""):
     """輔助函式：透過 Cout 印出圖片轉換前後的檔案大小、壓縮率與所屬專案/文章"""
@@ -175,7 +189,7 @@ def print_conversion(tag, src_path, dest_path, context=""):
 def create_og_image(original_path, output_path, bg_path=None):
     """將任意尺寸的圖片疊加到 1200x630 的背景圖中央，生成完美的 OG 分享圖"""
     try:
-        OG_SIZE = (1200, 630) 
+        OG_SIZE = OG_OUTPUT_SIZE 
         img = Image.open(original_path).convert("RGBA")
         
         if bg_path and os.path.exists(bg_path):
@@ -184,7 +198,7 @@ def create_og_image(original_path, output_path, bg_path=None):
         else:
             bg = Image.new("RGBA", OG_SIZE, (30, 41, 59, 255))
             
-        max_h, max_w = 600, 1100
+        max_w, max_h = OG_CONTENT_SIZE
         ratio = min(max_w / img.width, max_h / img.height)
         new_size = (int(img.width * ratio), int(img.height * ratio))
         img = img.resize(new_size, Image.Resampling.LANCZOS)
@@ -197,7 +211,7 @@ def create_og_image(original_path, output_path, bg_path=None):
         exif_bytes = get_copyright_exif(final_img)
         
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        final_img.save(output_path, "WEBP", quality=90, exif=exif_bytes)
+        final_img.save(output_path, "WEBP", quality=OG_QUALITY, exif=exif_bytes)
         return True
     except Exception as e:
         cout.warn(f"生成 OG 圖片失敗 {original_path}: {e}")
@@ -216,7 +230,7 @@ def generate_pdf_thumbnail(pdf_path, output_path, max_width=1600, quality=90):
         if len(doc) == 0:
             return False
         page = doc.load_page(0)
-        pix = page.get_pixmap(matrix=pymupdf.Matrix(4, 4))
+        pix = page.get_pixmap(matrix=pymupdf.Matrix(PDF_RENDER_SCALE, PDF_RENDER_SCALE))
         
         mode = "RGBA" if pix.alpha else "RGB"
         img = Image.frombytes(mode, [pix.width, pix.height], pix.samples)
@@ -259,54 +273,41 @@ def load_detail_json(json_path):
 # Hash 運作引擎 (含記憶體快取加速)
 # ==========================================
 def get_file_hash(filepath, logic_version=""):
-    """🔥 快取版 MD5 Hash 計算器：相同路徑與修改時間絕不重複讀取磁碟"""
-    if not filepath or not os.path.exists(filepath):
+    if not filepath or not os.path.isfile(filepath):
         return ""
-    try:
-        abs_p = os.path.abspath(filepath)
-        mtime = os.path.getmtime(abs_p)
-        cache_key = (abs_p, mtime, logic_version)
-        if cache_key in _FILE_HASH_MEMO:
-            return _FILE_HASH_MEMO[cache_key]
-
-        hasher = hashlib.md5()
-        with open(abs_p, 'rb') as f:
-            content = f.read()
-            if abs_p.endswith('.md') or abs_p.endswith('.json'):
-                content = content.replace(b'\r\n', b'\n')
-            hasher.update(content)
-            
-        if logic_version:
-            hasher.update(logic_version.encode('utf-8'))
-            
-        res = hasher.hexdigest()[:8]
-        _FILE_HASH_MEMO[cache_key] = res
-        return res
-    except Exception:
-        return ""
+    absolute = os.path.abspath(filepath)
+    before = stat_key(absolute)
+    key = (absolute, *before, logic_version)
+    if key in _FILE_HASH_MEMO:
+        return _FILE_HASH_MEMO[key]
+    with open(absolute, 'rb') as stream:
+        content = stream.read()
+    if before != stat_key(absolute):
+        raise OSError('計算 Hash 時檔案變動：' + absolute)
+    digest = hashlib.sha256()
+    digest.update(content)
+    if logic_version:
+        digest.update(b'\0' + logic_version.encode('utf-8'))
+    result = digest.hexdigest()[:16]
+    _FILE_HASH_MEMO[key] = result
+    return result
 
 def get_hash_url(local_path, base_url):
-    """獲取帶有檔案內容 Hash 的網址 (直接複用 _FILE_HASH_MEMO 快取)"""
-    clean_local_path = local_path.split('?')[0].split('#')[0]
-    file_hash = get_file_hash(clean_local_path)
-    if file_hash:
-        sep = '&' if '?' in base_url else '?'
-        return f"{base_url}{sep}v={file_hash}"
-    return base_url
+    clean_path = local_path.split('?')[0].split('#')[0]
+    version = get_file_hash(clean_path)
+    if not version:
+        return base_url
+    parts = urlsplit(base_url)
+    query = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True) if key != 'v']
+    query.append(('v', version))
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
-def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwrite):
-    """使用 Hash 判斷單一檔案是否需要更新"""
-    logic_version = ""
-    if target_path.endswith('contents.json'):
-        logic_version = API_LOGIC_VERSION
-    elif target_path.endswith('index.html'):
-        logic_version = HTML_LOGIC_VERSION
-    elif target_path.endswith(('.webp', '.png', '.jpg')):
-        logic_version = IMAGE_LOGIC_VERSION
-        
-    current_hash = get_file_hash(source_path, logic_version)
-    
-    if not os.path.exists(target_path):
+def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwrite,
+                      dependencies=None, settings=None):
+    logic = (API_LOGIC_VERSION if target_path.endswith('contents.json') else
+             HTML_LOGIC_VERSION if target_path.endswith('index.html') else IMAGE_LOGIC_VERSION)
+    current_hash = signature(source_path, dependencies, settings, logic, get_file_hash)
+    if not os.path.isfile(target_path):
         return 'NEW', current_hash
     if force_overwrite or old_hash_dict.get(key) != current_hash:
         return 'UPDATED', current_hash
@@ -359,31 +360,32 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
                 pass
 
 def get_dir_hash(dirpath):
-    """計算資料夾內所有 Markdown 與 JSON 的聯合 MD5 Hash (無視換行差異)"""
-    if not os.path.exists(dirpath): return ""
-    hasher = hashlib.md5()
+    if not os.path.isdir(dirpath):
+        return ""
+    records = []
     for root, dirs, files in os.walk(dirpath):
-        for file in sorted(files):
-            if file.endswith('.md') or file.endswith('.json'):
-                with open(os.path.join(root, file), 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read().replace('\r\n', '\n')
-                    hasher.update(content.encode('utf-8'))
-                    
-    hasher.update(API_LOGIC_VERSION.encode('utf-8'))
-    hasher.update(HTML_LOGIC_VERSION.encode('utf-8'))
-    return hasher.hexdigest()[:8]
+        dirs.sort()
+        for name in sorted(files):
+            if name.endswith(('.md', '.json')):
+                path = os.path.join(root, name)
+                records.append([os.path.relpath(path, dirpath).replace(os.sep, '/'), get_file_hash(path)])
+    payload = json.dumps([records, API_LOGIC_VERSION, HTML_LOGIC_VERSION], ensure_ascii=False, separators=(',', ':'))
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()[:16]
 
 def update_data_version():
     """計算各獨立項目的 Hash，並寫入 data_version.json 與狀態快取"""
     cout.stage("快取引擎", "開始計算細項 Hash 值...", icon_key='cache')
     
     items = {
-        "projects": get_dir_hash("projects"),
+        "projects": get_file_hash("all_projects.json"),
         "kotoba.md": get_file_hash("kotoba.md"),
         "quotes.md": get_file_hash("quotes.md"),
         "COPYRIGHT.md": get_file_hash("COPYRIGHT.md"),
         "credits.md": get_file_hash("credits.md"),
-        "changelogs.json": get_file_hash("changelogs.json")
+        "changelogs.json": get_file_hash("changelogs.json"),
+        "mermaid_styles.txt": get_file_hash("mermaid_styles.txt"),
+        "main.min.js": get_file_hash("main.min.js"),
+        "style.min.css": get_file_hash("style.min.css")
     }
     
     changed_items = []
@@ -404,11 +406,11 @@ def update_data_version():
     else:
         cout.skip("內容無任何變更，維持現有快取。", indent=0)
 
-    with open('data_version.json', 'w', encoding='utf-8') as f:
-        json.dump(items, f, indent=2)
-        
-    with open(CACHE_FILE, 'w', encoding='utf-8') as f:
-        json.dump(items, f, indent=2)
+    if not items['projects']:
+        raise FileNotFoundError('all_projects.json 尚未成功生成，停止發布版本清單。')
+    encoded = json.dumps(items, ensure_ascii=False, sort_keys=True, indent=2)
+    atomic_write('data_version.json', encoded, _FILE_HASH_MEMO)
+    atomic_write(CACHE_FILE, encoded, _FILE_HASH_MEMO)
         
     return changed_items
 
@@ -582,13 +584,38 @@ def generate_changelogs_json():
 # 🚀 主生成器邏輯 (支援多核心平行處理圖片與縮圖)
 # ==========================================
 def _execute_img_task(task):
-    """平行任務執行器：負責執行 OG 合成、封面/內文縮圖、PDF 預覽圖渲染"""
     fn, args, tag, src, dest, ctx, stat_prefix, status = task
-    ok = fn(*args)
-    return (ok, tag, src, dest, ctx, stat_prefix, status)
+    temporary = None
+    try:
+        directory = os.path.dirname(os.path.abspath(dest))
+        os.makedirs(directory, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=directory, prefix='.image-build-', suffix='.webp', delete=False) as stream:
+            temporary = stream.name
+        staged_args = list(args)
+        staged_args[1] = temporary
+        ok = fn(*staged_args)
+        if not ok or not os.path.isfile(temporary) or not os.path.getsize(temporary):
+            raise OSError('影像任務未成功生成檔案')
+        with Image.open(temporary) as image:
+            image.verify()
+        os.chmod(temporary, os.stat(dest).st_mode & 0o777 if os.path.isfile(dest) else 0o644)
+        os.replace(temporary, dest)
+        temporary = None
+        invalidate(dest, _FILE_HASH_MEMO, _IMG_DIM_MEMO)
+        return (True, tag, src, dest, ctx, stat_prefix, status)
+    except Exception as error:
+        cout.warn(f'影像任務失敗 {src} → {dest}: {error}')
+        return (False, tag, src, dest, ctx, stat_prefix, status)
+    finally:
+        if temporary is not None and os.path.exists(temporary):
+            os.unlink(temporary)
 
 def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_thumb=False, overwrite_pdf_thumb=False, target_folders=None):
     if target_folders is None: target_folders = set()
+    _FILE_HASH_MEMO.clear()
+    _IMG_DIM_MEMO.clear()
+    valid_api_files.clear()
+    protected_api_dirs.clear()
     base_dir = 'projects'
     output_data = {"categories": [], "projects": []}
     BASE_URL = "https://azustock.github.io"
@@ -599,11 +626,18 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
     # 🔥 平行任務佇列與延遲寫入清單 (確保所有新生成的縮圖完成後，能拿到最新檔案 Hash 與寬高)
     img_tasks = []
     scheduled_dests = set()
+    scheduled_recipes = {}
+    deferred_meta_writes = []
+    scan_failures = []
     deferred_html_writes = []      # (html_path, format_kwargs_callable)
     deferred_content_writes = []   # (content_filepath, content_str_callable, hashes_dict)
 
     def schedule_image_task(fn, args, tag, src, dest, ctx, stat_prefix, status):
         abs_dest = os.path.abspath(dest)
+        recipe = (fn, repr((args[0], args[2:])))
+        if abs_dest in scheduled_recipes and scheduled_recipes[abs_dest] != recipe:
+            raise ValueError('不同來源或設定會覆寫同一產物：' + dest)
+        scheduled_recipes[abs_dest] = recipe
         if abs_dest not in scheduled_dests:
             scheduled_dests.add(abs_dest)
             img_tasks.append((fn, args, tag, src, dest, ctx, stat_prefix, status))
@@ -768,13 +802,13 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             thumb_filename = f"group_thumb_{os.path.splitext(safe_name)[0]}.webp"
                             thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                             
-                            g_thumb_status, g_thumb_hash = check_hash_status(g_cover_local_path, thumb_local_path, proj_cache, f'g_thumb_{g_id}', p_overwrite_thumb)
+                            g_thumb_status, g_thumb_hash = check_hash_status(g_cover_local_path, thumb_local_path, proj_cache, f'g_thumb_{g_id}', p_overwrite_thumb, settings={'profile': IMAGE_PROFILES['group_thumb']})
                             current_proj_hashes[f'g_thumb_{g_id}'] = g_thumb_hash
                             
                             if g_thumb_status in ('NEW', 'UPDATED'):
                                 proj_needs_update = True
                                 schedule_image_task(
-                                    generate_cover_thumbnail, (g_cover_local_path, thumb_local_path, 200, 85),
+                                    generate_cover_thumbnail, (g_cover_local_path, thumb_local_path, *IMAGE_PROFILES['group_thumb']),
                                     "🖼️ [群組縮圖]", g_cover_local_path, thumb_local_path, f"{proj_id} / {g_id}", "group_thumb", g_thumb_status
                                 )
                             else:
@@ -788,7 +822,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             og_filename = f"group_og_{os.path.splitext(safe_name)[0]}.webp"
                             og_local_path = os.path.join(proj_api_dir, og_filename)
                             
-                            g_og_status, g_og_hash = check_hash_status(g_cover_local_path, og_local_path, proj_cache, f'g_og_{g_id}', p_overwrite_og)
+                            g_og_status, g_og_hash = check_hash_status(g_cover_local_path, og_local_path, proj_cache, f'g_og_{g_id}', p_overwrite_og, dependencies=[bg_image_path], settings={'size': OG_OUTPUT_SIZE, 'content_size': OG_CONTENT_SIZE, 'quality': OG_QUALITY})
                             current_proj_hashes[f'g_og_{g_id}'] = g_og_hash
                             
                             if g_og_status in ('NEW', 'UPDATED'):
@@ -819,7 +853,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             
             if local_proj_cover:
                 stats["og_total"] += 1
-                og_status, og_hash = check_hash_status(local_proj_cover, proj_og_local_path, proj_cache, 'og_cover', p_overwrite_og)
+                og_status, og_hash = check_hash_status(local_proj_cover, proj_og_local_path, proj_cache, 'og_cover', p_overwrite_og, dependencies=[bg_image_path], settings={'size': OG_OUTPUT_SIZE, 'content_size': OG_CONTENT_SIZE, 'quality': OG_QUALITY})
                 current_proj_hashes['og_cover'] = og_hash
                 
                 if og_status in ('NEW', 'UPDATED'):
@@ -837,13 +871,13 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 proj_thumb_local_path = os.path.join(proj_api_dir, proj_thumb_filename)
                 stats["thumb_total"] += 1 
                 
-                thumb_status, thumb_hash = check_hash_status(local_proj_cover, proj_thumb_local_path, proj_cache, 'thumb_cover', p_overwrite_thumb)
+                thumb_status, thumb_hash = check_hash_status(local_proj_cover, proj_thumb_local_path, proj_cache, 'thumb_cover', p_overwrite_thumb, settings={'profile': IMAGE_PROFILES['project_thumb']})
                 current_proj_hashes['thumb_cover'] = thumb_hash
                 
                 if thumb_status in ('NEW', 'UPDATED'):
                     proj_needs_update = True
                     schedule_image_task(
-                        generate_cover_thumbnail, (local_proj_cover, proj_thumb_local_path, 180, 90),
+                        generate_cover_thumbnail, (local_proj_cover, proj_thumb_local_path, *IMAGE_PROFILES['project_thumb']),
                         "🖼️ [專案縮圖]", local_proj_cover, proj_thumb_local_path, proj_title, "thumb", thumb_status
                     )
                 else:
@@ -857,7 +891,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             proj_share_url = f"{BASE_URL}/api/{proj_id}/index.html"
             proj_html_path = os.path.join(proj_api_dir, "index.html")
             
-            proj_html_status, detail_hash = check_hash_status(proj_detail_path, proj_html_path, proj_cache, 'detail', p_overwrite_json)
+            proj_html_status, detail_hash = check_hash_status(proj_detail_path, proj_html_path, proj_cache, 'detail', p_overwrite_json, dependencies=[local_proj_cover, bg_image_path, 'assets/og.png'], settings={'template': html_template, 'base_url': BASE_URL})
             current_proj_hashes['detail'] = detail_hash
 
             if proj_html_status in ('NEW', 'UPDATED') or proj_needs_update:
@@ -880,8 +914,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
             valid_api_files.add(os.path.abspath(proj_html_path))
 
             if proj_needs_update:
-                with open(proj_meta_path, 'w', encoding='utf-8') as f:
-                    json.dump(current_proj_hashes, f)
+                deferred_meta_writes.append((proj_meta_path, current_proj_hashes))
             valid_api_files.add(os.path.abspath(proj_meta_path))
 
             # 3. 掃描專案底下的文章 (Articles)
@@ -1009,13 +1042,13 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
-                                        inline_status, img_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, a_overwrite_thumb)
+                                        inline_status, img_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, a_overwrite_thumb, settings={'profile': IMAGE_PROFILES['inline_thumb']})
                                         current_hashes[local_main_path] = img_hash
                                         
                                         if inline_status in ('NEW', 'UPDATED'):
                                             art_needs_update = True
                                             schedule_image_task(
-                                                generate_cover_thumbnail, (local_main_path, thumb_local_path, 800, 85),
+                                                generate_cover_thumbnail, (local_main_path, thumb_local_path, *IMAGE_PROFILES['inline_thumb']),
                                                 "🖼️ [內文縮圖]", local_main_path, thumb_local_path, f"{proj_id} / {art_id}", "inline_thumb", inline_status
                                             )
                                         else:
@@ -1047,13 +1080,13 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                             thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                             thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                             
-                                            inline_status, pdf_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, a_overwrite_pdf)
+                                            inline_status, pdf_hash = check_hash_status(local_main_path, thumb_local_path, art_cache, local_main_path, a_overwrite_pdf, settings={'profile': IMAGE_PROFILES['pdf_thumb'], 'render_scale': PDF_RENDER_SCALE})
                                             current_hashes[local_main_path] = pdf_hash
                                             
                                             if inline_status in ('NEW', 'UPDATED'):
                                                 art_needs_update = True
                                                 schedule_image_task(
-                                                    generate_pdf_thumbnail, (local_main_path, thumb_local_path, 800, 85),
+                                                    generate_pdf_thumbnail, (local_main_path, thumb_local_path, *IMAGE_PROFILES['pdf_thumb']),
                                                     "📄 [PDF縮圖]", local_main_path, thumb_local_path, f"{proj_id} / {art_id}", "pdf_thumb", inline_status
                                                 )
                                             else:
@@ -1110,13 +1143,13 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                         thumb_filename = f"thumb_{os.path.splitext(safe_name)[0]}.webp"
                                         thumb_local_path = os.path.join(thumb_dir, thumb_filename)
                                         
-                                        inline_status, img_hash = check_hash_status(local_img_path, thumb_local_path, art_cache, local_img_path, a_overwrite_thumb)
+                                        inline_status, img_hash = check_hash_status(local_img_path, thumb_local_path, art_cache, local_img_path, a_overwrite_thumb, settings={'profile': IMAGE_PROFILES['inline_thumb']})
                                         current_hashes[local_img_path] = img_hash
                                         
                                         if inline_status in ('NEW', 'UPDATED'):
                                             art_needs_update = True
                                             schedule_image_task(
-                                                generate_cover_thumbnail, (local_img_path, thumb_local_path, 800, 85),
+                                                generate_cover_thumbnail, (local_img_path, thumb_local_path, *IMAGE_PROFILES['inline_thumb']),
                                                 "🖼️ [內文縮圖]", local_img_path, thumb_local_path, f"{proj_id} / {art_id}", "inline_thumb", inline_status
                                             )
                                         else:
@@ -1167,7 +1200,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 stats["og_total"] += 1
                                 art_bg_image_path = os.path.join("assets", "og.png")
                                 
-                                art_og_status, og_src_hash = check_hash_status(local_cover_path, og_local_path, art_cache, 'og_cover', a_overwrite_og)
+                                art_og_status, og_src_hash = check_hash_status(local_cover_path, og_local_path, art_cache, 'og_cover', a_overwrite_og, dependencies=[art_bg_image_path], settings={'size': OG_OUTPUT_SIZE, 'content_size': OG_CONTENT_SIZE, 'quality': OG_QUALITY})
                                 current_hashes['og_cover'] = og_src_hash
                                 
                                 if art_og_status in ('NEW', 'UPDATED'):
@@ -1181,13 +1214,13 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                                 valid_api_files.add(os.path.abspath(og_local_path))
 
                                 stats["thumb_total"] += 1
-                                art_thumb_status, thumb_src_hash = check_hash_status(local_cover_path, art_thumb_local_path, art_cache, 'thumb_cover', a_overwrite_thumb)
+                                art_thumb_status, thumb_src_hash = check_hash_status(local_cover_path, art_thumb_local_path, art_cache, 'thumb_cover', a_overwrite_thumb, settings={'profile': IMAGE_PROFILES['article_thumb']})
                                 current_hashes['thumb_cover'] = thumb_src_hash
                                 
                                 if art_thumb_status in ('NEW', 'UPDATED'):
                                     art_needs_update = True
                                     schedule_image_task(
-                                        generate_cover_thumbnail, (local_cover_path, art_thumb_local_path, 160, 90),
+                                        generate_cover_thumbnail, (local_cover_path, art_thumb_local_path, *IMAGE_PROFILES['article_thumb']),
                                         "🖼️ [文章縮圖]", local_cover_path, art_thumb_local_path, f"{proj_id} / {art_id}", "thumb", art_thumb_status
                                     )
                                 else:
@@ -1199,7 +1232,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             art_share_url = f"{BASE_URL}/api/{proj_id}/{art_id}/index.html"
                             art_html_path = os.path.join(art_dir, "index.html")
 
-                            art_html_status, art_detail_hash = check_hash_status(art_detail_path, art_html_path, art_cache, 'art_detail', a_overwrite_json)
+                            art_html_status, art_detail_hash = check_hash_status(art_detail_path, art_html_path, art_cache, 'art_detail', a_overwrite_json, dependencies=[md_file_path, proj_detail_path, local_cover_path, local_proj_cover, bg_image_path, 'assets/og.png'], settings={'template': html_template, 'base_url': BASE_URL})
                             current_hashes['art_detail'] = art_detail_hash
 
                             if art_html_status in ('NEW', 'UPDATED') or art_needs_update or proj_needs_update:
@@ -1236,13 +1269,6 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             valid_api_files.add(os.path.abspath(art_html_path))
 
                             if art_needs_update:
-                                def _make_content_resolver(raw_c=content, repls=pending_replacements):
-                                    final_c = raw_c
-                                    for tok, fn in repls:
-                                        final_c = final_c.replace(tok, fn())
-                                    return final_c
-                                deferred_content_writes.append((content_filepath, _make_content_resolver, current_hashes))
-                                
                                 if json_status == 'NEW': 
                                     stats["json_new"] += 1
                                 else: 
@@ -1250,13 +1276,19 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                             else:
                                 stats["json_skipped"] += 1
                                 
+                            def _resolve_all_content(raw_c=content, repls=pending_replacements):
+                                for token, resolver in repls:
+                                    raw_c = raw_c.replace(token, resolver())
+                                return raw_c
+                            deferred_content_writes.append((content_filepath, _resolve_all_content, current_hashes))
                             valid_api_files.add(os.path.abspath(content_filepath))
 
                             article_obj = {
                                 "id": art_id,
                                 "sort_order": meta_order,     
                                 "title": meta_title,
-                                "content_path": f"./api/{proj_id}/{art_id}/{content_filename}"
+                                "content_path": f"./api/{proj_id}/{art_id}/{content_filename}",
+                                "_content_local": content_filepath
                             }
                             
                             article_lang = get_content_language(sub_data, f"文章 {proj_folder}/{item}")
@@ -1294,6 +1326,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
                             articles.append(article_obj)
                         except Exception as e:
+                            scan_failures.append(f"{md_file_path}: {e}")
                             cout.warn(f"處理文章失敗 {md_file_path}: {e}")
                             if 'art_dir' in locals():
                                 protected_api_dirs.add(os.path.abspath(art_dir))
@@ -1312,6 +1345,9 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
             output_data["projects"].append(proj_data)
 
+    if scan_failures:
+        raise RuntimeError('文章解析失敗，停止提交生成快取：' + '; '.join(scan_failures))
+    image_failures = []
     # 🔥 4. 啟動多核心平行池，一次處理所有待辦的 OG 圖、縮圖與 PDF 預覽圖
     if img_tasks:
         max_workers = min(32, (os.cpu_count() or 4) + 4)
@@ -1325,7 +1361,11 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                     if status == 'NEW': stats[f"{stat_prefix}_new"] += 1
                     else: stats[f"{stat_prefix}_updated"] += 1
                 else:
+                    image_failures.append(dest)
                     stats[f"{stat_prefix}_skipped"] += 1
+
+    if image_failures:
+        raise RuntimeError('影像生成失敗，快取紀錄與資料庫尚未提交：' + ', '.join(image_failures))
 
     # 🔥 5. 圖片全數生成完畢後，解析所有帶有最新檔案內容 Hash 的路徑
     for proj in output_data["projects"]:
@@ -1346,13 +1386,18 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
                 art['cover_image'] = get_hash_url(t_local, t_base) if os.path.exists(t_local) else get_hash_url(l_cov, rel_cov)
 
     # 寫入所有需要更新的 contents.json 與 index.html
-    for content_filepath, resolver_fn, hashes_dict in deferred_content_writes:
-        with open(content_filepath, 'w', encoding='utf-8') as af:
-            json.dump({"content": resolver_fn(), "hashes": hashes_dict}, af, ensure_ascii=False)
-
-    for html_path, html_fn in deferred_html_writes:
-        with open(html_path, 'w', encoding='utf-8') as hf:
-            hf.write(html_fn())
+    resolved_contents = [(path, json.dumps({'content': fn(), 'hashes': hashes}, ensure_ascii=False))
+                         for path, fn, hashes in deferred_content_writes]
+    resolved_html = [(path, fn()) for path, fn in deferred_html_writes]
+    for path, payload in resolved_contents:
+        atomic_write(path, payload, _FILE_HASH_MEMO)
+    for path, html in resolved_html:
+        atomic_write(path, html, _FILE_HASH_MEMO)
+    for path, hashes in deferred_meta_writes:
+        atomic_write(path, json.dumps(hashes, ensure_ascii=False), _FILE_HASH_MEMO)
+    for project in output_data['projects']:
+        for article in project.get('articles', []):
+            article['content_path'] = get_hash_url(article.pop('_content_local'), article['content_path'])
 
     def safe_sort(x):
         val = x.get('order', 999)
@@ -1371,8 +1416,7 @@ def generate_projects_json(overwrite_json=False, overwrite_og=False, overwrite_t
 
     cout.success(f"JSON 結構掃描與打包完成，包含 {len(output_data['projects'])} 個專案。")
 
-    with open('all_projects.json', 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, ensure_ascii=False, indent=2)
+    atomic_write('all_projects.json', json.dumps(output_data, ensure_ascii=False, indent=2), _FILE_HASH_MEMO)
 
 # ==========================================
 # 🧹 清理廢棄 API 資料夾
@@ -1412,93 +1456,93 @@ def cleanup_old_api_files(api_dir="api"):
 
 
 if __name__ == "__main__":
-    is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
+    with file_lock("tools/.cache/site_build.lock"):
+        is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
     
-    overwrite_webp = False
-    overwrite_json = False
-    overwrite_og = False
-    overwrite_thumb = False
-    overwrite_pdf_thumb = False
-    target_folders = set()
+        overwrite_webp = False
+        overwrite_json = False
+        overwrite_og = False
+        overwrite_thumb = False
+        overwrite_pdf_thumb = False
+        target_folders = set()
     
-    if is_github_actions:
-        cout.stage("CI/CD 模式", "偵測到 GitHub Actions 環境", icon_key='bot')
-        cout.info("自動停用互動提問，啟用【全域智慧跳過】以加速佈署流程 (僅更新修改過的檔案)。\n", indent=1, tree=True)
-    else:
-        choice = cout.menu(
-            "請選擇整體作業模式？ (包含圖片轉檔與 JSON 打包)",
-            [
-                ("1", "全域智慧跳過 (遇到舊檔且無修改則跳過，速度最快 - 預設)"),
-                ("2", "全域強制複寫 (多核心平行重新處理所有檔案與縮圖)"),
-                ("3", "自訂義 (針對各項處理分別選擇)"),
-                ("4", "指定資料夾強制更新 (僅強制重刷特定專案或文章)")
-            ],
-            prompt_text="請選擇 [1, 2, 3 或 4]", default="1"
-        )
+        if is_github_actions:
+            cout.stage("CI/CD 模式", "偵測到 GitHub Actions 環境", icon_key='bot')
+            cout.info("自動停用互動提問，啟用【全域智慧跳過】以加速佈署流程 (僅更新修改過的檔案)。\n", indent=1, tree=True)
+        else:
+            choice = cout.menu(
+                "請選擇整體作業模式？ (包含圖片轉檔與 JSON 打包)",
+                [
+                    ("1", "全域智慧跳過 (遇到舊檔且無修改則跳過，速度最快 - 預設)"),
+                    ("2", "全域強制複寫 (多核心平行重新處理所有檔案與縮圖)"),
+                    ("3", "自訂義 (針對各項處理分別選擇)"),
+                    ("4", "指定資料夾強制更新 (僅強制重刷特定專案或文章)")
+                ],
+                prompt_text="請選擇 [1, 2, 3 或 4]", default="1"
+            )
         
-        if choice == '2':
-            overwrite_webp = overwrite_json = overwrite_og = overwrite_thumb = overwrite_pdf_thumb = True
-        elif choice == '3':
-            cout.info("\n-- 自訂義細項設定 --", icon_key='config')
-            w_choice = input("  [A] 處理選項 (1/5): 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
-            overwrite_webp = (w_choice == '2')
+            if choice == '2':
+                overwrite_webp = overwrite_json = overwrite_og = overwrite_thumb = overwrite_pdf_thumb = True
+            elif choice == '3':
+                cout.info("\n-- 自訂義細項設定 --", icon_key='config')
+                w_choice = input("  [A] 處理選項 (1/5): 專案原圖轉 WebP [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+                overwrite_webp = (w_choice == '2')
             
-            j_choice = input("  [B] 處理選項 (2/5): Markdown轉JSON與HTML [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
-            overwrite_json = (j_choice == '2')
+                j_choice = input("  [B] 處理選項 (2/5): Markdown轉JSON與HTML [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+                overwrite_json = (j_choice == '2')
             
-            o_choice = input("  [C] 處理選項 (3/5): OG 分享圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
-            overwrite_og = (o_choice == '2')
+                o_choice = input("  [C] 處理選項 (3/5): OG 分享圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+                overwrite_og = (o_choice == '2')
             
-            t_choice = input("  [D] 處理選項 (4/5): 封面與內文圖片縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
-            overwrite_thumb = (t_choice == '2')
+                t_choice = input("  [D] 處理選項 (4/5): 封面與內文圖片縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+                overwrite_thumb = (t_choice == '2')
 
-            p_choice = input("  [E] 處理選項 (5/5): PDF 封面預覽縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
-            overwrite_pdf_thumb = (p_choice == '2')
-        elif choice == '4':
-            targets = input(f"\n{cout.icon('target')} 請輸入要強制更新的資料夾名稱 (多個以空白分隔，如 '02_mind 24_create'): ").strip()
-            if targets:
-                target_folders = set(targets.split())
-                cout.action("指定更新模式", f"將強制重刷以下項目及其內容: {', '.join(target_folders)}", icon_key='target', color='magenta', tree=False)
+                p_choice = input("  [E] 處理選項 (5/5): PDF 封面預覽縮圖生成 [1]智慧跳過 [2]強制複寫 (預設 1): ").strip()
+                overwrite_pdf_thumb = (p_choice == '2')
+            elif choice == '4':
+                targets = input(f"\n{cout.icon('target')} 請輸入要強制更新的資料夾名稱 (多個以空白分隔，如 '02_mind 24_create'): ").strip()
+                if targets:
+                    target_folders = set(targets.split())
+                    cout.action("指定更新模式", f"將強制重刷以下項目及其內容: {', '.join(target_folders)}", icon_key='target', color='magenta', tree=False)
 
-    build_start_time = time.perf_counter()
+        build_start_time = time.perf_counter()
 
-    convert_project_images(is_github_actions, overwrite_webp, target_folders)
+        convert_project_images(is_github_actions, overwrite_webp, target_folders)
     
-    cout.stage("第二階段", "開始解析 Markdown 並打包 JSON 資料庫...", icon_key='stage')
-    generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb, overwrite_pdf_thumb=overwrite_pdf_thumb, target_folders=target_folders)
+        cout.stage("第二階段", "開始解析 Markdown 並打包 JSON 資料庫...", icon_key='stage')
+        generate_projects_json(overwrite_json=overwrite_json, overwrite_og=overwrite_og, overwrite_thumb=overwrite_thumb, overwrite_pdf_thumb=overwrite_pdf_thumb, target_folders=target_folders)
 
-    # ✨ 使用 Cout 輸出對齊的統計表格 (自動為新增/更新上色)
-    cout.stats_table(stats, [
-        ("專案 HTML (index)", "proj"),
-        ("文章 HTML (index)", "art"),
-        ("內文 JSON (contents)", "json"),
-        ("專案與文章 OG 圖", "og"),
-        ("專案與文章封面縮圖", "thumb"),
-        ("群組分享圖 (group_og)", "group_og"),
-        ("群組縮圖 (group_thumb)", "group_thumb"),
-        ("內文縮圖 (inline_thumb)", "inline_thumb"),
-        ("PDF 預覽圖 (pdf_thumb)", "pdf_thumb"),
-    ])
+        # ✨ 使用 Cout 輸出對齊的統計表格 (自動為新增/更新上色)
+        cout.stats_table(stats, [
+            ("專案 HTML (index)", "proj"),
+            ("文章 HTML (index)", "art"),
+            ("內文 JSON (contents)", "json"),
+            ("專案與文章 OG 圖", "og"),
+            ("專案與文章封面縮圖", "thumb"),
+            ("群組分享圖 (group_og)", "group_og"),
+            ("群組縮圖 (group_thumb)", "group_thumb"),
+            ("內文縮圖 (inline_thumb)", "inline_thumb"),
+            ("PDF 預覽圖 (pdf_thumb)", "pdf_thumb"),
+        ])
 
-    cleanup_old_api_files()
+        cleanup_old_api_files()
     
-    cout.stage("最後階段", "開始修改路徑...", icon_key='stage')
-    update_extensions_to_webp()
+        cout.stage("最後階段", "開始修改路徑...", icon_key='stage')
+        update_extensions_to_webp()
 
-    # 1. 先產生最新的 changelogs.json
-    generate_changelogs_json()
+        # 1. 先產生最新的 changelogs.json
+        generate_changelogs_json()
 
-    # 2. 讀取日誌生成 version.json 並同步版號
-    generate_version_json(is_github_actions)
+        # 2. 讀取日誌生成 version.json 並同步版號
+        generate_version_json(is_github_actions)
 
-    # 3. 執行細項 Hash 快取引擎，統整並輸出 data_version.json
-    update_data_version()
+        # 3. 執行細項 Hash 快取引擎，統整並輸出 data_version.json
+        # 4. 先完成壓縮產物，再發佈最終版本清單。
+        minify_assets()
+        update_data_version()
 
-    # 4. 呼叫最後的自動化壓縮引擎
-    minify_assets()
+        # 5. 統一輸出過期或解封提醒清單
+        cout.flush_reminders("過期 tag 提示")
 
-    # 5. 統一輸出過期或解封提醒清單
-    cout.flush_reminders("過期 tag 提示")
-
-    total_elapsed = time.perf_counter() - build_start_time
-    cout.success(f"全站建置流程執行完畢！總耗時: {total_elapsed:.2f} 秒。", icon_key='party')
+        total_elapsed = time.perf_counter() - build_start_time
+        cout.success(f"全站建置流程執行完畢！總耗時: {total_elapsed:.2f} 秒。", icon_key='party')
