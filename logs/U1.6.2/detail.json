@@ -1,7 +1,7 @@
 {
   "version": "U1.6.1.22",
   "date": "2026-10-12",
-  "status": "FEATURE",
-  "description": "新增內文tab與多項工具、修正多處問題",
+  "status": "REFACTOR",
+  "description": "新增內文tab與多項工具、多處修正與重構",
   "hidden": true
 }

@@ -10,6 +10,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode, unquote, quote
 
 from PIL import Image
@@ -33,8 +34,8 @@ from tools.cout import cout  # ✨ 引入 Cout 全域實例
 # ==========================================
 # 🧠 細項 Hash 快取與版本控制設定
 # ==========================================
-API_LOGIC_VERSION = "U2026-11-18"    # ✨ 修改 Markdown 解析、contents.json 結構時改這個
-HTML_LOGIC_VERSION = "U2026-11-18"   # 修改分享頁模板或網址生成規則時更新
+API_LOGIC_VERSION = "U2026-11-18"  # 修改 Markdown 解析或 contents.json 結構時更新
+HTML_LOGIC_VERSION = "U2026-11-18"  # 修改分享頁模板或網址生成規則時更新
 IMAGE_LOGIC_VERSION = "U2026-09-24"  # ✨ 修改 OG圖合成、圖片轉檔品質時改這個
 
 # 本地原圖轉檔設定：演算法有改動時手動調整此版號。
@@ -47,6 +48,8 @@ BASE_URL = "https://azustock.github.io"
 API_DIR = "api"
 JS_SOURCE_PATH = "main.js"
 HASH_CHUNK_SIZE = 1024 * 1024
+HASH_HEX_LENGTH = 16
+_UNSET = object()
 
 IMAGE_PROFILES = {
     'group_thumb': (200, 85),
@@ -58,7 +61,6 @@ IMAGE_PROFILES = {
 OG_OUTPUT_SIZE = (1200, 630)
 OG_CONTENT_SIZE = (1100, 600)
 OG_QUALITY = 90
-OG_SETTINGS = {'size': OG_OUTPUT_SIZE, 'content_size': OG_CONTENT_SIZE, 'quality': OG_QUALITY}
 
 PDF_RENDER_SCALE = 4
 PDF_RENDER_OVERSAMPLE = 2
@@ -145,7 +147,8 @@ class ContentWriteTask:
     path: str
     raw_content: str
     replacements: list
-    previous_content: str | None
+    previous_content: Optional[str]
+    article: dict
 
 
 @dataclass
@@ -155,15 +158,16 @@ class ShareHtmlTask:
     description: str
     target_url: str
     share_url: str
-    og_local: str | None = None
-    og_url: str | None = None
-    fallback_local: str | None = None
-    fallback_url: str | None = None
-    group_owner: dict | None = None
-    group_id: str | None = None
-    proj_og_local: str | None = None
-    proj_cover_local: str | None = None
-    proj_img_base: str | None = None
+    og_local: Optional[str] = None
+    og_url: Optional[str] = None
+    fallback_local: Optional[str] = None
+    fallback_url: Optional[str] = None
+    group_owner: Optional[dict] = None
+    group_id: Optional[str] = None
+    proj_og_local: Optional[str] = None
+    proj_cover_local: Optional[str] = None
+    proj_img_base: Optional[str] = None
+    project_title: object = _UNSET
 
     def render(self):
         if self.og_local and self.og_url:
@@ -182,8 +186,11 @@ class ShareHtmlTask:
                 )
             else:
                 image_url = resolve_hashed_asset("assets/og.png", self.proj_img_base or f"{BASE_URL}/assets/og.png")
+        title = clean_dynamic_text(self.title)
+        if self.project_title is not _UNSET:
+            title = f"{title} | {clean_dynamic_text(self.project_title)}"
         return SHARE_HTML_TEMPLATE.format(
-            title=clean_dynamic_text(self.title),
+            title=title,
             description=clean_dynamic_text(self.description),
             image=image_url,
             target_url=self.target_url,
@@ -193,6 +200,9 @@ class ShareHtmlTask:
 
 @dataclass
 class BuildState:
+    og_settings: dict = field(default_factory=lambda: {
+        'size': OG_OUTPUT_SIZE, 'content_size': OG_CONTENT_SIZE, 'quality': OG_QUALITY,
+    })
     img_tasks: list = field(default_factory=list)
     scheduled_dests: set = field(default_factory=set)
     scheduled_recipes: dict = field(default_factory=dict)
@@ -218,7 +228,13 @@ class BuildState:
     ):
         """通用影像資產檢查、統計、排程與白名單註冊器"""
         stats[f"{stat_prefix}_total"] += 1
-        asset_key = f"asset:{source_identity(src_path)}->{source_identity(dest_path)}"
+        source_id = source_identity(src_path)
+        output_id = source_identity(dest_path)
+        asset_key = f"asset:{source_id}->{output_id}"
+        current_hashes.setdefault('_sources', {})[output_id] = {
+            'source': source_id, 'folder': posixpath.dirname(source_id),
+            'output': output_id, 'kind': stat_prefix,
+        }
         status, file_hash = check_hash_status(
             src_path, dest_path, cache_dict, asset_key, force_overwrite,
             logic_version=IMAGE_LOGIC_VERSION, dependencies=dependencies, settings=settings,
@@ -278,15 +294,28 @@ def register_api_id(identifier, source_dir, seen_ids):
     seen_ids.add(identifier)
 
 
-def load_detail_json(json_path):
-    if os.path.isfile(json_path):
-        try:
-            with open(json_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                return data if isinstance(data, dict) else {}
-        except Exception as e:
-            cout.warn(f"Error reading {json_path}: {e}")
-    return {}
+def load_detail_json(json_path, *, required=False):
+    """讀取來源設定。可省略的設定檔不存在時，才使用預設值。"""
+    try:
+        with open(json_path, encoding='utf-8') as stream:
+            data = json.load(stream)
+    except FileNotFoundError:
+        if required:
+            raise
+        return {}
+    except ValueError as error:
+        raise ValueError(f"無法解析 {json_path}：{error}") from error
+    if not isinstance(data, dict):
+        raise ValueError(f"{json_path} 的頂層必須是 JSON 物件")
+    return data
+
+
+def load_cache_json(json_path):
+    try:
+        return load_detail_json(json_path)
+    except (OSError, ValueError) as error:
+        cout.warn(f"將重新產生 {json_path}（{error}）")
+        return {}
 
 
 def get_content_language(data, context):
@@ -436,6 +465,17 @@ def get_tag_expire_days():
 # ==========================================
 # 🗜️ 自動化壓縮與 index.html 單次輸出
 # ==========================================
+def render_release_homepage(latest_version):
+    with open('index_local.html', encoding='utf-8') as stream:
+        html = stream.read()
+    html = re.sub(r'(\.(?:css|js)\?u=)[^"]+(")', lambda m: m[1] + str(latest_version) + m[2], html)
+    html = re.sub(r'(<span id="sys-version"[^>]*>)[^<]+(</span>)', lambda m: m[1] + str(latest_version) + m[2], html)
+    html = re.sub(r'<!--[\s\S]*?-->', '', html)
+    html = re.sub(r'/\*[\s\S]*?\*/', '', html)
+    html = re.sub(r'^\s*//.*$', '', html, flags=re.MULTILINE)
+    return re.sub(r'\n\s*\n', '\n', html)
+
+
 def minify_assets(latest_version=None):
     cout.stage("壓縮階段", "開始壓縮 JS 與 CSS 檔案...", icon_key='compress')
 
@@ -454,31 +494,26 @@ def minify_assets(latest_version=None):
         cout.size_action("JS 壓縮成功", "main.min.js", len(js_content) / 1024, len(min_js) / 1024, icon_key='stage')
         cout.size_action("CSS 壓縮成功", "style.min.css", len(css_content) / 1024, len(min_css) / 1024, icon_key='stage')
 
-        source_html = 'index_local.html' if os.path.exists('index_local.html') else ('index.html' if os.path.exists('index.html') else None)
-        if source_html:
+        if latest_version and os.path.isfile('index_local.html'):
+            source_html = 'index_local.html'
+            html = render_release_homepage(latest_version)
+        elif os.path.isfile('index.html'):
+            source_html = 'index.html'
             with open(source_html, 'r', encoding='utf-8') as f:
                 html = f.read()
-
-            if source_html == 'index_local.html':
-                if latest_version:
-                    html = re.sub(r'(\.(?:css|js)\?u=)[^"]+(")', rf'\g<1>{latest_version}\g<2>', html)
-                    html = re.sub(r'(<span id="sys-version"[^>]*>)[^<]+(</span>)', rf'\g<1>{latest_version}\g<2>', html)
-                html = re.sub(r'<!--[\s\S]*?-->', '', html)
-                html = re.sub(r'/\*[\s\S]*?\*/', '', html)
-                html = re.sub(r'^\s*//.*$', '', html, flags=re.MULTILINE)
-                html = re.sub(r'\n\s*\n', '\n', html)
-
-            html = re.sub(r'src="(\./)?main\.js([?"#])', r'src="\g<1>main.min.js\g<2>', html)
-            html = re.sub(r'href="(\./)?style\.css([?"#])', r'href="\g<1>style.min.css\g<2>', html)
-
-            for resource in ('main.min.js', 'style.min.css'):
-                pattern = r'((?:src|href)=")((?:\./)?' + re.escape(resource) + r'(?:\?[^"#]*)?(?:#[^"]*)?)(")'
-                html = re.sub(pattern, lambda m: m.group(1) + get_hash_url(resource, m.group(2)) + m.group(3), html)
-
-            atomic_write('index.html', html, _FILE_HASH_MEMO)
-            cout.action("網頁掛載成功", f"已從 {source_html} 輸出帶內容 Hash 的正式版 index.html。", color='green')
         else:
-            cout.warn("找不到 index_local.html 或 index.html，跳過首頁掛載處理。")
+            cout.skip("沒有可使用的正式首頁，略過首頁掛載。")
+            return
+
+        html = re.sub(r'src="(\./)?main\.js([?"#])', r'src="\g<1>main.min.js\g<2>', html)
+        html = re.sub(r'href="(\./)?style\.css([?"#])', r'href="\g<1>style.min.css\g<2>', html)
+
+        for resource in ('main.min.js', 'style.min.css'):
+            pattern = r'((?:src|href)=")((?:\./)?' + re.escape(resource) + r'(?:\?[^"#]*)?(?:#[^"]*)?)(")'
+            html = re.sub(pattern, lambda m: m.group(1) + get_hash_url(resource, m.group(2)) + m.group(3), html)
+
+        atomic_write('index.html', html, _FILE_HASH_MEMO)
+        cout.action("網頁掛載成功", f"已從 {source_html} 輸出帶內容 Hash 的正式版 index.html。", color='green')
 
     except Exception as e:
         cout.warn(f"壓縮失敗: {e}")
@@ -492,22 +527,28 @@ def get_file_hash(filepath, logic_version=""):
     if not filepath or not os.path.isfile(filepath):
         return ""
     absolute = os.path.abspath(filepath)
-    key = (absolute, *stat_key(absolute), logic_version)
+    before = stat_key(absolute)
+    key = (absolute, *before, logic_version)
     if key in _FILE_HASH_MEMO:
         return _FILE_HASH_MEMO[key]
     digest = hashlib.sha256()
     with open(absolute, 'rb') as stream:
         for chunk in iter(lambda: stream.read(HASH_CHUNK_SIZE), b''):
             digest.update(chunk)
+    if before != stat_key(absolute):
+        raise OSError(f'計算 Hash 時檔案變動：{absolute}')
     if logic_version:
         digest.update(b'\0' + logic_version.encode('utf-8'))
-    result = digest.hexdigest()[:16]
+    result = digest.hexdigest()[:HASH_HEX_LENGTH]
     _FILE_HASH_MEMO[key] = result
     return result
 
 
 def get_hash_url(local_path, base_url):
-    version = get_file_hash(local_path)
+    return with_version_hash(base_url, get_file_hash(local_path))
+
+
+def with_version_hash(base_url, version):
     if not version:
         return base_url
     parts = urlsplit(base_url)
@@ -582,7 +623,20 @@ def resolve_hashed_asset(primary_local, primary_url, fallback_local=None, fallba
 
 
 def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwrite,
-                      logic_version, dependencies=None, settings=None):
+                      logic_version=_UNSET, dependencies=None, settings=None):
+    # 舊位置參數為 (dependencies, settings)，新版可指定 logic_version。
+    if logic_version is not _UNSET and not isinstance(logic_version, str):
+        if dependencies is not None:
+            settings = dependencies
+        dependencies, logic_version = logic_version, _UNSET
+    if logic_version is _UNSET:
+        filename = os.fspath(target_path)
+        if filename.endswith('contents.json'):
+            logic_version = API_LOGIC_VERSION
+        elif filename.endswith('index.html'):
+            logic_version = HTML_LOGIC_VERSION
+        else:
+            logic_version = IMAGE_LOGIC_VERSION
     current_hash = signature(source_path, dependencies, settings, logic_version, get_file_hash)
     if not os.path.isfile(target_path):
         return 'NEW', current_hash
@@ -594,8 +648,10 @@ def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwr
 # ==========================================
 # ⏰ 時間戳過期偵測引擎
 # ==========================================
-def check_expiration_reminders(item_title, item_type, data_dict, detail_path, days):
+def check_expiration_reminders(item_title, item_type, data_dict, detail_path, days=None):
     """檢查 JSON 內的日期標籤或屬性是否過期，並交由 Cout 收集提醒"""
+    if days is None:
+        days = get_tag_expire_days()
     now = datetime.now()
     expire_delta = timedelta(days=days)
 
@@ -650,7 +706,7 @@ def update_data_version():
         "style.min.css": get_file_hash("style.min.css"),
     }
 
-    old_versions = load_detail_json('data_version.json')
+    old_versions = load_cache_json('data_version.json')
     changed_items = [k for k, v in items.items() if old_versions.get(k) != v]
 
     if changed_items:
@@ -669,28 +725,36 @@ def update_data_version():
 # ==========================================
 # 📝 系統日誌與版本同步器
 # ==========================================
+def collect_log_entries(base_dir='logs'):
+    entries = []
+    for folder, _, files in os.walk(base_dir):
+        if 'detail.json' in files:
+            path = os.path.join(folder, 'detail.json')
+            detail = load_detail_json(path, required=True)
+            version = detail.get('version', os.path.basename(folder))
+            if isinstance(version, bool):
+                raise ValueError(f"{path} 的 version 不能是布林值")
+            entries.append((folder, version, detail))
+    entries.sort(key=lambda entry: parse_version(entry[1]), reverse=True)
+    latest = next((version for _, version, detail in entries if not detail.get('no_track')), None)
+    return entries, latest
+
+
 def generate_changelogs_json():
     """打包系統日誌 (changelogs.json)，並回傳最新追蹤版號"""
     cout.stage("版本紀錄", "開始打包系統日誌 (Changelog)...", icon_key='stage')
 
     base_dir = 'logs'
     output_data = []
-    tracked_versions = []
 
     if not os.path.exists(base_dir):
         os.makedirs(base_dir, exist_ok=True)
         cout.info(f"已自動建立 '{base_dir}' 資料夾。", icon_key='folder')
         return None
 
-    entries = [
-        (folder, load_detail_json(os.path.join(folder, 'detail.json')))
-        for folder, _, files in os.walk(base_dir) if 'detail.json' in files
-    ]
-    entries.sort(key=lambda e: parse_version(e[1].get('version', os.path.basename(e[0]))), reverse=True)
-
-    for folder_path, detail in entries:
+    entries, latest = collect_log_entries(base_dir)
+    for folder_path, version, detail in entries:
         version_folder = os.path.basename(folder_path)
-        version = detail.get('version', version_folder)
 
         if 'version' in detail and detail['version'] != version_folder:
             cout.action(
@@ -698,9 +762,7 @@ def generate_changelogs_json():
                 icon_key='pin', color='yellow', tree=False, indent=1,
             )
 
-        if not detail.get('no_track', False):
-            tracked_versions.append(version)
-        else:
+        if detail.get('no_track'):
             cout.skip(f"略過不追蹤版本: {version}", indent=1)
 
         if str(version).count('.') >= 3 or str(version_folder).count('.') >= 3 or detail.get('hidden', False):
@@ -727,12 +789,25 @@ def generate_changelogs_json():
     atomic_write('changelogs.json', json.dumps(output_data, ensure_ascii=False, indent=2), _FILE_HASH_MEMO)
     cout.success(f"升級版版本日誌 (Changelog) 打包完成，共發布 {len(output_data)} 筆紀錄。")
 
-    return max(tracked_versions, key=parse_version) if tracked_versions else None
+    return latest
 
 
-def generate_version_json(latest_version, is_github_actions=False):
-    """同步最新版本號至 version.json 與 main.js"""
+def generate_version_json(latest_version=_UNSET, is_github_actions=False, *, precomputed_latest=_UNSET):
+    """同步版號。舊介面可省略版號或以 CI 布林值作為第一個參數。"""
     cout.stage("系統設定", "開始同步全站版號...", icon_key='config')
+    legacy_call = latest_version is _UNSET or isinstance(latest_version, bool)
+    if isinstance(latest_version, bool):
+        ci_flag = latest_version
+        latest_version = _UNSET if isinstance(is_github_actions, bool) else is_github_actions
+        is_github_actions = ci_flag
+    if precomputed_latest is not _UNSET:
+        if latest_version is not _UNSET:
+            raise TypeError("請只提供一個版號")
+        latest_version = precomputed_latest
+    if latest_version is _UNSET:
+        _, latest_version = collect_log_entries()
+    if isinstance(latest_version, bool):
+        raise ValueError("版號不能是布林值")
     if not latest_version:
         cout.warn('找不到任何有效的版號！')
         return
@@ -757,6 +832,8 @@ def generate_version_json(latest_version, is_github_actions=False):
                 cout.skip(f"{JS_SOURCE_PATH} 設定已是最新，無須修改。", indent=0)
         else:
             cout.warn("找不到 main.js 檔案，無法更新前端系統版本！")
+        if legacy_call and os.path.isfile('index_local.html'):
+            atomic_write('index.html', render_release_homepage(latest_version), _FILE_HASH_MEMO)
     except Exception as e:
         cout.warn(f"系統版本號同步失敗: {e}")
 
@@ -776,6 +853,13 @@ def _execute_img_task(task: ImageTask):
         ok = task.fn(*staged_args)
         if not ok or not os.path.isfile(temporary) or not os.path.getsize(temporary):
             raise OSError('影像任務未成功生成檔案')
+        with Image.open(temporary, formats=('WEBP',)) as image:
+            image.load()
+        try:
+            mode = os.stat(task.dest).st_mode & 0o777
+        except FileNotFoundError:
+            mode = 0o644
+        os.chmod(temporary, mode)
         os.replace(temporary, task.dest)
         temporary = None
         invalidate(task.dest, _FILE_HASH_MEMO, _IMG_DIM_MEMO)
@@ -833,7 +917,7 @@ def process_article(
 ):
     item = os.path.basename(item_path)
     art_detail_path = os.path.join(item_path, 'detail.json')
-    sub_data = load_detail_json(art_detail_path)
+    sub_data = load_detail_json(art_detail_path, required=True)
     default_art_order, clean_art_title = parse_folder_meta(item)
 
     is_art_targeted = bool(target_folders and (item in target_folders or clean_art_title in target_folders))
@@ -872,8 +956,8 @@ def process_article(
         content_filename = "contents.json"
         content_filepath = os.path.join(art_dir, content_filename)
         article_meta_path = os.path.join(art_dir, 'meta.json')
-        previous_document = load_detail_json(content_filepath)
-        art_cache = load_detail_json(article_meta_path)
+        previous_document = load_cache_json(content_filepath)
+        art_cache = load_cache_json(article_meta_path)
         current_hashes = {'_source_dir': source_identity(item_path)}
         art_needs_update = False
 
@@ -1047,7 +1131,7 @@ def process_article(
                 args=(local_cover_path, og_local_path, art_bg_image_path),
                 tag="🖼️ [文章OG圖]", src_path=local_cover_path, dest_path=og_local_path,
                 context=f"{proj_id} / {art_id}", cache_dict=art_cache, current_hashes=current_hashes,
-                force_overwrite=a_overwrite_og, dependencies=[art_bg_image_path], settings=OG_SETTINGS,
+                force_overwrite=a_overwrite_og, dependencies=[art_bg_image_path], settings=state.og_settings,
             ):
                 art_needs_update = True
 
@@ -1079,7 +1163,8 @@ def process_article(
             art_needs_update = True
             state.deferred_html_writes.append(ShareHtmlTask(
                 html_path=art_html_path,
-                title=f"{art_title} | {proj_title}",
+                title=art_title,
+                project_title=proj_title,
                 description=art_desc,
                 target_url="/?" + urlencode({'p': proj_id, 'a': art_id}),
                 share_url=f"{BASE_URL}/{art_api_url}/index.html",
@@ -1101,9 +1186,6 @@ def process_article(
         valid_api_files.add(os.path.abspath(article_meta_path))
         valid_api_files.add(os.path.abspath(content_filepath))
 
-        state.deferred_content_writes.append(
-            ContentWriteTask(content_filepath, content, pending_replacements, previous_document.get('content'))
-        )
         if art_needs_update or current_hashes != art_cache or not os.path.isfile(article_meta_path):
             state.deferred_meta_writes.append((article_meta_path, current_hashes))
 
@@ -1113,9 +1195,9 @@ def process_article(
             "title": meta_title,
             "content_path": f"./{art_api_url}/{content_filename}",
         }
-        state.deferred_asset_bindings.append(
-            (article_obj, 'content_path', lambda p=content_filepath, u=article_obj['content_path']: get_hash_url(p, u))
-        )
+        state.deferred_content_writes.append(ContentWriteTask(
+            content_filepath, content, pending_replacements, previous_document.get('content'), article_obj,
+        ))
 
         article_lang = get_content_language(sub_data, f"文章 {proj_folder}/{item}")
         if article_lang:
@@ -1219,7 +1301,7 @@ def generate_projects_json(
             proj_folder = os.path.basename(proj_path)
             stats["proj_total"] += 1
             proj_detail_path = os.path.join(proj_path, 'detail.json')
-            raw_proj_data = load_detail_json(proj_detail_path)
+            raw_proj_data = load_detail_json(proj_detail_path, required=True)
             default_proj_order, clean_proj_title = parse_folder_meta(proj_folder)
 
             is_proj_targeted = bool(target_folders and (proj_folder in target_folders or clean_proj_title in target_folders))
@@ -1243,12 +1325,10 @@ def generate_projects_json(
             project_lang = get_content_language(raw_proj_data, f"專案 {proj_folder}")
             if project_lang:
                 proj_data['lang'] = project_lang
-            for opt_key in ('description', 'date', 'link'):
-                if raw_proj_data.get(opt_key):
-                    proj_data[opt_key] = raw_proj_data[opt_key]
-            for str_key in ('min_sys_version', 'version'):
-                if raw_proj_data.get(str_key):
-                    proj_data[str_key] = str(raw_proj_data[str_key])
+            for key in ('min_sys_version', 'description', 'date', 'version', 'link'):
+                value = raw_proj_data.get(key)
+                if value:
+                    proj_data[key] = str(value) if key in ('min_sys_version', 'version') else value
 
             apply_normalized_meta(raw_proj_data, proj_data)
 
@@ -1259,7 +1339,7 @@ def generate_projects_json(
             os.makedirs(proj_api_dir, exist_ok=True)
 
             proj_meta_path = os.path.join(proj_api_dir, "meta.json")
-            proj_cache = load_detail_json(proj_meta_path)
+            proj_cache = load_cache_json(proj_meta_path)
             current_proj_hashes = {'_source_dir': source_identity(proj_path)}
             proj_needs_update = False
 
@@ -1298,7 +1378,7 @@ def generate_projects_json(
                                 args=(g_cover_local_path, og_local_path, bg_image_path),
                                 tag="🖼️ [群組OG圖]", src_path=g_cover_local_path, dest_path=og_local_path,
                                 context=f"{proj_id} / {g_id}", cache_dict=proj_cache, current_hashes=current_proj_hashes,
-                                force_overwrite=p_overwrite_og, dependencies=[bg_image_path], settings=OG_SETTINGS,
+                                force_overwrite=p_overwrite_og, dependencies=[bg_image_path], settings=state.og_settings,
                             ):
                                 proj_needs_update = True
                             state.deferred_asset_bindings.append((
@@ -1321,7 +1401,7 @@ def generate_projects_json(
                     args=(local_proj_cover, proj_og_local_path, bg_image_path),
                     tag="🖼️ [專案OG圖]", src_path=local_proj_cover, dest_path=proj_og_local_path,
                     context=proj_title, cache_dict=proj_cache, current_hashes=current_proj_hashes,
-                    force_overwrite=p_overwrite_og, dependencies=[bg_image_path], settings=OG_SETTINGS,
+                    force_overwrite=p_overwrite_og, dependencies=[bg_image_path], settings=state.og_settings,
                 ):
                     proj_needs_update = True
                 proj_img_base = f"{BASE_URL}/{proj_api_url}/og.webp"
@@ -1416,25 +1496,30 @@ def generate_projects_json(
     # 4. 執行所有待辦影像任務
     run_image_tasks(state.img_tasks)
 
-    # 5. 先解析內容與分享頁，再統一原子寫入
-    resolved_contents = []
-    for task in state.deferred_content_writes:
-        content = resolve_content_tokens(task.raw_content, task.replacements)
-        if task.previous_content == content:
-            stats['json_skipped'] += 1
-            continue
-        status = 'new' if not os.path.isfile(task.path) else 'updated'
-        resolved_contents.append((task.path, json.dumps({'content': content}, ensure_ascii=False), status))
-
-    for path, payload, status in resolved_contents:
-        changed = atomic_write(path, payload, _FILE_HASH_MEMO)
-        stats[f"json_{status if changed else 'skipped'}"] += 1
-
-    # 回填所有縮圖、OG 圖與文章 contents.json 的最新 Hash 路徑 (需在渲染文章分享頁前完成 group og_image)
+    # 群組分享圖先回填，文章分享頁才能選到正確的 OG 圖。
     for target_dict, field_name, resolver in state.deferred_asset_bindings:
         target_dict[field_name] = resolver()
 
+    # 所有文字和連結均解析成功後，才開始替換已發布的文字檔。
+    resolved_contents = []
+    for task in state.deferred_content_writes:
+        content = resolve_content_tokens(task.raw_content, task.replacements)
+        base_url = task.article['content_path']
+        if task.previous_content == content:
+            # 舊檔的縮排及額外欄位也屬於實際提供給讀者的位元組。
+            task.article['content_path'] = get_hash_url(task.path, base_url)
+            stats['json_skipped'] += 1
+            continue
+        payload = json.dumps({'content': content}, ensure_ascii=False).encode('utf-8')
+        version = hashlib.sha256(payload).hexdigest()[:HASH_HEX_LENGTH]
+        task.article['content_path'] = with_version_hash(base_url, version)
+        status = 'new' if not os.path.isfile(task.path) else 'updated'
+        resolved_contents.append((task.path, payload, status))
+
     resolved_html = [(task.html_path, task.render()) for task in state.deferred_html_writes]
+    for path, payload, status in resolved_contents:
+        changed = atomic_write(path, payload, _FILE_HASH_MEMO)
+        stats[f"json_{status if changed else 'skipped'}"] += 1
     for path, html in resolved_html:
         atomic_write(path, html, _FILE_HASH_MEMO)
     for path, hashes in state.deferred_meta_writes:
@@ -1456,7 +1541,8 @@ def generate_projects_json(
 # ==========================================
 # 🧹 清理廢棄 API 資料夾
 # ==========================================
-def cleanup_old_api_files(api_dir=API_DIR):
+def cleanup_old_api_files(api_dir=API_DIR, *, keep_dirs=()):
+    """清理未列入本次建置的檔案，可在手動呼叫時保留指定目錄。"""
     cout.stage("清理階段", "開始刪除無效與舊版 API 資料...", icon_key='clean')
 
     if not os.path.exists(api_dir):
@@ -1465,8 +1551,14 @@ def cleanup_old_api_files(api_dir=API_DIR):
 
     deleted_files = 0
     deleted_dirs = 0
+    kept = {os.path.normcase(os.path.abspath(path)) for path in keep_dirs}
+    kept_prefixes = tuple(os.path.join(path, '') for path in kept)
 
-    for root, dirs, files in os.walk(api_dir, topdown=False):
+    for root, dirs, files in os.walk(os.path.abspath(api_dir), topdown=False):
+        if kept:
+            directory = os.path.normcase(root)
+            if directory in kept or directory.startswith(kept_prefixes):
+                continue
         for name in files:
             file_path = os.path.abspath(os.path.join(root, name))
             if file_path not in valid_api_files:
@@ -1476,6 +1568,8 @@ def cleanup_old_api_files(api_dir=API_DIR):
 
         for name in dirs:
             dir_path = os.path.join(root, name)
+            if os.path.normcase(dir_path) in kept:
+                continue
             if not os.listdir(dir_path):
                 os.rmdir(dir_path)
                 deleted_dirs += 1
