@@ -4576,3 +4576,139 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     color: var(--muted);
     font-weight: 500;
 }
+
+/* ==========================================
+   ✨ MAIN 警告：推薦未讀前篇跳轉卡片與按鈕層級優化
+   ========================================== */
+.sensitive-modal-content.has-jump-card .sensitive-desc {
+    margin-bottom: 1.4rem;
+}
+
+.sensitive-jump-card {
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 1.05rem;
+    margin-bottom: 1.4rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--current-warning-color, var(--accent)) 45%, var(--card-border));
+    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 10%, var(--box-bg));
+    color: var(--text);
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--current-warning-color, var(--accent)) 12%, transparent);
+    transition: transform 0.25s var(--ease-smooth), border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.sensitive-jump-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--current-warning-color, var(--accent));
+    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 18%, var(--box-bg));
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--current-warning-color, var(--accent)) 28%, transparent);
+}
+
+.sensitive-jump-card:active {
+    transform: translateY(0) scale(0.99);
+}
+
+.sensitive-jump-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--current-warning-color, var(--accent));
+    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--current-warning-color, var(--accent)) 30%, transparent);
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.sensitive-jump-card:hover .sensitive-jump-icon {
+    background: var(--current-warning-color, var(--accent));
+    color: var(--card);
+}
+
+.sensitive-jump-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sensitive-jump-kicker {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--current-warning-color, var(--accent));
+    opacity: 0.9;
+}
+
+.sensitive-jump-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sensitive-jump-arrow {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    color: var(--current-warning-color, var(--accent));
+    opacity: 0.85;
+    transition: transform 0.25s var(--ease-smooth), opacity 0.25s ease;
+}
+
+.sensitive-jump-card:hover .sensitive-jump-arrow {
+    transform: translateX(4px);
+    opacity: 1;
+}
+
+/* Hover 推薦卡片時，上方圖示散發友善的主題光暈 */
+.sensitive-modal-content:has(#sensitive-jump-unread-btn:hover) #sensitive-warning-icon-wrapper svg {
+    stroke: var(--current-warning-color, var(--accent)) !important;
+    filter: drop-shadow(0 0 18px var(--current-warning-color, var(--accent))) !important;
+    transform: scale(1.06);
+}
+
+/* 有推薦前篇時，讓「不感興趣」更低調、「我已了解並前往」降級為次要外框（Hover 仍轉紅光警告） */
+.sensitive-modal-content.has-jump-card #sensitive-decline-btn {
+    border-color: var(--card-border);
+    color: var(--muted);
+}
+.sensitive-modal-content.has-jump-card #sensitive-decline-btn:hover {
+    background: var(--box-bg);
+    border-color: var(--muted);
+    color: var(--text);
+    box-shadow: none;
+}
+
+.sensitive-modal-content.has-jump-card #sensitive-agree-btn {
+    background: transparent !important;
+    color: var(--current-warning-color, var(--error-color)) !important;
+    border-color: color-mix(in srgb, var(--current-warning-color, var(--error-color)) 60%, transparent) !important;
+    box-shadow: none;
+}
+.sensitive-modal-content.has-jump-card #sensitive-agree-btn:hover {
+    background: var(--error-color) !important;
+    color: #fff !important;
+    border-color: var(--error-color) !important;
+    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important;
+}
+
+/* 深色模式 MAIN 無推薦卡片時，修正亮青底配白字對比度偏低的問題 */
+[data-theme="dark"] .sensitive-modal-content[data-sensitive-type="MAIN"]:not(.has-jump-card) #sensitive-agree-btn {
+    color: var(--bg) !important;
+    font-weight: 700;
+}
+[data-theme="dark"] .sensitive-modal-content[data-sensitive-type="MAIN"]:not(.has-jump-card) #sensitive-agree-btn:hover {
+    color: #fff !important;
+}

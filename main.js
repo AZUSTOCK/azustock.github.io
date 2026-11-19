@@ -321,17 +321,45 @@ window.stripHtml = function(str) {
     return String(str ?? '').replace(/<[^>]+>/g, '');
 };
 
-// 3. 統一產生鎖定提示文字 (取代原本散落 5 處的重複判斷)
+// 3. 統計指定金鑰已收集的碎片數 (有指定總數時僅計數 1..reqCount)
+window.countUnlockedFragments = function(baseId, reqCount = null) {
+    const unlockedSet = window.SysStorage.getSet('sys_unlocked_secrets');
+    if (typeof reqCount === 'number' && reqCount >= 1) {
+        let count = 0;
+        for (let i = 1; i <= reqCount; i++) {
+            if (unlockedSet.has(`${baseId}#${i}`)) count++;
+        }
+        return count;
+    }
+    let count = 0;
+    const prefix = baseId + '#';
+    unlockedSet.forEach(k => { if (k.startsWith(prefix)) count++; });
+    return count;
+};
+
+// 3b. 統一產生鎖定提示文字 (支援碎片進度顯示，取代原本散落 5 處的重複判斷)
 window.getLockPromptText = function(item) {
     if (!item) return '';
     if (item.lock_prompt) return item.lock_prompt;
     const req = item.required_key;
     if (!req) return '';
     const isComplex = Array.isArray(req) || (typeof req === 'string' && (req.includes('||') || req.includes('&&')));
-    return isComplex ? '需要多重金鑰' : `需要金鑰 [${req}]`;
+    if (isComplex) return '需要多重金鑰';
+    if (typeof req === 'string') {
+        const fragMatch = /^([^|]+)\|(\d+)$/.exec(req.trim());
+        if (fragMatch) {
+            const baseId = fragMatch[1].trim();
+            const reqCount = parseInt(fragMatch[2], 10);
+            if (baseId && reqCount >= 1) {
+                const current = window.countUnlockedFragments(baseId, reqCount);
+                return `需要收集 [${baseId}] 碎片 (${current}/${reqCount})`;
+            }
+        }
+    }
+    return `需要金鑰 [${req}]`;
 };
 
-// 4. 統一解析金鑰與碎片字串 (例如 "KEY_A#1/5|SILENT")
+// 4. 統一解析金鑰與碎片字串 (支援單一碎片 "KEY_A#1/5|SILENT" 與區間 "KEY_A#1~11|SILENT")
 window.parseKeySpec = function(rawEntry) {
     if (typeof rawEntry !== 'string' || !rawEntry.trim()) return null;
     const silent = /\|\s*SILENT\s*$/i.test(rawEntry);
@@ -348,8 +376,32 @@ window.parseKeySpec = function(rawEntry) {
         return null;
     }
 
+    if (fragIndex && fragIndex.includes('~')) {
+        const rangeMatch = /^(\d+)\s*~\s*(\d+)$/.exec(fragIndex);
+        if (!rangeMatch) return null;
+        const rangeStart = parseInt(rangeMatch[1], 10);
+        const rangeEnd = parseInt(rangeMatch[2], 10);
+        if (rangeStart < 1 || rangeEnd < rangeStart || (rangeEnd - rangeStart + 1) > 100) {
+            return null;
+        }
+        const storeKeys = [];
+        for (let i = rangeStart; i <= rangeEnd; i++) {
+            storeKeys.push(`${baseId}#${i}`);
+        }
+        return {
+            rawKey, baseId, fragIndex: `${rangeStart}~${rangeEnd}`,
+            reqCount, hasExplicitTotal,
+            storeKey: storeKeys[0], storeKeys,
+            isRange: true, rangeStart, rangeEnd, silent
+        };
+    }
+
     const storeKey = fragIndex ? `${baseId}#${fragIndex}` : baseId;
-    return { rawKey, baseId, fragIndex, reqCount, hasExplicitTotal, storeKey, silent };
+    return {
+        rawKey, baseId, fragIndex, reqCount, hasExplicitTotal,
+        storeKey, storeKeys: [storeKey],
+        isRange: false, rangeStart: null, rangeEnd: null, silent
+    };
 };
 
 // 5. 同步喚醒畫面上已達解鎖條件的機密區塊
@@ -464,39 +516,29 @@ window.isSecretUnlocked = function(input) {
 window.unlockSecret = function(rawKey) {
     const spec = window.parseKeySpec(rawKey);
     if (!spec) return null;
-    const { baseId, fragIndex, reqCount, hasExplicitTotal, storeKey } = spec;
+    const { baseId, fragIndex, reqCount, hasExplicitTotal, storeKeys, isRange, rangeStart, rangeEnd } = spec;
 
-    const acquired = window.SysStorage.add('sys_unlocked_secrets', storeKey);
-    const unlockedSet = window.SysStorage.getSet('sys_unlocked_secrets');
-    const countFragments = () => {
-        let count = 0;
-        const prefix = baseId + '#';
-        unlockedSet.forEach(k => { if (k.startsWith(prefix)) count++; });
-        return count;
-    };
+    let addedCount = 0;
+    for (const key of storeKeys) {
+        if (window.SysStorage.add('sys_unlocked_secrets', key)) addedCount++;
+    }
+    const currentCount = window.countUnlockedFragments(baseId, hasExplicitTotal ? reqCount : null);
 
-    if (!acquired) {
-        return { status: 'ALREADY_HAVE', baseId, currentCount: countFragments(), reqCount, hasExplicitTotal, fragIndex };
+    if (addedCount === 0) {
+        return { status: 'ALREADY_HAVE', baseId, currentCount, reqCount, hasExplicitTotal, fragIndex, isRange, rangeStart, rangeEnd, addedCount: 0 };
     }
     
     window._keysUnlockedSinceLastIndex = true;
     setTimeout(() => { if (window.refreshHomeKeysUI) window.refreshHomeKeysUI(); }, 500);
     
     if (fragIndex) {
-        let isComplete = false;
-        if (hasExplicitTotal) {
-            isComplete = true;
-            for (let i = 1; i <= reqCount; i++) {
-                if (!unlockedSet.has(`${baseId}#${i}`)) {
-                    isComplete = false;
-                    break;
-                }
-            }
-        }
-        const currentCount = countFragments();
+        const isComplete = hasExplicitTotal && currentCount >= reqCount;
+        const status = isComplete
+            ? 'GRANTED_FRAGMENTS_COMPLETE'
+            : (isRange ? 'ACQUIRED_RANGE' : 'ACQUIRED_FRAGMENT');
         return {
-            status: isComplete ? 'GRANTED_FRAGMENTS_COMPLETE' : 'ACQUIRED_FRAGMENT',
-            baseId, currentCount, reqCount, hasExplicitTotal, fragIndex
+            status, baseId, currentCount, reqCount, hasExplicitTotal,
+            fragIndex, isRange, rangeStart, rangeEnd, addedCount
         };
     }
     return { status: 'GRANTED', baseId };
@@ -528,7 +570,13 @@ window.grantDetailKeys = function(spec) {
             const result = visible[0].result;
             const baseId = window.escapeHtml(result.baseId);
             subMsg = `已解鎖機密 [${baseId}]`;
-            if (result.status === 'ACQUIRED_FRAGMENT') {
+            if (result.status === 'ACQUIRED_RANGE') {
+                title = '>_ FRAGMENT_ACQUIRED';
+                msg = '批次取得金鑰碎片';
+                subMsg = result.hasExplicitTotal
+                    ? `已解鎖 [${baseId}#${result.rangeStart}~${result.rangeEnd}] (進度: ${result.currentCount}/${result.reqCount})`
+                    : `已解鎖 [${baseId}#${result.rangeStart}~${result.rangeEnd}]`;
+            } else if (result.status === 'ACQUIRED_FRAGMENT') {
                 title = '>_ FRAGMENT_ACQUIRED';
                 msg = '取得金鑰碎片';
                 subMsg = result.hasExplicitTotal
@@ -772,9 +820,123 @@ window.getPendingSensitiveWarning = function(setting, agreePrefix, legacyKeys = 
         if (window.hasAgreedToSensitive(key)) continue;
         const condition = bypassByType && bypassByType[type];
         if (condition && window.isSecretUnlocked(condition)) continue;
-        return { type, key };
+        return { type, key, bypassCondition: condition || bypassKey || null };
     }
     return null;
+};
+
+// ✨ 文章已讀紀錄與 MAIN 警告「最前面未閱讀文章」搜尋引擎
+window.getArticleReadKey = function(projectId, article, articleIndex) {
+    return `${projectId}:${article?.id || articleIndex}`;
+};
+
+window.markArticleRead = function(projectId, article, articleIndex) {
+    if (!projectId || !article) return;
+    window.SysStorage.add('sys_read_articles', window.getArticleReadKey(projectId, article, articleIndex));
+};
+
+window.hasReadArticle = function(projectId, article, articleIndex) {
+    if (!projectId || !article) return false;
+    return window.SysStorage.has('sys_read_articles', window.getArticleReadKey(projectId, article, articleIndex));
+};
+
+window.findFirstUnreadArticleForMain = function(projectId, currentArticleIndex = null, bypassCondition = null) {
+    const projects = Array.isArray(window.siteProjects) ? window.siteProjects : [];
+    const currentProj = projects.find(p => p.id === projectId);
+    if (!currentProj || !Array.isArray(currentProj.articles)) return null;
+
+    const isUnlockedSys = document.body?.classList?.contains('system-override-active') || false;
+    const isProjAccessible = (proj) => {
+        if (!proj || !Array.isArray(proj.articles)) return false;
+        if (proj.required_key && !window.isSecretUnlocked(proj.required_key)) return false;
+        if (!isUnlockedSys && proj.is_hidden) return false;
+        return true;
+    };
+    const isArtAccessible = (art) => {
+        if (!art) return false;
+        if (art.required_key && !window.isSecretUnlocked(art.required_key)) return false;
+        if (!isUnlockedSys && art.is_hidden) return false;
+        return true;
+    };
+    const getReadingOrder = (proj) => {
+        const indexed = proj.articles.map((art, idx) => ({ art, idx }));
+        if (proj.groups && Object.keys(proj.groups).length > 0) {
+            const ordered = [];
+            for (const groupId of Object.keys(proj.groups)) {
+                ordered.push(...indexed.filter(item => item.art.group === groupId));
+            }
+            ordered.push(...indexed.filter(item => !item.art.group));
+            return ordered;
+        }
+        return indexed;
+    };
+    const articleGrantsKey = (art, targetStoreKey) => {
+        if (!art?.key) return false;
+        const entries = Array.isArray(art.key) ? art.key.flat() : [art.key];
+        return entries.some(entry => {
+            const parsed = window.parseKeySpec(entry);
+            return parsed && parsed.storeKeys.includes(targetStoreKey);
+        });
+    };
+
+    const currentOrdered = getReadingOrder(currentProj);
+
+    // 1. 優先依 MAIN 綁定的略過金鑰反查：找出第一把尚未取得的金鑰對應的文章（先找本專案，再找其他專案）
+    if (bypassCondition) {
+        const dnf = window.parseKeyLogic(bypassCondition);
+        const targetGroup = dnf.find(group => !group.every(k => window.isSingleKeyUnlocked(k)));
+        if (targetGroup) {
+            const unlockedSet = window.SysStorage.getSet('sys_unlocked_secrets');
+            const missingKeys = [];
+            for (const reqStr of targetGroup) {
+                if (window.isSingleKeyUnlocked(reqStr)) continue;
+                const parts = String(reqStr).split('|');
+                const baseId = parts[0].trim();
+                if (parts.length > 1) {
+                    const reqCount = parseInt(parts[1], 10);
+                    if (!isNaN(reqCount) && reqCount >= 1) {
+                        for (let i = 1; i <= reqCount; i++) {
+                            const fragKey = `${baseId}#${i}`;
+                            if (!unlockedSet.has(fragKey)) missingKeys.push(fragKey);
+                        }
+                    }
+                } else if (baseId) {
+                    missingKeys.push(baseId);
+                }
+            }
+
+            for (const missingKey of missingKeys) {
+                const matchInCurrent = currentOrdered.find(({ art, idx }) =>
+                    idx !== currentArticleIndex && isArtAccessible(art) && articleGrantsKey(art, missingKey)
+                );
+                if (matchInCurrent) {
+                    return { projectId: currentProj.id, articleIndex: matchInCurrent.idx, article: matchInCurrent.art };
+                }
+            }
+            for (const missingKey of missingKeys) {
+                for (const otherProj of projects) {
+                    if (otherProj.id === currentProj.id || !isProjAccessible(otherProj)) continue;
+                    const matchInOther = getReadingOrder(otherProj).find(({ art }) =>
+                        isArtAccessible(art) && articleGrantsKey(art, missingKey)
+                    );
+                    if (matchInOther) {
+                        return { projectId: otherProj.id, articleIndex: matchInOther.idx, article: matchInOther.art };
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. 兜底：在整個專案依閱讀順序找目前文章之前的第一篇未讀文章
+    let candidates = currentOrdered;
+    if (currentArticleIndex !== null) {
+        const curPos = currentOrdered.findIndex(item => item.idx === currentArticleIndex);
+        candidates = curPos > 0 ? currentOrdered.slice(0, curPos) : [];
+    }
+    const unread = candidates.find(({ art, idx }) =>
+        isArtAccessible(art) && !window.hasReadArticle(currentProj.id, art, idx)
+    );
+    return unread ? { projectId: currentProj.id, articleIndex: unread.idx, article: unread.art } : null;
 };
 
 
@@ -3676,7 +3838,7 @@ const secretBlockExtension = {
             <div class="secret-overlay">
                 ${lockIcon}
                 <span class="secret-cover-text">${token.coverText}</span>
-                <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7; margin-top: 4px;">Requires Key: [${token.secretId}]</span>
+                <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7; margin-top: 4px;">${window.escapeHtml(window.getLockPromptText({ required_key: token.secretId }))}</span>
             </div>
             <div class="secret-content markdown-body">
                 ${this.parser.parse(token.tokens)}
@@ -4944,13 +5106,17 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         proj.is_sensitive, `PROJ_${projectId}`, [`PROJ_${projectId}`]
     );
     if (pendingWarning) {
+        const recommendedArticle = pendingWarning.type === 'MAIN'
+            ? window.findFirstUnreadArticleForMain(projectId, null, pendingWarning.bypassCondition)
+            : null;
         window.showSensitiveAgreementModal(
             pendingWarning.type,
             (isPermanent) => {
                 window.saveSensitiveAgreement(pendingWarning.key, isPermanent);
                 return window.openProjectIndex(projectId, restoreScroll);
             },
-            () => closeModal()
+            () => closeModal(),
+            { recommendedArticle }
         );
         return;
     }
@@ -5338,6 +5504,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     );
     const pendingWarning = projectWarning || articleWarning;
     if (pendingWarning) {
+        const recommendedArticle = pendingWarning.type === 'MAIN'
+            ? window.findFirstUnreadArticleForMain(projectId, projectWarning ? null : articleIndex, pendingWarning.bypassCondition)
+            : null;
         window.showSensitiveAgreementModal(
             pendingWarning.type,
             (isPermanent) => {
@@ -5357,7 +5526,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                         window.openProjectIndex(projectId, true);
                     }
                 }
-            }
+            },
+            { recommendedArticle }
         );
         return;
     }
@@ -5443,6 +5613,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     const cleanMarkdown = markdownContent.replace(/^[ \t\u00A0]+$/gm, '');
                     viewArticle.innerHTML = marked.parse(cleanMarkdown);
                     window.applyArticleDefaultLanguage(viewArticle, article, proj);
+                    window.markArticleRead(projectId, article, articleIndex);
                     window.grantDetailKeys([proj.key, article.key]);
                 } else {
                     const articleName = window.escapeHtml(window.parseDynamicText(String(article.title || article.id || articleIndex), 'TOOLTIP'));
@@ -5574,7 +5745,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 keys.forEach(k => {
                     const spec = window.parseKeySpec(k.getAttribute('data-secret-key'));
                     if (!spec) return;
-                    if (!window.SysStorage.has('sys_unlocked_secrets', spec.storeKey)) {
+                    const hasMissingKey = spec.storeKeys.some(key => !window.SysStorage.has('sys_unlocked_secrets', key));
+                    if (hasMissingKey) {
                         keyObserver.observe(k);
                     } else {
                         k.classList.add('is-key-triggered');
@@ -6622,10 +6794,23 @@ function show404Modal(title, message) {
 // ✨ 敏感內容/使用者協議攔截引擎 (Content Warning Engine)
 // ==========================================
 
-window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, onDeclineCallback) {
+window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, onDeclineCallback, options = {}) {
     if (document.getElementById('sensitive-modal-overlay')) return;
     const sType = typeof sensitiveType === 'string' ? sensitiveType.toUpperCase() : 'DEFAULT';
     const tpl = window.SENSITIVE_TEMPLATES[sType] || window.SENSITIVE_TEMPLATES["DEFAULT"];
+    const rec = sType === 'MAIN' ? options?.recommendedArticle : null;
+    const recTitle = rec?.article
+        ? window.escapeHtml(window.stripHtml(window.parseDynamicText(String(rec.article.title || rec.article.id || ''), 'TOOLTIP')))
+        : '';
+    const jumpUnreadHtml = recTitle ? `
+            <button type="button" id="sensitive-jump-unread-btn" class="sensitive-jump-card">
+                <span class="sensitive-jump-icon">${GLOBAL_SVGS.docIcon}</span>
+                <span class="sensitive-jump-body">
+                    <span class="sensitive-jump-kicker">建議先閱讀未讀前篇</span>
+                    <span class="sensitive-jump-title">${recTitle}</span>
+                </span>
+                <span class="sensitive-jump-arrow">${GLOBAL_SVGS.chevronRight}</span>
+            </button>` : '';
 
     const overlay = document.createElement('div');
     overlay.id = 'sensitive-modal-overlay';
@@ -6661,7 +6846,7 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
     document.addEventListener('keydown', escListener);
 
     overlay.innerHTML = `
-        <div class="sensitive-modal-content" style="--current-warning-color: ${tpl.color};">
+        <div class="sensitive-modal-content${recTitle ? ' has-jump-card' : ''}" data-sensitive-type="${sType}" style="--current-warning-color: ${tpl.color};">
             <button type="button" id="sensitive-close-x" class="sensitive-close-btn">${GLOBAL_SVGS.closeX}</button>
             <div id="sensitive-warning-icon-wrapper" style="color: var(--current-warning-color);">${GLOBAL_SVGS.warning}</div>
             <h2 class="sensitive-title">${tpl.title}</h2>
@@ -6669,12 +6854,11 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
                 ${tpl.desc}<br>
                 <span class="sensitive-desc-hint" style="font-size: 0.8rem; opacity: 0.7;">(預設僅於本次瀏覽器存續期間放行)</span>
             </p>
-            
+            ${jumpUnreadHtml}
             <label class="sensitive-checkbox-label">
                 <input type="checkbox" id="sensitive-remember-checkbox">
                 <span class="sensitive-checkbox-text">在此設備永久放行 (關閉瀏覽器後依然有效)</span>
             </label>
-
             <div class="sensitive-actions">
                 <button type="button" id="sensitive-decline-btn" class="btn">不感興趣</button>
                 <button type="button" id="sensitive-agree-btn" class="btn">${tpl.btn_text}</button>
@@ -6684,6 +6868,35 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
 
     document.body.appendChild(overlay);
     window.lockScroll();
+
+    const jumpUnreadBtn = document.getElementById('sensitive-jump-unread-btn');
+    if (jumpUnreadBtn && rec) {
+        jumpUnreadBtn.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (closing || jumpUnreadBtn.disabled) return;
+            closing = true;
+            jumpUnreadBtn.disabled = true;
+            document.removeEventListener('keydown', escListener);
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'none';
+            setTimeout(() => {
+                overlay.remove();
+                const unlockIfIdle = () => {
+                    const mdModal = document.getElementById('md-modal');
+                    if (!document.getElementById('sensitive-modal-overlay') && (!mdModal || !mdModal.classList.contains('active'))) {
+                        window.unlockScroll();
+                    }
+                };
+                try {
+                    const result = window.openArticle(rec.projectId, rec.articleIndex);
+                    Promise.resolve(result).finally(unlockIfIdle).catch(error => console.error('跳轉未讀前篇失敗：', error));
+                } catch (error) {
+                    unlockIfIdle();
+                    console.error('跳轉未讀前篇失敗：', error);
+                }
+            }, 250);
+        };
+    }
 
     document.getElementById('sensitive-decline-btn').onclick = (e) => { if(e) { e.preventDefault(); e.stopPropagation(); } declineAction(); };
     document.getElementById('sensitive-close-x').onclick = (e) => { if(e) { e.preventDefault(); e.stopPropagation(); } declineAction(); };
@@ -7628,6 +7841,7 @@ window.showSystemReloadModal = function() {
         window.SysStorage.removeLocalSet('sys_animated_secrets');
         localStorage.removeItem('sys_data_versions');
         window.SysStorage.removeLocalSet('sys_agreed_sensitive'); // ✨ 新增：清除永久同意的敏感內容紀錄
+        window.SysStorage.removeLocalSet('sys_read_articles');
         
         sessionStorage.clear();
         window.SysStorage.clearCache();

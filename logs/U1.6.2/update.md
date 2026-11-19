@@ -16,6 +16,7 @@
 4. png cache
 5. hash behavior
 6. check_exif tools
+7. sensitive: MAIN behavior
 
 ## adjust
 1. tab-buttons associated

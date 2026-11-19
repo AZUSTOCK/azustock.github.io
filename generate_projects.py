@@ -149,6 +149,7 @@ class ContentWriteTask:
     replacements: list
     previous_content: Optional[str]
     article: dict
+    force_overwrite: bool = False
 
 
 @dataclass
@@ -502,7 +503,7 @@ def minify_assets(latest_version=None):
             with open(source_html, 'r', encoding='utf-8') as f:
                 html = f.read()
         else:
-            cout.skip("沒有可使用的正式首頁，略過首頁掛載。")
+            cout.skip("沒有可使用的正式首頁，略過首頁掛載。", indent=0)
             return
 
         html = re.sub(r'src="(\./)?main\.js([?"#])', r'src="\g<1>main.min.js\g<2>', html)
@@ -625,8 +626,12 @@ def resolve_hashed_asset(primary_local, primary_url, fallback_local=None, fallba
 def check_hash_status(source_path, target_path, old_hash_dict, key, force_overwrite,
                       logic_version=_UNSET, dependencies=None, settings=None):
     # 舊位置參數為 (dependencies, settings)，新版可指定 logic_version。
-    if logic_version is not _UNSET and not isinstance(logic_version, str):
-        if dependencies is not None:
+    if logic_version is None:
+        if isinstance(dependencies, dict) and settings is None:
+            settings, dependencies = dependencies, None
+        logic_version = _UNSET
+    elif logic_version is not _UNSET and not isinstance(logic_version, str):
+        if dependencies is not None and settings is None:
             settings = dependencies
         dependencies, logic_version = logic_version, _UNSET
     if logic_version is _UNSET:
@@ -917,35 +922,36 @@ def process_article(
 ):
     item = os.path.basename(item_path)
     art_detail_path = os.path.join(item_path, 'detail.json')
-    sub_data = load_detail_json(art_detail_path, required=True)
-    default_art_order, clean_art_title = parse_folder_meta(item)
-
-    is_art_targeted = bool(target_folders and (item in target_folders or clean_art_title in target_folders))
-    a_overwrite_json = p_overwrite_json or is_art_targeted
-    a_overwrite_og = p_overwrite_og or is_art_targeted
-    a_overwrite_thumb = p_overwrite_thumb or is_art_targeted
-    a_overwrite_pdf = overwrite_pdf_thumb or is_proj_targeted or is_art_targeted
-
-    meta_title = sub_data.get('title', clean_art_title)
-    meta_desc = sub_data.get('description')
-    meta_order = sub_data.get('order', default_art_order)
-    has_explicit_cover = 'cover' in sub_data
-    meta_cover = sub_data.get('cover')
-
-    check_expiration_reminders(meta_title, "文章", sub_data, art_detail_path, expire_days)
-
     md_file_path = None
-    rel_base = item_path.replace(os.sep, '/')
-    for sub_item in os.listdir(item_path):
-        if sub_item.endswith('.md'):
-            md_file_path = os.path.join(item_path, sub_item)
-        elif not has_explicit_cover and sub_item.lower() in ('basic.webp', 'architecture.webp'):
-            meta_cover = sub_item
-
-    if not md_file_path:
-        return None
 
     try:
+        sub_data = load_detail_json(art_detail_path, required=True)
+        default_art_order, clean_art_title = parse_folder_meta(item)
+
+        is_art_targeted = bool(target_folders and (item in target_folders or clean_art_title in target_folders))
+        a_overwrite_json = p_overwrite_json or is_art_targeted
+        a_overwrite_og = p_overwrite_og or is_art_targeted
+        a_overwrite_thumb = p_overwrite_thumb or is_art_targeted
+        a_overwrite_pdf = overwrite_pdf_thumb or is_proj_targeted or is_art_targeted
+
+        meta_title = sub_data.get('title', clean_art_title)
+        meta_desc = sub_data.get('description')
+        meta_order = sub_data.get('order', default_art_order)
+        has_explicit_cover = 'cover' in sub_data
+        meta_cover = sub_data.get('cover')
+
+        check_expiration_reminders(meta_title, "文章", sub_data, art_detail_path, expire_days)
+
+        rel_base = item_path.replace(os.sep, '/')
+        for sub_item in os.listdir(item_path):
+            if sub_item.endswith('.md'):
+                md_file_path = os.path.join(item_path, sub_item)
+            elif not has_explicit_cover and sub_item.lower() in ('basic.webp', 'architecture.webp'):
+                meta_cover = sub_item
+
+        if not md_file_path:
+            return None
+
         stats["art_total"] += 1
         art_id = clean_art_title
         register_api_id(art_id, item_path, seen_art_ids)
@@ -1196,7 +1202,8 @@ def process_article(
             "content_path": f"./{art_api_url}/{content_filename}",
         }
         state.deferred_content_writes.append(ContentWriteTask(
-            content_filepath, content, pending_replacements, previous_document.get('content'), article_obj,
+            content_filepath, content, pending_replacements, previous_document.get('content'),
+            article_obj, force_overwrite=a_overwrite_json,
         ))
 
         article_lang = get_content_language(sub_data, f"文章 {proj_folder}/{item}")
@@ -1223,8 +1230,9 @@ def process_article(
 
         return article_obj
     except Exception as e:
-        state.scan_failures.append(f"{md_file_path}: {e}")
-        cout.warn(f"處理文章失敗 {md_file_path}: {e}")
+        failed_target = md_file_path or art_detail_path
+        state.scan_failures.append(f"{failed_target}: {e}")
+        cout.warn(f"處理文章失敗 {failed_target}: {e}")
         return None
 
 
@@ -1504,15 +1512,10 @@ def generate_projects_json(
     resolved_contents = []
     for task in state.deferred_content_writes:
         content = resolve_content_tokens(task.raw_content, task.replacements)
-        base_url = task.article['content_path']
-        if task.previous_content == content:
-            # 舊檔的縮排及額外欄位也屬於實際提供給讀者的位元組。
-            task.article['content_path'] = get_hash_url(task.path, base_url)
+        if not task.force_overwrite and task.previous_content == content:
             stats['json_skipped'] += 1
             continue
-        payload = json.dumps({'content': content}, ensure_ascii=False).encode('utf-8')
-        version = hashlib.sha256(payload).hexdigest()[:HASH_HEX_LENGTH]
-        task.article['content_path'] = with_version_hash(base_url, version)
+        payload = json.dumps({'content': content}, ensure_ascii=False)
         status = 'new' if not os.path.isfile(task.path) else 'updated'
         resolved_contents.append((task.path, payload, status))
 
@@ -1520,6 +1523,8 @@ def generate_projects_json(
     for path, payload, status in resolved_contents:
         changed = atomic_write(path, payload, _FILE_HASH_MEMO)
         stats[f"json_{status if changed else 'skipped'}"] += 1
+    for task in state.deferred_content_writes:
+        task.article['content_path'] = get_hash_url(task.path, task.article['content_path'])
     for path, html in resolved_html:
         atomic_write(path, html, _FILE_HASH_MEMO)
     for path, hashes in state.deferred_meta_writes:
