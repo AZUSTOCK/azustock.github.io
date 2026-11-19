@@ -35,15 +35,3 @@
 5. zoom-btn UI
 6. sensitive & lock associated
 7. contents loading error hint behavior
-
-## deprecate
-1. 
-
-## remove
-1. 
-
-## pending
-1. 
-
-## notice
-1. 

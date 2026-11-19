@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.22",          // 目前系統版本號
+    VERSION: "U1.6.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -5514,6 +5514,19 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 return window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls, restoreActiveTabs);
             },
             () => {
+                const viewArticle = document.getElementById('view-article');
+                const isReadingArticle = modalOverlay?.classList.contains('active')
+                    && viewArticle && viewArticle.style.display !== 'none'
+                    && Array.isArray(window.historyStack) && window.historyStack.length > 0;
+                if (isReadingArticle) {
+                    const cur = window.historyStack[window.historyStack.length - 1];
+                    const curProj = window.siteProjects.find(p => p.id === cur.projectId);
+                    const curArt = curProj?.articles?.[cur.articleIndex];
+                    if (curProj && curArt) {
+                        window.updateRouteState(cur.projectId, curArt.id || cur.articleIndex);
+                    }
+                    return;
+                }
                 if (projectWarning) {
                     closeModal();
                 } else {
