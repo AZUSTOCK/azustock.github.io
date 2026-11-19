@@ -4,6 +4,7 @@
 真正需要轉檔時，沿用原版 convert_webp._convert_single_worker。
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from .build_cache import file_lock
 import hashlib
 import json
 import os
@@ -72,12 +73,15 @@ def _ensure_gitignore(site_root, manifest_path):
     path = site_root / '.gitignore'
     original = path.read_bytes() if path.exists() else b''
     text = original.decode('utf-8-sig')
-    rule = '/' + relative
-    if any(line.strip() in (rule, relative) for line in text.splitlines()):
+    rules = ['/' + relative, '/' + relative + '.lock', '/tools/.cache/site_build.lock']
+    existing = {line.strip().lstrip('/') for line in text.splitlines()}
+    missing = [rule for rule in rules if rule.lstrip('/') not in existing]
+    if not missing:
         return
     nl = b'\r\n' if b'\r\n' in original else b'\n'
     addition = (b'' if not original or original.endswith(b'\n') else nl)
-    addition += b'# Local WebP incremental build cache' + nl + rule.encode('utf-8') + nl
+    addition += b'# Local WebP incremental build cache' + nl
+    addition += nl.join(rule.encode('utf-8') for rule in missing) + nl
     # 只追加新規則，保留原本的 BOM、內容、換行與其他忽略設定。
     with path.open('ab') as stream:
         stream.write(addition)
@@ -107,7 +111,7 @@ def _convert_staged(source, target, source_hash, quality, max_size, ratio):
         os.replace(staged_webp, target)
 
 
-def convert_local_webp(directory='projects', quality=90, max_size=MAX_SIZE, ratio=RATIO,
+def _convert_local_webp_unlocked(directory='projects', quality=90, max_size=MAX_SIZE, ratio=RATIO,
                        logic_version='1', force_overwrite=False, target_folders=None,
                        manifest_path=None, max_workers=None):
     root = Path(directory).resolve()
@@ -163,11 +167,18 @@ def convert_local_webp(directory='projects', quality=90, max_size=MAX_SIZE, rati
         if exists and old is None and not forced:
             # 未知歷史狀態：建立基準但不聲稱既有 WebP 已由目前來源生成。
             record['baseline_only'] = True
+            record['webp_sha256'] = file_hash(target)
             return key, record, 'baseline', None
         if exists and not forced and old is not None and all(old.get(k) == v for k, v in record.items()):
-            return key, old, 'skipped', None
+            target_hash = file_hash(target)
+            if old.get('webp_sha256') is None:
+                # 舊 manifest 升級時補上輸出 Hash，保留既有 WebP。
+                return key, dict(old, webp_sha256=target_hash), 'skipped', None
+            if old['webp_sha256'] == target_hash:
+                return key, old, 'skipped', None
         _convert_staged(source, target, digest, quality, max_size, ratio)
         record['baseline_only'] = False
+        record['webp_sha256'] = file_hash(target)
         return key, record, 'updated' if exists else 'converted', source
 
     workers = max_workers if max_workers is not None else min(32, (os.cpu_count() or 4) + 4)
@@ -197,3 +208,20 @@ def convert_local_webp(directory='projects', quality=90, max_size=MAX_SIZE, rati
     else:
         cout.success('本地 WebP 處理完成：' + summary)
     return report
+
+
+def _manifest_lock(path):
+    return file_lock(str(path) + '.lock', '本地 WebP 處理')
+
+
+def convert_local_webp(directory='projects', quality=90, max_size=MAX_SIZE, ratio=RATIO,
+                       logic_version='1', force_overwrite=False, target_folders=None,
+                       manifest_path=None, max_workers=None):
+    root = Path(directory).resolve()
+    if not root.is_dir():
+        raise FileNotFoundError('找不到專案目錄：' + str(root))
+    path = (Path(manifest_path).resolve() if manifest_path is not None
+            else root.parent / 'tools' / '.cache' / 'webp_manifest.json')
+    with _manifest_lock(path):
+        return _convert_local_webp_unlocked(directory, quality, max_size, ratio, logic_version,
+                                           force_overwrite, target_folders, path, max_workers)

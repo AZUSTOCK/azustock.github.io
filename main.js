@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.1.22",          // 目前系統版本號
+    VERSION: "U1.6.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -56,7 +56,7 @@ const GLOBAL_SVGS = {
     meatballMenu: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle class="dot-1" cx="5" cy="12" r="2.5"/><circle class="dot-2" cx="12" cy="12" r="2.5"/><circle class="dot-3" cx="19" cy="12" r="2.5"/></svg>`,
     link: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     linkLg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
-    extLinkSm: `<svg width="24" height="24" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -4px; opacity: 0.8;">><path d="M9.665 -8.175L1.065 7.265M1.065 7.265L-5.695 3.945M-5.695 3.945L9.665 -8.175M9.665 -8.175L-9.175 -3.175M-9.175 -3.175L-10.735 1.905M-10.735 1.905L-1.135 0.345M-8.655 1.665L-7.975 8.865M-7.975 8.865L-5.695 3.945"/></svg>`,
+    extLinkSm: `<svg width="24" height="24" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -4px; opacity: 0.8;"><path d="M9.665 -8.175L1.065 7.265M1.065 7.265L-5.695 3.945M-5.695 3.945L9.665 -8.175M9.665 -8.175L-9.175 -3.175M-9.175 -3.175L-10.735 1.905M-10.735 1.905L-1.135 0.345M-8.655 1.665L-7.975 8.865M-7.975 8.865L-5.695 3.945"/></svg>`,
     newTab: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
     
     // 📌 圖釘與機密
@@ -127,9 +127,10 @@ window.STATUS_LIST = [
 window.triggerHaptic = function(type = 'light') {
     if (!navigator.vibrate) return;
     try {
-        if (type === 'light') navigator.vibrate(40); // 輕微點擊 (如：切換主題)
-        else if (type === 'success') navigator.vibrate([30, 60, 40]); // 成功回饋 (如：複製成功)
-        else if (type === 'error') navigator.vibrate([50, 50, 50, 50]); // 錯誤回饋
+        if (type === 'light' || type === 'selection') navigator.vibrate(40);
+        else if (type === 'success') navigator.vibrate([30, 60, 40]);
+        else if (type === 'warning') navigator.vibrate([40, 50, 40]);
+        else if (type === 'error') navigator.vibrate([50, 50, 50, 50]);
     } catch (e) { /* 忽略不支援的裝置 */ }
 };
 
@@ -187,29 +188,296 @@ document.documentElement.style.setProperty('--marquee-speed', `${CONFIG.MARQUEE_
 window.siteProjects = [];
 
 // ✨ 取得細項檔案的專屬 Cache Hash
-window.getResVersion = function(key) {
+window.readDataVersions = function() {
     try {
-        const versions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
-        return versions[key] || CONFIG.VERSION;
-    } catch (e) {
-        return CONFIG.VERSION;
+        const data = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
+        return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+    } catch (_) {
+        return {};
     }
 };
+window.getResVersion = function(key) {
+    return window.readDataVersions()[key] || CONFIG.VERSION;
+};
 
+// ==========================================
+// ✨ 核心通用工具庫 (Core Utilities & Memory Cache)
+// ==========================================
+
+// 1. 記憶體快取版 Storage 管理器 (消滅重複的 JSON.parse 與同步 I/O 阻塞)
+window.SysStorage = {
+    _cache: new Map(),
+    _prefix: 'sys_set_member:',
+    _cacheKey(key, storage) {
+        return (storage === localStorage ? 'L:' : 'S:') + key;
+    },
+    _members(key, storage, markers = null) {
+        let list;
+        try { list = JSON.parse(storage.getItem(key) || '[]'); } catch (_) {}
+        const members = new Set(Array.isArray(list) ? list.filter(v => typeof v === 'string') : []);
+        if (storage === localStorage) {
+            const prefix = this._prefix + key + ':';
+            for (let i = 0; i < storage.length; i++) {
+                const name = storage.key(i);
+                if (name && name.startsWith(prefix)) {
+                    members.add(name.slice(prefix.length));
+                    if (markers) markers.push(name);
+                }
+            }
+        }
+        return members;
+    },
+    getSet(key, storage = localStorage) {
+        const ck = this._cacheKey(key, storage);
+        if (!this._cache.has(ck)) {
+            let set;
+            try { set = this._members(key, storage); } catch (_) { set = new Set(); }
+            this._cache.set(ck, set);
+        }
+        return this._cache.get(ck);
+    },
+    has(key, val, storage = localStorage) {
+        return this.getSet(key, storage).has(val);
+    },
+    add(key, val, storage = localStorage) {
+        const set = this.getSet(key, storage);
+        if (set.has(val)) return false;
+        try {
+            // 即使另一個分頁的 storage 事件還沒送達，新增前也會看到它的金鑰／碎片。
+            const latest = this._members(key, storage);
+            latest.forEach(member => set.add(member));
+            if (latest.has(val)) return false;
+            if (storage !== localStorage) {
+                latest.add(val);
+                storage.setItem(key, JSON.stringify([...latest]));
+            } else {
+                // 各成員先各存一筆；兩個分頁即使同時寫，或在等鎖時關頁也不會互蓋。
+                const marker = this._prefix + key + ':' + val;
+                storage.setItem(marker, '1');
+                const merge = compact => {
+                    if (storage.getItem(marker) === null) return; // 已合併或使用者已重設
+                    const markers = compact ? [] : null;
+                    storage.setItem(key, JSON.stringify([...this._members(key, storage, markers)]));
+                    // 同時收攏上次關頁留下的紀錄；只清除本次已寫入陣列的成員。
+                    if (markers) markers.forEach(name => storage.removeItem(name));
+                };
+                if (window.navigator?.locks?.request) {
+                    // 所有正常寫入在同一把鎖內合併回原本的陣列。若鎖被拒，獨立紀錄仍有效。
+                    window.navigator.locks.request(this._prefix + key, () => merge(true))
+                        .catch(err => console.warn('[SysStorage] 保留未合併的成員:', err));
+                } else {
+                    // 沒有 Web Locks 時保留成員紀錄，下一次讀取會與相容用陣列取聯集。
+                    merge(false);
+                }
+            }
+        } catch (err) {
+            console.warn('[SysStorage] 寫入失敗:', err);
+        }
+        set.add(val);
+        return true;
+    },
+    invalidate(key, storage) {
+        if (key === null) {
+            const scope = this._cacheKey('', storage);
+            for (const name of this._cache.keys()) if (name.startsWith(scope)) this._cache.delete(name);
+        } else {
+            this._cache.delete(this._cacheKey(key, storage));
+        }
+    },
+    removeLocalSet(key) {
+        const prefix = this._prefix + key + ':';
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const name = localStorage.key(i);
+            if (name && name.startsWith(prefix)) localStorage.removeItem(name);
+        }
+        localStorage.removeItem(key);
+        this.invalidate(key, localStorage);
+    },
+    clearCache() { this._cache.clear(); }
+};
+window.addEventListener('storage', event => {
+    const storage = event.storageArea;
+    if (storage !== localStorage && storage !== sessionStorage) return;
+    const prefix = window.SysStorage._prefix;
+    const key = event.key?.startsWith(prefix) ? event.key.slice(prefix.length).split(':', 1)[0] : event.key;
+    window.SysStorage.invalidate(key, storage);
+    if (storage === localStorage && (key === null || key === 'sys_unlocked_secrets')) {
+        window._keysUnlockedSinceLastIndex = true;
+        if (!window._keysRefreshFrame) window._keysRefreshFrame = requestAnimationFrame(() => {
+            window._keysRefreshFrame = 0;
+            window.refreshHomeKeysUI();
+        });
+    }
+});
+
+// 2. HTML 字串安全跳脫與標籤剝除工具
+window.escapeHtml = function(str) {
+    return String(str ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[ch]);
+};
+
+window.stripHtml = function(str) {
+    return String(str ?? '').replace(/<[^>]+>/g, '');
+};
+
+// 3. 統計指定金鑰已收集的碎片數 (有指定總數時僅計數 1..reqCount)
+window.countUnlockedFragments = function(baseId, reqCount = null) {
+    const unlockedSet = window.SysStorage.getSet('sys_unlocked_secrets');
+    if (typeof reqCount === 'number' && reqCount >= 1) {
+        let count = 0;
+        for (let i = 1; i <= reqCount; i++) {
+            if (unlockedSet.has(`${baseId}#${i}`)) count++;
+        }
+        return count;
+    }
+    let count = 0;
+    const prefix = baseId + '#';
+    unlockedSet.forEach(k => { if (k.startsWith(prefix)) count++; });
+    return count;
+};
+
+// 3b. 統一產生鎖定提示文字 (支援碎片進度顯示，取代原本散落 5 處的重複判斷)
+window.getLockPromptText = function(item) {
+    if (!item) return '';
+    if (item.lock_prompt) return item.lock_prompt;
+    const req = item.required_key;
+    if (!req) return '';
+    const isComplex = Array.isArray(req) || (typeof req === 'string' && (req.includes('||') || req.includes('&&')));
+    if (isComplex) return '需要多重金鑰';
+    if (typeof req === 'string') {
+        const fragMatch = /^([^|]+)\|(\d+)$/.exec(req.trim());
+        if (fragMatch) {
+            const baseId = fragMatch[1].trim();
+            const reqCount = parseInt(fragMatch[2], 10);
+            if (baseId && reqCount >= 1) {
+                const current = window.countUnlockedFragments(baseId, reqCount);
+                return `需要收集 [${baseId}] 碎片 (${current}/${reqCount})`;
+            }
+        }
+    }
+    return `需要金鑰 [${req}]`;
+};
+
+// 4. 統一解析金鑰與碎片字串 (支援單一碎片 "KEY_A#1/5|SILENT" 與區間 "KEY_A#1~11|SILENT")
+window.parseKeySpec = function(rawEntry) {
+    if (typeof rawEntry !== 'string' || !rawEntry.trim()) return null;
+    const silent = /\|\s*SILENT\s*$/i.test(rawEntry);
+    const rawKey = rawEntry.replace(/\|\s*SILENT\s*$/i, '').trim();
+    const match = /^([^#|]+)(?:#([^/#|]+)(?:\/(\d+))?)?$/.exec(rawKey);
+    if (!match || !match[1].trim()) return null;
+
+    const baseId = match[1].trim();
+    const fragIndex = match[2] ? match[2].trim() : null;
+    const reqCount = match[3] ? parseInt(match[3], 10) : 1;
+    const hasExplicitTotal = !!match[3];
+
+    if ((match[2] && !fragIndex) || (hasExplicitTotal && (isNaN(reqCount) || reqCount < 1))) {
+        return null;
+    }
+
+    if (fragIndex && fragIndex.includes('~')) {
+        const rangeMatch = /^(\d+)\s*~\s*(\d+)$/.exec(fragIndex);
+        if (!rangeMatch) return null;
+        const rangeStart = parseInt(rangeMatch[1], 10);
+        const rangeEnd = parseInt(rangeMatch[2], 10);
+        if (rangeStart < 1 || rangeEnd < rangeStart || (rangeEnd - rangeStart + 1) > 100) {
+            return null;
+        }
+        const storeKeys = [];
+        for (let i = rangeStart; i <= rangeEnd; i++) {
+            storeKeys.push(`${baseId}#${i}`);
+        }
+        return {
+            rawKey, baseId, fragIndex: `${rangeStart}~${rangeEnd}`,
+            reqCount, hasExplicitTotal,
+            storeKey: storeKeys[0], storeKeys,
+            isRange: true, rangeStart, rangeEnd, silent
+        };
+    }
+
+    const storeKey = fragIndex ? `${baseId}#${fragIndex}` : baseId;
+    return {
+        rawKey, baseId, fragIndex, reqCount, hasExplicitTotal,
+        storeKey, storeKeys: [storeKey],
+        isRange: false, rangeStart: null, rangeEnd: null, silent
+    };
+};
+
+// 5. 同步喚醒畫面上已達解鎖條件的機密區塊
+window.revealUnlockedSecretNodes = function(root = document) {
+    const lockedNodes = root.querySelectorAll(
+        '.md-secret-block.is-locked, .md-inline-secret.is-locked, .md-stealth-secret.is-locked, .md-stealth-block.is-locked, .pending-auto-unlock'
+    );
+    lockedNodes.forEach(block => {
+        const reqId = block.getAttribute('data-secret-id');
+        if (!reqId || !window.isSecretUnlocked(reqId)) return;
+        block.classList.remove('is-locked', 'pending-auto-unlock');
+        block.classList.add('is-unlocked');
+        const placeId = block.getAttribute('data-place-id');
+        if (placeId) window.SysStorage.add('sys_animated_secrets', placeId);
+    });
+};
+
+// 6. 計算專案在當前權限下的可見文章數 (取代原本散落 5 處的 filter)
+window.getVisibleArticleCount = function(proj) {
+    if (!proj || !Array.isArray(proj.articles)) return 0;
+    const isUnlockedSys = document.body.classList.contains('system-override-active');
+    return proj.articles.filter(art => {
+        const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key);
+        if (artLocked && (art.lock_mode || 'visible') === 'hidden') return false;
+        return isUnlockedSys || !art.is_hidden;
+    }).length;
+};
+
+// 7. 取得跑馬燈當前的 X 軸偏移量
+window.getMarqueeCurrentX = function(marqueeEl, customWidth = null) {
+    const width = customWidth || marqueeEl.offsetWidth;
+    if (width <= 0) return 0;
+    let currentX = new DOMMatrix(window.getComputedStyle(marqueeEl).transform).m41 % width;
+    return currentX > 0 ? currentX - width : currentX;
+};
+
+// 8. 管理文章內的動態 Observer，於切換文章時統一釋放記憶體
+window._articleObservers = [];
+window.registerArticleObserver = function(observer) {
+    if (observer) window._articleObservers.push(observer);
+    return observer;
+};
+window.clearArticleObservers = function() {
+    window._articleObservers.forEach(obs => {
+        if (obs && typeof obs.disconnect === 'function') obs.disconnect();
+    });
+    window._articleObservers = [];
+};
+
+
+// 每次確定要離開目前畫面時更新代號，讓先前的下載與延後的畫面切換一起失效。
+window._modalNavigation = 0;
+window.beginModalNavigation = function() {
+    const navigation = ++window._modalNavigation;
+    if (window._activeFetcher) {
+        window._activeFetcher.abort();
+        window._activeFetcher = null;
+        window.toggleLoading(false);
+    }
+    if (document.body.style.cursor === 'wait') document.body.style.cursor = '';
+    window._cancelModalTransition?.();
+    window.clearArticleObservers();
+    return navigation;
+};
 
 // ==========================================
 // ✨ 機密檔案解鎖記憶引擎 (支援碎片收集 Key Fragments & 多重邏輯 DNF)
 // ==========================================
 window.parseKeyLogic = function(input) {
     if (Array.isArray(input)) {
-        // ✨ 防呆：如果使用者寫成一維陣列 ["A", "B"]，自動轉化為 [["A"], ["B"]] (OR 邏輯)
         if (input.length > 0 && typeof input[0] === 'string') {
             return input.map(k => [k]);
         }
         return input; 
     }
     if (typeof input !== 'string') return [];
-    // 將 "A || (B && C)" 解析為 [["A"], ["B", "C"]]
     return input.split('||').map(group => {
         let cleanGroup = group.trim();
         if (cleanGroup.startsWith('(') && cleanGroup.endsWith(')')) {
@@ -223,19 +491,15 @@ window.isSingleKeyUnlocked = function(reqStr) {
     if (!reqStr) return true;
     const parts = String(reqStr).split('|');
     const baseId = parts[0].trim();
-    const reqCount = parts.length > 1 ? parseInt(parts[1]) : 1;
+    const reqCount = parts.length > 1 ? parseInt(parts[1], 10) : 1;
     
-    const unlocked = JSON.parse(localStorage.getItem('sys_unlocked_secrets') || '[]');
-    if (unlocked.includes(baseId)) return true; 
+    const unlockedSet = window.SysStorage.getSet('sys_unlocked_secrets');
+    if (unlockedSet.has(baseId)) return true; 
     
     if (parts.length > 1) {
-        // ✨ 1. 補上 NaN 防呆漏洞：如果指定的總數不是數字或小於 1，一律視為無效金鑰！
         if (isNaN(reqCount) || reqCount < 1) return false;
-
         for (let i = 1; i <= reqCount; i++) {
-            if (!unlocked.includes(`${baseId}#${i}`)) {
-                return false; 
-            }
+            if (!unlockedSet.has(`${baseId}#${i}`)) return false; 
         }
         return true; 
     }
@@ -246,118 +510,85 @@ window.isSecretUnlocked = function(input) {
     if (!input) return true;
     const dnf = window.parseKeyLogic(input);
     if (dnf.length === 0) return true;
-    // OR 層: 只要有一組達成即可 / AND 層: 該組的所有鑰匙都必須達成
     return dnf.some(andGroup => andGroup.every(key => window.isSingleKeyUnlocked(key)));
 };
 
 window.unlockSecret = function(rawKey) {
-    const match = rawKey.match(/^([^#]+)(?:#([^/]+)(?:\/(\d+))?)?$/);
-    // ✨ 加上 match[1] 與 match[2] 的存在判定，防止 undefined.trim() 報錯
-    const baseId = match && match[1] ? match[1].trim() : rawKey.trim();
-    const fragIndex = match && match[2] ? match[2].trim() : null;
-    const reqCount = match && match[3] ? parseInt(match[3]) : 1;
-    // ✨ 記錄使用者是否有明確寫出「總數量」(是否有 / 符號)
-    const hasExplicitTotal = match && !!match[3]; 
-    
-    const storeKey = fragIndex ? `${baseId}#${fragIndex}` : baseId;
-    let unlocked = JSON.parse(localStorage.getItem('sys_unlocked_secrets') || '[]');
-        
-    if (unlocked.includes(storeKey)) {
-        return { status: 'ALREADY_HAVE', baseId, currentCount: unlocked.filter(k => k.startsWith(baseId + '#')).length, reqCount, hasExplicitTotal, fragIndex };
+    const spec = window.parseKeySpec(rawKey);
+    if (!spec) return null;
+    const { baseId, fragIndex, reqCount, hasExplicitTotal, storeKeys, isRange, rangeStart, rangeEnd } = spec;
+
+    let addedCount = 0;
+    for (const key of storeKeys) {
+        if (window.SysStorage.add('sys_unlocked_secrets', key)) addedCount++;
+    }
+    const currentCount = window.countUnlockedFragments(baseId, hasExplicitTotal ? reqCount : null);
+
+    if (addedCount === 0) {
+        return { status: 'ALREADY_HAVE', baseId, currentCount, reqCount, hasExplicitTotal, fragIndex, isRange, rangeStart, rangeEnd, addedCount: 0 };
     }
     
-    unlocked.push(storeKey);
-    localStorage.setItem('sys_unlocked_secrets', JSON.stringify(unlocked));
-    
     window._keysUnlockedSinceLastIndex = true;
-    setTimeout(() => { if(window.refreshHomeKeysUI) window.refreshHomeKeysUI(); }, 500);
+    setTimeout(() => { if (window.refreshHomeKeysUI) window.refreshHomeKeysUI(); }, 500);
     
     if (fragIndex) {
-        let isComplete = false;
-        
-        // ✨ 如果有寫明數量 (例如 #1/5)，系統才能在「此刻」判定是否全部集滿
-        if (hasExplicitTotal) {
-            isComplete = true;
-            for (let i = 1; i <= reqCount; i++) {
-                if (!unlocked.includes(`${baseId}#${i}`)) {
-                    isComplete = false;
-                    break;
-                }
-            }
-        }
-        
-        const currentCount = unlocked.filter(k => k.startsWith(baseId + '#')).length;
-        
-        if (isComplete) {
-            return { status: 'GRANTED_FRAGMENTS_COMPLETE', baseId, currentCount, reqCount, hasExplicitTotal, fragIndex };
-        } else {
-            return { status: 'ACQUIRED_FRAGMENT', baseId, currentCount, reqCount, hasExplicitTotal, fragIndex };
-        }
+        const isComplete = hasExplicitTotal && currentCount >= reqCount;
+        const status = isComplete
+            ? 'GRANTED_FRAGMENTS_COMPLETE'
+            : (isRange ? 'ACQUIRED_RANGE' : 'ACQUIRED_FRAGMENT');
+        return {
+            status, baseId, currentCount, reqCount, hasExplicitTotal,
+            fragIndex, isRange, rangeStart, rangeEnd, addedCount
+        };
     }
     return { status: 'GRANTED', baseId };
 };
 
-// detail.json 的 key：沿用既有金鑰／碎片資料與靜音語法。
 window.grantDetailKeys = function(spec) {
     const entries = Array.isArray(spec) ? spec.flat() : [spec];
     const received = [];
     for (const entry of entries) {
         if (typeof entry !== 'string' || !entry.trim()) continue;
-        const silent = /\|\s*SILENT\s*$/i.test(entry);
-        const rawKey = entry.replace(/\|\s*SILENT\s*$/i, '').trim();
-        const match = /^([^#|]+)(?:#([^/#|]+)(?:\/(\d+))?)?$/.exec(rawKey);
-        if (!match || !match[1].trim() || (match[2] && !match[2].trim()) || (match[3] && Number(match[3]) < 1)) {
+        const parsed = window.parseKeySpec(entry);
+        if (!parsed) {
             console.warn('[SYS] 已略過無效的 detail.json key 設定。');
             continue;
         }
-        const result = window.unlockSecret(rawKey);
-        if (result && result.status !== 'ALREADY_HAVE') received.push({ result, silent });
+        const result = window.unlockSecret(parsed.rawKey);
+        if (result && result.status !== 'ALREADY_HAVE') received.push({ result, silent: parsed.silent });
     }
     if (!received.length) return false;
 
-    // 已經渲染的機密區塊與新金鑰同步，不必重新解析整篇 Markdown。
-    const locked = document.querySelectorAll('.md-secret-block.is-locked, .md-inline-secret.is-locked, .md-stealth-secret.is-locked, .md-stealth-block.is-locked, .pending-auto-unlock');
-    locked.forEach(block => {
-        const reqId = block.getAttribute('data-secret-id');
-        if (!reqId || !window.isSecretUnlocked(reqId)) return;
-        block.classList.remove('is-locked', 'pending-auto-unlock');
-        block.classList.add('is-unlocked');
-        const placeId = block.getAttribute('data-place-id');
-        if (placeId) {
-            const places = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
-            if (!places.includes(placeId)) {
-                places.push(placeId);
-                localStorage.setItem('sys_animated_secrets', JSON.stringify(places));
-            }
-        }
-    });
+    window.revealUnlockedSecretNodes(document);
 
     const visible = received.filter(item => !item.silent);
     if (visible.length) {
-        // showSystemToast 會插入 HTML；金鑰名稱在顯示前必須先轉義。
-        const escape = value => String(value).replace(/[&<>"']/g, char => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        })[char]);
         let title = '>_ ACCESS_GRANTED';
         let msg = '取得授權金鑰';
         let subMsg;
         if (visible.length === 1) {
             const result = visible[0].result;
-            const baseId = escape(result.baseId);
+            const baseId = window.escapeHtml(result.baseId);
             subMsg = `已解鎖機密 [${baseId}]`;
-            if (result.status === 'ACQUIRED_FRAGMENT') {
+            if (result.status === 'ACQUIRED_RANGE') {
+                title = '>_ FRAGMENT_ACQUIRED';
+                msg = '批次取得金鑰碎片';
+                subMsg = result.hasExplicitTotal
+                    ? `已解鎖 [${baseId}#${result.rangeStart}~${result.rangeEnd}] (進度: ${result.currentCount}/${result.reqCount})`
+                    : `已解鎖 [${baseId}#${result.rangeStart}~${result.rangeEnd}]`;
+            } else if (result.status === 'ACQUIRED_FRAGMENT') {
                 title = '>_ FRAGMENT_ACQUIRED';
                 msg = '取得金鑰碎片';
                 subMsg = result.hasExplicitTotal
                     ? `進度: ${result.currentCount}/${result.reqCount} [${baseId}]`
-                    : `已取得碎片 [${baseId}#${escape(result.fragIndex)}]`;
+                    : `已取得碎片 [${baseId}#${window.escapeHtml(result.fragIndex)}]`;
             } else if (result.status === 'GRANTED_FRAGMENTS_COMPLETE') {
                 msg = '金鑰合成完畢';
                 subMsg = `權限已解開！(${result.currentCount}/${result.reqCount}) [${baseId}]`;
             }
         } else {
             msg = `取得 ${visible.length} 個金鑰或碎片`;
-            subMsg = visible.map(({result}) => `[${escape(result.baseId)}${result.fragIndex ? '#' + escape(result.fragIndex) : ''}]`).join('、');
+            subMsg = visible.map(({result}) => `[${window.escapeHtml(result.baseId)}${result.fragIndex ? '#' + window.escapeHtml(result.fragIndex) : ''}]`).join('、');
         }
         if (window.showSystemToast) window.showSystemToast(title, msg, subMsg, 6000, 'success');
         if (window.triggerHaptic) window.triggerHaptic('success');
@@ -365,118 +596,113 @@ window.grantDetailKeys = function(spec) {
     return true;
 };
 
-// ✨ 動態文字解析引擎 (Dynamic Text Engine - 完美防重複特效版)
+// ✨ 動態文字解析引擎 (O(1) 快取查詢版)
 window.parseDynamicText = function(text, renderContext = 'DEFAULT') {
     if (!text || typeof text !== 'string') return text;
     return text.replace(/\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?/g, function(match, key, cover, real) {
         const cleanKey = key.trim();
         const isUnlocked = window.isSecretUnlocked(cleanKey);
         
-        // 如果是氣泡提示 (Tooltip) 等不需要渲染 DOM 的地方，直接回傳純文字，不消耗動畫額度
         if (renderContext === 'TOOLTIP') {
             return isUnlocked ? real.trim() : (cover || '***').trim();
         }
 
-        const rawStr = match; 
-        const strHash = Array.from(rawStr).reduce((s, c) => Math.imul(31, s) + c.charCodeAt(0) | 0, 0);
+        let strHash = 0;
+        for (let i = 0; i < match.length; i++) {
+            strHash = Math.imul(31, strHash) + match.charCodeAt(i) | 0;
+        }
         
-        // ✨ 加入 renderContext，確保「卡片」、「目錄」、「按鈕」的動畫額度互相獨立！
-        const placeId = 'UI_FX_' + renderContext + '_' + cleanKey + '_' + strHash;
-        
-        let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
-        const hasAnimatedHere = animatedPlaces.includes(placeId);
+        const placeId = `UI_FX_${renderContext}_${cleanKey}_${strHash}`;
+        const hasAnimatedHere = window.SysStorage.has('sys_animated_secrets', placeId);
 
         let statusClass = 'is-locked';
         if (isUnlocked) {
-            // ✨ 如果播過動畫，直接加上 already-unlocked 封印 CSS 特效
             statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-unlocked';
-            
-            if (!hasAnimatedHere) {
-                animatedPlaces.push(placeId);
-                localStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
-            }
+            if (!hasAnimatedHere) window.SysStorage.add('sys_animated_secrets', placeId);
         }
 
         return `<span class="md-stealth-secret ${statusClass}" data-secret-id="${cleanKey}" data-place-id="${placeId}"><span class="stealth-cover">${(cover || '***').trim()}</span><span class="stealth-real">${real.trim()}</span></span>`;
     });
 };
 
-window.refreshHomeKeysUI = function() {
-    const isUnlockedSys = document.body.classList.contains('system-override-active');
+window.syncProjectCardUI = function(card, proj) {
+    if (!card || !proj) return;
+    const pid = proj.id;
+    const isLocked = proj.required_key && !window.isSecretUnlocked(proj.required_key);
+    const isHiddenLock = (proj.lock_mode || 'visible') === 'hidden';
+    const lockPrompt = window.getLockPromptText(proj);
 
-    document.querySelectorAll('.card').forEach(card => {
-        const pid = card.getAttribute('data-project-id');
-        const proj = window.siteProjects.find(p => p.id === pid);
-        if (!proj) return;
+    card.classList.toggle('sys-hidden-card', !!proj.is_hidden);
+    card.classList.toggle('is-key-locked', !!(isLocked && !isHiddenLock));
+    card.classList.toggle('key-hidden-card', !!(isLocked && isHiddenLock));
 
-        const keyAttr = card.getAttribute('data-required-key');
-        if (keyAttr) {
-            let keyData = keyAttr;
-            try { if (keyAttr.startsWith('[')) keyData = JSON.parse(keyAttr); } catch(e) {}
-
-            if (window.isSecretUnlocked(keyData)) {
-                // ✨ 1. 解除金鑰鎖定與金鑰隱藏 class（保留 sys-hidden-card 給一般隱藏機制控制）
-                card.classList.remove('is-key-locked', 'key-hidden-card');
-
-                // ✨ 2. 圖釘轉換：若是 is_hidden 專案，拔除 key-lock-pin 讓鎖頭自動變回「鑰匙」；否則移除圖釘
-                const pin = card.querySelector('.card-secret-pin');
-                if (proj.is_hidden || proj.required_key) {
-                    if (pin) {
-                        pin.classList.remove('key-lock-pin');
-                    } else {
-                        card.insertAdjacentHTML('afterbegin', `<div class="card-secret-pin">${GLOBAL_SVGS.secretPin}</div>`);
-                    }
-                } else if (pin) {
-                    pin.remove();
-                }
-
-                // ✨ 3. 恢復卡片正常的點擊事件
-                if (proj.articles && proj.articles.length > 0) {
-                    card.style.cursor = 'pointer';
-                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.openProjectIndex(pid); };
-                } else if (proj.link) {
-                    card.style.cursor = 'pointer';
-                    card.onclick = () => {
-                        if (window.currentActiveTag) window.clearFilter();
-                        const a = document.createElement('a'); a.href = proj.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
-                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                        window.grantDetailKeys(proj.key);
-                    };
-                } else {
-                    card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
-                }
-            }
+    let pin = card.querySelector('.card-secret-pin');
+    if (isLocked || proj.is_hidden || proj.required_key) {
+        if (!pin) {
+            card.insertAdjacentHTML('afterbegin', `<div class="card-secret-pin">${GLOBAL_SVGS.secretPin}</div>`);
+            pin = card.querySelector('.card-secret-pin');
         }
+        pin.classList.toggle('key-lock-pin', !!isLocked);
+    } else if (pin) {
+        pin.remove();
+    }
 
-        // ✨ 4. 即時更新卡片上的動態文字 (解鎖後立刻渲染出真實標題與特效)
-        const titleH3 = card.querySelector('.card-text h3');
-        if (titleH3) {
-            const cardMetaHtml = proj.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(proj.meta, 'CARD_META')}</span>` : '';
-            titleH3.innerHTML = `${window.parseDynamicText(proj.title, 'CARD_TITLE')} ${cardMetaHtml}`;
-        }
+    const titleH3 = card.querySelector('.card-text h3');
+    if (titleH3) {
+        const cardMetaHtml = proj.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(proj.meta, 'CARD_META')}</span>` : '';
+        titleH3.innerHTML = `${window.parseDynamicText(proj.title, 'CARD_TITLE')} ${cardMetaHtml}`;
+    }
 
-        const descP = card.querySelector('.card-desc-text');
-        if (descP) {
-            descP.innerHTML = window.parseDynamicText(proj.description, 'CARD_DESC');
-        }
+    const descP = card.querySelector('.card-desc-text');
+    if (descP) descP.innerHTML = window.parseDynamicText(proj.description, 'CARD_DESC');
 
-        // ✨ 5. 更新底部按鈕：只要專案「未上鎖 (或已解鎖)」，就恢復為「展開系列 (N)」並移除紅字樣式！
-        const isStillLocked = proj.required_key && !window.isSecretUnlocked(proj.required_key);
-        const actionBtn = card.querySelector('.card-action-btn');
-
-        if (!isStillLocked && actionBtn) {
-            actionBtn.style.color = ''; // 清除未解鎖時的 var(--error-color) 紅字設定
-            if (proj.articles && proj.articles.length > 0) {
-                const visibleCount = proj.articles.filter(a => {
-                    const artLocked = a.required_key && !window.isSecretUnlocked(a.required_key);
-                    if (artLocked && (a.lock_mode || 'visible') === 'hidden') return false;
-                    return isUnlockedSys || !a.is_hidden;
-                }).length;
-                actionBtn.innerHTML = `<div class="card-action-icon-wrap">${GLOBAL_SVGS.folderClosed}${GLOBAL_SVGS.folderOpen}</div>展開系列 (${visibleCount})`;
+    const actionBtn = card.querySelector('.card-action-btn');
+    if (isLocked) {
+        card.onclick = (e) => {
+            e.stopPropagation();
+            window.showSystemToast?.('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
+        };
+        if (actionBtn) {
+            if (!isHiddenLock && proj.articles?.length) {
+                actionBtn.style.color = 'var(--error-color)';
+                actionBtn.innerHTML = `<div class="card-action-icon-wrap">${GLOBAL_SVGS.secretPinSmall}</div>${window.escapeHtml(lockPrompt)}解鎖`;
             } else if (proj.link) {
+                actionBtn.style.color = '';
                 actionBtn.innerHTML = `前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span>`;
             }
         }
+    } else {
+        if (proj.articles && proj.articles.length > 0) {
+            card.style.cursor = 'pointer';
+            card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); window.openProjectIndex(pid); };
+            if (actionBtn) {
+                actionBtn.style.color = '';
+                const visibleCount = window.getVisibleArticleCount(proj);
+                actionBtn.innerHTML = `<div class="card-action-icon-wrap">${GLOBAL_SVGS.folderClosed}${GLOBAL_SVGS.folderOpen}</div>展開系列 (${visibleCount})`;
+            }
+        } else if (proj.link) {
+            card.style.cursor = 'pointer';
+            card.onclick = () => {
+                if (window.currentActiveTag) window.clearFilter();
+                const a = document.createElement('a'); a.href = proj.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                window.grantDetailKeys(proj.key);
+            };
+            if (actionBtn) {
+                actionBtn.style.color = '';
+                actionBtn.innerHTML = `前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span>`;
+            }
+        } else {
+            card.onclick = () => { if (window.currentActiveTag) window.clearFilter(); };
+        }
+    }
+};
+
+window.refreshHomeKeysUI = function() {
+    document.querySelectorAll('.card').forEach(card => {
+        const pid = card.getAttribute('data-project-id');
+        const proj = window.siteProjects.find(p => p.id === pid);
+        if (proj) window.syncProjectCardUI(card, proj);
     });
 };
 
@@ -485,35 +711,17 @@ window.refreshHomeKeysUI = function() {
 // ==========================================
 window.hasAgreedToSensitive = function(key) {
     if (window._agreedSensitiveTypes && window._agreedSensitiveTypes.has(key)) return true;
-    
-    // ✨ 1. 檢查永久放行紀錄 (LocalStorage)
-    const local = JSON.parse(localStorage.getItem('sys_agreed_sensitive') || '[]');
-    if (local.includes(key)) return true;
-    
-    // ✨ 2. 檢查當次瀏覽階段紀錄 (SessionStorage)：確保版本更新重啟或更新失敗重載時不會要求重填！
-    const session = JSON.parse(sessionStorage.getItem('sys_session_agreed_sensitive') || '[]');
-    if (session.includes(key)) return true;
-    
+    if (window.SysStorage.has('sys_agreed_sensitive', key, localStorage)) return true;
+    if (window.SysStorage.has('sys_session_agreed_sensitive', key, sessionStorage)) return true;
     return false;
 };
 
 window.saveSensitiveAgreement = function(key, permanent) {
     if (!window._agreedSensitiveTypes) window._agreedSensitiveTypes = new Set();
-    window._agreedSensitiveTypes.add(key); // 寫入當前記憶體
-    
-    // ✨ 同步寫入 sessionStorage，跨越版本更新重載依然有效
-    const session = JSON.parse(sessionStorage.getItem('sys_session_agreed_sensitive') || '[]');
-    if (!session.includes(key)) {
-        session.push(key);
-        sessionStorage.setItem('sys_session_agreed_sensitive', JSON.stringify(session));
-    }
-
+    window._agreedSensitiveTypes.add(key);
+    window.SysStorage.add('sys_session_agreed_sensitive', key, sessionStorage);
     if (permanent) {
-        const local = JSON.parse(localStorage.getItem('sys_agreed_sensitive') || '[]');
-        if (!local.includes(key)) { 
-            local.push(key); 
-            localStorage.setItem('sys_agreed_sensitive', JSON.stringify(local)); 
-        }
+        window.SysStorage.add('sys_agreed_sensitive', key, localStorage);
     }
 };
 
@@ -612,9 +820,123 @@ window.getPendingSensitiveWarning = function(setting, agreePrefix, legacyKeys = 
         if (window.hasAgreedToSensitive(key)) continue;
         const condition = bypassByType && bypassByType[type];
         if (condition && window.isSecretUnlocked(condition)) continue;
-        return { type, key };
+        return { type, key, bypassCondition: condition || bypassKey || null };
     }
     return null;
+};
+
+// ✨ 文章已讀紀錄與 MAIN 警告「最前面未閱讀文章」搜尋引擎
+window.getArticleReadKey = function(projectId, article, articleIndex) {
+    return `${projectId}:${article?.id || articleIndex}`;
+};
+
+window.markArticleRead = function(projectId, article, articleIndex) {
+    if (!projectId || !article) return;
+    window.SysStorage.add('sys_read_articles', window.getArticleReadKey(projectId, article, articleIndex));
+};
+
+window.hasReadArticle = function(projectId, article, articleIndex) {
+    if (!projectId || !article) return false;
+    return window.SysStorage.has('sys_read_articles', window.getArticleReadKey(projectId, article, articleIndex));
+};
+
+window.findFirstUnreadArticleForMain = function(projectId, currentArticleIndex = null, bypassCondition = null) {
+    const projects = Array.isArray(window.siteProjects) ? window.siteProjects : [];
+    const currentProj = projects.find(p => p.id === projectId);
+    if (!currentProj || !Array.isArray(currentProj.articles)) return null;
+
+    const isUnlockedSys = document.body?.classList?.contains('system-override-active') || false;
+    const isProjAccessible = (proj) => {
+        if (!proj || !Array.isArray(proj.articles)) return false;
+        if (proj.required_key && !window.isSecretUnlocked(proj.required_key)) return false;
+        if (!isUnlockedSys && proj.is_hidden) return false;
+        return true;
+    };
+    const isArtAccessible = (art) => {
+        if (!art) return false;
+        if (art.required_key && !window.isSecretUnlocked(art.required_key)) return false;
+        if (!isUnlockedSys && art.is_hidden) return false;
+        return true;
+    };
+    const getReadingOrder = (proj) => {
+        const indexed = proj.articles.map((art, idx) => ({ art, idx }));
+        if (proj.groups && Object.keys(proj.groups).length > 0) {
+            const ordered = [];
+            for (const groupId of Object.keys(proj.groups)) {
+                ordered.push(...indexed.filter(item => item.art.group === groupId));
+            }
+            ordered.push(...indexed.filter(item => !item.art.group));
+            return ordered;
+        }
+        return indexed;
+    };
+    const articleGrantsKey = (art, targetStoreKey) => {
+        if (!art?.key) return false;
+        const entries = Array.isArray(art.key) ? art.key.flat() : [art.key];
+        return entries.some(entry => {
+            const parsed = window.parseKeySpec(entry);
+            return parsed && parsed.storeKeys.includes(targetStoreKey);
+        });
+    };
+
+    const currentOrdered = getReadingOrder(currentProj);
+
+    // 1. 優先依 MAIN 綁定的略過金鑰反查：找出第一把尚未取得的金鑰對應的文章（先找本專案，再找其他專案）
+    if (bypassCondition) {
+        const dnf = window.parseKeyLogic(bypassCondition);
+        const targetGroup = dnf.find(group => !group.every(k => window.isSingleKeyUnlocked(k)));
+        if (targetGroup) {
+            const unlockedSet = window.SysStorage.getSet('sys_unlocked_secrets');
+            const missingKeys = [];
+            for (const reqStr of targetGroup) {
+                if (window.isSingleKeyUnlocked(reqStr)) continue;
+                const parts = String(reqStr).split('|');
+                const baseId = parts[0].trim();
+                if (parts.length > 1) {
+                    const reqCount = parseInt(parts[1], 10);
+                    if (!isNaN(reqCount) && reqCount >= 1) {
+                        for (let i = 1; i <= reqCount; i++) {
+                            const fragKey = `${baseId}#${i}`;
+                            if (!unlockedSet.has(fragKey)) missingKeys.push(fragKey);
+                        }
+                    }
+                } else if (baseId) {
+                    missingKeys.push(baseId);
+                }
+            }
+
+            for (const missingKey of missingKeys) {
+                const matchInCurrent = currentOrdered.find(({ art, idx }) =>
+                    idx !== currentArticleIndex && isArtAccessible(art) && articleGrantsKey(art, missingKey)
+                );
+                if (matchInCurrent) {
+                    return { projectId: currentProj.id, articleIndex: matchInCurrent.idx, article: matchInCurrent.art };
+                }
+            }
+            for (const missingKey of missingKeys) {
+                for (const otherProj of projects) {
+                    if (otherProj.id === currentProj.id || !isProjAccessible(otherProj)) continue;
+                    const matchInOther = getReadingOrder(otherProj).find(({ art }) =>
+                        isArtAccessible(art) && articleGrantsKey(art, missingKey)
+                    );
+                    if (matchInOther) {
+                        return { projectId: otherProj.id, articleIndex: matchInOther.idx, article: matchInOther.art };
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. 兜底：在整個專案依閱讀順序找目前文章之前的第一篇未讀文章
+    let candidates = currentOrdered;
+    if (currentArticleIndex !== null) {
+        const curPos = currentOrdered.findIndex(item => item.idx === currentArticleIndex);
+        candidates = curPos > 0 ? currentOrdered.slice(0, curPos) : [];
+    }
+    const unread = candidates.find(({ art, idx }) =>
+        isArtAccessible(art) && !window.hasReadArticle(currentProj.id, art, idx)
+    );
+    return unread ? { projectId: currentProj.id, articleIndex: unread.idx, article: unread.art } : null;
 };
 
 
@@ -635,10 +957,12 @@ window.applyTextScale = function() {
         }
     };
 
-    // ✨ 在動畫剛開始、320ms、500ms 以及 html 字體過渡徹底結束 (transitionend) 時同步重算
     requestAnimationFrame(recalcTabs);
-    setTimeout(recalcTabs, 320);
-    setTimeout(recalcTabs, 500);
+    setTimeout(() => {
+        recalcTabs();
+        const activeContainer = window.getActiveScrollContainer();
+        if (activeContainer) activeContainer.dispatchEvent(new Event('scroll'));
+    }, 350);
 
     const onFontTransitionEnd = (e) => {
         if (e.target === document.documentElement && e.propertyName === 'font-size') {
@@ -647,12 +971,6 @@ window.applyTextScale = function() {
         }
     };
     document.documentElement.addEventListener('transitionend', onFontTransitionEnd);
-
-    // 防呆設計：推播捲軸事件讓「閱讀進度條」與「捲動提示」重新校正
-    const activeContainer = window.getActiveScrollContainer();
-    if (activeContainer) {
-        setTimeout(() => activeContainer.dispatchEvent(new Event('scroll')), 350);
-    }
 };
 
 window.toggleTextScale = function(event) {
@@ -673,26 +991,19 @@ document.addEventListener('DOMContentLoaded', () => window.applyTextScale());
 // ✨ 全域防止捲軸跳動控制器 (Scroll Lock Engine)
 // ==========================================
 window.lockScroll = function() {
-    if (document.body.style.overflow === 'hidden') return;
     document.body.style.overflow = 'hidden';
-    
-    // ✨ 確保如果獨立的 activeContainer 存在，也暫時凍結它的捲動
-    const activeContainer = window.getActiveScrollContainer();
-    if (activeContainer && activeContainer !== document.querySelector('.modal-content')) {
-        activeContainer.dataset.lockedOverflow = window.getComputedStyle(activeContainer).overflowY;
-        activeContainer.style.overflowY = 'hidden';
-    }
 };
 
-window.unlockScroll = function() {
-    document.body.style.overflow = '';
-    
-    // ✨ 解除 activeContainer 的凍結
-    const activeContainer = window.getActiveScrollContainer();
-    if (activeContainer && activeContainer.dataset.lockedOverflow) {
-        activeContainer.style.overflowY = activeContainer.dataset.lockedOverflow;
-        delete activeContainer.dataset.lockedOverflow;
-    }
+// 延遲動畫可能交錯；以仍在畫面上的捲動鎖定層為準。
+function hasActiveScrollLock() {
+    return !!document.querySelector(
+        '#fullscreen-menu.active, #pdf-action-modal, #md-modal.active, .modal-overlay.active, ' +
+        '#sensitive-modal-overlay, video.is-web-fullscreen, #sys-reboot-screen'
+    );
+}
+
+window.unlockScroll = function(overflow = '') {
+    if (!hasActiveScrollLock()) document.body.style.overflow = overflow;
 };
 
 // ==========================================
@@ -816,7 +1127,7 @@ window.initPWAPullToRefresh = function() {
                 return;
             }
 
-            const previousOverflow = document.body.style.overflow;
+            const previousOverflow = hasActiveScrollLock() ? '' : document.body.style.overflow;
             let ownRebootScreen = null;
             try {
                 const showReboot = typeof window.showSystemRebootScreen === 'function'
@@ -837,12 +1148,7 @@ window.initPWAPullToRefresh = function() {
                 if (ownRebootScreen && document.getElementById('sys-reboot-screen') === ownRebootScreen) {
                     ownRebootScreen.remove();
                 }
-                if (!document.getElementById('sys-reboot-screen') && document.body.style.overflow === 'hidden' &&
-                    !document.querySelector('.modal-overlay.active') &&
-                    !document.querySelector('video.is-web-fullscreen') &&
-                    !document.getElementById('fullscreen-menu')?.classList.contains('active')) {
-                    document.body.style.overflow = previousOverflow;
-                }
+                if (document.body.style.overflow === 'hidden') window.unlockScroll(previousOverflow);
                 hideIndicator();
                 if (typeof window.showSystemToast === 'function') {
                     window.showSystemToast('>_ RELOAD_INCOMPLETE', '重新整理尚未完成', '請再次嘗試。', 6000, 'error');
@@ -1023,11 +1329,24 @@ window.getCleanBasePath = function() {
     return basePath.endsWith('/') ? basePath : basePath + '/';
 };
 
+window.resolveRouteTarget = function(pParam, aParam) {
+    if (!pParam) return { project: null, article: null, aIndex: -1 };
+    const cleanProjectId = pParam.replace(/^\d+_/, '');
+    const project = window.siteProjects.find(proj => proj.id === cleanProjectId) || null;
+    let aIndex = -1, article = null;
+    if (project && Array.isArray(project.articles) && aParam !== null && aParam !== undefined) {
+        aIndex = project.articles.findIndex(art => art.id === aParam);
+        if (aIndex === -1 && !isNaN(parseInt(aParam, 10))) aIndex = parseInt(aParam, 10);
+        if (aIndex >= 0 && aIndex < project.articles.length) article = project.articles[aIndex];
+        else aIndex = -1;
+    }
+    return { project, article, aIndex };
+};
+
 window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     if (!pParam) return;
     
-    const cleanProjectId = pParam.replace(/^\d+_/, '');
-    const project = window.siteProjects.find(proj => proj.id === cleanProjectId);
+    const { project, article, aIndex } = window.resolveRouteTarget(pParam, aParam);
     
     if (!project) {
         show404Modal('404 Project Not Found', '無法找到您指定的專案。<br/>可能不存在或已被移除');
@@ -1047,11 +1366,7 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
     }
 
     if (aParam !== null && aParam !== undefined) {
-        let aIndex = project.articles.findIndex(art => art.id === aParam);
-        if (aIndex === -1 && !isNaN(parseInt(aParam))) aIndex = parseInt(aParam, 10);
-        
-        if (aIndex !== -1 && aIndex < project.articles.length) {
-            const article = project.articles[aIndex];
+        if (article) {
             
             // ✨ 2. 文章層級：只要文章未公開 (is_hidden) 或金鑰未解鎖 (artLocked)，從網址進入同樣先攔截顯示 403
             const artLocked = article.required_key && !window.isSecretUnlocked(article.required_key);
@@ -1165,27 +1480,60 @@ window.handleCopy = function(element, shareUrl) {
 };
 
 window.focusAndBumpCard = function(targetCard) {
+    if (!targetCard) return;
     const cardRect = targetCard.getBoundingClientRect();
-    const isVisible = (
-        cardRect.top >= 80 && cardRect.bottom <= window.innerHeight &&
-        cardRect.left >= 0 && cardRect.right <= window.innerWidth
-    );
-    
-    const distanceY = Math.abs((cardRect.top + cardRect.height / 2) - (window.innerHeight / 2));
-    const distanceX = Math.abs((cardRect.left + cardRect.width / 2) - (window.innerWidth / 2));
-    const maxDistance = Math.max(distanceX, distanceY);
-    
-    let dynamicDelay = 50; 
-    if (!isVisible) {
-        dynamicDelay = Math.min(800, Math.max(300, 200 + (maxDistance * 0.4)));
-        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    const grid = targetCard.closest('.grid');
+    const gridRect = grid ? grid.getBoundingClientRect() : null;
+
+    // 垂直可視區：避開頂部空間與底部啟用中的篩選提示膠囊 (.filter-toast)
+    const toastEl = document.getElementById('filter-toast');
+    const toastTop = (toastEl && toastEl.classList.contains('active'))
+        ? toastEl.getBoundingClientRect().top
+        : window.innerHeight;
+    const topSafe = 80;
+    const bottomSafe = Math.max(topSafe + 40, Math.min(window.innerHeight - 16, toastTop - 16));
+    const isVisibleY = cardRect.top >= topSafe && cardRect.bottom <= bottomSafe;
+
+    // 水平可視區：以所屬 .grid 容器與視窗的交集為準，避免卡片在 .grid 內被左右裁切
+    const visLeft = gridRect ? Math.max(0, gridRect.left) : 0;
+    const visRight = gridRect ? Math.min(window.innerWidth, gridRect.right) : window.innerWidth;
+    const availWidth = Math.max(0, visRight - visLeft);
+    const padX = Math.min(16, Math.max(0, (availWidth - cardRect.width) / 2));
+    const isVisibleX = cardRect.left >= visLeft + padX && cardRect.right <= visRight - padX;
+
+    let distanceX = 0;
+    let distanceY = 0;
+
+    if (!isVisibleX && grid && grid.scrollWidth > grid.clientWidth) {
+        const cardLeftInGrid = (cardRect.left - gridRect.left) + grid.scrollLeft;
+        const idealLeft = cardLeftInGrid - (grid.clientWidth - cardRect.width) / 2;
+        const targetLeft = Math.max(0, Math.min(idealLeft, grid.scrollWidth - grid.clientWidth));
+        distanceX = Math.abs(targetLeft - grid.scrollLeft);
+        grid.scrollTo({ left: targetLeft, behavior: 'smooth' });
     }
-    
-    setTimeout(() => {
+
+    if (!isVisibleY) {
+        const usableCenterY = (topSafe + bottomSafe) / 2;
+        const cardCenterY = cardRect.top + cardRect.height / 2;
+        const deltaY = cardCenterY - usableCenterY;
+        const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        const targetTop = Math.max(0, currentScrollY + deltaY);
+        distanceY = Math.abs(targetTop - currentScrollY);
+        window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    }
+
+    const needsScroll = distanceX > 2 || distanceY > 2;
+    const dynamicDelay = needsScroll
+        ? Math.min(800, Math.max(300, 200 + Math.max(distanceX, distanceY) * 0.4))
+        : 50;
+
+    clearTimeout(targetCard._bumpDelayTimer);
+    clearTimeout(targetCard._bumpEndTimer);
+    targetCard._bumpDelayTimer = setTimeout(() => {
         targetCard.classList.remove('jump-bump');
-        void targetCard.offsetWidth; 
+        void targetCard.offsetWidth;
         targetCard.classList.add('jump-bump');
-        setTimeout(() => targetCard.classList.remove('jump-bump'), 600);
+        targetCard._bumpEndTimer = setTimeout(() => targetCard.classList.remove('jump-bump'), 600);
     }, dynamicDelay);
 };
 
@@ -1196,32 +1544,18 @@ window.refreshUIAfterOverrideToggle = function() {
     const isUnlocked = document.body.classList.contains('system-override-active');
 
     const updateCardCounts = () => {
-        window.siteProjects.forEach(proj => {
-            const grid = document.getElementById(`${proj.category}-grid`);
-            if (grid && proj.articles && proj.articles.length > 0) {
-                grid.querySelectorAll('.card').forEach(card => {
-                    const titleEl = card.querySelector('h3');
-                    if (titleEl && titleEl.innerText.includes(proj.title)) {
-                        // ✨ 核心修復：把尋找的 class 改為正確的 .card-action-btn
-                        const actionBtn = card.querySelector('.card-action-btn');
-                        if (actionBtn && actionBtn.innerText.includes('展開系列')) {
-                            // ✨ 動態計算當前權限下可見的文章數量（金鑰隱藏不因 Override 解鎖）
-                            const count = proj.articles.filter(art => {
-                                const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key);
-                                if (artLocked && (art.lock_mode || 'visible') === 'hidden') return false;
-                                return isUnlocked || !art.is_hidden;
-                            }).length;
-                            
-                            // ✨ 精準抓出圖標容器，避免破壞 HTML 結構
-                            const iconWrap = actionBtn.querySelector('.card-action-icon-wrap');
-                            actionBtn.innerHTML = '';
-                            if (iconWrap) actionBtn.appendChild(iconWrap);
-                            
-                            // 重新植入最新的數字
-                            actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
-                        }
-                    }
-                });
+        document.querySelectorAll('.card[data-project-id]').forEach(card => {
+            const pid = card.getAttribute('data-project-id');
+            const proj = window.siteProjects.find(p => p.id === pid);
+            if (!proj || !proj.articles || proj.articles.length === 0) return;
+
+            const actionBtn = card.querySelector('.card-action-btn');
+            if (actionBtn && actionBtn.innerText.includes('展開系列')) {
+                const count = window.getVisibleArticleCount(proj);
+                const iconWrap = actionBtn.querySelector('.card-action-icon-wrap');
+                actionBtn.innerHTML = '';
+                if (iconWrap) actionBtn.appendChild(iconWrap);
+                actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
             }
         });
     };
@@ -1237,14 +1571,7 @@ window.refreshUIAfterOverrideToggle = function() {
 
     marquees.forEach(m => {
         if (isUnlocked) m.classList.add('suppress-secrets');
-        const matrix = new DOMMatrix(window.getComputedStyle(m).transform);
-        let currentX = matrix.m41;
-        const currentWidth = m.offsetWidth;
-        if (currentWidth > 0) {
-            currentX = currentX % currentWidth;
-            if (currentX > 0) currentX -= currentWidth;
-        }
-        m.dataset.startX = currentX; 
+        m.dataset.startX = window.getMarqueeCurrentX(m); 
         
         if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
         m.style.transition = 'none';
@@ -1539,21 +1866,23 @@ window.safeFetchWithGuard = async function(url, options = {}) {
     document.body.style.cursor = 'wait';
 
     let isTimeout = false;
+    let status = null;
     const timeoutId = setTimeout(() => { isTimeout = true; controller.abort(); }, 8000);
 
     try {
         await window.debugDelay();
         const res = await fetch(url, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (!res.ok) throw new Error('Fetch failed');
+        status = res.status;
+        if (!res.ok) throw new Error(`HTTP ${status}`);
         const data = await (options.isJson ? res.json() : res.text());
-        return { success: true, data, controller };
+        if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+        return { success: true, data, status, controller };
     } catch (error) {
-        clearTimeout(timeoutId);
-        const aborted = error.name === 'AbortError' && !isTimeout;
+        const aborted = controller.signal.aborted && !isTimeout;
         const isOffline = !navigator.onLine || (error.message && error.message.includes('Failed to fetch'));
-        return { success: false, aborted, isTimeout, isOffline, error, controller };
+        return { success: false, aborted, isTimeout, isOffline, status, error, controller };
     } finally {
+        clearTimeout(timeoutId);
         if (window._activeFetcher === controller) {
             document.body.style.cursor = '';
             window.toggleLoading(false);
@@ -1698,20 +2027,13 @@ window.initJumpToast = function(container, itemSelector) {
 window._mermaidRetryCount = 0;
 window.renderAllMermaidCharts = function(rootElement = document, onComplete = null) {
     if (window.mermaid) {
+        const charts = Array.from(rootElement.querySelectorAll('.mermaid'));
+        if (!charts.length) { if (onComplete) onComplete(); return; }
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
         window.initMermaidWithTheme(currentTheme);
-
-        rootElement.querySelectorAll('.mermaid').forEach(el => el.removeAttribute('data-processed'));
+        // 已渲染的 SVG 不再當成 Mermaid 原始碼；單圖重整會自行還原原文。
         
-        // 支援局部重繪，避免重繪時干擾其他圖表
-        let queryTarget = '.mermaid';
-        if (rootElement.classList && rootElement.classList.contains('mermaid-container')) {
-            const tempId = 'mermaid-reload-' + Date.now();
-            const mDiv = rootElement.querySelector('.mermaid');
-            if (mDiv) { mDiv.id = tempId; queryTarget = `#${tempId}`; }
-        }
-
-        window.mermaid.run({ querySelector: queryTarget })
+        return window.mermaid.run({ nodes: charts })
         .catch(e => console.warn('Mermaid 語法錯誤:', e))
         .finally(() => {
             // ✨ 核心修復：強制 SVG 補上 height: auto，解決大小自適應錯亂
@@ -1719,13 +2041,8 @@ window.renderAllMermaidCharts = function(rootElement = document, onComplete = nu
                 svg.style.maxWidth = '100%'; svg.style.height = 'auto';
             });
             rootElement.querySelectorAll('.mermaid').forEach(el => window.applyMermaidAspectRatio(el));
-            rootElement.querySelectorAll('.mermaid-container').forEach(c => c.classList.remove('drag-initialized'));
-            window.initMermaidDrag();
+            window.initMermaidDrag(rootElement);
             
-            if (queryTarget.startsWith('#')) {
-                const mDiv = document.querySelector(queryTarget);
-                if(mDiv) mDiv.removeAttribute('id');
-            }
             if (onComplete) onComplete();
         });
     } else if (window._mermaidRetryCount < 10) {
@@ -1738,34 +2055,48 @@ window.renderAllMermaidCharts = function(rootElement = document, onComplete = nu
 
 
 // ==========================================
-// ✨ 共用捲軸陰影提示系統 (Scroll Hints Engine)
+// ✨ 共用捲軸陰影提示系統 (Scroll Hints Engine - rAF 節流整合版)
 // ==========================================
-window.initScrollHints = function(container, hintLeft, hintRight) {
+window.initScrollHints = function(container, hintLeft, hintRight, beforeMeasure = null) {
     if (!container || !hintLeft || !hintRight) return;
-
-    let scrollTimeout;
-    const checkScroll = () => {
-        clearTimeout(scrollTimeout);
+    if (container._scrollHintsCleanup) container._scrollHintsCleanup();
+    let frame = null, needsLayout = false, disposed = false;
+    const update = () => {
+        frame = null;
+        if (disposed) return;
+        const measureLayout = needsLayout;
+        needsLayout = false;
+        if (measureLayout && beforeMeasure) beforeMeasure();
         const isScrollable = container.scrollWidth > container.clientWidth + 5;
-        const isAtEnd = Math.ceil(container.scrollLeft + container.clientWidth) >= Math.floor(container.scrollWidth) - 10;
-        const isAtStart = container.scrollLeft <= 10;
-
-        if (isScrollable && !isAtEnd) hintRight.classList.add('visible');
-        else hintRight.classList.remove('visible');
-
-        if (isScrollable && !isAtStart) hintLeft.classList.add('visible');
-        else hintLeft.classList.remove('visible');
+        const atEnd = Math.ceil(container.scrollLeft + container.clientWidth) >= Math.floor(container.scrollWidth) - 10;
+        hintRight.classList.toggle('visible', isScrollable && !atEnd);
+        hintLeft.classList.toggle('visible', isScrollable && container.scrollLeft > 10);
     };
-
-    container.addEventListener('scroll', checkScroll);
-    const imgs = container.querySelectorAll('img');
-    imgs.forEach(img => {
-        if (img.complete) checkScroll();
-        else img.addEventListener('load', checkScroll);
-    });
-
-    new ResizeObserver(checkScroll).observe(container);
-    setTimeout(checkScroll, 100);
+    const schedule = (layout = false) => {
+        if (disposed) return;
+        needsLayout = needsLayout || layout;
+        if (frame === null) frame = window.requestAnimationFrame(update);
+    };
+    const onScroll = () => schedule(false);
+    const onImageLoad = () => schedule(true);
+    const observer = new ResizeObserver(() => schedule(true));
+    container.addEventListener('scroll', onScroll, { passive: true });
+    const images = Array.from(container.querySelectorAll('img'));
+    images.forEach(img => { if (!img.complete) img.addEventListener('load', onImageLoad); });
+    observer.observe(container);
+    const cleanup = () => {
+        if (disposed) return;
+        disposed = true;
+        observer.disconnect();
+        container.removeEventListener('scroll', onScroll);
+        images.forEach(img => img.removeEventListener('load', onImageLoad));
+        if (frame !== null) window.cancelAnimationFrame(frame);
+        if (container._scrollHintsCleanup === cleanup) delete container._scrollHintsCleanup;
+    };
+    container._scrollHintsCleanup = cleanup;
+    if (container.closest('#view-article')) window.registerArticleObserver({ disconnect: cleanup });
+    schedule(true);
+    return cleanup;
 };
 
 // ==========================================
@@ -1987,7 +2318,6 @@ window.retryMedia = function(btnEl, origSrc, ext, isVideo) {
 window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = 'error') {
     // 1. 決定顏色主題 (未來可擴充 'success' 等)
     const themeClass = type === 'error' ? 'error' : 'success';
-    const shadowColor = type === 'error' ? 'var(--error-shadow)' : 'var(--glow-1)';
 
     // 2. 移除畫面上舊的提示 (避免重疊堆高)
     const oldToast = document.getElementById('sys-global-toast');
@@ -2429,18 +2759,7 @@ window.lightboxAction = function(action, event) {
                         window.mermaid.run({ querySelector: '#lightbox-active-mermaid' })
                             .catch(e => console.warn('Mermaid reload failed:', e))
                             .finally(() => {
-                                const svg = activeMermaid.querySelector('svg');
-                                if (svg) {
-                                    const vb = svg.getAttribute('viewBox');
-                                    if (vb) {
-                                        const [, , vbW, vbH] = vb.trim().split(/[\s,]+/).map(Number);
-                                        const maxW = window.innerWidth * 0.85;
-                                        const maxH = window.innerHeight - 220;
-                                        const fitScale = Math.min(maxW / vbW, maxH / vbH, 1.5);
-                                        svg.style.width = `${Math.round(Math.max(Math.min(vbW * fitScale, maxW), Math.min(280, maxW)))}px`;
-                                        svg.style.height = 'auto';
-                                    }
-                                }
+                                window.fitMermaidToLightbox(activeMermaid.querySelector('svg'));
                                 activeMermaid.style.opacity = '1';
                             });
                     } else {
@@ -2507,7 +2826,6 @@ window.closeLightbox = function() {
     }
 
     if (lightboxModal) {
-        lightboxModal.classList.remove('is-active');
         lightboxModal.classList.remove('is-active');
         if (toolbox) toolbox.classList.remove('is-open');
         if (toggleBtn) toggleBtn.classList.remove('is-active'); // ✨ 關閉時拔除狀態
@@ -2775,15 +3093,25 @@ document.addEventListener('DOMContentLoaded', () => {
     let initialZoom = 1;
 
     if (wrapper) {
+        let lightboxRafId = null;
+        let wheelEndTimer = null;
+
         // ✨ 動態解析目標
         const getActiveTarget = () => window.lightboxState.isDomMode 
             ? document.getElementById('lightbox-active-mermaid') 
             : document.getElementById('lightbox-img');
 
         const updateTransform = () => {
+            lightboxRafId = null;
             const target = getActiveTarget();
             if (target) {
                 target.style.transform = `translate(${window.lightboxState.x}px, ${window.lightboxState.y}px) scale(${window.lightboxState.zoom})`;
+            }
+        };
+
+        const scheduleTransform = () => {
+            if (lightboxRafId === null) {
+                lightboxRafId = requestAnimationFrame(updateTransform);
             }
         };
 
@@ -2802,7 +3130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 window.lightboxState.x = activePointers[0].x - startClientX;
                 window.lightboxState.y = activePointers[0].y - startClientY;
-                requestAnimationFrame(updateTransform);
+                scheduleTransform();
             } else if (activePointers.length === 2) {
                 e.preventDefault();
                 const currentDistance = Math.hypot(
@@ -2820,7 +3148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.lightboxState.x -= (centerX - (window.innerWidth / 2) - window.lightboxState.x) * ratio;
                     window.lightboxState.y -= (centerY - (window.innerHeight / 2) - window.lightboxState.y) * ratio;
                     window.lightboxState.zoom = newZoom;
-                    requestAnimationFrame(updateTransform);
+                    scheduleTransform();
                 }
             }
         };
@@ -2835,6 +3163,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 startClientY = activePointers[0].y - window.lightboxState.y;
             } else if (activePointers.length === 0) {
                 isDragging = false;
+                if (lightboxRafId !== null) {
+                    cancelAnimationFrame(lightboxRafId);
+                    lightboxRafId = null;
+                }
                 wrapper.classList.remove('is-dragging');
                 if (wrapper.hasPointerCapture && wrapper.hasPointerCapture(e.pointerId)) {
                     wrapper.releasePointerCapture(e.pointerId);
@@ -2893,8 +3225,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const state = window.lightboxState;
             const delta = e.deltaY < 0 ? 1 : -1;
             
-            let newZoom = Math.max(0.5, Math.min(state.zoom * (1 + delta * 0.15), state.maxZoom));
-            newZoom = Math.max(1, Math.min(newZoom, state.maxZoom));
+            const newZoom = Math.max(0.5, Math.min(state.zoom * (1 + delta * 0.15), state.maxZoom));
             
             const ratio = newZoom / state.zoom - 1;
             const centerX = window.innerWidth / 2;
@@ -2903,8 +3234,11 @@ document.addEventListener('DOMContentLoaded', () => {
             state.x -= (e.clientX - centerX - state.x) * ratio;
             state.y -= (e.clientY - centerY - state.y) * ratio;
             state.zoom = newZoom;
-            
-            target.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
+
+            wrapper.classList.add('is-dragging');
+            clearTimeout(wheelEndTimer);
+            wheelEndTimer = setTimeout(() => { if (!isDragging) wrapper.classList.remove('is-dragging'); }, 120);
+            scheduleTransform();
         }, { passive: false });
     }
 });
@@ -3480,9 +3814,9 @@ renderer.heading = function(token_or_text, level, raw) {
     }
 
     // 將最乾淨的標題文字存入全域，給 Mermaid 抓取當作圖表預設標題
-    window._lastMarkdownHeadings.push(rawText.replace(/<[^>]+>/g, '')); 
+    window._lastMarkdownHeadings.push(window.stripHtml(rawText)); 
     
-    const id = customId || rawText.toLowerCase().replace(/\s+/g, '-').replace(/<[^>]+>/g, '');
+    const id = customId || window.stripHtml(rawText).toLowerCase().replace(/\s+/g, '-');
     
     // ✨ 輸出時，畫面上的內容使用已渲染的 parsedText！
     return `<h${depth} id="md-sys-${id}" data-raw-title="${encodeURIComponent(rawText)}">${parsedText}</h${depth}>`;
@@ -3519,8 +3853,7 @@ const spoilerExtension = {
 window.getSecretRenderState = function(secretId) {
     const isUnlocked = window.isSecretUnlocked(secretId);
     const placeId = window._currentRenderPlace + '_' + secretId;
-    const animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
-    const hasAnimatedHere = animatedPlaces.includes(placeId);
+    const hasAnimatedHere = window.SysStorage.has('sys_animated_secrets', placeId);
     let statusClass = 'is-locked';
     if (isUnlocked) {
         statusClass = hasAnimatedHere ? 'is-unlocked already-unlocked' : 'is-locked pending-auto-unlock';
@@ -3555,7 +3888,7 @@ const secretBlockExtension = {
             <div class="secret-overlay">
                 ${lockIcon}
                 <span class="secret-cover-text">${token.coverText}</span>
-                <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7; margin-top: 4px;">Requires Key: [${token.secretId}]</span>
+                <span style="font-size: 0.7rem; font-weight: normal; opacity: 0.7; margin-top: 4px;">${window.escapeHtml(window.getLockPromptText({ required_key: token.secretId }))}</span>
             </div>
             <div class="secret-content markdown-body">
                 ${this.parser.parse(token.tokens)}
@@ -3795,21 +4128,33 @@ window.formatArticleTitleLanguage = function(titleHtml, article, project) {
 window.applyArticleDefaultLanguage = function(root, article, project) {
     const language = window.resolveArticleLanguage(article, project);
     if (!root || !language) return;
-    const selector = 'h1,h2,h3,h4,h5,h6,p,li,blockquote,dt,dd,th,td,figcaption,div,span,a';
-    const inlineContainers = new Set(['DIV', 'SPAN', 'A']);
-    root.querySelectorAll(selector).forEach(element => {
-        // 程式碼與文章內的操作按鈕保留自己的字體與語言。
-        if (element.closest('pre,code,button,textarea,select,script,style,svg,.tab-buttons')) return;
-        if (inlineContainers.has(element.tagName) && !Array.from(element.childNodes).some(node =>
-            node.nodeType === Node.TEXT_NODE && node.textContent.trim()
-        )) return;
 
-        // 尊重 :::lang[...] 與作者自行設定的 lang；不把頁面外層 <html lang> 視為文章內的覆寫。
-        const explicit = element.closest('[lang],.lang-wrapper,.lang-zh,.lang-en,.lang-ja');
-        if (explicit && root.contains(explicit)) return;
-        element.setAttribute('lang', language.tag);
-        element.classList.add(language.className);
+    const skipSubtreeTags = new Set(['PRE', 'CODE', 'BUTTON', 'TEXTAREA', 'SELECT', 'SCRIPT', 'STYLE', 'SVG']);
+    const targetTags = new Set(['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'LI', 'BLOCKQUOTE', 'DT', 'DD', 'TH', 'TD', 'FIGCAPTION', 'DIV', 'SPAN', 'A']);
+    const inlineContainers = new Set(['DIV', 'SPAN', 'A']);
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+        acceptNode(el) {
+            if (skipSubtreeTags.has(el.tagName) || el.classList.contains('tab-buttons')) {
+                return NodeFilter.FILTER_REJECT; // 直接跳過整顆子樹
+            }
+            if (el.hasAttribute('lang') || el.classList.contains('lang-wrapper') ||
+                el.classList.contains('lang-zh') || el.classList.contains('lang-en') || el.classList.contains('lang-ja')) {
+                return NodeFilter.FILTER_REJECT; // 尊重已手動指定語言的區塊及其子樹
+            }
+            return targetTags.has(el.tagName) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+        }
     });
+
+    let currentNode = walker.nextNode();
+    while (currentNode) {
+        if (!inlineContainers.has(currentNode.tagName) ||
+            Array.from(currentNode.childNodes).some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim())) {
+            currentNode.setAttribute('lang', language.tag);
+            currentNode.classList.add(language.className);
+        }
+        currentNode = walker.nextNode();
+    }
 };
 
 // ==========================================
@@ -3868,7 +4213,7 @@ const detailsBlockExtension = {
         return `
         <details class="md-details">
             <summary>
-                <svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                ${GLOBAL_SVGS.detailsArrow}
                 <span style="flex-grow: 1;">${token.summaryText}</span>
             </summary>
             <div class="md-details-content">
@@ -3950,7 +4295,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         el.removeAttribute('data-processed'); 
                     }
                 });
-                window.mermaid.run({ querySelector: '.mermaid' }).catch(() => {});
+                window.renderAllMermaidCharts(document);
             }
         }
         //主題網頁標籤示切換//
@@ -3975,6 +4320,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fullscreenMenu = document.getElementById('fullscreen-menu');
 
     menuToggle.addEventListener('click', () => {
+        if (document.getElementById('pdf-action-modal')) return;
         menuToggle.classList.toggle('open');
         fullscreenMenu.classList.toggle('active');
         if (fullscreenMenu.classList.contains('active')) {
@@ -3989,11 +4335,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // ✨ 漢堡選單：事件代理 (Event Delegation) 與同頁面強制跳轉/動畫重播
     // ==========================================
     fullscreenMenu.addEventListener('click', (e) => {
+        // 開啟操作面板的點擊仍會冒泡；不要讓它同時導覽或收起選單。
+        if (document.getElementById('pdf-action-modal')) {
+            e.preventDefault();
+            return;
+        }
         const navItem = e.target.closest('.nav-item');
         if (navItem) {
             e.preventDefault(); 
             
             const targetHash = navItem.getAttribute('href');
+            if (!targetHash?.startsWith('#')) return;
             const targetId = targetHash.substring(1);
             const targetSection = document.getElementById(targetId);
             
@@ -4333,14 +4685,13 @@ async function loadProjects() {
             }
         }
 
-        dynamicNav.innerHTML = '';
-        portfolioSections.innerHTML = '';
+        // 2. 動態生成分類區塊 (批次串接後一次寫入 DOM，避免迴圈內反覆觸發 HTML 解析器)
+        let navHtmlBuffer = '';
+        let sectionsHtmlBuffer = '';
 
-        // 2. 動態生成分類區塊
         categories.forEach(cat => {
             const menuDescHtml = cat.meta ? `<span class="nav-item-desc">${cat.meta}</span>` : '';
-            
-            dynamicNav.innerHTML += `
+            navHtmlBuffer += `
             <li style="margin: 2.5rem 0;">
                 <a href="#${cat.id}-section" class="nav-item" style="margin:0; line-height:1.1; display:inline-block;">${cat.title}</a>
                 ${menuDescHtml}
@@ -4349,10 +4700,9 @@ async function loadProjects() {
             const sectionMetaHtml = cat.meta ? `<span class="section-meta">- ${cat.meta}</span>` : '';
             const sectionDescHtml = cat.description ? `<p class="section-desc">${cat.description}</p>` : '';
             const sectionImageHtml = cat.cover_image ? `<img src="${cat.cover_image}" alt="icon" loading="lazy" class="section-icon is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : '';
-
             const watermarkStyle = cat.watermark_url ? ` style="--custom-watermark: url('${cat.watermark_url}');"` : '';
 
-            portfolioSections.innerHTML += `
+            sectionsHtmlBuffer += `
             <section id="${cat.id}-section"${watermarkStyle}>
                 <div class="section-header-layout">
                 <div class="section-header-left">
@@ -4370,134 +4720,53 @@ async function loadProjects() {
             </section>`;
         });
 
+        dynamicNav.innerHTML = navHtmlBuffer;
+        portfolioSections.innerHTML = sectionsHtmlBuffer;
+
         // 3. 填入專案卡片
+        const flatList = window.STATUS_LIST.flat();
         projects.forEach(data => {
             const targetGrid = document.getElementById(`${data.category}-grid`); 
-            if (targetGrid) {
-                const card = document.createElement('div');
-                card.className = 'card';
-                
-                // ✨ 權限與鎖定驗證（移除 && !isUnlockedSys）
-                const isUnlockedSys = document.body.classList.contains('system-override-active');
-                const isLocked = data.required_key && !window.isSecretUnlocked(data.required_key);
-                const lockMode = data.lock_mode || 'visible';
+            if (!targetGrid) return;
 
-                // ✨ 動態判定提示文字
-                let lockPrompt = data.lock_prompt || '';
-                if (!lockPrompt && data.required_key) {
-                    const isComplex = Array.isArray(data.required_key) || (typeof data.required_key === 'string' && (data.required_key.includes('||') || data.required_key.includes('&&')));
-                    lockPrompt = isComplex ? '需要多重金鑰' : `需要金鑰 [${data.required_key}]`;
-                }
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            card.setAttribute('data-required-key', typeof data.required_key === 'string' ? data.required_key : JSON.stringify(data.required_key || ''));
+            card.setAttribute('data-project-id', data.id);
+            card.setAttribute('data-tags', (data.tags || []).join(','));
+            
+            const tagsHTML = (data.tags || []).map(tag => {
+                const isSecretTag = data.secret_tags && data.secret_tags.includes(tag);
+                const secretClass = isSecretTag ? ' sys-hidden-tag' : '';
+                const statusAttr = flatList.includes(tag) ? ` data-status="${tag}" class="tag status-tag${secretClass}"` : ` class="tag${secretClass}"`;
+                return `<span${statusAttr} data-tag="${tag}" onclick="window.filterByTag('${tag}', event, this)">${tag}</span>`;
+            }).join('');
 
-                card.setAttribute('data-required-key', typeof data.required_key === 'string' ? data.required_key : JSON.stringify(data.required_key || ''));
-                card.setAttribute('data-project-id', data.id);
-                card.setAttribute('data-tags', (data.tags || []).join(','));
-
-                // ✨ 隱藏模式分流：一般隱藏用 sys-hidden-card，金鑰隱藏用 key-hidden-card
-                if (data.is_hidden) {
-                    card.classList.add('sys-hidden-card');
-                }
-                if (isLocked && lockMode === 'hidden') {
-                    card.classList.add('key-hidden-card');
-                }
-                // 可見上鎖模式
-                if (isLocked && lockMode === 'visible') {
-                    card.classList.add('is-key-locked');
-                }
-                
-                const flatList = window.STATUS_LIST.flat(); 
-                let tagsHTML = (data.tags || []).map(tag => {
-                    // ✨ 動態判斷是否需要加上機密隱形斗篷 class
-                    const isSecretTag = data.secret_tags && data.secret_tags.includes(tag);
-                    const secretClass = isSecretTag ? ' sys-hidden-tag' : '';
-                    
-                    const statusAttr = flatList.includes(tag) ? ` data-status="${tag}" class="tag status-tag${secretClass}"` : ` class="tag${secretClass}"`;
-                    return `<span${statusAttr} data-tag="${tag}" onclick="window.filterByTag('${tag}', event, this)">${tag}</span>`;
-                }).join('');
-                
-                let actionText = '';
-                
-                if (data.articles && data.articles.length > 0) {
-                    card.style.cursor = 'pointer';
-                    card.onclick = (e) => { 
-                        if (isLocked) {
-                            e.stopPropagation(); 
-                            if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
-                            return;
-                        }
-                        if (window.currentActiveTag) window.clearFilter(); 
-                        window.openProjectIndex(data.id); 
-                    };
-                    
-                    const visibleCount = data.articles.filter(art => {
-                    const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key);
-                    if (artLocked && (art.lock_mode || 'visible') === 'hidden') return false;
-                    return isUnlockedSys || !art.is_hidden;
-                    }).length;
-                    
-                    // ✨ 上鎖時，按鈕文字直接變為紅色解鎖提示
-                    if (isLocked && lockMode === 'visible') {
-                        actionText = `<div class="card-action-btn" style="color: var(--error-color);"><div class="card-action-icon-wrap">${GLOBAL_SVGS.secretPinSmall}</div>${lockPrompt}解鎖</div>`;
-                    } else {
-                        actionText = `<div class="card-action-btn"><div class="card-action-icon-wrap">${GLOBAL_SVGS.folderClosed}${GLOBAL_SVGS.folderOpen}</div>展開系列 (${visibleCount})</div>`;
-                    }
-                    
-                } else if (data.link) {
-                    card.style.cursor = 'pointer';
-                    card.onclick = (e) => { 
-                        if (isLocked) {
-                            e.stopPropagation(); 
-                            // ✨ 套用動態 lockPrompt
-                            if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
-                            return;
-                        }
-                        if (window.currentActiveTag) window.clearFilter(); 
-                        const a = document.createElement('a'); a.href = data.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
-                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                        window.grantDetailKeys(data.key);
-                    };
-                    actionText = `<div class="card-action-btn">前往外部專案 <span class="action-arrow card-action-arrow" data-dir="up-right">${GLOBAL_SVGS.arrowUpRight}</span></div>`;
-                } else {
-                    card.onclick = (e) => { 
-                        if (isLocked) {
-                            e.stopPropagation(); 
-                            // ✨ 套用動態 lockPrompt
-                            if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
-                            return;
-                        }
-                        if (window.currentActiveTag) window.clearFilter(); 
-                    };
-                    card.addEventListener('mouseenter', () => { card.style.cursor = window.currentActiveTag ? 'pointer' : 'default'; });
-                }
-
-                const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="card-thumb-img is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : '';
-                const cardMetaHtml = data.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(data.meta, 'CARD_META')}</span>` : '';
-                const cardDescHtml = data.description ? `<p class="card-desc-text">${window.parseDynamicText(data.description, 'CARD_DESC')}</p>` : '';
-                const absolutePinHtml = data.pinned ? `<div class="card-pin">${GLOBAL_SVGS.pin}</div>` : '';
-                
-                // ✨ 修正：只要處於未解鎖狀態 (isLocked)，一律先掛載 key-lock-pin 鎖頭圖釘
-                let absoluteSecretHtml = '';
-                if (isLocked) {
-                    absoluteSecretHtml = `<div class="card-secret-pin key-lock-pin">${GLOBAL_SVGS.secretPin}</div>`;
-                } else if (data.is_hidden || data.required_key) {
-                    absoluteSecretHtml = `<div class="card-secret-pin">${GLOBAL_SVGS.secretPin}</div>`;
-                }
-
-                let metaParts = [];
-                if (data.date) metaParts.push(data.date);
-                if (data.version) metaParts.push(`v${data.version}`); 
-                const cardDateHtml = metaParts.length > 0 ? `<div class="card-date-badge">[${metaParts.join(' • ')}]</div>` : '';
-
-                card.innerHTML = `
-                    ${absolutePinHtml}${absoluteSecretHtml}${cardDateHtml} 
-                   <div class="card-content-wrapper">
-                        <div class="card-text"><h3 style="margin-top: 0; margin-bottom: 0.4rem;">${window.parseDynamicText(data.title, 'CARD_TITLE')} ${cardMetaHtml}</h3>${cardDescHtml}</div>
-                        ${cardImageHtml ? `<div class="card-image">${cardImageHtml}</div>` : ''}
-                    </div>
-                    <div class="tags-container">${tagsHTML}</div>${actionText}`;
-                
-                targetGrid.appendChild(card);
+            const hasAction = (data.articles && data.articles.length > 0) || data.link;
+            if (!hasAction) {
+                card.addEventListener('mouseenter', () => { card.style.cursor = window.currentActiveTag ? 'pointer' : 'default'; });
             }
+
+            const cardImageHtml = data.cover_image ? `<img src="${data.cover_image}" alt="cover" loading="lazy" class="card-thumb-img is-loading" onload="this.classList.remove('is-loading')" onerror="window.handleImageError(this)">` : '';
+            const cardDescHtml = data.description ? `<p class="card-desc-text"></p>` : '';
+            const absolutePinHtml = data.pinned ? `<div class="card-pin">${GLOBAL_SVGS.pin}</div>` : '';
+
+            const metaParts = [];
+            if (data.date) metaParts.push(data.date);
+            if (data.version) metaParts.push(`v${data.version}`); 
+            const cardDateHtml = metaParts.length > 0 ? `<div class="card-date-badge">[${metaParts.join(' • ')}]</div>` : '';
+
+            card.innerHTML = `
+                ${absolutePinHtml}${cardDateHtml} 
+                <div class="card-content-wrapper">
+                    <div class="card-text"><h3 style="margin-top: 0; margin-bottom: 0.4rem;"></h3>${cardDescHtml}</div>
+                    ${cardImageHtml ? `<div class="card-image">${cardImageHtml}</div>` : ''}
+                </div>
+                <div class="tags-container">${tagsHTML}</div>${hasAction ? '<div class="card-action-btn"></div>' : ''}`;
+            window.syncProjectCardUI(card, data);
+            
+            targetGrid.appendChild(card);
         });
 
         // 綁定捲軸與 Intersection Observer
@@ -4562,7 +4831,7 @@ async function loadProjects() {
 // ==========================================
 // ✨ 共用引擎：平滑淡入 / 無縫接軌的終端機重開機畫面
 // ==========================================
-function showSystemRebootScreen(title, localV, remoteV, msg, immediate = false) {
+window.showSystemRebootScreen = function(title, localV, remoteV, msg, immediate = false) {
     document.body.style.overflow = 'hidden'; 
     let screen = document.getElementById('sys-reboot-screen');
     
@@ -4587,16 +4856,13 @@ function showSystemRebootScreen(title, localV, remoteV, msg, immediate = false) 
 // ==========================================
 // ✨ 移除遮罩的函數 (加入成功/失敗的主動狀態切換！)
 // ==========================================
-function hideSystemRebootScreen(isSuccess = true) {
+window.hideSystemRebootScreen = function(isSuccess = true) {
     const screen = document.getElementById('sys-reboot-screen');
     
     // 如果沒有遮罩 (一般訪客)，直接解除防護並返回
     if (!screen) {
         document.documentElement.classList.remove('sys-rebooting');
-        // ✨ 修正：判斷沒有開啟任何 Modal 時，才恢復背景捲軸
-        if (!document.querySelector('.modal-overlay.active')) {
-            document.body.style.overflow = '';
-        }
+        window.unlockScroll();
         return;
     }
 
@@ -4617,14 +4883,12 @@ function hideSystemRebootScreen(isSuccess = true) {
         // 瞬間拔除 HTML 的隱形斗篷，讓底層早就畫好的新版網站準備就緒
         document.documentElement.classList.remove('sys-rebooting');
         
-        // ✨ 修正：動畫結束後，同樣判斷沒有 Modal 時才恢復捲軸
-        if (!document.querySelector('.modal-overlay.active')) {
-            document.body.style.overflow = '';
-        }
-
         screen.style.transition = 'opacity 0.5s ease';
         screen.style.opacity = '0';
-        setTimeout(() => { screen.remove(); }, 500);
+        setTimeout(() => {
+            screen.remove();
+            window.unlockScroll();
+        }, 500);
     }, 600);
 }
 
@@ -4660,7 +4924,7 @@ async function checkSystemVersionAndBoot() {
         }
         // 2. 檢查內容層級更新 (如果系統無需更新，才檢查 projects 目錄的 Hash 是否改變)
         else if (contentData && contentData.projects) {
-            const localDataVersions = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
+            const localDataVersions = window.readDataVersions();
             
             // ✨ 如果本地有舊紀錄，且專案 (projects) 的 Hash 發生改變，才需要強制重開機刷新首頁
             if (localDataVersions.projects && localDataVersions.projects !== contentData.projects) {
@@ -4803,6 +5067,7 @@ if (!window.modalBodyObserver) {
 }
 
 function switchModalContent(updateDOMCallback, afterUpdateCallback = null, animateTopBar = true) {
+    window._cancelModalTransition?.();
     const isModalOpen = modalOverlay.classList.contains('active');
     const topLeft = document.getElementById('modal-top-left');
     const modalContainer = document.querySelector('.modal-content');
@@ -4824,17 +5089,10 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
             topLeft.classList.add('content-fade-out');
         }
         
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+            window._cancelModalTransition = null;
             modalContainer.style.transition = 'none'; 
             modalContainer.style.height = ''; 
-            
-            const viewIndex = document.getElementById('view-index');
-            const viewArticle = document.getElementById('view-article');
-            const origIndexOverflow = viewIndex ? viewIndex.style.overflowY : '';
-            const origArticleOverflow = viewArticle ? viewArticle.style.overflowY : '';
-            
-            if (viewIndex) viewIndex.style.overflowY = 'hidden';
-            if (viewArticle) viewArticle.style.overflowY = 'hidden';
             
             // 執行 DOM 替換
             updateDOMCallback();
@@ -4850,14 +5108,17 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
             if (animateTopBar && topLeft) {
                 topLeft.classList.remove('content-fade-out');
             }
-
-            if (viewIndex) viewIndex.style.overflowY = origIndexOverflow;
-            if (viewArticle) viewArticle.style.overflowY = origArticleOverflow;
             
             setTimeout(() => { 
                 modalContainer.style.transition = ''; 
             }, 50);
         }, 120);
+        window._cancelModalTransition = () => {
+            clearTimeout(timer);
+            window._cancelModalTransition = null;
+            modalBody.classList.remove('content-fade-out');
+            if (topLeft) topLeft.classList.remove('content-fade-out');
+        };
     } else {
         updateDOMCallback();
         window.updateTopBarHeight(); // ✨ 第一次開啟也要更新
@@ -4874,18 +5135,12 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
 // 打開該專案的「目錄頁面」
 // ==========================================
 window.openProjectIndex = function(projectId, restoreScroll = false) {
-    // 🔥 全域中斷防護：退回目錄時，立刻中斷任何下載！
-    if (window._activeFetcher) {
-        window._activeFetcher.abort();
-        window._activeFetcher = null;
-    }
-    if (window.toggleLoading) window.toggleLoading(false);
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !proj.articles) return;
 
     // ✨ 新增：若專案受金鑰保護且未解鎖，禁止開啟目錄
     if (proj.required_key && !window.isSecretUnlocked(proj.required_key)) {
-        let lockPrompt = proj.lock_prompt || `需要金鑰 [${proj.required_key}]`;
+        const lockPrompt = window.getLockPromptText(proj);
         if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
         return;
     }
@@ -4901,17 +5156,22 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
         proj.is_sensitive, `PROJ_${projectId}`, [`PROJ_${projectId}`]
     );
     if (pendingWarning) {
+        const recommendedArticle = pendingWarning.type === 'MAIN'
+            ? window.findFirstUnreadArticleForMain(projectId, null, pendingWarning.bypassCondition)
+            : null;
         window.showSensitiveAgreementModal(
             pendingWarning.type,
             (isPermanent) => {
                 window.saveSensitiveAgreement(pendingWarning.key, isPermanent);
                 return window.openProjectIndex(projectId, restoreScroll);
             },
-            () => closeModal()
+            () => closeModal(),
+            { recommendedArticle }
         );
         return;
     }
 
+    window.beginModalNavigation();
     window.isRendering = false; 
     window.historyStack = []; 
 
@@ -4928,13 +5188,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             sessionStorage.setItem(`sort_${projectId}`, currentSort);
 
             // ✨ 計算可見文章數
-            const isUnlockedSys = document.body.classList.contains('system-override-active');
-            const visibleCount = proj.articles.filter(art => {
-                const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key);
-                if (artLocked && (art.lock_mode || 'visible') === 'hidden') return false;
-                if (isUnlockedSys) return true;
-                return !art.is_hidden;
-            }).length;
+            const visibleCount = window.getVisibleArticleCount(proj);
 
             const shareUrl = window.updateRouteState(projectId);
 
@@ -5003,11 +5257,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     if (artLocked && lockMode === 'visible') hiddenClass += ' is-key-locked-item';
 
                     // ✨ 動態判定提示文字
-                    let lockPrompt = art.lock_prompt || '';
-                    if (!lockPrompt && art.required_key) {
-                        const isComplex = Array.isArray(art.required_key) || (typeof art.required_key === 'string' && (art.required_key.includes('||') || art.required_key.includes('&&')));
-                        lockPrompt = isComplex ? '需要多重金鑰' : `需要金鑰 [${art.required_key}]`;
-                    }
+                    const lockPrompt = window.getLockPromptText(art);
 
                     // ✨ 補上 window. 前綴
                     let onClickAttr = artLocked 
@@ -5080,12 +5330,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             }
 
                             const topMargin = isFirstGroup ? '0rem' : '1.2rem';
-
-                            // ✨ 只要有設定 groupColor，就注入給 Group Header（包含標題、底線與縮圖直角外框）
-                            let inlineStyles = groupColor ? ` --current-group-color: ${groupColor};` : '';
-                            if (groupColor && !groupData.highlight) {
-                                inlineStyles += ` --current-group-color: ${groupColor};`;
-                            }
+                            // 👇 把這一行補回來即可！
+                            const inlineStyles = groupColor ? ` --current-group-color: ${groupColor};` : '';
 
                             // ✨ 加上專屬 ID 供漢堡選單跳轉定位
                             const safeGroupId = `group-${groupId.replace(/[\s&]+/g, '-').replace(/-+/g, '-')}`;
@@ -5210,11 +5456,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 if (title) title.innerHTML = `${window.parseDynamicText(proj.title, 'INDEX_HEADER')}<span style="white-space: nowrap;"> - 目錄</span>`;
                 const badge = header && header.querySelector('.article-count-badge');
                 if (badge) {
-                    const count = proj.articles.filter(art => {
-                        const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key);
-                        if (artLocked && (art.lock_mode || 'visible') === 'hidden') return false;
-                        return isUnlockedSys || !art.is_hidden;
-                    }).length;
+                    const count = window.getVisibleArticleCount(proj);
                     badge.textContent = `共 ${count} 篇`;
                 }
                 renderList(true);
@@ -5272,7 +5514,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     const article = proj.articles[articleIndex];
     if (!article) return;
     if (proj.required_key && !window.isSecretUnlocked(proj.required_key)) {
-        const lockPrompt = proj.lock_prompt || `需要金鑰 [${proj.required_key}]`;
+        const lockPrompt = window.getLockPromptText(proj);
         if (window.showSystemToast) window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
         return;
     }
@@ -5294,11 +5536,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     const isUnlockedSys = document.body.classList.contains('system-override-active');
     if (article.required_key && !window.isSecretUnlocked(article.required_key)) {
         
-        let lockPrompt = article.lock_prompt || '';
-        if (!lockPrompt) {
-            const isComplex = Array.isArray(article.required_key) || (typeof article.required_key === 'string' && (article.required_key.includes('||') || article.required_key.includes('&&')));
-            lockPrompt = isComplex ? '需要多重金鑰' : `需要金鑰 [${article.required_key}]`;
-        }
+        const lockPrompt = window.getLockPromptText(article);
         
         window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖此文章`, 4000, 'error');
         window.history.replaceState(null, '', window.location.pathname);
@@ -5316,6 +5554,9 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     );
     const pendingWarning = projectWarning || articleWarning;
     if (pendingWarning) {
+        const recommendedArticle = pendingWarning.type === 'MAIN'
+            ? window.findFirstUnreadArticleForMain(projectId, projectWarning ? null : articleIndex, pendingWarning.bypassCondition)
+            : null;
         window.showSensitiveAgreementModal(
             pendingWarning.type,
             (isPermanent) => {
@@ -5323,6 +5564,19 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 return window.openArticle(projectId, articleIndex, isFromHistory, restoreScrollTop, targetHash, restoreInnerScrolls, restoreActiveTabs);
             },
             () => {
+                const viewArticle = document.getElementById('view-article');
+                const isReadingArticle = modalOverlay?.classList.contains('active')
+                    && viewArticle && viewArticle.style.display !== 'none'
+                    && Array.isArray(window.historyStack) && window.historyStack.length > 0;
+                if (isReadingArticle) {
+                    const cur = window.historyStack[window.historyStack.length - 1];
+                    const curProj = window.siteProjects.find(p => p.id === cur.projectId);
+                    const curArt = curProj?.articles?.[cur.articleIndex];
+                    if (curProj && curArt) {
+                        window.updateRouteState(cur.projectId, curArt.id || cur.articleIndex);
+                    }
+                    return;
+                }
                 if (projectWarning) {
                     closeModal();
                 } else {
@@ -5335,7 +5589,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                         window.openProjectIndex(projectId, true);
                     }
                 }
-            }
+            },
+            { recommendedArticle }
         );
         return;
     }
@@ -5380,29 +5635,20 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     // ✨ 進入文章的瞬間，預先計算並快取好返回目錄時的最佳捲軸位置
     window._indexScrollTopCache = window.calculateIdealScrollCache('view-index', `article-item-${articleIndex}`, window._indexScrollTopCache);
     
-    let markdownContent = "載入失敗";
-    const fetchResult = await window.safeFetchWithGuard(article.content_path, { isJson: true });
+    // 驗證 contents.json，失敗時保留文章操作，只替換內文。
+    const hasContentPath = typeof article.content_path === 'string' && article.content_path.trim() !== '';
+    const navigation = window.beginModalNavigation();
+    const fetchResult = hasContentPath
+        ? await window.safeFetchWithGuard(article.content_path, { isJson: true })
+        : { success: false, isInvalidData: true };
 
-    if (fetchResult.aborted) {
-        console.log("[SYS] Fetching 任務已由使用者切換中斷。");
-        return;
-    }
+    if (fetchResult.aborted || navigation !== window._modalNavigation) return;
 
-    if (fetchResult.success) {
-        markdownContent = fetchResult.data.content;
-    } else {
-        console.error("無法載入文章內容:", fetchResult.error);
-        let errTitle = '404 NOT_FOUND';
-        let errMsg = '無法載入文章內容。';
-        if (fetchResult.isTimeout) {
-            errTitle = 'ERR_CONNECTION_TIMED_OUT'; errMsg = '伺服器回應逾時 (大於 8 秒)，請檢查網路連線後再試。';
-        } else if (fetchResult.isOffline) {
-            errTitle = 'ERR_INTERNET_DISCONNECTED'; errMsg = '網路連線中斷，請檢查您的網路狀態。';
-        }
-        markdownContent = `\n# ${article.title}\n\n${window.getSystemErrorHtml(errTitle, errMsg)}`;
+    const hasContent = fetchResult.success && fetchResult.data && typeof fetchResult.data.content === 'string';
+    if (!hasContent) {
+        console.error('無法載入文章 contents.json:', fetchResult.error || '缺少有效的 content_path 或 content 欄位');
     }
-    
-    if (window._activeFetcher !== null) return; // 幽靈渲染防護
+    const markdownContent = hasContent ? fetchResult.data.content : '';
 
     // ✨ 智慧判斷：如果彈窗是開著的... (這行以下維持原樣)
     // 代表這是「文章切換文章」，我們就把頂部列的動畫關掉！
@@ -5426,10 +5672,17 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 // ✨ 賦予目前渲染環境的專屬 ID，供解鎖特效記憶使用
                 window._currentRenderPlace = projectId + '_' + articleIndex;
                 // ✨ 核心修復：清除空行上的不換行空白 (\u00A0)，防止 <div class="tab-panel"> 吞掉內部的 :::lang 語法！
-                const cleanMarkdown = markdownContent.replace(/^[ \t\u00A0]+$/gm, '');
-                viewArticle.innerHTML = marked.parse(cleanMarkdown);
-                window.applyArticleDefaultLanguage(viewArticle, article, proj);
-                if (fetchResult.success) window.grantDetailKeys([proj.key, article.key]);
+                if (hasContent) {
+                    const cleanMarkdown = markdownContent.replace(/^[ \t\u00A0]+$/gm, '');
+                    viewArticle.innerHTML = marked.parse(cleanMarkdown);
+                    window.applyArticleDefaultLanguage(viewArticle, article, proj);
+                    window.markArticleRead(projectId, article, articleIndex);
+                    window.grantDetailKeys([proj.key, article.key]);
+                } else {
+                    const articleName = window.escapeHtml(window.parseDynamicText(String(article.title || article.id || articleIndex), 'TOOLTIP'));
+                    viewArticle.innerHTML = window.getSystemErrorHtml('載入失敗', `文章「${articleName}」載入失敗。`);
+                    window.updateRouteState(projectId, article.id || articleIndex, targetHash);
+                }
             }
             
             /// 建立操作指標
@@ -5496,17 +5749,17 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const text = isPrev ? '上一篇' : '下一篇'; 
                 
                 if (!item) {
-                    return { cardHtml: '', btnHtml: `<button class="capsule-btn disabled" disabled>${iconSvg}</button>` };
+                    return { cardHtml: '', btnHtml: `<button class="capsule-btn ${type} disabled" disabled>${iconSvg}</button>` };
                 }
                 
                 // ✨ 安全解析：TOOLTIP 不消耗特效額度，NAV_BTN 觸發獨立特效
-                const plainTitle = window.parseDynamicText(item.art.title, 'TOOLTIP').replace(/<[^>]+>/g, '');
+                const plainTitle = window.stripHtml(window.parseDynamicText(item.art.title, 'TOOLTIP'));
                 const tooltipText = plainTitle.replace(/"/g, '&quot;');
                 const uiTitle = window.formatArticleTitleLanguage(window.parseDynamicText(item.art.title, 'NAV_BTN'), item.art, proj);
                 
                 const cardHtml = `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.openArticle('${projectId}', ${item.idx})"><div class="nav-label">${isPrev ? `${iconSvg}${text}` : `${text}${iconSvg}`}</div><div class="nav-title">${uiTitle}</div></a>`;
                 
-                const btnHtml = `<button class="capsule-btn" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${tooltipText}">${iconSvg}</button>`;
+                const btnHtml = `<button class="capsule-btn ${type}" onclick="window.openArticle('${projectId}', ${item.idx})" data-tooltip="${tooltipText}">${iconSvg}</button>`;
                 
                 return { cardHtml, btnHtml };
             };
@@ -5514,7 +5767,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             const prevData = seqIndex > 0 ? generateNavBtn(flatSequence[seqIndex - 1], 'prev') : generateNavBtn(null, 'prev');
             const nextData = seqIndex < flatSequence.length - 1 ? generateNavBtn(flatSequence[seqIndex + 1], 'next') : generateNavBtn(null, 'next');
 
-            if (prevData.cardHtml || nextData.cardHtml) {
+            if (hasContent && (prevData.cardHtml || nextData.cardHtml)) {
                 const navContainer = document.createElement('div');
                 navContainer.className = 'article-nav-cards';
                 navContainer.innerHTML = prevData.cardHtml + nextData.cardHtml;
@@ -5537,87 +5790,29 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             // ==========================================
             // ✨ 機密檔案解鎖監視引擎 (Secret Unlock Engine)
             // ==========================================
-            const keys = activeView.querySelectorAll('[data-secret-key]'); // 🚨 就是這行漏掉了！
+            const keys = activeView.querySelectorAll('[data-secret-key]');
             if (keys.length > 0) {
-                const keyObserver = new IntersectionObserver((entries) => {
+                const keyObserver = window.registerArticleObserver(new IntersectionObserver((entries) => {
+                    if (navigation !== window._modalNavigation) return;
                     entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            const keyEl = entry.target;
-                            const secretId = keyEl.getAttribute('data-secret-key');
-                            
-                            // ✨ 呼叫進階解鎖引擎 (支援碎片化收集)
-                            const result = window.unlockSecret(secretId);
-                            
-                            if (result && result.status !== 'ALREADY_HAVE') {
-                                let title = '>_ ACCESS_GRANTED';
-                                let msg = '取得授權金鑰';
-                                let subMsg = `已解鎖機密 [${result.baseId}]`;
-                                
-                                if (result.status === 'ACQUIRED_FRAGMENT') {
-                                    title = '>_ FRAGMENT_ACQUIRED';
-                                    msg = '取得金鑰碎片';
-                                    // ✨ 智慧提示：有總數就顯示「進度 1/5」，沒總數就只顯示「已取得 #1」
-                                    subMsg = result.hasExplicitTotal 
-                                        ? `進度: ${result.currentCount}/${result.reqCount} [${result.baseId}]`
-                                        : `已取得碎片 [${result.baseId}#${result.fragIndex}]`;
-                                } else if (result.status === 'GRANTED_FRAGMENTS_COMPLETE') {
-                                    title = '>_ ACCESS_GRANTED';
-                                    msg = '金鑰合成完畢';
-                                    subMsg = `權限已解開！(${result.currentCount}/${result.reqCount}) [${result.baseId}]`;
-                                }
-                                
-                                // ✨ 精準讀取靜音標記
-                                const isSilent = keyEl.getAttribute('data-silent') === 'true';
-                                
-                                if (!isSilent) {
-                                    if (window.showSystemToast) {
-                                        window.showSystemToast(title, msg, subMsg, 6000, 'success');
-                                    }
-                                    window.triggerHaptic('success');
-                                }
-                                keyEl.classList.add('is-key-triggered');
-                                
-                                // ✨ 如果完全解鎖，掃描並喚醒全頁面所有對應的機密區塊
-                                if (result.status === 'GRANTED' || result.status === 'GRANTED_FRAGMENTS_COMPLETE') {
-                                    const allLocked = document.querySelectorAll('.md-secret-block.is-locked, .md-inline-secret.is-locked, .md-stealth-secret.is-locked, .md-stealth-block.is-locked, .pending-auto-unlock');
-                                    allLocked.forEach(block => {
-                                        const reqId = block.getAttribute('data-secret-id');
-                                        if (window.isSecretUnlocked(reqId)) {
-                                            block.classList.remove('is-locked', 'pending-auto-unlock');
-                                            block.classList.add('is-unlocked');
-                                            
-                                            const placeId = block.getAttribute('data-place-id');
-                                            if (placeId) {
-                                                let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
-                                                if (!animatedPlaces.includes(placeId)) {
-                                                    animatedPlaces.push(placeId);
-                                                    localStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
-                                                }
-                                            }
-                                        }
-                                    });
-                                }
-                            } else if (result && result.status === 'ALREADY_HAVE') {
-                                keyEl.classList.add('is-key-triggered'); 
-                            }
-                            keyObserver.unobserve(keyEl);
-                        }
+                        if (!entry.isIntersecting) return;
+                        const keyEl = entry.target;
+                        const secretId = keyEl.getAttribute('data-secret-key');
+                        const isSilent = keyEl.getAttribute('data-silent') === 'true';
+                        window.grantDetailKeys(isSilent ? `${secretId}|SILENT` : secretId);
+                        keyEl.classList.add('is-key-triggered');
+                        keyObserver.unobserve(keyEl);
                     });
-                }, { threshold: 0.5 }); // 滾到元素露出一半時才觸發
+                }, { threshold: 0.5 }));
 
                 keys.forEach(k => {
-                    const rawId = k.getAttribute('data-secret-key');
-                    const match = rawId.match(/^([^#]+)(?:#([^/]+)(?:\/(\d+))?)?$/);
-                    // ✨ 同樣加上存在判定
-                    const baseId = match && match[1] ? match[1].trim() : rawId.trim();
-                    const fragIndex = match && match[2] ? match[2].trim() : null;
-                    const storeKey = fragIndex ? `${baseId}#${fragIndex}` : baseId;
-                    
-                    const unlocked = JSON.parse(localStorage.getItem('sys_unlocked_secrets') || '[]');
-                    if (!unlocked.includes(storeKey)) {
+                    const spec = window.parseKeySpec(k.getAttribute('data-secret-key'));
+                    if (!spec) return;
+                    const hasMissingKey = spec.storeKeys.some(key => !window.SysStorage.has('sys_unlocked_secrets', key));
+                    if (hasMissingKey) {
                         keyObserver.observe(k);
                     } else {
-                        k.classList.add('is-key-triggered'); // 以前解鎖過，直接亮起
+                        k.classList.add('is-key-triggered');
                     }
                 });
             }
@@ -5627,38 +5822,23 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             // ==========================================
             const autoUnlockBlocks = activeView.querySelectorAll('.pending-auto-unlock');
             if (autoUnlockBlocks.length > 0) {
-                const autoObserver = new IntersectionObserver((entries) => {
+                const autoObserver = window.registerArticleObserver(new IntersectionObserver((entries) => {
+                    if (navigation !== window._modalNavigation) return;
                     entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            const block = entry.target;
-                            
-                            // 📝 記錄為已播過動畫
-                            const placeId = block.getAttribute('data-place-id');
-                            if (placeId) {
-                                let animatedPlaces = JSON.parse(localStorage.getItem('sys_animated_secrets') || '[]');
-                                if (!animatedPlaces.includes(placeId)) {
-                                    animatedPlaces.push(placeId);
-                                    localStorage.setItem('sys_animated_secrets', JSON.stringify(animatedPlaces));
-                                }
-                            }
-                            
-                            // ✨ 核心修復 3：把畫面上所有的同 ID 區塊一起解碼，這樣目錄 (TOC) 裡的副本也會跟著同步！
-                            const secretId = block.getAttribute('data-secret-id');
-                            if (secretId) {
-                                const syncBlocks = document.querySelectorAll(`[data-secret-id="${secretId}"]`);
-                                syncBlocks.forEach(b => {
-                                    b.classList.remove('is-locked', 'pending-auto-unlock');
-                                    b.classList.add('is-unlocked');
-                                });
-                            } else {
-                                block.classList.remove('is-locked', 'pending-auto-unlock');
-                                block.classList.add('is-unlocked');
-                            }
-                            
-                            autoObserver.unobserve(block);
-                        }
+                        if (!entry.isIntersecting) return;
+                        const block = entry.target;
+                        const placeId = block.getAttribute('data-place-id');
+                        if (placeId) window.SysStorage.add('sys_animated_secrets', placeId);
+                        
+                        const secretId = block.getAttribute('data-secret-id');
+                        const targets = secretId ? document.querySelectorAll(`[data-secret-id="${secretId}"]`) : [block];
+                        targets.forEach(b => {
+                            b.classList.remove('is-locked', 'pending-auto-unlock');
+                            b.classList.add('is-unlocked');
+                        });
+                        autoObserver.unobserve(block);
                     });
-                }, { threshold: 0.15 }); // 捲入畫面 15% 時觸發自動解碼
+                }, { threshold: 0.15 }));
 
                 autoUnlockBlocks.forEach(b => autoObserver.observe(b));
             }
@@ -5718,7 +5898,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 const prevProj = window.siteProjects.find(p => p.id === prevEntry.projectId);
                 const prevArt = prevProj && prevProj.articles ? prevProj.articles[prevEntry.articleIndex] : null;
                 const prevTitle = prevArt 
-                    ? window.parseDynamicText(prevArt.title, 'TOOLTIP').replace(/<[^>]+>/g, '').replace(/"/g, '&quot;') 
+                    ? window.stripHtml(window.parseDynamicText(prevArt.title, 'TOOLTIP')).replace(/"/g, '&quot;') 
                     : '跳轉前頁面';
                 
                 historyBtnHtml = `<div class="capsule-divider"></div><button class="capsule-btn history-btn" onclick="window.goBackInHistory()" data-tooltip="返回：${prevTitle}">${GLOBAL_SVGS.historyBack}</button>`;
@@ -5817,11 +5997,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 wrapper.appendChild(hintRight);
 
                 const initialStyle = gallery.getAttribute('style') || '';
-                const manualRows = (initialStyle.match(/--g-rows:\s*(\d+)/)) ? parseInt(initialStyle.match(/--g-rows:\s*(\d+)/)[1]) : null;
+                const manualRows = (initialStyle.match(/--g-rows:\s*(\d+)/)) ? parseInt(initialStyle.match(/--g-rows:\s*(\d+)/)[1], 10) : null;
 
-                window.initScrollHints(gallery, hintLeft, hintRight);
-
-                const originalCheckScroll = () => {
+                // 將折行判斷作為 onBeforeCheck 傳入，只綁定單一 rAF Scroll 與 ResizeObserver
+                window.initScrollHints(gallery, hintLeft, hintRight, () => {
                     const totalItems = gallery.querySelectorAll('figure').length;
                     if (totalItems > 0) {
                         let shouldWrap = false;
@@ -5829,7 +6008,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                             const containerWidth = gallery.clientWidth;
                             if (containerWidth > 0) {
                                 const matchWidth = initialStyle.match(/--g-width:\s*(\d+)px/);
-                                let baseWidth = matchWidth ? parseInt(matchWidth[1]) : 200;
+                                const baseWidth = matchWidth ? parseInt(matchWidth[1], 10) : 200;
                                 if (((baseWidth * totalItems) + (16 * (totalItems - 1))) >= containerWidth * 1.5) shouldWrap = true;
                             }
                         }
@@ -5855,19 +6034,8 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                             }
                         }
                     }
-                    const isScrollable = gallery.scrollWidth > gallery.clientWidth + 5;
-                    const isAtEnd = Math.ceil(gallery.scrollLeft + gallery.clientWidth) >= Math.floor(gallery.scrollWidth) - 10;
-                    const isAtStart = gallery.scrollLeft <= 10;
+                });
 
-                    hintRight.classList.toggle('visible', isScrollable && !isAtEnd);
-                    hintLeft.classList.toggle('visible', isScrollable && !isAtStart);
-                };
-
-                gallery.addEventListener('scroll', originalCheckScroll);
-                new ResizeObserver(originalCheckScroll).observe(gallery);
-                setTimeout(originalCheckScroll, 150);
-
-                // ✨ 直接呼叫共用水平捲動置中引擎 (取代原本 20 幾行的 scrollOneItem 邏輯)
                 hintRight.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', 1));
                 hintLeft.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', -1));
             });
@@ -6027,10 +6195,8 @@ window.clearFilter = function(event) {
 
     document.querySelectorAll('.marquee-content').forEach(m => {
         if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
-        let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % m.offsetWidth; 
-        if (currentX > 0) currentX -= m.offsetWidth;
-
-        const remainingTime = (CONFIG.MARQUEE_SPEED * 1000) * (1 - (Math.abs(currentX) / m.offsetWidth)); 
+        let currentX = window.getMarqueeCurrentX(m);
+      const remainingTime = (CONFIG.MARQUEE_SPEED * 1000) * (1 - (Math.abs(currentX) / m.offsetWidth));
         m.style.transition = 'none';
         m.style.animation = 'none';
         
@@ -6099,18 +6265,19 @@ window.filterByTag = function(targetTag, event, clickedElement) {
 
 // ✨ 抽出共用引擎：跑馬燈平滑定位動畫
 window.scrollMarqueeTo = function(targetX, contentWidth) {
-    document.querySelectorAll('.marquee-content').forEach(m => {
+    const tracks = Array.from(document.querySelectorAll('.marquee-content'));
+    const items = tracks.map(m => {
         if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
-        let currentX = new DOMMatrix(window.getComputedStyle(m).transform).m41 % contentWidth; 
-        if (currentX > 0) currentX -= contentWidth;
-        
+        const currentX = window.getMarqueeCurrentX(m, contentWidth);
+        return { m, currentX, duration: 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7) };
+    });
+    items.forEach(({ m, currentX }) => {
         m.style.transition = 'none';
         m.style.transform = `translateX(${currentX}px)`;
         m.style.animation = 'none';
-        
-        void m.offsetWidth; // 強制重繪
-        
-        const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
+    });
+    if (tracks.length > 0) void tracks[0].offsetWidth;
+    items.forEach(({ m, duration }) => {
         m.style.transition = `transform ${duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
         m.style.transform = `translateX(${targetX}px)`;
     });
@@ -6140,12 +6307,7 @@ window.goBackInHistory = function() {
 };
 
 function closeModal() {
-    // 🔥 全域中斷防護：關閉視窗時，立刻中斷任何下載！
-    if (window._activeFetcher) {
-        window._activeFetcher.abort();
-        window._activeFetcher = null;
-    }
-    if (window.toggleLoading) window.toggleLoading(false);
+    window.beginModalNavigation();
 
     window.historyStack = []; 
     modalOverlay.classList.remove('active');
@@ -6274,11 +6436,11 @@ document.addEventListener('keydown', (e) => {
         const viewArticle = document.getElementById('view-article');
         if (viewArticle && viewArticle.style.display !== 'none') {
             if (e.key === 'ArrowLeft') {
-                const prevBtn = document.querySelector('.nav-card.prev');
+                const prevBtn = document.querySelector('#modal-top-left .unified-nav-capsule .capsule-btn.prev:not(:disabled)');
                 if (prevBtn) { prevBtn.click(); e.preventDefault(); }
             }
             if (e.key === 'ArrowRight') {
-                const nextBtn = document.querySelector('.nav-card.next');
+                const nextBtn = document.querySelector('#modal-top-left .unified-nav-capsule .capsule-btn.next:not(:disabled)');
                 if (nextBtn) { nextBtn.click(); e.preventDefault(); }
             }
         }
@@ -6370,6 +6532,20 @@ window.reloadMermaid = function(btn) {
     }, 50); 
 };
 
+window.fitMermaidToLightbox = function(svg) {
+    if (!svg) return;
+    const vb = svg.getAttribute('viewBox');
+    if (!vb) return;
+    const [, , vbW, vbH] = vb.trim().split(/[\s,]+/).map(Number);
+    if (vbW > 0 && vbH > 0) {
+        const maxW = window.innerWidth * 0.85;
+        const maxH = window.innerHeight - 220;
+        const fitScale = Math.min(maxW / vbW, maxH / vbH, 1.5);
+        svg.style.width = `${Math.round(Math.max(Math.min(vbW * fitScale, maxW), Math.min(280, maxW)))}px`;
+        svg.style.height = 'auto';
+    }
+};
+
 // ✨ 全新：完美偽裝成 Lightbox 的 Mermaid 全螢幕引擎
 window.fullscreenMermaid = function(btn) {
     const container = btn.closest('.mermaid-container');
@@ -6397,25 +6573,7 @@ window.fullscreenMermaid = function(btn) {
     clonedMermaid.style.height = '';
     clonedMermaid.style.transform = 'translate(0px, 0px) scale(1)';
 
-    const clonedSvg = clonedMermaid.querySelector('svg');
-    if (clonedSvg) {
-        const vb = clonedSvg.getAttribute('viewBox');
-        if (vb) {
-            const parts = vb.trim().split(/[\s,]+/).map(Number);
-            const vbW = parts[2];
-            const vbH = parts[3];
-            if (vbW > 0 && vbH > 0) {
-                // 扣除上下工具列與邊距後的安全可視範圍
-                const maxW = window.innerWidth * 0.85;
-                const maxH = window.innerHeight - 220;
-                // 允許適度放大以看清細節，但絕不超過視窗安全邊界，最小也不低於 280px
-                const fitScale = Math.min(maxW / vbW, maxH / vbH, 1.5);
-                const targetW = Math.max(Math.min(vbW * fitScale, maxW), Math.min(280, maxW));
-                clonedSvg.style.width = `${Math.round(targetW)}px`;
-                clonedSvg.style.height = 'auto';
-            }
-        }
-    }
+    window.fitMermaidToLightbox(clonedMermaid.querySelector('svg'));
     
     customContainer.innerHTML = '';
     customContainer.appendChild(clonedMermaid);
@@ -6438,17 +6596,15 @@ window.fullscreenMermaid = function(btn) {
 // ==========================================
 // ✨ Mermaid 專業控制台引擎 (支援手機點擊與桌機絲滑拖曳)
 // ==========================================
-window.initMermaidDrag = function() {
-    document.querySelectorAll('.mermaid-container').forEach(container => {
-        // 🔥 修復 1：移除 dataset.engineInit 的直接 return 阻斷
-        // 改為判斷是否已經有我們自定義的標記，如果有，代表已經綁定過了，跳過。
-        // 但我們允許在「重整」時強制重新綁定（因為重整時我們會手動清除這個標記）
-        if (container.classList.contains('drag-initialized')) return;
-        container.classList.add('drag-initialized');
-
+window.initMermaidDrag = function(rootElement = document) {
+    const containers = Array.from(rootElement.querySelectorAll('.mermaid-container'));
+    if (rootElement.classList?.contains('mermaid-container')) containers.unshift(rootElement);
+    containers.forEach(container => {
         const wrapper = container.querySelector('.mermaid-wrapper');
         const mermaidDiv = container.querySelector('.mermaid');
-        if (!wrapper || !mermaidDiv) return;
+        if (!wrapper || !mermaidDiv || container._mermaidDragWrapper === wrapper) return;
+        container._mermaidDragWrapper = wrapper;
+        container.classList.add('drag-initialized');
 
         // ✨ 觸控版專屬：點擊直接進入大圖預覽
         wrapper.addEventListener('click', (e) => {
@@ -6509,6 +6665,7 @@ window.initMermaidDrag = function() {
         wrapper.addEventListener('pointercancel', endDrag);
 
         // 2. 滾輪對準游標中心縮放
+        let mermaidWheelTimer = null;
         wrapper.addEventListener('wheel', (e) => {
             if (document.body.classList.contains('is-touch-device')) return;
             e.preventDefault();
@@ -6530,12 +6687,19 @@ window.initMermaidDrag = function() {
             container.dataset.zoom = newZoom;
             container.dataset.x = x;
             container.dataset.y = y;
-            mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${newZoom})`;
+            wrapper.classList.add('is-dragging');
+            clearTimeout(mermaidWheelTimer);
+            mermaidWheelTimer = setTimeout(() => { if (!isDragging) wrapper.classList.remove('is-dragging'); }, 120);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(() => {
+                mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${newZoom})`;
+            });
         }, { passive: false });
     });
 };
 
 function show404Modal(title, message) {
+    window.beginModalNavigation();
     const modalOverlay = document.getElementById('md-modal');
     const viewIndex = document.getElementById('view-index');
     const viewArticle = document.getElementById('view-article');
@@ -6607,22 +6771,7 @@ function show404Modal(title, message) {
             const pParam = urlParams.get('p');
             const aParam = urlParams.get('a');
             const hashParam = window.location.hash || null;
-            
-            let project = null;
-            let article = null;
-            let aIndex = -1;
-
-            if (pParam) {
-                const cleanProjectId = pParam.replace(/^\d+_/, '');
-                project = window.siteProjects.find(proj => proj.id === cleanProjectId);
-                if (project && aParam !== null && aParam !== undefined && project.articles) {
-                    aIndex = project.articles.findIndex(art => art.id === aParam);
-                    if (aIndex === -1 && !isNaN(parseInt(aParam))) aIndex = parseInt(aParam, 10);
-                    if (aIndex !== -1 && aIndex < project.articles.length) {
-                        article = project.articles[aIndex];
-                    }
-                }
-            }
+            const { project, article, aIndex } = window.resolveRouteTarget(pParam, aParam);
 
             // 1. 啟動 System Override 並重刷首頁 UI
             document.body.classList.add('system-override-active');
@@ -6642,11 +6791,7 @@ function show404Modal(title, message) {
                 if (projLockMode !== 'hidden') {
                     // 顯示金鑰提示
                     if (window.showSystemToast) {
-                        let lockPrompt = project.lock_prompt || '';
-                        if (!lockPrompt) {
-                            const isComplex = Array.isArray(project.required_key) || (typeof project.required_key === 'string' && (project.required_key.includes('||') || project.required_key.includes('&&')));
-                            lockPrompt = isComplex ? '需要多重金鑰' : `需要金鑰 [${project.required_key}]`;
-                        }
+                        const lockPrompt = window.getLockPromptText(project);
                         window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖`, 4000, 'error');
                     }
 
@@ -6671,11 +6816,7 @@ function show404Modal(title, message) {
                     if (artLockMode !== 'hidden') {
                         // 顯示金鑰提示
                         if (window.showSystemToast) {
-                            let lockPrompt = article.lock_prompt || '';
-                            if (!lockPrompt) {
-                                const isComplex = Array.isArray(article.required_key) || (typeof article.required_key === 'string' && (article.required_key.includes('||') || article.required_key.includes('&&')));
-                                lockPrompt = isComplex ? '需要多重金鑰' : `需要金鑰 [${article.required_key}]`;
-                            }
+                            const lockPrompt = window.getLockPromptText(article);
                             window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', `${lockPrompt} 才能解鎖此文章`, 4000, 'error');
                         }
 
@@ -6711,16 +6852,7 @@ function show404Modal(title, message) {
             }
 
             if (targetVersion && window.compareVersions(CONFIG.VERSION, targetVersion) < 0) {
-                closeModal();
-                sessionStorage.setItem('sys_reboot_count', '1');
-                sessionStorage.setItem('sys_is_rebooting', 'true');
-                sessionStorage.setItem('sys_expected_version', targetVersion);
-                showSystemRebootScreen('CORE_UPDATE', CONFIG.VERSION, targetVersion, 'UPDATING', true);
-                setTimeout(() => {
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('v', new Date().getTime());
-                    window.location.replace(newUrl.toString());
-                }, 1200);
+                window.triggerSystemUpdate(targetVersion);
                 return;
             }
 
@@ -6733,12 +6865,24 @@ function show404Modal(title, message) {
 // ==========================================
 // ✨ 敏感內容/使用者協議攔截引擎 (Content Warning Engine)
 // ==========================================
-window._hasAgreedSensitiveContent = false;
 
-window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, onDeclineCallback) {
+window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, onDeclineCallback, options = {}) {
     if (document.getElementById('sensitive-modal-overlay')) return;
     const sType = typeof sensitiveType === 'string' ? sensitiveType.toUpperCase() : 'DEFAULT';
     const tpl = window.SENSITIVE_TEMPLATES[sType] || window.SENSITIVE_TEMPLATES["DEFAULT"];
+    const rec = sType === 'MAIN' ? options?.recommendedArticle : null;
+    const recTitle = rec?.article
+        ? window.escapeHtml(window.stripHtml(window.parseDynamicText(String(rec.article.title || rec.article.id || ''), 'TOOLTIP')))
+        : '';
+    const jumpUnreadHtml = recTitle ? `
+            <button type="button" id="sensitive-jump-unread-btn" class="sensitive-jump-card">
+                <span class="sensitive-jump-icon">${GLOBAL_SVGS.docIcon}</span>
+                <span class="sensitive-jump-body">
+                    <span class="sensitive-jump-kicker">建議先閱讀未讀前篇</span>
+                    <span class="sensitive-jump-title">${recTitle}</span>
+                </span>
+                <span class="sensitive-jump-arrow">${GLOBAL_SVGS.chevronRight}</span>
+            </button>` : '';
 
     const overlay = document.createElement('div');
     overlay.id = 'sensitive-modal-overlay';
@@ -6774,7 +6918,7 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
     document.addEventListener('keydown', escListener);
 
     overlay.innerHTML = `
-        <div class="sensitive-modal-content" style="--current-warning-color: ${tpl.color};">
+        <div class="sensitive-modal-content${recTitle ? ' has-jump-card' : ''}" data-sensitive-type="${sType}" style="--current-warning-color: ${tpl.color};">
             <button type="button" id="sensitive-close-x" class="sensitive-close-btn">${GLOBAL_SVGS.closeX}</button>
             <div id="sensitive-warning-icon-wrapper" style="color: var(--current-warning-color);">${GLOBAL_SVGS.warning}</div>
             <h2 class="sensitive-title">${tpl.title}</h2>
@@ -6782,12 +6926,11 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
                 ${tpl.desc}<br>
                 <span class="sensitive-desc-hint" style="font-size: 0.8rem; opacity: 0.7;">(預設僅於本次瀏覽器存續期間放行)</span>
             </p>
-            
+            ${jumpUnreadHtml}
             <label class="sensitive-checkbox-label">
                 <input type="checkbox" id="sensitive-remember-checkbox">
                 <span class="sensitive-checkbox-text">在此設備永久放行 (關閉瀏覽器後依然有效)</span>
             </label>
-
             <div class="sensitive-actions">
                 <button type="button" id="sensitive-decline-btn" class="btn">不感興趣</button>
                 <button type="button" id="sensitive-agree-btn" class="btn">${tpl.btn_text}</button>
@@ -6797,6 +6940,35 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
 
     document.body.appendChild(overlay);
     window.lockScroll();
+
+    const jumpUnreadBtn = document.getElementById('sensitive-jump-unread-btn');
+    if (jumpUnreadBtn && rec) {
+        jumpUnreadBtn.onclick = (e) => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (closing || jumpUnreadBtn.disabled) return;
+            closing = true;
+            jumpUnreadBtn.disabled = true;
+            document.removeEventListener('keydown', escListener);
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'none';
+            setTimeout(() => {
+                overlay.remove();
+                const unlockIfIdle = () => {
+                    const mdModal = document.getElementById('md-modal');
+                    if (!document.getElementById('sensitive-modal-overlay') && (!mdModal || !mdModal.classList.contains('active'))) {
+                        window.unlockScroll();
+                    }
+                };
+                try {
+                    const result = window.openArticle(rec.projectId, rec.articleIndex);
+                    Promise.resolve(result).finally(unlockIfIdle).catch(error => console.error('跳轉未讀前篇失敗：', error));
+                } catch (error) {
+                    unlockIfIdle();
+                    console.error('跳轉未讀前篇失敗：', error);
+                }
+            }, 250);
+        };
+    }
 
     document.getElementById('sensitive-decline-btn').onclick = (e) => { if(e) { e.preventDefault(); e.stopPropagation(); } declineAction(); };
     document.getElementById('sensitive-close-x').onclick = (e) => { if(e) { e.preventDefault(); e.stopPropagation(); } declineAction(); };
@@ -6888,8 +7060,7 @@ window.applyIndentToVerticalWrapper = function(container) {
 window.cachedMarkdownFiles = {}; // 統一管理快取
 
 window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cacheKey, extraHtml = '') {
-    if (window._activeFetcher) { window._activeFetcher.abort(); window._activeFetcher = null; }
-    window.toggleLoading(false);
+    const navigation = window.beginModalNavigation();
 
     let mdText = "載入失敗"; let isError = false;
 
@@ -6908,7 +7079,7 @@ window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cach
         }
     }
 
-    if (window._activeFetcher !== null) return;
+    if (navigation !== window._modalNavigation) return;
 
     switchModalContent(
         () => {
@@ -6981,74 +7152,49 @@ window.showLicenseModal = () => window.showSystemMarkdownModal(
 window.cachedChangelogs = null; 
 
 window.showChangelogModal = async function(isSystemFallback = false) {
-    document.body.style.cursor = 'wait';
-    window.toggleLoading(true, 'FETCHING_DATA...');
-    
-    // 🔥 攔截前次請求
-    if (window._activeFetcher) window._activeFetcher.abort();
-    window._activeFetcher = new AbortController();
-    const controller = window._activeFetcher;
-    
+    const navigation = window.beginModalNavigation();
     let fetchError = false;
 
-    try {
-        if (!isSystemFallback) {
-            // 🔥 第一個 Fetch 綁定 signal
-            const vRes = await fetch(`./version.json?t=${new Date().getTime()}`, { signal: controller.signal }).catch(e => {
-                if (e.name === 'AbortError') throw e; 
-                return null;
-            });
-            if (vRes && vRes.ok) {
-                const vData = await vRes.json();
-                if (vData.version && vData.version !== CONFIG.VERSION) {
-                    console.warn(`[MANUAL_UPDATE] 發現新版本 ${vData.version}，準備強制更新...`);
-                    sessionStorage.setItem('sys_intent', 'changelog');
-                    sessionStorage.removeItem('sys_reboot_count');
+    if (!isSystemFallback) {
+        const vResult = await window.safeFetchWithGuard(`./version.json?t=${new Date().getTime()}`, { isJson: true });
+        if (vResult.aborted || navigation !== window._modalNavigation) return;
+        if (vResult.success && vResult.data && vResult.data.version && vResult.data.version !== CONFIG.VERSION) {
+            const nextVer = vResult.data.version;
+            console.warn(`[MANUAL_UPDATE] 發現新版本 ${nextVer}，準備強制更新...`);
+            sessionStorage.setItem('sys_intent', 'changelog');
+            sessionStorage.removeItem('sys_reboot_count');
 
-                    // 🔥 直接呼叫共用過場畫面引擎
-                    window.showSystemRebootScreen(
-                        'MANUAL_OVERRIDE : UPDATE', 
-                        CONFIG.VERSION, 
-                        vData.version, 
-                        'FETCHING_AND_REBOOTING', 
-                        true
-                    );
-                    
-                    setTimeout(() => {
-                        const newUrl = new URL(window.location.href);
-                        newUrl.searchParams.set('v', new Date().getTime());
-                        window.location.replace(newUrl.toString());
-                    }, 1800);
-                    return;
-                }
-            }
-        }
-
-        await window.debugDelay();
-
-        if (window.cachedChangelogs !== null) {
-            // 已有快取
-        } else {
-            // 🔥 第二個 Fetch 綁定 signal
-            const response = await fetch(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`, { signal: controller.signal });
-            if (!response.ok) throw new Error('找不到 changelogs.json');
-            window.cachedChangelogs = await response.json();
-        }
-
-    } catch (error) {
-        if (error.name === 'AbortError') return; // 🔥 被中斷就安靜退出
-        console.error("日誌讀取或更新檢查失敗:", error);
-        fetchError = true;
-    } finally {
-        if (window._activeFetcher === controller) {
-            document.body.style.cursor = '';
-            window.toggleLoading(false);
-            window._activeFetcher = null;
+            // 🔥 直接呼叫共用過場畫面引擎
+            window.showSystemRebootScreen(
+                'MANUAL_OVERRIDE : UPDATE', 
+                CONFIG.VERSION, 
+                nextVer, 
+                'FETCHING_AND_REBOOTING', 
+                true
+            );
+            
+            setTimeout(() => {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('v', new Date().getTime());
+                window.location.replace(newUrl.toString());
+            }, 1800);
+            return;
         }
     }
 
-    // 🔥 幽靈渲染防護
-    if (window._activeFetcher !== null) return;
+    if (window.cachedChangelogs === null) {
+        const logResult = await window.safeFetchWithGuard(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`, { isJson: true });
+        if (logResult.aborted || navigation !== window._modalNavigation) return;
+        if (logResult.success && Array.isArray(logResult.data)) {
+            window.cachedChangelogs = logResult.data;
+        } else {
+            console.error("日誌讀取或更新檢查失敗:", logResult.error || '無法載入 changelogs.json');
+            fetchError = true;
+        }
+    }
+
+    // 另一個頁面或錯誤畫面已接手時，不再更新 DOM。
+    if (navigation !== window._modalNavigation) return;
 
     // 共用標題渲染 (邏輯同步精簡)
     function renderChangelogHeader(isDetail = false, logData = null) {
@@ -7328,29 +7474,26 @@ window.syncTabPanelsHeight = function(rootEl = document) {
         groupPanels.forEach(p => { p.style.minHeight = ''; });
 
         let maxHeight = 0;
-
-        // 2. 在同一個同步執行幀內，逐一單獨設為 display: block 量測 (100% 還原真實切換時的亞像素寬度與換行，且瀏覽器不會重繪閃爍)
-        groupPanels.forEach((p, idx) => {
-            groupPanels.forEach((other, oIdx) => {
-                other.style.display = (oIdx === idx) ? 'block' : 'none';
+        groupPanels.forEach(p => { p.style.display = 'none'; });
+        try {
+            groupPanels.forEach(p => {
+                p.style.display = 'block';
+                const rect = p.getBoundingClientRect();
+                const width = p.offsetWidth;
+                const scale = width > 0 ? rect.width / width : 1;
+                const height = scale > 0 ? Math.ceil(rect.height / scale) : p.offsetHeight;
+                maxHeight = Math.max(maxHeight, height);
+                p.style.display = 'none';
             });
-
-            // 校正可能存在的 Modal 過場 scale 變形，並無條件進位消滅 0.5px 亞像素跳動
-            const rect = p.getBoundingClientRect();
-            const scale = p.offsetWidth > 0 ? (rect.width / p.offsetWidth) : 1;
-            const exactHeight = scale > 0 ? Math.ceil(rect.height / scale) : p.offsetHeight;
-
-            if (exactHeight > maxHeight) maxHeight = exactHeight;
-        });
-
-        // 3. 還原各面板原本的顯示狀態，並鎖定完全一致的整數高度
-        groupPanels.forEach((p, idx) => {
-            p.style.display = origDisplays[idx];
-            if (maxHeight > 0) {
-                p.style.minHeight = `${maxHeight}px`;
-                p.style.boxSizing = 'border-box';
-            }
-        });
+        } finally {
+            groupPanels.forEach((p, idx) => {
+                p.style.display = origDisplays[idx];
+                if (maxHeight > 0) {
+                    p.style.minHeight = `${maxHeight}px`;
+                    p.style.boxSizing = 'border-box';
+                }
+            });
+        }
     });
 
     // 確保量測過程不會影響外層捲軸位置
@@ -7360,11 +7503,14 @@ window.syncTabPanelsHeight = function(rootEl = document) {
 };
 
 // 視窗寬度改變時也自動重新計算分頁高度
+let tabHeightFrame = null;
 window.addEventListener('resize', () => {
-    const viewArticle = document.getElementById('view-article');
-    if (viewArticle && viewArticle.style.display !== 'none' && window.syncTabPanelsHeight) {
-        window.requestAnimationFrame(() => window.syncTabPanelsHeight(viewArticle));
-    }
+    if (tabHeightFrame !== null) return;
+    tabHeightFrame = window.requestAnimationFrame(() => {
+        tabHeightFrame = null;
+        const viewArticle = document.getElementById('view-article');
+        if (viewArticle && viewArticle.style.display !== 'none') window.syncTabPanelsHeight(viewArticle);
+    });
 });
 
 
@@ -7479,9 +7625,7 @@ window.addEventListener('hashchange', () => {
         const modalOverlay = document.getElementById('md-modal');
         if (modalOverlay && modalOverlay.classList.contains('active')) {
             setTimeout(() => {
-                // ✨ 傳入 true, true -> 瞬間移動、且「絕對不啟動追蹤引擎」！
-                // 瀏覽器已經原生跳轉完了，我們只做一次瞬間微調修正導覽列高度，絕不上下拉扯。
-                window.executeAnchorScroll(hash, true, true);
+                window.executeAnchorScroll(hash, true);
             }, 10);
         }
     }
@@ -7569,28 +7713,55 @@ window.addEventListener('offline', () => {
 // ==========================================
 // ✨ 手機/PWA 專屬 PDF 安全互動選單 (強制下載與瀏覽器穿透版)
 // ==========================================
-window.showPdfActionModal = function(href, title) {
-    const existing = document.getElementById('pdf-action-modal');
-    if (existing) existing.remove();
-
+function openPdfActionSheet(markup) {
+    const previous = document.getElementById('pdf-action-modal');
     const overlay = document.createElement('div');
     overlay.id = 'pdf-action-modal';
+    overlay.innerHTML = markup;
+    const sheet = overlay.querySelector('.pdf-action-sheet');
+    if (previous) previous.replaceWith(overlay);
+    else document.body.appendChild(overlay);
+    window.lockScroll();
 
+    // 全螢幕選單保留原位；若選單或它的容器層級較高，僅提高這個面板。
+    const menu = document.querySelector('#fullscreen-menu.active');
+    if (menu) {
+        const currentZ = Number.parseInt(getComputedStyle(overlay).zIndex, 10) || 0;
+        let z = currentZ;
+        for (let node = menu; node && node !== document.body; node = node.parentElement) {
+            const menuZ = Number.parseInt(getComputedStyle(node).zIndex, 10);
+            if (menuZ >= z) z = menuZ + 1;
+        }
+        if (z !== currentZ) overlay.style.zIndex = String(z);
+    }
 
-    // 關閉 Modal 的輔助函式 (✨ 加入捲軸狀態防呆)
-    const closeModal = () => {
+    const enterTimer = setTimeout(() => {
+        if (!overlay.isConnected) return;
+        overlay.style.opacity = '1';
+        sheet.style.transform = 'translateY(0)';
+    }, 10);
+
+    let closing = false;
+    const close = () => {
+        if (closing || !overlay.isConnected) return;
+        closing = true;
+        clearTimeout(enterTimer);
+        sheet.querySelectorAll('button').forEach(button => { button.disabled = true; });
         overlay.style.opacity = '0';
-        overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(100%)';
+        sheet.style.transform = 'translateY(100%)';
         setTimeout(() => {
+            if (!overlay.isConnected) return; // 已被新的面板取代。
             overlay.remove();
-            // ✨ 核心修復：檢查背後的文章 Modal 是否還開著，如果開著就保持鎖定狀態
-            const mdModal = document.getElementById('md-modal');
-            if (!mdModal || !mdModal.classList.contains('active')) {
-                window.unlockScroll();
-            }
+            window.unlockScroll();
         }, 300);
     };
 
+    overlay.querySelector('.cancel').onclick = close;
+    overlay.onclick = (event) => { if (event.target === overlay) close(); };
+    return { overlay, close };
+}
+
+window.showPdfActionModal = function(href, title) {
     // ✨ 判斷是否為 PWA (Standalone) 模式
     const isPWA = window.isPWAEnvironment();
     
@@ -7599,7 +7770,7 @@ window.showPdfActionModal = function(href, title) {
     const viewBtnIcon = GLOBAL_SVGS.newTab;
     const downloadBtnDisplay = isPWA ? 'none' : 'flex';
 
-    overlay.innerHTML = `
+    const { overlay, close } = openPdfActionSheet(`
         <div class="pdf-action-sheet">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title">${title}</div>
@@ -7614,15 +7785,7 @@ window.showPdfActionModal = function(href, title) {
                 <button id="pdf-modal-close" class="pdf-action-btn cancel">取消</button>
             </div>
         </div>
-    `;
-
-    document.body.appendChild(overlay);
-    window.lockScroll();
-
-    setTimeout(() => {
-        overlay.style.opacity = '1';
-        overlay.querySelector('.pdf-action-sheet').style.transform = 'translateY(0)';
-    }, 10);
+    `);
 
     // 綁定事件
     overlay.querySelector('#pdf-view-btn').onclick = () => {
@@ -7633,19 +7796,16 @@ window.showPdfActionModal = function(href, title) {
             // 普通瀏覽器直接另開分頁即可
             window.open(href, '_blank');
         }
-        closeModal();
+        close();
     };
 
     if (!isPWA) {
         overlay.querySelector('#pdf-download-btn').onclick = () => {
             // ✨ 單純下載 PDF，傳入 false
             window.triggerSecureDownload(href, title, false);
-            closeModal();
+            close();
         };
     }
-
-    overlay.querySelector('#pdf-modal-close').onclick = closeModal;
-    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
 };
 
 
@@ -7711,39 +7871,12 @@ window.toggleWebFullscreen = function(videoEl) {
 // 🖥️ 系統重載與記憶重置底部選單 (完美借用 PDF Modal UI)
 // ==========================================
 window.showSystemReloadModal = function() {
-    // 1. 強制隱藏漢堡選單抽屜
-    if (typeof window.closeDrawer === 'function') window.closeDrawer();
-    if (typeof window.closeMenu === 'function') window.closeMenu();
-    document.querySelectorAll('.drawer, #drawer, #category-drawer, #nav-drawer, #menu-drawer, .nav-menu').forEach(el => {
-        el.classList.remove('is-open', 'active', 'open');
-    });
-    document.querySelectorAll('.drawer-overlay, #drawer-overlay, #overlay, .menu-overlay').forEach(el => {
-        el.classList.remove('is-active', 'active', 'show');
-    });
-
-    // 2. 防呆：移除已存在的彈窗
-    const existing = document.getElementById('pdf-action-modal');
-    if (existing) existing.remove();
-
-    // 3. 建立 Overlay (✨ 核心魔法：直接掛上 PDF 彈窗的 ID，完美繼承排版與遮罩樣式)
-    const overlay = document.createElement('div');
-    overlay.id = 'pdf-action-modal';
-
-    const closeModal = () => {
-        overlay.style.opacity = '0';
-        const sheet = overlay.querySelector('.pdf-action-sheet');
-        if (sheet) sheet.style.transform = 'translateY(100%)';
-        setTimeout(() => {
-            overlay.remove();
-        }, 300);
-    };
-
     // 準備 SVG 圖示
     const refreshIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>`;
     const trashIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
 
     // 套用與 PDF 彈窗 100% 相同的 HTML 結構 (pdf-action-sheet, pdf-action-btn)
-    overlay.innerHTML = `
+    const { overlay, close } = openPdfActionSheet(`
         <div class="pdf-action-sheet">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title" style="color: var(--accent); font-family: monospace;">&gt;_ 系統維護控制台</div>
@@ -7758,22 +7891,13 @@ window.showSystemReloadModal = function() {
                 <button id="sys-modal-close" class="pdf-action-btn cancel">取消</button>
             </div>
         </div>
-    `;
+    `);
 
-    document.body.appendChild(overlay);
-
-    // ✨ 進入動畫
-    setTimeout(() => {
-        overlay.style.opacity = '1';
-        const sheet = overlay.querySelector('.pdf-action-sheet');
-        if (sheet) sheet.style.transform = 'translateY(0)';
-    }, 10);
-
-    // 4. 綁定事件
+    // 綁定維護操作
     overlay.querySelector('#sys-btn-soft-reload').onclick = (e) => {
         e.stopPropagation();
         if (typeof window.triggerHaptic === 'function') window.triggerHaptic('selection');
-        closeModal();
+        close();
         setTimeout(() => window.location.reload(), 300);
     };
 
@@ -7785,34 +7909,29 @@ window.showSystemReloadModal = function() {
         const savedTextScale = localStorage.getItem('sys_text_scale');
 
         // ✨ 徹底清除所有由系統寫入的權限與快取紀錄
-        localStorage.removeItem('sys_unlocked_secrets');
-        localStorage.removeItem('sys_animated_secrets');
+        window.SysStorage.removeLocalSet('sys_unlocked_secrets');
+        window.SysStorage.removeLocalSet('sys_animated_secrets');
         localStorage.removeItem('sys_data_versions');
-        localStorage.removeItem('sys_agreed_sensitive'); // ✨ 新增：清除永久同意的敏感內容紀錄
+        window.SysStorage.removeLocalSet('sys_agreed_sensitive'); // ✨ 新增：清除永久同意的敏感內容紀錄
+        window.SysStorage.removeLocalSet('sys_read_articles');
         
         sessionStorage.clear();
+        window.SysStorage.clearCache();
+        window._agreedSensitiveTypes?.clear();
 
         // 恢復無關權限的外觀偏好設定
         if (savedTheme) localStorage.setItem('theme', savedTheme);
         if (savedTextScale) localStorage.setItem('sys_text_scale', savedTextScale);
 
-        closeModal();
+        close();
 
         setTimeout(() => {
             try {
-                if (typeof window.showSystemRebootScreen === 'function' || typeof showSystemRebootScreen === 'function') {
-                    const rebootFn = window.showSystemRebootScreen || showSystemRebootScreen;
-                    rebootFn("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE", true);
-                    setTimeout(() => { window.location.reload(); }, 1200);
-                } else {
-                    window.location.reload();
-                }
+                window.showSystemRebootScreen("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE", true);
+                setTimeout(() => { window.location.reload(); }, 1200);
             } catch (error) {
                 window.location.reload();
             }
         }, 300);
     };
-
-    overlay.querySelector('#sys-modal-close').onclick = closeModal;
-    overlay.onclick = (e) => { if (e.target === overlay) closeModal(); };
 };

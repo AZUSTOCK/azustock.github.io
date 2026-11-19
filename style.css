@@ -235,7 +235,7 @@
     --modal-out-filter: blur(8px);
 }
 [data-modal-fx="vision-os"] { --modal-transition: opacity 0.12s ease-out, transform 0.25s var(--ease-bounce), filter 0.12s ease-out; --modal-will-change: opacity, transform, filter; --modal-out-transform: scale(0.92) translateY(10px); --modal-out-filter: blur(8px); }
-[data-modal-fx="magnetic"] { --modal-transition: opacity 0.12s ease-out, transform 0.3s var(--ease-bounce) --modal-will-change: opacity, transform; --modal-out-transform: translateX(15px); --modal-out-filter: none; }
+[data-modal-fx="magnetic"] { --modal-transition: opacity 0.12s ease-out, transform 0.3s var(--ease-bounce); --modal-will-change: opacity, transform; --modal-out-transform: translateX(15px); --modal-out-filter: none; }
 [data-modal-fx="fade"] { --modal-transition: opacity 0.3s ease; --modal-will-change: opacity; --modal-out-transform: none; --modal-out-filter: none; }
 
 /* 1-6. 系統共用 SVG 圖標庫 (CSS Data URIs 集中管理) */
@@ -401,8 +401,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     height: 14px; 
 }
 ::-webkit-scrollbar,
-::-webkit-scrollbar-track,
-::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-track {
     box-shadow: none !important;
     border: none !important;
 }
@@ -421,7 +420,6 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 ::-webkit-scrollbar-thumb:hover { 
     background-color: var(--scrollbar-hover); 
-    border-width: 3px; 
 }
 
 /* Firefox 原生支援 */
@@ -555,7 +553,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     background: transparent; 
     text-decoration: none; 
     font-size: 0.9rem; 
-    transition: all 0.3s ease; 
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.25s var(--ease-smooth); 
 }
 .btn:hover { 
     background: var(--accent-hover); 
@@ -593,7 +591,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* 1. SVG 預設狀態 */
 #sensitive-warning-svg {
     stroke: var(--error-color);
-    transition: all 0.4s var(--ease-smooth); /* 讓變化過程滑順柔和 */
+    transition: stroke 0.35s ease, filter 0.35s ease, transform 0.35s var(--ease-smooth), opacity 0.35s ease; /* 讓變化過程滑順柔和 */
 }
 
 /* ✨ 2. 當滑鼠 Hover 到「返回」、「X 按鈕」或「背景遮罩 (黑區)」時：警告標示解除武裝 (變黯淡、無陰影、稍微縮小) */
@@ -645,13 +643,12 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     font-family: inherit; 
     font-weight: 500; 
     cursor: pointer; 
-    transition: all 0.3s var(--ease-smooth); 
+    transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; 
     box-sizing: border-box; 
     position: relative;
 }
 .share-link-btn:hover { color: var(--card); border-color: var(--accent-2); background: var(--accent-2); box-shadow: 0 0 12px var(--glow-1); }
-.share-link-btn svg { display: block; transition: transform 0.3s var(--ease-smooth); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
-.share-link-btn:hover svg { transform: scale(1.15) translateZ(0); }
+.share-link-btn svg { display: block; flex-shrink: 0; }
 
 /* ✨ 共用複製狀態 */
 .share-link-btn.copied, .share-site-btn.copied { 
@@ -661,7 +658,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     transform: none !important; 
 }
 .share-link-btn.copied svg, .share-site-btn.copied svg { 
-    transform: translateZ(0) !important; 
+    transform: none !important; 
 }
 
 /* 3-2. Footer 底部按鈕 */
@@ -673,13 +670,14 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     flex-shrink: 0;    /* ✨ 防止 Flex 容器為了擠下文字而壓縮圖示比例 */
 }
 .footer-btn:hover { background: var(--accent-2); color: var(--card); border-color: var(--accent-2); box-shadow: 0 0 10px var(--accent-2); }
-.footer-btn:hover svg { fill: var(--card); transform: scale(1.15); }
+.footer-btn:hover svg { fill: var(--card); transform: scale(1.08); }
 .footer-btn.version-btn { letter-spacing: 0.05em; padding: 0.2rem 0.5rem; }
 .footer-btn.version-btn span { color: inherit; }
 
 /* 3-3. 返回頂部按鈕 (BTT) */
 .btt-btn { position: fixed; bottom: max(2rem, calc(var(--safe-bottom) + 1rem)); right: max(2rem, calc(var(--safe-right) + 1rem)); z-index: 990; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); color: var(--accent); border-radius: 50%; width: 50px; height: 50px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transform: translateY(20px); transition: opacity 0.3s ease, transform 0.3s var(--ease-smooth), box-shadow 0.3s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease; }
 .btt-btn.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.btt-btn::before { content: ''; position: absolute; inset: 0 0 -8px 0; border-radius: 50%; }
 .btt-btn:hover { background: var(--accent-2); border-color: var(--accent-2); color: var(--card); box-shadow: 0 8px 20px var(--btn-hover-shadow); transform: translateY(-5px); }
 
 /* 3-4. 漢堡選單與導覽列 */
@@ -707,8 +705,8 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 .fullscreen-nav.active { transform: translateY(0); }
 .nav-links { list-style: none; padding: 3rem 0; margin: auto; text-align: center; width: 100%; }
-.nav-item { display: inline-block; font-family: 'Courier New', monospace; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: bold; color: var(--text); text-decoration: none; margin: 1.5rem 0; text-transform: uppercase; transition: all 0.3s ease; }
-.nav-item:hover { color: var(--accent-hover); letter-spacing: 0.2em; text-shadow: 0 0 15px var(--nav-text-shadow); }
+.nav-item { display: inline-block; font-family: 'Courier New', monospace; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: bold; color: var(--text); text-decoration: none; margin: 1.5rem 0; text-transform: uppercase; transition: color 0.3s ease, transform 0.3s var(--ease-smooth), text-shadow 0.3s ease; }
+.nav-item:hover { color: var(--accent-hover); transform: scale(1.06); text-shadow: 0 0 15px var(--nav-text-shadow); }
 
 /* 3-5. 主題切換按鈕 */
 .theme-btn { position: fixed; top: max(1.5rem, calc(var(--safe-top) + 0.5rem)); right: max(6.5rem, calc(var(--safe-right) + 6.5rem)); z-index: 1000; background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 50%; width: 56px; height: 56px; cursor: pointer; box-shadow: 0 4px 15px var(--shadow-base); display: flex; justify-content: center; align-items: center; transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease; }
@@ -720,7 +718,8 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 [data-theme="light"] #icon-moon { opacity: 1; transform: rotate(0deg); }
 
 /* 3-6. 標籤與跑馬燈 */
-.tag { display: inline-flex; align-items: center; vertical-align: middle; background: var(--tag-bg); color: var(--accent); padding: 0.18rem 0.65rem; border-radius: 999px; font-size: 0.72rem; margin-right: 0.3rem; margin-top: 0.3rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+.tag { position: relative; display: inline-flex; align-items: center; vertical-align: middle; background: var(--tag-bg); color: var(--accent); padding: 0.18rem 0.65rem; border-radius: 999px; font-size: 0.72rem; margin-right: 0.3rem; margin-top: 0.3rem; font-weight: 600; cursor: pointer; transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.25s var(--ease-smooth); }
+.tag::after { content: ''; position: absolute; inset: 0 0 -4px 0; }
 .tag:hover, .tag.active-tag { background: var(--accent-2); color: var(--card); box-shadow: 0 2px 8px var(--accent-2); transform: translateY(-2px); }
 /* ========================================================================== */
 /* ✨ 跑馬燈與初始 Loading 狀態 (絕對高度鎖死版)                                 */
@@ -808,7 +807,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 
 .marquee-container:hover .marquee-content { animation-play-state: paused; }
 @keyframes marquee-seamless { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-.kotoba-whisper { font-style: italic; font: bold;font-size: 0.95rem; color: var(--accent); letter-spacing: 0.08em; opacity: 0.8; transition: all 0.5s ease; cursor: pointer; }
+.kotoba-whisper { font-style: italic; font-weight: 700; font-size: 0.95rem; color: var(--accent); letter-spacing: 0.08em; opacity: 0.8; transition: color 0.4s ease, text-shadow 0.4s ease, opacity 0.4s ease; cursor: pointer; }
 .kotoba-whisper:hover { color: var(--accent-2); text-shadow: 0 0 10px var(--glow-1); opacity: 1; }
 /* 點擊觸發的高光狀態 */
 .kotoba-whisper.is-active { 
@@ -853,7 +852,8 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .toast-actions { display: flex; align-items: center; background: var(--tag-bg); border-radius: 999px; padding: 2px; }
 .toast-btn { background: transparent; border: none; color: var(--text); width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; padding: 0; position: relative; transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), background-color 0.2s ease; pointer-events: auto; will-change: transform; transform-origin: center center; }
 .toast-btn:active, .toast-btn.next-btn:active { transform: scale(0.875) translateZ(0); }
-.toast-btn svg { pointer-events: none; vector-effect: non-scaling-stroke; transform-origin: center center; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); will-change: transform; }
+.toast-btn svg { pointer-events: none; transform-origin: center center; }
+.toast-btn svg * { vector-effect: non-scaling-stroke; }
 .toast-btn:hover { background: var(--marquee-border); color: var(--accent); }
 .toast-btn.close-btn { font-size: 1.2rem; font-weight: bold; background: rgba(255, 50, 50, 0.15); border: none; outline: none; transition: transform 0.2s ease, background-color 0.2s ease; }
 .toast-btn.close-btn:hover { background: var(--error-color); color: #fff; }
@@ -905,6 +905,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     pointer-events: auto; 
 }
 
+.new-jump-toast::before { content: ''; position: absolute; inset: 0 0 -8px 0; border-radius: 999px; }
 .new-jump-toast:hover { 
     background: var(--error-color); 
     color: #fff; 
@@ -1145,9 +1146,9 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
     transition: opacity 0.6s var(--ease-smooth), transform 0.6s var(--ease-smooth), box-shadow 0.6s var(--ease-smooth), border-color 0.6s var(--ease-smooth); 
     -webkit-font-smoothing: antialiased; 
     -moz-osx-font-smoothing: grayscale; 
-    transform-style: preserve-3d; 
     --card-glow: var(--sec-color, var(--accent-2)); 
 }
+.card::after { content: ''; position: absolute; inset: 0 0 -8px 0; border-radius: inherit; z-index: -1; }
 .card.show { opacity: 1; transform: translateY(0) translateZ(0); }
 .card.show:hover { transform: translateY(-5px) translateZ(0); box-shadow: 0 15px 35px color-mix(in srgb, var(--card-glow) 22%, transparent); border-color: color-mix(in srgb, var(--card-glow) 40%, transparent); }
 .card-content-wrapper { display: flex; align-items: flex-start; gap: 1rem; }
@@ -1249,7 +1250,7 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 }
 
 /* 🔒 2. 鎖頭模式 (.key-lock-pin) */
-.secret-shackle { transition: transform 0.4s var(--ease-bounce); transform-origin: 12px 12px; }
+.secret-shackle { transition: transform 0.4s var(--ease-bounce); transform-box: fill-box; transform-origin: center center; }
 
 /* 🔒 縮圖中央巨大鎖頭：訪客滑過單純放大 */
 body:not(.system-override-active) .card.is-key-locked:hover .locked-cover-overlay svg,
@@ -1307,14 +1308,10 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
     overscroll-behavior: contain; -webkit-overflow-scrolling: touch; 
     padding: 0 3rem 2rem 3rem; position: relative; 
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); 
-    transform: translateY(30px) scale(0.95) translateZ(0); 
-    transition: transform 0.2s cubic-bezier(0.25,0.8,0.25,1), height 0.3s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease; 
-    
-    will-change: transform, height; 
-    -webkit-backface-visibility: hidden; 
-    backface-visibility: hidden; 
+    transform: translateY(30px) scale(0.95); 
+    transition: transform 0.25s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease; 
 }
-.modal-overlay.active .modal-content { transform: translateY(0) scale(1) translateZ(0); }
+.modal-overlay.active .modal-content { transform: translateY(0) scale(1); }
 
 /* 5-2. 頂部控制列 */
 .modal-top-bar { position: sticky; top: 0; margin: 0 -3rem 1.5rem -3rem; padding: 1.5rem 1.5rem 1.2rem 3rem; box-shadow: 0 -2px 0 0 var(--glass-bg); border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; background: var(--glass-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); z-index: 1060; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s ease, border-color 0.3s ease; }
@@ -1358,7 +1355,7 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
     color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--glow-1); 
 }
 .modal-close-btn svg, .modal-tool-btn svg { display: block; transition: transform 0.4s var(--ease-smooth); transform-origin: center center; }
-.modal-tool-btn:hover svg { transform: scale(1.15); }
+.modal-tool-btn:hover svg { transform: scale(1.08); }
 
 
 
@@ -1403,7 +1400,7 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
 .toc-dropdown .toc-h2 { font-weight: 600; padding-left: 1rem; font-size: 0.95rem; }
 .toc-dropdown .toc-h3 { padding-left: 2rem; font-size: 0.85rem; color: var(--muted); }
 .toc-dropdown a { color: var(--text) !important; text-decoration: none !important; transition: color 0.2s ease, transform 0.2s ease; display: block; transform-origin: left center; white-space: normal; word-break: break-word; overflow-wrap: break-word; line-height: 1.4; }
-.toc-dropdown a:hover { color: var(--accent-hover) !important; transform: scale(1.03); }
+.toc-dropdown a:hover { color: var(--accent-hover) !important; transform: translateX(4px); }
 
 /* 5-4. 文章清單排版與動畫 (Index List) */
 /* 讓 .is-highlight 能夠自動去接 CSS 變數，而不是被 JS 寫死 */
@@ -1438,7 +1435,7 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
 #article-list-container { opacity: 1; transition: opacity 0.2s ease-in-out; will-change: opacity; }
 
 .article-list-ul { list-style: none !important; padding-left: 0 !important; }
-.article-li a.article-link { display: flex !important; align-items: center; gap: 1rem; text-decoration: none !important; padding: 0.5rem; border-radius: 0.8rem; border-left: 4px solid transparent !important; transition: all 0.4s var(--ease-spring) !important; }
+.article-li a.article-link { display: flex !important; align-items: center; gap: 1rem; text-decoration: none !important; padding: 0.5rem; border-radius: 0.8rem; border-left: 4px solid transparent !important; transition: transform 0.35s var(--ease-spring), background-color 0.25s ease, border-left-color 0.25s ease, box-shadow 0.25s ease !important; }
 .article-item-icon-wrap { position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
 img.article-item-cover { position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important; }
 .article-item-fallback { position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box; }
@@ -1474,10 +1471,11 @@ span.article-item-date {
 .article-li a { 
     display: block; 
     border-left: 4px solid transparent !important; 
-    transition: all 0.4s var(--ease-spring) !important; 
+    transition: transform 0.35s var(--ease-spring), background-color 0.25s ease, border-left-color 0.25s ease, box-shadow 0.25s ease !important; 
 }
 
-.article-li a:hover, .article-li.simulate-hover a {
+/* ✨ 由父層 li 承接 Hover，避免 a 右移 8~10px 時滑鼠脫離左邊界造成來回抖動 */
+.article-li:hover > a, .article-li.simulate-hover a {
     background: var(--tag-bg) !important; 
     border-left: 4px solid var(--accent) !important; 
     transform: translateX(10px); 
@@ -1485,20 +1483,22 @@ span.article-item-date {
 }
 
 /* ✨ 乾淨俐落的標題 Hover 變色 */
-.article-li a:hover .article-item-title, 
+.article-li:hover > a .article-item-title, 
 .article-li.simulate-hover a .article-item-title {
     color: var(--accent-2) !important; 
     text-shadow: 0 0 8px var(--glow-1); /* 保留原本微弱的發光感，更有層次 */
 }
 
-.article-li.is-normal a:hover, .article-li.is-normal.simulate-hover a {
+.article-li.is-normal:hover > a, .article-li.is-normal.simulate-hover a {
     background: var(--tag-bg) !important; 
     border-left: 4px solid var(--accent) !important; 
     transform: translateX(8px); 
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
-.article-li.is-highlight { padding: 0; margin-bottom: 0.8rem; border-bottom: none; background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 12%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 2%, transparent) 100%); border-left: 6px solid var(--tab-color, var(--accent)); border-radius: 4px 12px 12px 4px; transition: background 0.2s ease, transform 0.3s var(--ease-smooth); }
+.article-li.is-highlight { position: relative; padding: 0; margin-bottom: 0.8rem; border-bottom: none; background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 12%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 2%, transparent) 100%); border-left: 6px solid var(--tab-color, var(--accent)); border-radius: 4px 12px 12px 4px; transition: background 0.2s ease, transform 0.3s var(--ease-smooth); }
+/* ✨ 左側透明感應橋接區，防止 is-highlight 右移時在左邊界鬼畜抖動 */
+.article-li.is-highlight::before { content: ''; position: absolute; top: 0; bottom: 0; left: -12px; width: 12px; }
 .article-li.is-highlight:hover, .article-li.is-highlight.simulate-hover { transform: translateX(8px); background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 18%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 5%, transparent) 100%); }
 .article-li.is-highlight a { padding: 0.6rem 1rem !important; border-radius: 0 0.6rem 0.6rem 0 !important; }
 #modal-body .article-li.is-highlight a:hover, #modal-body .article-li.is-highlight.simulate-hover a { background-color: color-mix(in srgb, var(--tab-color, var(--accent)) 15%, transparent) !important; border-left-color: transparent !important; transform: none !important; }
@@ -1511,7 +1511,8 @@ span.article-item-date {
 
 /* 5-5. 文章內文底部導覽 (Next/Prev Cards) */
 .article-nav-cards { display: flex; gap: 1.2rem; margin-top: 2rem; padding-top: 2rem; border-top: 2px dashed var(--card-border); flex-wrap: nowrap; clear: both; width: 100%; } /* ✨ 改為 nowrap */
-.nav-card { flex: 1; min-width: 0; padding: 1.2rem 1.5rem; background: var(--box-bg); border: 1px solid var(--box-border); border-radius: 0.8rem; text-decoration: none !important; transition: all 0.3s var(--ease-smooth); display: flex; flex-direction: column; gap: 0.4rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); overflow: hidden; } /* ✨ min-width 改為 0，並加上 overflow: hidden 防撐破 */
+.nav-card { position: relative; flex: 1; min-width: 0; padding: 1.2rem 1.5rem; background: var(--box-bg); border: 1px solid var(--box-border); border-radius: 0.8rem; text-decoration: none !important; transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.25s var(--ease-smooth), box-shadow 0.25s ease; display: flex; flex-direction: column; gap: 0.4rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); overflow: visible; }
+.nav-card::before { content: ''; position: absolute; inset: 0 0 -8px 0; } /* ✨ min-width 改為 0，並加上 overflow: hidden 防撐破 */
 .nav-card.prev { text-align: left; align-items: flex-start; } .nav-card.next { text-align: right; align-items: flex-end; }
 .nav-card .nav-label { font-size: 0.85rem; color: var(--muted); display: flex; align-items: center; gap: 6px; font-weight: 600; transition: color 0.3s ease; }
 .nav-card .nav-title { font-size: 1.1rem; color: var(--accent); font-weight: bold; line-height: 1.4; transition: color 0.3s ease; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* ✨ 加上超長文字省略號 (...) 處理 */
@@ -1890,16 +1891,12 @@ span.article-item-date {
     height: 14px;
     display: block;
     flex-shrink: 0; /* ✨ 防止 flex 因寬度固定而擠壓圖示 */
-    transition: transform 0.3s var(--ease-smooth);
-    will-change: transform;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    transform: translateZ(0);
+    transition: transform 0.25s var(--ease-smooth);
 }
 
-/* Hover 時圖示放大並微傾斜 */
+/* Hover 時圖示微放大並傾斜 */
 .markdown-body .code-copy-btn:hover svg {
-    transform: scale(1.15) rotate(10deg) translateZ(0);
+    transform: scale(1.08) rotate(8deg);
 }
 
 /* 複製成功的狀態 */
@@ -2365,7 +2362,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 .markdown-body .gallery { --g-width: 200px; --g-rows: 1; --g-ratio: 1/1; display: grid; gap: 1rem; margin: 0.2rem -0.8rem 0.2rem -0.8rem; padding: 0.5rem 0.8rem 1.5rem 0.8rem; grid-template-rows: repeat(var(--g-rows), auto); grid-auto-flow: column; grid-auto-columns: minmax(var(--g-width), var(--g-width)); overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 .markdown-body .gallery figure { margin: 0; padding: 0; width: var(--g-width) !important; aspect-ratio: var(--g-ratio); max-width: none !important; flex-shrink: 0; border-radius: 0.6rem; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); overflow: hidden; position: relative; backface-visibility: hidden; transform: translateZ(0); transition: transform 0.3s var(--ease-smooth), border-radius 0.3s ease; cursor: pointer; }
 .markdown-body .gallery.row-fill-mode { grid-auto-flow: row; grid-template-columns: repeat(var(--g-cols, 1), max-content); }
-.markdown-body .gallery figure:hover { transform: scale(1.05) translateZ(0); border-radius: 0; z-index: 10; }
+.markdown-body .gallery figure:hover { transform: scale(1.05) translateZ(0); z-index: 10; }
 .markdown-body .gallery figure img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; border: none; border-radius: 0; transform: scale(1.02); }
 .markdown-body .gallery figure img.is-broken { transform: none; }
 .markdown-body .gallery figure figcaption { position: absolute; bottom: -3px; left: -3px; right: -3px; width: auto; margin: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); color: #fff; font-size: 0.85rem; font-weight: 500; text-align: center; padding: 0.6rem 0; transform: translateY(105%); transition: transform 0.3s var(--ease-smooth); }
@@ -2412,8 +2409,9 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 }
 
 .mermaid-btns { display: flex; gap: 0.5rem; }
-.mermaid-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s var(--ease-smooth); backdrop-filter: blur(4px); position: relative; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
-.mermaid-btn:hover { background: var(--accent); color: var(--card); border-color: var(--accent); transform: scale(1.1) translateZ(0); box-shadow: 0 4px 12px var(--glow-1); }
+.mermaid-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; backdrop-filter: blur(4px); position: relative; }
+.mermaid-btn:hover { background: var(--accent); color: var(--card); border-color: var(--accent); box-shadow: 0 4px 12px var(--glow-1); }
+.mermaid-btn:hover svg { transform: scale(1.08); }
 .mermaid-btn svg { display: block; transition: transform 0.2s var(--ease-smooth); }
 
 /* ✨ 拔除原生捲軸，改為固定高度與隱藏溢出，讓矩陣拖曳取代醜陋的捲軸 */
@@ -2553,8 +2551,9 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 #lightbox-counter { color: var(--text); font-family: monospace; font-size: 1.1rem; font-weight: bold; letter-spacing: 0.05em; margin-left: 10px; }
 
 /* 工具列按鈕 (動態主題適應) */
-.toolbar-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 40px; height: 40px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s var(--ease-smooth); backdrop-filter: blur(4px); position: relative; will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
-.toolbar-btn:hover { background: var(--accent); color: var(--card); border-color: var(--accent); transform: scale(1.1) translateZ(0); }
+.toolbar-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 40px; height: 40px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; backdrop-filter: blur(4px); position: relative; }
+.toolbar-btn:hover { background: var(--accent); color: var(--card); border-color: var(--accent); }
+.toolbar-btn:hover svg { transform: scale(1.08); }
 .toolbar-btn[onclick*="zoom-out"]:hover svg { transform: scale(0.85); transition: transform 0.2s var(--ease-smooth); }
 .toolbar-btn svg { display: block; transition: transform 0.2s var(--ease-smooth); }
 .toolbar-btn.close-btn { background: rgba(255, 50, 50, 0.15); border: 1px solid rgba(255, 50, 50, 0.3); color: var(--error-color); }
@@ -2603,7 +2602,8 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 
 /* ✨ 加入 opacity 過渡，讓圖片載入後平滑淡入 */
 #lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s var(--ease-smooth), opacity 0.3s ease; transform-origin: center center; touch-action: none; cursor: grab; }
-#lightbox-img.is-dragging { 
+#lightbox-img.is-dragging,
+.lightbox-img-wrapper.is-dragging #lightbox-img { 
     cursor: grabbing; 
     transition: none !important; 
     
@@ -3720,6 +3720,7 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 }
 .toolbox-toggle-btn svg circle {
     transition: transform 0.4s var(--ease-bounce);
+    transform-box: fill-box;
     transform-origin: center center;
 }
 
@@ -4319,22 +4320,19 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 }
 
 /* ========================================================================== */
-/* ✨ 核心修復：解決特定按鈕內的 SVG 在動畫時產生的顫抖/抖動問題                 */
+/* ✨ 核心修復：統一按鈕 SVG 精準向量渲染，消除縮放結尾 0.5px 跳動與模糊         */
 /* ========================================================================== */
-.pdf-view-btn svg,
-.share-link-btn.responsive-share-btn svg,
-.toggle-sort-btn svg {
-    /* 1. 強制核心 GPU 加速，讓瀏覽器用硬體渲染代替軟體，大幅優化動畫性能 */
-    transform: translateZ(0); 
-    
-    /* 2. 在 WebKit 核心瀏覽器（Safari/iOS 版 Chrome）中啟用次像素抗鋸齒，改善清晰度 */
-    -webkit-font-smoothing: subpixel-antialiased;
-    
-    /* 3. 在 Chrome 中將核心渲染層預先通知 GPU 有動畫要發生，優化渲染鏈 */
-    will-change: transform;
-    
-    /* 4. 核心防抖動：防止按鈕在點擊或懸停時產生不必要的層級震動 */
-    backface-visibility: hidden;
+#pdf-view-btn svg,
+#toggle-sort-btn svg,
+.share-link-btn svg,
+.footer-btn svg,
+.modal-tool-btn svg,
+.mermaid-btn svg,
+.toolbar-btn svg,
+.code-copy-btn svg,
+.toast-btn svg {
+    transform-origin: center center;
+    shape-rendering: geometricPrecision;
 }
 
 /* ========================================================================== */
@@ -4468,7 +4466,9 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     transform-origin: center center; 
     opacity: 0.7;
 }
-.sensitive-close-btn:hover {
+.sensitive-close-btn:hover,
+.sensitive-modal-content:has(#sensitive-decline-btn:hover) .sensitive-close-btn,
+#sensitive-modal-overlay:hover:not(:has(.sensitive-modal-content:hover)) .sensitive-close-btn {
     opacity: 1; 
     color: var(--current-warning-color, var(--error-color)); /* ✨ 關閉按鈕 Hover 變色 */
     transform: rotate(90deg) scale(1.1);
@@ -4514,7 +4514,9 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 
 #sensitive-warning-icon-wrapper svg {
     stroke: var(--current-warning-color, var(--error-color));
-    transition: all 0.4s var(--ease-smooth); 
+    overflow: visible;
+    transform-origin: center center;
+    transition: stroke 0.35s ease, filter 0.35s ease, transform 0.35s var(--ease-smooth), opacity 0.35s ease;
 }
 
 /* ✨ Hover 時：警告 SVG 標誌同步化身為危險紅色，並發出紅光 */
@@ -4532,7 +4534,8 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    margin-bottom: 1.5rem;
+    margin-top: 0.2rem;
+    margin-bottom: 1rem;
     user-select: none;
     transition: opacity 0.2s ease;
 }
@@ -4575,4 +4578,148 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     font-size: 0.85rem;
     color: var(--muted);
     font-weight: 500;
+}
+
+/* ==========================================
+   ✨ MAIN 警告：推薦未讀前篇跳轉卡片與按鈕層級優化
+   ========================================== */
+.sensitive-modal-content.has-jump-card .sensitive-desc {
+    margin-bottom: 1.4rem;
+}
+
+.sensitive-jump-card {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 1.05rem;
+    margin-bottom: 1.4rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--current-warning-color, var(--accent)) 45%, var(--card-border));
+    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 10%, var(--box-bg));
+    color: var(--text);
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--current-warning-color, var(--accent)) 12%, transparent);
+    transition: transform 0.25s var(--ease-smooth), border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.sensitive-jump-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 -6px 0;
+    border-radius: 12px;
+}
+
+.sensitive-jump-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--current-warning-color, var(--accent));
+    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 18%, var(--box-bg));
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--current-warning-color, var(--accent)) 28%, transparent);
+}
+
+.sensitive-jump-card:active {
+    transform: translateY(0) scale(0.99);
+}
+
+.sensitive-jump-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--current-warning-color, var(--accent));
+    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--current-warning-color, var(--accent)) 30%, transparent);
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.sensitive-jump-card:hover .sensitive-jump-icon {
+    background: var(--current-warning-color, var(--accent));
+    color: var(--card);
+}
+
+.sensitive-jump-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sensitive-jump-kicker {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--current-warning-color, var(--accent));
+    opacity: 0.9;
+}
+
+.sensitive-jump-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sensitive-jump-arrow {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    color: var(--current-warning-color, var(--accent));
+    opacity: 0.85;
+    transition: transform 0.25s var(--ease-smooth), opacity 0.25s ease;
+}
+
+.sensitive-jump-card:hover .sensitive-jump-arrow {
+    transform: translateX(4px);
+    opacity: 1;
+}
+
+/* Hover 推薦卡片時，上方圖示散發友善的主題光暈 */
+.sensitive-modal-content:has(#sensitive-jump-unread-btn:hover) #sensitive-warning-icon-wrapper svg {
+    stroke: var(--current-warning-color, var(--accent)) !important;
+    filter: drop-shadow(0 0 18px var(--current-warning-color, var(--accent))) !important;
+    transform: scale(1.06);
+}
+
+/* 有推薦前篇時，讓「不感興趣」更低調、「我已了解並前往」降級為次要外框（Hover 仍轉紅光警告） */
+.sensitive-modal-content.has-jump-card #sensitive-decline-btn {
+    border-color: var(--card-border);
+    color: var(--muted);
+}
+.sensitive-modal-content.has-jump-card #sensitive-decline-btn:hover {
+    background: var(--box-bg);
+    border-color: var(--muted);
+    color: var(--text);
+    box-shadow: none;
+}
+
+.sensitive-modal-content.has-jump-card #sensitive-agree-btn {
+    background: transparent !important;
+    color: var(--current-warning-color, var(--error-color)) !important;
+    border-color: color-mix(in srgb, var(--current-warning-color, var(--error-color)) 60%, transparent) !important;
+    box-shadow: none;
+}
+.sensitive-modal-content.has-jump-card #sensitive-agree-btn:hover {
+    background: var(--error-color) !important;
+    color: #fff !important;
+    border-color: var(--error-color) !important;
+    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important;
+}
+
+/* 深色模式 MAIN 無推薦卡片時，修正亮青底配白字對比度偏低的問題 */
+[data-theme="dark"] .sensitive-modal-content[data-sensitive-type="MAIN"]:not(.has-jump-card) #sensitive-agree-btn {
+    color: var(--bg) !important;
+    font-weight: 700;
+}
+[data-theme="dark"] .sensitive-modal-content[data-sensitive-type="MAIN"]:not(.has-jump-card) #sensitive-agree-btn:hover {
+    color: #fff !important;
 }

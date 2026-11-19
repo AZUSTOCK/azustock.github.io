@@ -1,7 +1,6 @@
 {
-  "version": "U1.6.1.22",
-  "date": "2026-10-12",
-  "status": "FEATURE",
-  "description": "新增與修正鎖定與警示功能，套用檔案壓縮",
-  "hidden": true
+  "version": "U1.6.2",
+  "date": "2026-11-19",
+  "status": "REFACTOR",
+  "description": "新增內文tab與多項工具、多處修正與重構"
 }
