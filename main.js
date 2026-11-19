@@ -56,7 +56,7 @@ const GLOBAL_SVGS = {
     meatballMenu: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><circle class="dot-1" cx="5" cy="12" r="2.5"/><circle class="dot-2" cx="12" cy="12" r="2.5"/><circle class="dot-3" cx="19" cy="12" r="2.5"/></svg>`,
     link: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
     linkLg: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`,
-    extLinkSm: `<svg width="24" height="24" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -4px; opacity: 0.8;">><path d="M9.665 -8.175L1.065 7.265M1.065 7.265L-5.695 3.945M-5.695 3.945L9.665 -8.175M9.665 -8.175L-9.175 -3.175M-9.175 -3.175L-10.735 1.905M-10.735 1.905L-1.135 0.345M-8.655 1.665L-7.975 8.865M-7.975 8.865L-5.695 3.945"/></svg>`,
+    extLinkSm: `<svg width="24" height="24" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; vertical-align: -4px; opacity: 0.8;"><path d="M9.665 -8.175L1.065 7.265M1.065 7.265L-5.695 3.945M-5.695 3.945L9.665 -8.175M9.665 -8.175L-9.175 -3.175M-9.175 -3.175L-10.735 1.905M-10.735 1.905L-1.135 0.345M-8.655 1.665L-7.975 8.865M-7.975 8.865L-5.695 3.945"/></svg>`,
     newTab: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`,
     
     // 📌 圖釘與機密
@@ -1480,27 +1480,60 @@ window.handleCopy = function(element, shareUrl) {
 };
 
 window.focusAndBumpCard = function(targetCard) {
+    if (!targetCard) return;
     const cardRect = targetCard.getBoundingClientRect();
-    const isVisible = (
-        cardRect.top >= 80 && cardRect.bottom <= window.innerHeight &&
-        cardRect.left >= 0 && cardRect.right <= window.innerWidth
-    );
-    
-    const distanceY = Math.abs((cardRect.top + cardRect.height / 2) - (window.innerHeight / 2));
-    const distanceX = Math.abs((cardRect.left + cardRect.width / 2) - (window.innerWidth / 2));
-    const maxDistance = Math.max(distanceX, distanceY);
-    
-    let dynamicDelay = 50; 
-    if (!isVisible) {
-        dynamicDelay = Math.min(800, Math.max(300, 200 + (maxDistance * 0.4)));
-        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    const grid = targetCard.closest('.grid');
+    const gridRect = grid ? grid.getBoundingClientRect() : null;
+
+    // 垂直可視區：避開頂部空間與底部啟用中的篩選提示膠囊 (.filter-toast)
+    const toastEl = document.getElementById('filter-toast');
+    const toastTop = (toastEl && toastEl.classList.contains('active'))
+        ? toastEl.getBoundingClientRect().top
+        : window.innerHeight;
+    const topSafe = 80;
+    const bottomSafe = Math.max(topSafe + 40, Math.min(window.innerHeight - 16, toastTop - 16));
+    const isVisibleY = cardRect.top >= topSafe && cardRect.bottom <= bottomSafe;
+
+    // 水平可視區：以所屬 .grid 容器與視窗的交集為準，避免卡片在 .grid 內被左右裁切
+    const visLeft = gridRect ? Math.max(0, gridRect.left) : 0;
+    const visRight = gridRect ? Math.min(window.innerWidth, gridRect.right) : window.innerWidth;
+    const availWidth = Math.max(0, visRight - visLeft);
+    const padX = Math.min(16, Math.max(0, (availWidth - cardRect.width) / 2));
+    const isVisibleX = cardRect.left >= visLeft + padX && cardRect.right <= visRight - padX;
+
+    let distanceX = 0;
+    let distanceY = 0;
+
+    if (!isVisibleX && grid && grid.scrollWidth > grid.clientWidth) {
+        const cardLeftInGrid = (cardRect.left - gridRect.left) + grid.scrollLeft;
+        const idealLeft = cardLeftInGrid - (grid.clientWidth - cardRect.width) / 2;
+        const targetLeft = Math.max(0, Math.min(idealLeft, grid.scrollWidth - grid.clientWidth));
+        distanceX = Math.abs(targetLeft - grid.scrollLeft);
+        grid.scrollTo({ left: targetLeft, behavior: 'smooth' });
     }
-    
-    setTimeout(() => {
+
+    if (!isVisibleY) {
+        const usableCenterY = (topSafe + bottomSafe) / 2;
+        const cardCenterY = cardRect.top + cardRect.height / 2;
+        const deltaY = cardCenterY - usableCenterY;
+        const currentScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        const targetTop = Math.max(0, currentScrollY + deltaY);
+        distanceY = Math.abs(targetTop - currentScrollY);
+        window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    }
+
+    const needsScroll = distanceX > 2 || distanceY > 2;
+    const dynamicDelay = needsScroll
+        ? Math.min(800, Math.max(300, 200 + Math.max(distanceX, distanceY) * 0.4))
+        : 50;
+
+    clearTimeout(targetCard._bumpDelayTimer);
+    clearTimeout(targetCard._bumpEndTimer);
+    targetCard._bumpDelayTimer = setTimeout(() => {
         targetCard.classList.remove('jump-bump');
-        void targetCard.offsetWidth; 
+        void targetCard.offsetWidth;
         targetCard.classList.add('jump-bump');
-        setTimeout(() => targetCard.classList.remove('jump-bump'), 600);
+        targetCard._bumpEndTimer = setTimeout(() => targetCard.classList.remove('jump-bump'), 600);
     }, dynamicDelay);
 };
 
@@ -3060,15 +3093,25 @@ document.addEventListener('DOMContentLoaded', () => {
     let initialZoom = 1;
 
     if (wrapper) {
+        let lightboxRafId = null;
+        let wheelEndTimer = null;
+
         // ✨ 動態解析目標
         const getActiveTarget = () => window.lightboxState.isDomMode 
             ? document.getElementById('lightbox-active-mermaid') 
             : document.getElementById('lightbox-img');
 
         const updateTransform = () => {
+            lightboxRafId = null;
             const target = getActiveTarget();
             if (target) {
                 target.style.transform = `translate(${window.lightboxState.x}px, ${window.lightboxState.y}px) scale(${window.lightboxState.zoom})`;
+            }
+        };
+
+        const scheduleTransform = () => {
+            if (lightboxRafId === null) {
+                lightboxRafId = requestAnimationFrame(updateTransform);
             }
         };
 
@@ -3087,7 +3130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 window.lightboxState.x = activePointers[0].x - startClientX;
                 window.lightboxState.y = activePointers[0].y - startClientY;
-                requestAnimationFrame(updateTransform);
+                scheduleTransform();
             } else if (activePointers.length === 2) {
                 e.preventDefault();
                 const currentDistance = Math.hypot(
@@ -3105,7 +3148,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     window.lightboxState.x -= (centerX - (window.innerWidth / 2) - window.lightboxState.x) * ratio;
                     window.lightboxState.y -= (centerY - (window.innerHeight / 2) - window.lightboxState.y) * ratio;
                     window.lightboxState.zoom = newZoom;
-                    requestAnimationFrame(updateTransform);
+                    scheduleTransform();
                 }
             }
         };
@@ -3120,6 +3163,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 startClientY = activePointers[0].y - window.lightboxState.y;
             } else if (activePointers.length === 0) {
                 isDragging = false;
+                if (lightboxRafId !== null) {
+                    cancelAnimationFrame(lightboxRafId);
+                    lightboxRafId = null;
+                }
                 wrapper.classList.remove('is-dragging');
                 if (wrapper.hasPointerCapture && wrapper.hasPointerCapture(e.pointerId)) {
                     wrapper.releasePointerCapture(e.pointerId);
@@ -3187,8 +3234,11 @@ document.addEventListener('DOMContentLoaded', () => {
             state.x -= (e.clientX - centerX - state.x) * ratio;
             state.y -= (e.clientY - centerY - state.y) * ratio;
             state.zoom = newZoom;
-            
-            target.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
+
+            wrapper.classList.add('is-dragging');
+            clearTimeout(wheelEndTimer);
+            wheelEndTimer = setTimeout(() => { if (!isDragging) wrapper.classList.remove('is-dragging'); }, 120);
+            scheduleTransform();
         }, { passive: false });
     }
 });
@@ -6215,17 +6265,19 @@ window.filterByTag = function(targetTag, event, clickedElement) {
 
 // ✨ 抽出共用引擎：跑馬燈平滑定位動畫
 window.scrollMarqueeTo = function(targetX, contentWidth) {
-    document.querySelectorAll('.marquee-content').forEach(m => {
+    const tracks = Array.from(document.querySelectorAll('.marquee-content'));
+    const items = tracks.map(m => {
         if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
-        let currentX = window.getMarqueeCurrentX(m, contentWidth);
-        
+        const currentX = window.getMarqueeCurrentX(m, contentWidth);
+        return { m, currentX, duration: 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7) };
+    });
+    items.forEach(({ m, currentX }) => {
         m.style.transition = 'none';
         m.style.transform = `translateX(${currentX}px)`;
         m.style.animation = 'none';
-        
-        void m.offsetWidth; // 強制重繪
-        
-        const duration = 0.8 + ((Math.abs(targetX - currentX) / contentWidth) * 0.7);
+    });
+    if (tracks.length > 0) void tracks[0].offsetWidth;
+    items.forEach(({ m, duration }) => {
         m.style.transition = `transform ${duration}s cubic-bezier(0.22, 1, 0.36, 1)`;
         m.style.transform = `translateX(${targetX}px)`;
     });
@@ -6613,6 +6665,7 @@ window.initMermaidDrag = function(rootElement = document) {
         wrapper.addEventListener('pointercancel', endDrag);
 
         // 2. 滾輪對準游標中心縮放
+        let mermaidWheelTimer = null;
         wrapper.addEventListener('wheel', (e) => {
             if (document.body.classList.contains('is-touch-device')) return;
             e.preventDefault();
@@ -6634,7 +6687,13 @@ window.initMermaidDrag = function(rootElement = document) {
             container.dataset.zoom = newZoom;
             container.dataset.x = x;
             container.dataset.y = y;
-            mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${newZoom})`;
+            wrapper.classList.add('is-dragging');
+            clearTimeout(mermaidWheelTimer);
+            mermaidWheelTimer = setTimeout(() => { if (!isDragging) wrapper.classList.remove('is-dragging'); }, 120);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(() => {
+                mermaidDiv.style.transform = `translate(${x}px, ${y}px) scale(${newZoom})`;
+            });
         }, { passive: false });
     });
 };
