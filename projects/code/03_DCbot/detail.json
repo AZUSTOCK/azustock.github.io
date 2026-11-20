@@ -1,0 +1,9 @@
+{
+  "order": 3,
+  "title": "Discord Bot Infrastructure",
+  "category": "code",
+  "meta": "High-frequency Message Update System",
+  "description": "多頻道、多 Thread 即時更新系統",
+  "tags": ["Python", "Discord API", "Concurrency"],
+  "link": ""
+}

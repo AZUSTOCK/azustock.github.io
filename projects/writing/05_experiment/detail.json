@@ -1,0 +1,13 @@
+{
+  "title": "実験",
+  "category": "writing",
+  "meta": "Experiment",
+  "description": "しゃべる",
+  "tags": ["Shaberu"],
+  "default_sort": "asc",
+  "required_key": "kimeta",
+  "hidden": true,
+  "sensitive": "DEFAULT || INSIDE",
+  "lock_mode": "visible",
+  "lang": "ja"
+}
