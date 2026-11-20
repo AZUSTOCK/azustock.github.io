@@ -274,6 +274,8 @@ def parse_version(v_str):
 
 def safe_int(val, default=999):
     """安全轉換整數（支援負數字串如 '-1'）"""
+    if isinstance(val, bool):
+        return default
     try:
         return int(val)
     except (ValueError, TypeError):
@@ -332,6 +334,19 @@ def get_content_language(data, context):
             return value
     cout.warn(f"{context} 的 lang 語言代碼無效，已略過：{value!r}")
     return None
+
+
+def get_sort_direction(data, context, default='asc'):
+    """解析 default_sort ('asc' / 'desc')，無效時警告並退回預設值。"""
+    value = data.get('default_sort')
+    if value is None or value == '':
+        return default
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ('asc', 'desc'):
+            return normalized
+    cout.warn(f"{context} 的 default_sort 無效，將使用預設值 '{default}'：{value!r}")
+    return default
 
 
 def apply_normalized_meta(src_data, target_dict):
@@ -1262,6 +1277,7 @@ def generate_projects_json(
     output_data = {"categories": [], "projects": []}
     state = BuildState()
     seen_proj_ids = set()
+    proj_has_order = {}
     bg_image_path = os.path.join("assets", "og_base.png")
 
     def raise_scan_error(error):
@@ -1287,6 +1303,7 @@ def generate_projects_json(
                 cover_url = cover_url[2:]
             cat_cover_url = get_hash_url(cat_cover_path, cover_url)
 
+        cat_default_sort = get_sort_direction(cat_data, f"分類 {cat_folder}", default='asc')
         output_data["categories"].append({
             "order": cat_data.get('order', default_order),
             "id": cat_folder,
@@ -1295,6 +1312,7 @@ def generate_projects_json(
             "description": cat_data.get('description', ''),
             "watermark_url": cat_data.get('watermark_url', ''),
             "cover_image": cat_cover_url,
+            "default_sort": cat_default_sort,
         })
 
         # 2. 掃描分類底下的專案 (Projects)
@@ -1322,12 +1340,18 @@ def generate_projects_json(
             proj_id = clean_proj_title
             register_api_id(proj_id, proj_path, seen_proj_ids)
 
+            raw_proj_order = raw_proj_data.get('order')
+            explicit_proj_order = safe_int(raw_proj_order, None) if raw_proj_order is not None else None
+            has_prefix_order = RE_FOLDER_META.match(proj_folder) is not None
+            proj_has_order[proj_id] = explicit_proj_order is not None or has_prefix_order
+            final_proj_order = explicit_proj_order if explicit_proj_order is not None else default_proj_order
+
             proj_data = {
                 'id': proj_id,
                 'category': cat_folder,
                 'title': raw_proj_data.get('title', clean_proj_title),
-                'order': raw_proj_data.get('order', default_proj_order),
-                'default_sort': raw_proj_data.get('default_sort', 'desc'),
+                'order': final_proj_order,
+                'default_sort': get_sort_direction(raw_proj_data, f"專案 {proj_folder}", default='desc'),
             }
 
             project_lang = get_content_language(raw_proj_data, f"專案 {proj_folder}")
@@ -1532,12 +1556,22 @@ def generate_projects_json(
 
     output_data["categories"].sort(key=lambda x: safe_int(x.get('order', 999)))
     cat_order_map = {cat['id']: safe_int(cat.get('order', 999)) for cat in output_data["categories"]}
-    output_data["projects"].sort(key=lambda x: (
-        cat_order_map.get(x.get('category'), 999),
-        -1 if x.get('pinned', False) else 0,
-        -safe_int(x.get('order', 999)),
-        x.get('id', ''),
-    ))
+    cat_sort_map = {cat['id']: cat.get('default_sort', 'asc') for cat in output_data["categories"]}
+
+    def project_sort_key(proj):
+        cat_id = proj.get('category')
+        sort_dir = cat_sort_map.get(cat_id, 'asc')
+        order_val = safe_int(proj.get('order', 999))
+        directed_order = -order_val if sort_dir == 'desc' else order_val
+        return (
+            cat_order_map.get(cat_id, 999),
+            -1 if proj.get('pinned', False) else 0,
+            0 if proj_has_order.get(proj.get('id'), False) else 1,
+            directed_order,
+            proj.get('id', ''),
+        )
+
+    output_data["projects"].sort(key=project_sort_key)
 
     cout.success(f"JSON 結構掃描與打包完成，包含 {len(output_data['projects'])} 個專案。")
     atomic_write('all_projects.json', json.dumps(output_data, ensure_ascii=False, indent=2), _FILE_HASH_MEMO)
