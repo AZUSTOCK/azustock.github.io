@@ -1269,14 +1269,14 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
 
 .card:hover .card-action-btn { color: var(--card-glow) !important; }
 .card:hover .card-action-arrow { transform: translate(4px, -4px) translateZ(0) !important; } 
-.card:hover .icon-book-closed { opacity: 0; }
-.card:hover .icon-book-open { opacity: 1; }
+.card:hover .icon-book-closed { stroke-opacity: 0; }
+.card:hover .icon-book-open { stroke-opacity: 1; }
 
 /* 有標籤被 Hover 時，按鈕退回預設色 */
 .card:has(.tag:hover) .card-action-btn { color: var(--accent) !important; }
 .card:has(.tag:hover) .card-action-arrow { transform: translate(0, 0) !important; }
-.card:has(.tag:hover) .icon-book-closed { opacity: 1; }
-.card:has(.tag:hover) .icon-book-open { opacity: 0; }
+.card:has(.tag:hover) .icon-book-closed { stroke-opacity: 1; }
+.card:has(.tag:hover) .icon-book-open { stroke-opacity: 0; }
 
 /* ========================================================================== */
 /* 📖 第五層：文章系統與 Modal (Article & Modal)                                 */
@@ -3697,12 +3697,16 @@ body {
 .card-action-icon-wrap { position: relative; width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
 .card-action-icon-wrap .icon-book-closed,
 .card-action-icon-wrap .icon-book-open {
-    position: absolute; inset: 0; width: 18px; height: 18px; display: block;
-    transition: opacity 0.2s ease;
-    -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    position: absolute;
+    inset: 0;
+    width: 18px;
+    height: 18px;
+    display: block;
+    transition: stroke-opacity 0.2s ease;
+    shape-rendering: geometricPrecision;
 }
-.card-action-icon-wrap .icon-book-closed { opacity: 1; }
-.card-action-icon-wrap .icon-book-open { opacity: 0; }
+.card-action-icon-wrap .icon-book-closed { stroke-opacity: 1; }
+.card-action-icon-wrap .icon-book-open { stroke-opacity: 0; }
 .card-action-arrow { 
     display: flex; align-items: center; transition: transform 0.2s ease; 
     will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); 
