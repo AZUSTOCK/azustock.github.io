@@ -3,7 +3,7 @@
   "title": "azustock",
   "category": "code",
   "meta": "Stock Market Simulation Platform",
-  "description": "即時股票模擬交易與報價系統",
+  "description": "股票資訊與交易模擬系統",
   "tags": ["Python", "Finance"],
   "link": "",
   "cover": "logo.webp",

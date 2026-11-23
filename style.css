@@ -1395,7 +1395,7 @@ main section:nth-of-type(5n+5) { --sec-color: var(--group-c5); }
 .card.show { opacity: 1; transform: translateY(0) translateZ(0); }
 .card.show:hover { transform: translateY(-5px) translateZ(0); box-shadow: 0 15px 35px color-mix(in srgb, var(--card-glow) 22%, transparent); border-color: color-mix(in srgb, var(--card-glow) 40%, transparent); }
 .card-content-wrapper { display: flex; align-items: flex-start; gap: 1rem; }
-.card-text { flex: 1; }
+.card-text { flex: 1; min-width: 0; }
 .card-image { position: relative; width: 60px; height: 60px; object-fit: cover; border-radius: 12px; flex-shrink: 0; }
 .card h3 { margin-top: 0.1rem; margin-bottom: 0.8rem; font-size: 1.2rem; font-weight: 700; line-height: 1.2; }
 .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.6rem; }
@@ -3928,6 +3928,9 @@ body {
 
 /* 卡片內容 */
 .card-meta-text { font-size: 0.95rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem; }
+.card-meta-text::before { content: '- '; }
+.card-text h3.is-meta-wrapped .card-meta-text { display: block; margin-left: 0; margin-top: 0.25rem; }
+.card-text h3.is-meta-wrapped .card-meta-text::before { content: none; }
 .card-desc-text { color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; margin-bottom: 1rem; }
 .card-thumb-img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg); }
 .card-date-badge { position: absolute; top: 0.2rem; left: 1.6rem; font-family: monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); opacity: 0.6; letter-spacing: 0.05em; }

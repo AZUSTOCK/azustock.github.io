@@ -661,8 +661,13 @@ window.syncProjectCardUI = function(card, proj) {
 
     const titleH3 = card.querySelector('.card-text h3');
     if (titleH3) {
-        const cardMetaHtml = proj.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(proj.meta, 'CARD_META')}</span>` : '';
-        titleH3.innerHTML = `${window.parseDynamicText(proj.title, 'CARD_TITLE')} ${cardMetaHtml}`;
+        const cardTitleHtml = `<span class="card-title-text">${window.parseDynamicText(proj.title, 'CARD_TITLE')}</span>`;
+        const cardMetaHtml = proj.meta ? ` <span class="card-meta-text">${window.parseDynamicText(proj.meta, 'CARD_META')}</span>` : '';
+        titleH3.innerHTML = `${cardTitleHtml}${cardMetaHtml}`;
+        titleH3.classList.remove('is-meta-wrapped');
+        if (card.isConnected && window.syncCardMetaLayout) {
+            window.requestAnimationFrame(() => window.syncCardMetaLayout(card));
+        }
     }
 
     const descP = card.querySelector('.card-desc-text');
@@ -709,6 +714,56 @@ window.syncProjectCardUI = function(card, proj) {
         }
     }
 };
+
+window.syncCardMetaLayout = function(root = document) {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    const headings = root.matches && root.matches('.card-text h3')
+        ? [root]
+        : Array.from(root.querySelectorAll('.card-text h3'));
+
+    headings.forEach(h3 => {
+        const metaEl = h3.querySelector('.card-meta-text');
+        if (!metaEl) {
+            h3.classList.remove('is-meta-wrapped');
+            return;
+        }
+        if (h3.offsetWidth === 0) return;
+
+        // 先恢復為同行狀態量測實際可用寬度（會自動計入右側縮圖寬度）
+        h3.classList.remove('is-meta-wrapped');
+
+        const titleEl = h3.querySelector('.card-title-text');
+        const metaRects = Array.from(metaEl.getClientRects()).filter(r => r.width > 0 && r.height > 0);
+        if (metaRects.length === 0) return;
+
+        const metaMinTop = Math.min(...metaRects.map(r => r.top));
+        const metaMaxTop = Math.max(...metaRects.map(r => r.top));
+        const metaLineHeight = metaRects[0].height || 16;
+        let shouldWrap = (metaMaxTop - metaMinTop) > Math.max(4, metaLineHeight * 0.5);
+
+        if (!shouldWrap && titleEl) {
+            const titleRects = Array.from(titleEl.getClientRects()).filter(r => r.width > 0 && r.height > 0);
+            if (titleRects.length > 0) {
+                const titleLastRect = titleRects.reduce((acc, r) => (r.top > acc.top ? r : acc), titleRects[0]);
+                const titleLineHeight = titleLastRect.height || 18;
+                if ((metaMinTop - titleLastRect.top) > Math.max(4, titleLineHeight * 0.45)) {
+                    shouldWrap = true;
+                }
+            }
+        }
+
+        h3.classList.toggle('is-meta-wrapped', shouldWrap);
+    });
+};
+
+let _cardMetaResizeFrame = null;
+window.addEventListener('resize', () => {
+    if (_cardMetaResizeFrame !== null) return;
+    _cardMetaResizeFrame = window.requestAnimationFrame(() => {
+        _cardMetaResizeFrame = null;
+        window.syncCardMetaLayout();
+    });
+});
 
 window.refreshHomeKeysUI = function() {
     document.querySelectorAll('.card').forEach(card => {
@@ -966,6 +1021,9 @@ window.applyTextScale = function() {
         const viewArticle = document.getElementById('view-article');
         if (viewArticle && viewArticle.style.display !== 'none' && window.syncTabPanelsHeight) {
             window.syncTabPanelsHeight(viewArticle);
+        }
+        if (window.syncCardMetaLayout) {
+            window.syncCardMetaLayout();
         }
     };
 
@@ -4788,6 +4846,13 @@ async function loadProjects() {
             
             targetGrid.appendChild(card);
         });
+
+        if (window.syncCardMetaLayout) {
+            window.syncCardMetaLayout(portfolioSections);
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => window.syncCardMetaLayout(portfolioSections));
+            }
+        }
 
         // 綁定捲軸與 Intersection Observer
         categories.forEach(cat => {
