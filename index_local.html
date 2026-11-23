@@ -125,18 +125,21 @@
   </button>
 
   <nav id="fullscreen-menu" class="fullscreen-nav">
-    <div style="width: 100%; display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; min-height: 100dvh; box-sizing: border-box; padding: 3rem 0;">
-        <ul class="nav-links" id="dynamic-nav" style="margin: auto 0;"></ul>
+    <div class="fullscreen-nav-inner">
+        <div class="fullscreen-nav-header">
+            <span>&gt;_ NAVIGATION_INDEX</span>
+        </div>
+
+        <ul class="nav-links" id="dynamic-nav"></ul>
         
         <!-- ✨ 系統操作區：全域字體設定與重整 -->
-        <div style="text-align: center; padding-bottom: 2rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+        <div class="fullscreen-nav-footer">
             <button onclick="window.toggleTextScale(event)" class="menu-sys-btn">
-                <!-- 這裡直接帶入 SVG -->
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="12" y1="4" x2="12" y2="20"></line><line x1="9" y1="20" x2="15" y2="20"></line></svg> 
                 字體大小
             </button>
             <button class="menu-sys-btn" onclick="event.stopPropagation(); window.showSystemReloadModal(); triggerHaptic('selection');">
-                >_ RELOAD_SYS
+                &gt;_ RELOAD_SYS
             </button>
         </div>
     </div>

@@ -6,6 +6,7 @@
 
 ## change / update
 1. `default_sort` in `categories`
+2. fullscreen-menu UI
 
 ## adjust
 1. 
