@@ -961,9 +961,9 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 [data-theme="light"] #icon-moon { opacity: 1; transform: rotate(0deg); }
 
 /* 3-6. 標籤與跑馬燈 */
-.tag { position: relative; display: inline-flex; align-items: center; vertical-align: middle; background: var(--tag-bg); color: var(--accent); padding: 0.18rem 0.65rem; border-radius: 999px; font-size: 0.72rem; margin-right: 0.3rem; margin-top: 0.3rem; font-weight: 600; cursor: pointer; transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.25s var(--ease-smooth); }
+.tag { position: relative; display: inline-flex; align-items: center; vertical-align: middle; background: var(--tag-bg); color: var(--accent); padding: 0.3rem 0.65rem; line-height: 1.4; border-radius: 999px; font-size: 0.72rem; margin-right: 0.3rem; margin-top: 0.3rem; font-weight: 600; cursor: pointer; transform: translateY(0) translateZ(0); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; transition: background-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.25s var(--ease-smooth); }
 .tag::after { content: ''; position: absolute; inset: 0 0 -4px 0; }
-.tag:hover, .tag.active-tag { background: var(--accent-2); color: var(--card); box-shadow: 0 2px 8px var(--accent-2); transform: translateY(-2px); }
+.tag:hover, .tag.active-tag { background: var(--accent-2); color: var(--card); box-shadow: 0 2px 8px var(--accent-2); transform: translateY(-2px) translateZ(0); }
 /* ========================================================================== */
 /* ✨ 跑馬燈與初始 Loading 狀態 (絕對高度鎖死版)                                 */
 /* ========================================================================== */
@@ -1072,8 +1072,8 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 @keyframes badge-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .status-badge, .tag.status-tag { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; vertical-align: middle; cursor: default; transition: transform 0.4s ease, box-shadow 0.4s ease; background-image: linear-gradient(110deg, var(--s-color) 35%, rgba(255,255,255,0.4) 50%, var(--s-color) 65%) !important; background-color: var(--s-color) !important; background-size: 200% 100% !important; color: #fff !important; box-shadow: 0 0 8px var(--s-shadow); border: none !important; animation: badge-sweep 2.5s infinite linear; }
 .title-badge { margin-left: 8px; }
-.tag.status-tag { cursor: pointer; padding: 0.18rem 0.65rem; border-radius: 999px; font-size: 0.72rem; margin-right: 0.3rem; margin-top: 0.3rem; }
-.tag.status-tag:hover, .tag.status-tag.active-tag { transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-2); background-image: linear-gradient(110deg, var(--accent-2) 35%, rgba(255,255,255,0.5) 50%, var(--accent-2) 65%) !important; background-color: var(--accent-2) !important; color: var(--card) !important; }
+.tag.status-tag { cursor: pointer; padding: 0.3rem 0.65rem; line-height: 1.4; border-radius: 999px; font-size: 0.72rem; margin-right: 0.3rem; margin-top: 0.3rem; transform: translateY(0) translateZ(0); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+.tag.status-tag:hover, .tag.status-tag.active-tag { transform: translateY(-2px) translateZ(0); box-shadow: 0 4px 15px var(--accent-2); background-image: linear-gradient(110deg, var(--accent-2) 35%, rgba(255,255,255,0.5) 50%, var(--accent-2) 65%) !important; background-color: var(--accent-2) !important; color: var(--card) !important; }
 .clickable-ticker-tag[data-status] .ticker-name { display: inline-block; padding: 2px 8px; border-radius: 4px; color: #fff !important; font-weight: 800; letter-spacing: 0.05em; transition: all 0.3s var(--ease-smooth); background-color: var(--s-color); box-shadow: 0 0 6px var(--s-shadow); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
 /* ✨ 拔除 scale(1.08) 放大特效，只保留變色與微光 */
 .clickable-ticker-tag[data-status]:hover .ticker-name, 
