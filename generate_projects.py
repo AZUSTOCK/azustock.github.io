@@ -59,7 +59,7 @@ GITHUB_API_TIMEOUT = 10
 GITHUB_TOKEN_ENV_KEYS = ("GH_SYNC_TOKEN", "GH_TOKEN", "GITHUB_SYNC_TOKEN", "GITHUB_TOKEN")
 GITHUB_LOCAL_SECRET_FILES = (".github_sync.json", "tools/.secrets.json")
 GITHUB_DEFAULT_SYNC_FIELDS = ("version", "date")
-GITHUB_REMOTE_JSON_RESERVED_KEYS = frozenset({"github", "order", "category", "cover", "groups"})
+GITHUB_REMOTE_JSON_RESERVED_KEYS = frozenset({"github", "order", "category", "cover", "groups", "hide_link"})
 
 IMAGE_PROFILES = {
     'group_thumb': (200, 85),
@@ -303,9 +303,9 @@ def _get_github_token():
     return ""
 
 
-def _parse_github_repo(repo_value, fallback_link=None):
-    """解析 'owner/repo' 或 GitHub 網址為標準 'owner/repo' 字串"""
-    for candidate in (repo_value, fallback_link):
+def _parse_github_repo(*candidates):
+    """依序解析 'owner/repo' 或 GitHub 網址（如 github.repo / link / hide_link）為標準 'owner/repo' 字串"""
+    for candidate in candidates:
         if not isinstance(candidate, str):
             continue
         text = candidate.strip()
@@ -399,7 +399,7 @@ def sync_github_metadata(raw_data, context):
         cout.warn(f"{context} 的 github 設定格式無效，已略過。")
         return raw_data, {}
 
-    repo = _parse_github_repo(gh_cfg.get("repo"), fallback_link=raw_data.get("link"))
+    repo = _parse_github_repo(gh_cfg.get("repo"), raw_data.get("link"), raw_data.get("hide_link"))
     if not repo:
         cout.warn(f"{context} 的 github.repo 無法解析，已略過遠端同步。")
         return raw_data, {}
@@ -539,6 +539,58 @@ def sync_github_metadata(raw_data, context):
         return raw_data, {}
 
     return merged, synced
+
+
+def _is_github_repo_private(repo, context=""):
+    """透過 GitHub API 查詢指定儲存庫是否為私人儲存庫（沿用 _GITHUB_API_MEMO 快取）"""
+    if not repo or '/' not in repo:
+        return None
+    owner, repo_name = repo.split('/', 1)
+    endpoint = f"/repos/{quote(owner, safe='')}/{quote(repo_name, safe='')}"
+    try:
+        info = _github_api_get(endpoint, allow_404=True)
+        if isinstance(info, dict) and isinstance(info.get("private"), bool):
+            return info["private"]
+    except Exception as error:
+        if context:
+            cout.warn(f"無法檢查 {context} ({repo}) 的公開狀態，將依本地設定處理：{error}")
+    return None
+
+
+def _should_omit_project_link(raw_proj_data, context):
+    """
+    判斷是否應從 all_projects.json 中略過 link 欄位：
+      1. 明確語法優先：detail.json 頂層 hide_link (true/false) 或 github.hide_link / github.private
+      2. 自動偵測：若 link 指向 GitHub 儲存庫且 API 回報為 private，則自動略過
+    """
+    link = raw_proj_data.get("link")
+    if not link:
+        return False
+
+    explicit = raw_proj_data.get("hide_link")
+    if isinstance(explicit, bool):
+        return explicit
+    if isinstance(explicit, str) and explicit.strip():
+        return True
+
+    gh_cfg = raw_proj_data.get("github")
+    if isinstance(gh_cfg, dict):
+        gh_hide = gh_cfg.get("hide_link")
+        if isinstance(gh_hide, bool):
+            return gh_hide
+        if gh_cfg.get("private") is True:
+            return True
+
+    link_repo = _parse_github_repo(link)
+    if link_repo and _is_github_repo_private(link_repo, context) is True:
+        cout.action(
+            "隱藏私人連結",
+            f"{context} 的 link 指向私人儲存庫 ({link_repo})，已略過寫入 all_projects.json。",
+            icon_key='skip', color='yellow', tree=True,
+        )
+        return True
+
+    return False
 
 
 # ==========================================
@@ -1642,7 +1694,10 @@ def generate_projects_json(
             project_lang = get_content_language(raw_proj_data, f"專案 {proj_folder}")
             if project_lang:
                 proj_data['lang'] = project_lang
+            omit_link = _should_omit_project_link(raw_proj_data, f"專案 {proj_folder}")
             for key in ('min_sys_version', 'meta', 'description', 'date', 'version', 'link'):
+                if key == 'link' and omit_link:
+                    continue
                 value = raw_proj_data.get(key)
                 if value:
                     proj_data[key] = str(value) if key in ('min_sys_version', 'version') else value
