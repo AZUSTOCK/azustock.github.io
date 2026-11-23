@@ -77,7 +77,19 @@ const GLOBAL_SVGS = {
     folderClosed: `<svg class="icon-book-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>`,
     folderOpen: `<svg class="icon-book-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>`,
     arrowUpRight: `<svg width="24" height="24" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M9.665 -8.175L1.065 7.265M1.065 7.265L-5.695 3.945M-5.695 3.945L9.665 -8.175M9.665 -8.175L-9.175 -3.175M-9.175 -3.175L-10.735 1.905M-10.735 1.905L-1.135 0.345M-8.655 1.665L-7.975 8.865M-7.975 8.865L-5.695 3.945"/></svg>`,
-    
+    navPlane: `<svg class="nav-plane-svg" width="42" height="24" viewBox="0 0 64 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <g class="plane-body">
+            <g transform="translate(13 24) scale(0.95)">
+                <path stroke-width="1.4" d="M9.665 -8.175L1.065 7.265M1.065 7.265L-5.695 3.945M-5.695 3.945L9.665 -8.175M9.665 -8.175L-9.175 -3.175M-9.175 -3.175L-10.735 1.905M-10.735 1.905L-1.135 0.345M-8.655 1.665L-7.975 8.865M-7.975 8.865L-5.695 3.945"/>
+            </g>
+        </g>
+        <circle class="plane-dot dot-1" cx="26" cy="14" r="1" fill="currentColor" stroke="none"/>
+        <circle class="plane-dot dot-2" cx="32" cy="12" r="1.8"/>
+        <circle class="plane-dot dot-3" cx="41" cy="14" r="2.7"/>
+        <circle class="plane-dot dot-4" cx="51" cy="21" r="4"/>
+        <line class="plane-base" x1="45" y1="30" x2="57" y2="30"/>
+    </svg>`,
+
     // ⬅️ 導覽與操作方向
     arrowLeft: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>`,
     historyBack: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>`,
@@ -649,8 +661,13 @@ window.syncProjectCardUI = function(card, proj) {
 
     const titleH3 = card.querySelector('.card-text h3');
     if (titleH3) {
-        const cardMetaHtml = proj.meta ? `<span class="card-meta-text">- ${window.parseDynamicText(proj.meta, 'CARD_META')}</span>` : '';
-        titleH3.innerHTML = `${window.parseDynamicText(proj.title, 'CARD_TITLE')} ${cardMetaHtml}`;
+        const cardTitleHtml = `<span class="card-title-text">${window.parseDynamicText(proj.title, 'CARD_TITLE')}</span>`;
+        const cardMetaHtml = proj.meta ? ` <span class="card-meta-text">${window.parseDynamicText(proj.meta, 'CARD_META')}</span>` : '';
+        titleH3.innerHTML = `${cardTitleHtml}${cardMetaHtml}`;
+        titleH3.classList.remove('is-meta-wrapped');
+        if (card.isConnected && window.syncCardMetaLayout) {
+            window.requestAnimationFrame(() => window.syncCardMetaLayout(card));
+        }
     }
 
     const descP = card.querySelector('.card-desc-text');
@@ -697,6 +714,56 @@ window.syncProjectCardUI = function(card, proj) {
         }
     }
 };
+
+window.syncCardMetaLayout = function(root = document) {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    const headings = root.matches && root.matches('.card-text h3')
+        ? [root]
+        : Array.from(root.querySelectorAll('.card-text h3'));
+
+    headings.forEach(h3 => {
+        const metaEl = h3.querySelector('.card-meta-text');
+        if (!metaEl) {
+            h3.classList.remove('is-meta-wrapped');
+            return;
+        }
+        if (h3.offsetWidth === 0) return;
+
+        // 先恢復為同行狀態量測實際可用寬度（會自動計入右側縮圖寬度）
+        h3.classList.remove('is-meta-wrapped');
+
+        const titleEl = h3.querySelector('.card-title-text');
+        const metaRects = Array.from(metaEl.getClientRects()).filter(r => r.width > 0 && r.height > 0);
+        if (metaRects.length === 0) return;
+
+        const metaMinTop = Math.min(...metaRects.map(r => r.top));
+        const metaMaxTop = Math.max(...metaRects.map(r => r.top));
+        const metaLineHeight = metaRects[0].height || 16;
+        let shouldWrap = (metaMaxTop - metaMinTop) > Math.max(4, metaLineHeight * 0.5);
+
+        if (!shouldWrap && titleEl) {
+            const titleRects = Array.from(titleEl.getClientRects()).filter(r => r.width > 0 && r.height > 0);
+            if (titleRects.length > 0) {
+                const titleLastRect = titleRects.reduce((acc, r) => (r.top > acc.top ? r : acc), titleRects[0]);
+                const titleLineHeight = titleLastRect.height || 18;
+                if ((metaMinTop - titleLastRect.top) > Math.max(4, titleLineHeight * 0.45)) {
+                    shouldWrap = true;
+                }
+            }
+        }
+
+        h3.classList.toggle('is-meta-wrapped', shouldWrap);
+    });
+};
+
+let _cardMetaResizeFrame = null;
+window.addEventListener('resize', () => {
+    if (_cardMetaResizeFrame !== null) return;
+    _cardMetaResizeFrame = window.requestAnimationFrame(() => {
+        _cardMetaResizeFrame = null;
+        window.syncCardMetaLayout();
+    });
+});
 
 window.refreshHomeKeysUI = function() {
     document.querySelectorAll('.card').forEach(card => {
@@ -954,6 +1021,9 @@ window.applyTextScale = function() {
         const viewArticle = document.getElementById('view-article');
         if (viewArticle && viewArticle.style.display !== 'none' && window.syncTabPanelsHeight) {
             window.syncTabPanelsHeight(viewArticle);
+        }
+        if (window.syncCardMetaLayout) {
+            window.syncCardMetaLayout();
         }
     };
 
@@ -4689,12 +4759,20 @@ async function loadProjects() {
         let navHtmlBuffer = '';
         let sectionsHtmlBuffer = '';
 
-        categories.forEach(cat => {
+        categories.forEach((cat, idx) => {
+            const navNum = String(idx + 1).padStart(2, '0');
             const menuDescHtml = cat.meta ? `<span class="nav-item-desc">${cat.meta}</span>` : '';
+            const navItemStyle = `--nav-delay: ${idx * 45}ms;${cat.watermark_url ? ` --custom-watermark: url('${cat.watermark_url}');` : ''}`;
             navHtmlBuffer += `
-            <li style="margin: 2.5rem 0;">
-                <a href="#${cat.id}-section" class="nav-item" style="margin:0; line-height:1.1; display:inline-block;">${cat.title}</a>
-                ${menuDescHtml}
+            <li style="${navItemStyle}">
+                <a href="#${cat.id}-section" class="nav-item">
+                    <div class="nav-item-top">
+                        <span class="nav-item-index">${navNum}</span>
+                        <span class="nav-item-arrow" aria-hidden="true">${GLOBAL_SVGS.navPlane}</span>
+                    </div>
+                    <span class="nav-item-title">${cat.title}</span>
+                    ${menuDescHtml}
+                </a>
             </li>`;
 
             const sectionMetaHtml = cat.meta ? `<span class="section-meta">- ${cat.meta}</span>` : '';
@@ -4768,6 +4846,13 @@ async function loadProjects() {
             
             targetGrid.appendChild(card);
         });
+
+        if (window.syncCardMetaLayout) {
+            window.syncCardMetaLayout(portfolioSections);
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => window.syncCardMetaLayout(portfolioSections));
+            }
+        }
 
         // 綁定捲軸與 Intersection Observer
         categories.forEach(cat => {

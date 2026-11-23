@@ -9,5 +9,10 @@
   "cover": "./logo.webp",
   "date": "2026-06-08",
   "version": "0.0.4.1",
-  "pinned": true
+  "pinned": true,
+  "github": {
+    "repo": "Kazekawa-azusa/azubar",
+    "sync": ["version", "date"],
+    "date_source": "release"
+  }
 }

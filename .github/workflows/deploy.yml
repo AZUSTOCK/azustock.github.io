@@ -40,6 +40,8 @@ jobs:
           pip install pillow rjsmin rcssmin pymupdf  # 確保安裝壓縮套件
 
       - name: Generate API and Data
+        env:
+          GH_SYNC_TOKEN: ${{ secrets.GH_SYNC_TOKEN }}
         run: |
           python generate_projects.py
 

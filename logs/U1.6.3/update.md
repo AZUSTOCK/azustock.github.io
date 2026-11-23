@@ -1,14 +1,15 @@
 ## refactor
-1. 
+1. Discord WebHook
 
 ## add
-1. 
+1. GitHub metadata sync
 
 ## change / update
 1. `default_sort` in `categories`
+2. fullscreen-menu UI
 
 ## adjust
-1. 
+1. UI
 
 ## fix
 1. UI shake
