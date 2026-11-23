@@ -6,6 +6,8 @@ import hashlib
 import tempfile
 import posixpath
 import threading
+import urllib.request
+import urllib.error
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -51,6 +53,14 @@ HASH_CHUNK_SIZE = 1024 * 1024
 HASH_HEX_LENGTH = 16
 _UNSET = object()
 
+# GitHub 遠端 Metadata 同步設定
+GITHUB_API_BASE = "https://api.github.com"
+GITHUB_API_TIMEOUT = 10
+GITHUB_TOKEN_ENV_KEYS = ("GH_SYNC_TOKEN", "GH_TOKEN", "GITHUB_SYNC_TOKEN", "GITHUB_TOKEN")
+GITHUB_LOCAL_SECRET_FILES = (".github_sync.json", "tools/.secrets.json")
+GITHUB_DEFAULT_SYNC_FIELDS = ("version", "date")
+GITHUB_REMOTE_JSON_RESERVED_KEYS = frozenset({"github", "order", "category", "cover", "groups"})
+
 IMAGE_PROFILES = {
     'group_thumb': (200, 85),
     'project_thumb': (180, 90),
@@ -84,6 +94,8 @@ RE_MD_IMG = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
 RE_HTML_IMG = re.compile(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)')
 RE_IMG_TITLE = re.compile(r'(.*?)\s+(["\'])(.*?)\2$')
 RE_CLEAN_TAG = re.compile(r'^.*?\[(.*?)\]$')
+RE_GITHUB_REPO_URL = re.compile(r'^https?://(?:www\.)?github\.com/([^/\s]+)/([^/\s#?]+?)(?:\.git)?/?$', re.IGNORECASE)
+RE_VERSION_PREFIX = re.compile(r'^[vV](?=\d)')
 
 SHARE_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-TW">
@@ -122,6 +134,7 @@ _FILE_HASH_MEMO = {}
 _IMG_DIM_MEMO = {}
 _OG_BG_MEMO = {}
 _OG_BG_LOCK = threading.Lock()
+_GITHUB_API_MEMO = {}
 
 valid_api_files = set()
 stats = Counter()
@@ -262,6 +275,270 @@ def convert_project_images(is_github_actions, overwrite_webp=False, target_folde
     if report['errors']:
         raise RuntimeError("本地 WebP 處理失敗，已停止後續生成；請修正錯誤後重試。")
     return report
+
+
+# ==========================================
+# 🔗 GitHub 遠端儲存庫 Metadata 同步引擎
+# ==========================================
+def _get_github_token():
+    """依序從環境變數與本地私密 JSON 檔取得 GitHub Token（環境變數優先，供 GitHub Actions 使用）"""
+    for env_key in GITHUB_TOKEN_ENV_KEYS:
+        token = os.getenv(env_key, "").strip()
+        if token:
+            return token
+
+    for secret_path in GITHUB_LOCAL_SECRET_FILES:
+        if not os.path.isfile(secret_path):
+            continue
+        try:
+            with open(secret_path, "r", encoding="utf-8") as f:
+                secret_data = json.load(f)
+            if isinstance(secret_data, dict):
+                for key in (*GITHUB_TOKEN_ENV_KEYS, "token"):
+                    val = secret_data.get(key)
+                    if isinstance(val, str) and val.strip():
+                        return val.strip()
+        except Exception as e:
+            cout.warn(f"無法讀取本地私密設定檔 {secret_path}：{e}")
+    return ""
+
+
+def _parse_github_repo(repo_value, fallback_link=None):
+    """解析 'owner/repo' 或 GitHub 網址為標準 'owner/repo' 字串"""
+    for candidate in (repo_value, fallback_link):
+        if not isinstance(candidate, str):
+            continue
+        text = candidate.strip()
+        if not text:
+            continue
+        url_match = RE_GITHUB_REPO_URL.match(text)
+        if url_match:
+            return f"{url_match.group(1)}/{url_match.group(2)}"
+        parts = [p for p in text.strip('/').split('/') if p]
+        if len(parts) == 2 and all(parts):
+            repo_name = parts[1][:-4] if parts[1].endswith('.git') else parts[1]
+            return f"{parts[0]}/{repo_name}"
+    return None
+
+
+def _github_api_get(endpoint, *, raw=False, allow_404=False):
+    """對 GitHub REST API 發送 GET 請求（含單次建置記憶體快取）"""
+    cache_key = (endpoint, raw)
+    if cache_key in _GITHUB_API_MEMO:
+        cached = _GITHUB_API_MEMO[cache_key]
+        if cached is None and not allow_404:
+            raise RuntimeError(f"GitHub API 404 Not Found: {endpoint}")
+        return cached
+
+    url = f"{GITHUB_API_BASE}{endpoint}"
+    headers = {
+        "User-Agent": "Azustock-Site-Builder",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Accept": "application/vnd.github.raw+json" if raw else "application/vnd.github+json",
+    }
+    token = _get_github_token()
+    if token:
+        if not token.isascii():
+            raise RuntimeError("GitHub Token 包含非 ASCII 字元，請確認已將範例文字替換為實際的 Token。")
+        headers["Authorization"] = f"Bearer {token}"
+
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=GITHUB_API_TIMEOUT) as resp:
+            payload = resp.read().decode("utf-8")
+            result = json.loads(payload)
+            _GITHUB_API_MEMO[cache_key] = result
+            return result
+    except urllib.error.HTTPError as e:
+        if e.code == 404 and allow_404:
+            _GITHUB_API_MEMO[cache_key] = None
+            return None
+        hint = "（若為 Private Repo，請確認環境變數 GH_SYNC_TOKEN 具備該儲存庫讀取權限）" if e.code in (401, 403, 404) else ""
+        raise RuntimeError(f"HTTP {e.code} {e.reason}: {endpoint}{hint}") from e
+    except (urllib.error.URLError, TimeoutError) as e:
+        raise RuntimeError(f"連線失敗 ({endpoint}): {e}") from e
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"JSON 解析失敗 ({endpoint}): {e}") from e
+
+
+def _iso_to_date_str(iso_text):
+    if not isinstance(iso_text, str) or len(iso_text) < 10:
+        return None
+    date_part = iso_text[:10]
+    return date_part if RE_DATE_STR.match(date_part) else None
+
+
+def _merge_tags(local_tags, remote_tags, mode="merge"):
+    clean_remote = [str(t).strip() for t in (remote_tags or []) if str(t).strip()]
+    if mode == "replace":
+        return clean_remote
+    result = list(local_tags) if isinstance(local_tags, list) else []
+    existing_lower = {str(t).split(':')[0].strip().lower() for t in result}
+    for tag in clean_remote:
+        if tag.lower() not in existing_lower:
+            result.append(tag)
+            existing_lower.add(tag.lower())
+    return result
+
+
+def sync_github_metadata(raw_data, context):
+    """
+    依 detail.json 內的 'github' 設定，從外部 GitHub 儲存庫同步 Metadata。
+    同時支援：
+      1. 遠端 JSON 檔模式（github.source_file，例如 'detail.json' 或 'meta.json'）
+      2. GitHub REST API 模式（version / date / updated / description / tags）
+    任何網路或權限錯誤皆自動降級為本地 detail.json 數值，不中斷建置。
+    """
+    gh_cfg = raw_data.get("github")
+    if not gh_cfg:
+        return raw_data, {}
+
+    if isinstance(gh_cfg, str):
+        gh_cfg = {"repo": gh_cfg}
+    elif not isinstance(gh_cfg, dict):
+        cout.warn(f"{context} 的 github 設定格式無效，已略過。")
+        return raw_data, {}
+
+    repo = _parse_github_repo(gh_cfg.get("repo"), fallback_link=raw_data.get("link"))
+    if not repo:
+        cout.warn(f"{context} 的 github.repo 無法解析，已略過遠端同步。")
+        return raw_data, {}
+
+    owner, repo_name = repo.split('/', 1)
+    repo_api_base = f"/repos/{quote(owner, safe='')}/{quote(repo_name, safe='')}"
+    branch = str(gh_cfg.get("branch") or "").strip() or None
+    source_file = str(gh_cfg.get("source_file") or "").strip().lstrip('/') or None
+    target_file = str(gh_cfg.get("file") or "").strip().lstrip('/') or None
+    date_source = str(gh_cfg.get("date_source") or "release").strip().lower()
+    tags_mode = str(gh_cfg.get("tags_mode") or "merge").strip().lower()
+
+    explicit_sync = gh_cfg.get("sync")
+    if isinstance(explicit_sync, list):
+        sync_fields = [str(f).strip() for f in explicit_sync if str(f).strip()]
+    elif source_file:
+        sync_fields = None  # 未指定 sync 時，匯入遠端 JSON 內的所有安全欄位
+    else:
+        sync_fields = list(GITHUB_DEFAULT_SYNC_FIELDS)
+
+    merged = dict(raw_data)
+    synced = {}
+
+    try:
+        # 模式 A：從目標儲存庫讀取指定的遠端 JSON 檔
+        if source_file:
+            file_endpoint = f"{repo_api_base}/contents/{quote(source_file, safe='/')}"
+            if branch:
+                file_endpoint += f"?{urlencode({'ref': branch})}"
+            remote_json = _github_api_get(file_endpoint, raw=True, allow_404=True)
+            if remote_json is None:
+                cout.warn(f"{context} 在 {repo} 找不到遠端檔案 '{source_file}'。")
+            elif not isinstance(remote_json, dict):
+                cout.warn(f"{context} 的遠端檔案 '{source_file}' 頂層不是 JSON 物件，已略過。")
+            else:
+                if sync_fields is None:
+                    candidate_keys = [k for k in remote_json.keys() if k not in GITHUB_REMOTE_JSON_RESERVED_KEYS]
+                else:
+                    candidate_keys = [k for k in sync_fields if k in remote_json and k != "github"]
+
+                for key in candidate_keys:
+                    val = remote_json.get(key)
+                    if val is None or val == "":
+                        continue
+                    if key == "tags" and isinstance(val, list):
+                        merged["tags"] = _merge_tags(merged.get("tags"), val, mode=tags_mode)
+                        synced["tags"] = merged["tags"]
+                    elif key == "version":
+                        clean_ver = RE_VERSION_PREFIX.sub('', str(val).strip())
+                        merged["version"] = clean_ver
+                        synced["version"] = clean_ver
+                    else:
+                        merged[key] = val
+                        synced[key] = val
+
+        # 模式 B：透過 GitHub REST API 補齊尚未由遠端 JSON 提供的欄位
+        api_needed = set(sync_fields or []) - set(synced.keys())
+        if api_needed:
+            repo_info = None
+            latest_release = _UNSET
+
+            def get_repo_info():
+                nonlocal repo_info
+                if repo_info is None:
+                    repo_info = _github_api_get(repo_api_base)
+                return repo_info
+
+            def get_latest_release():
+                nonlocal latest_release
+                if latest_release is _UNSET:
+                    latest_release = _github_api_get(f"{repo_api_base}/releases/latest", allow_404=True)
+                return latest_release
+
+            if "version" in api_needed:
+                rel = get_latest_release()
+                raw_tag = rel.get("tag_name") if isinstance(rel, dict) else None
+                if not raw_tag:
+                    tags_resp = _github_api_get(f"{repo_api_base}/tags?per_page=1", allow_404=True)
+                    if isinstance(tags_resp, list) and tags_resp:
+                        raw_tag = tags_resp[0].get("name")
+                if raw_tag:
+                    clean_ver = RE_VERSION_PREFIX.sub('', str(raw_tag).strip())
+                    merged["version"] = clean_ver
+                    synced["version"] = clean_ver
+
+            synced_date = synced.get("date")
+            if ("date" in api_needed or "updated" in api_needed) and not synced_date:
+                if target_file:
+                    commit_params = {"path": target_file, "per_page": 1}
+                    if branch:
+                        commit_params["sha"] = branch
+                    commits = _github_api_get(f"{repo_api_base}/commits?{urlencode(commit_params)}", allow_404=True)
+                    if isinstance(commits, list) and commits:
+                        commit_info = commits[0].get("commit", {})
+                        iso = (commit_info.get("committer") or commit_info.get("author") or {}).get("date")
+                        synced_date = _iso_to_date_str(iso)
+                else:
+                    if date_source != "push":
+                        rel = get_latest_release()
+                        if isinstance(rel, dict):
+                            synced_date = _iso_to_date_str(rel.get("published_at") or rel.get("created_at"))
+                    if not synced_date:
+                        info = get_repo_info()
+                        if isinstance(info, dict):
+                            synced_date = _iso_to_date_str(info.get("pushed_at") or info.get("updated_at"))
+
+            if "date" in api_needed and synced_date:
+                merged["date"] = synced_date
+                synced["date"] = synced_date
+
+            if "updated" in api_needed and synced_date:
+                merged["updated"] = synced_date
+                synced["updated"] = synced_date
+
+            if "description" in api_needed:
+                info = get_repo_info()
+                desc = (info.get("description") or "").strip() if isinstance(info, dict) else ""
+                if desc:
+                    merged["description"] = desc
+                    synced["description"] = desc
+
+            if "tags" in api_needed:
+                info = get_repo_info()
+                topics = info.get("topics") if isinstance(info, dict) else None
+                if isinstance(topics, list) and topics:
+                    merged["tags"] = _merge_tags(merged.get("tags"), topics, mode=tags_mode)
+                    synced["tags"] = merged["tags"]
+
+        if synced:
+            summary = ", ".join(f"{k}={synced[k]}" for k in synced if k != "tags")
+            if "tags" in synced:
+                summary = f"{summary}, tags({len(synced['tags'])})" if summary else f"tags({len(synced['tags'])})"
+            cout.action("GitHub 同步", f"{context} ← {repo} ({summary})", icon_key='refresh', color='cyan', tree=True)
+
+    except Exception as error:
+        cout.warn(f"GitHub 同步失敗 ({context} / {repo})，將沿用本地 detail.json：{error}")
+        return raw_data, {}
+
+    return merged, synced
 
 
 # ==========================================
@@ -941,6 +1218,7 @@ def process_article(
 
     try:
         sub_data = load_detail_json(art_detail_path, required=True)
+        sub_data, art_github_synced = sync_github_metadata(sub_data, f"文章 {proj_folder}/{item}")
         default_art_order, clean_art_title = parse_folder_meta(item)
 
         is_art_targeted = bool(target_folders and (item in target_folders or clean_art_title in target_folders))
@@ -1172,11 +1450,14 @@ def process_article(
                 grp_cover_dep = os.path.normpath(os.path.join(proj_path, g_cov_rel))
 
         art_html_path = os.path.join(art_dir, "index.html")
+        art_html_settings = {'template': SHARE_HTML_TEMPLATE, 'base_url': BASE_URL}
+        if art_github_synced:
+            art_html_settings['github_sync'] = art_github_synced
         art_html_status, art_detail_hash = check_hash_status(
             art_detail_path, art_html_path, art_cache, 'art_detail', a_overwrite_json,
             logic_version=HTML_LOGIC_VERSION,
             dependencies=[md_file_path, proj_detail_path, local_cover_path, grp_cover_dep, local_proj_cover, bg_image_path, 'assets/og.png'],
-            settings={'template': SHARE_HTML_TEMPLATE, 'base_url': BASE_URL},
+            settings=art_html_settings,
         )
         current_hashes['art_detail'] = art_detail_hash
 
@@ -1226,6 +1507,8 @@ def process_article(
             article_obj['lang'] = article_lang
         if sub_data.get('min_sys_version'):
             article_obj["min_sys_version"] = str(sub_data['min_sys_version'])
+        if sub_data.get('version'):
+            article_obj["version"] = str(sub_data['version'])
         if meta_desc:
             article_obj["description"] = meta_desc
         if meta_cover:
@@ -1266,6 +1549,7 @@ def generate_projects_json(
 
     _FILE_HASH_MEMO.clear()
     _IMG_DIM_MEMO.clear()
+    _GITHUB_API_MEMO.clear()
     with _OG_BG_LOCK:
         for image in _OG_BG_MEMO.values():
             image.close()
@@ -1328,6 +1612,7 @@ def generate_projects_json(
             stats["proj_total"] += 1
             proj_detail_path = os.path.join(proj_path, 'detail.json')
             raw_proj_data = load_detail_json(proj_detail_path, required=True)
+            raw_proj_data, proj_github_synced = sync_github_metadata(raw_proj_data, f"專案 {proj_folder}")
             default_proj_order, clean_proj_title = parse_folder_meta(proj_folder)
 
             is_proj_targeted = bool(target_folders and (proj_folder in target_folders or clean_proj_title in target_folders))
@@ -1357,7 +1642,7 @@ def generate_projects_json(
             project_lang = get_content_language(raw_proj_data, f"專案 {proj_folder}")
             if project_lang:
                 proj_data['lang'] = project_lang
-            for key in ('min_sys_version', 'description', 'date', 'version', 'link'):
+            for key in ('min_sys_version', 'meta', 'description', 'date', 'version', 'link'):
                 value = raw_proj_data.get(key)
                 if value:
                     proj_data[key] = str(value) if key in ('min_sys_version', 'version') else value
@@ -1457,11 +1742,14 @@ def generate_projects_json(
                 proj_img_base = f"{BASE_URL}/assets/og.png"
 
             proj_html_path = os.path.join(proj_api_dir, "index.html")
+            proj_html_settings = {'template': SHARE_HTML_TEMPLATE, 'base_url': BASE_URL}
+            if proj_github_synced:
+                proj_html_settings['github_sync'] = proj_github_synced
             proj_html_status, detail_hash = check_hash_status(
                 proj_detail_path, proj_html_path, proj_cache, 'detail', p_overwrite_json,
                 logic_version=HTML_LOGIC_VERSION,
                 dependencies=[local_proj_cover, bg_image_path, 'assets/og.png'],
-                settings={'template': SHARE_HTML_TEMPLATE, 'base_url': BASE_URL},
+                settings=proj_html_settings,
             )
             current_proj_hashes['detail'] = detail_hash
 

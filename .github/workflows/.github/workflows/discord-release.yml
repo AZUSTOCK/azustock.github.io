@@ -1,0 +1,74 @@
+name: Discord Release Notification
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send rich Discord embed
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TITLE: ${{ github.event.release.name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          AUTHOR_NAME: ${{ github.event.release.author.login }}
+          AUTHOR_AVATAR: ${{ github.event.release.author.avatar_url }}
+          REPO_NAME: ${{ github.repository }}
+          # 👇 請將下方網址換成你的網站預覽圖（支援 PNG / JPG / WebP）
+          BANNER_URL: "https://github.com/AZUSTOCK/azustock.github.io/blob/main/assets/og.png"
+        run: |
+          python3 -c '
+          import os, json, urllib.request
+          from datetime import datetime, timezone
+
+          title = os.environ["RELEASE_TITLE"] or os.environ["RELEASE_TAG"]
+          tag = os.environ["RELEASE_TAG"]
+          repo = os.environ["REPO_NAME"]
+          banner_url = os.environ.get("BANNER_URL", "").strip()）"
+
+          # 根據標題或內文關鍵字自動切換顏色
+          check_text = (title + " " + body[:200]).upper()
+          if "REFACTOR" in check_text:
+              embed_color = 0xC77DFF  # 紫色
+          elif any(k in check_text for k in ["HOTFIX", "PATCH", "BUG"]):
+              embed_color = 0xFF4D79  # 紅色
+          elif any(k in check_text for k in ["FEATURE", "MAJOR", "NEW"]):
+              embed_color = 0xf5d547  # 綠色
+          else:
+              embed_color = 0x44D4BE  # 預設藍色
+
+          embed = {
+              "author": {
+                  "name": os.environ["AUTHOR_NAME"],
+                  "icon_url": os.environ["AUTHOR_AVATAR"]
+              },
+              "title": f"{title}",
+              "url": os.environ["RELEASE_URL"],
+              "description": body,
+              "color": embed_color,
+              "footer": {
+                  "text": f"Version {tag} • click to GitHub"
+              },
+              "timestamp": datetime.now(timezone.utc).isoformat()
+          }
+
+          # 若有設定 Banner 網址，則加入大圖預覽
+          # if banner_url:
+          #    embed["image"] = {"url": banner_url}
+
+          payload = {
+              "content": f"**{repo}** new release: {title} ({tag})",
+              "embeds": [embed]
+          }
+
+          req = urllib.request.Request(
+              os.environ["DISCORD_WEBHOOK"],
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+          )
+          urllib.request.urlopen(req)
+          '

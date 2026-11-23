@@ -21,3 +21,4 @@ desktop.ini
 /tools/.cache/webp_manifest.json
 /tools/.cache/webp_manifest.json.lock
 /tools/.cache/site_build.lock
+.github_sync.json
