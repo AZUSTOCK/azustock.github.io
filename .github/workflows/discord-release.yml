@@ -12,42 +12,85 @@ jobs:
       - name: Send rich Discord embed
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           RELEASE_TITLE: ${{ github.event.release.name }}
+          RELEASE_BODY: ${{ github.event.release.body }}
           RELEASE_URL: ${{ github.event.release.html_url }}
           AUTHOR_NAME: ${{ github.event.release.author.login }}
           AUTHOR_AVATAR: ${{ github.event.release.author.avatar_url }}
           REPO_NAME: ${{ github.repository }}
-          # 👇 請將下方網址換成你的網站預覽圖（支援 PNG / JPG / WebP）
-          BANNER_URL: "https://github.com/AZUSTOCK/azustock.github.io/blob/main/assets/og.png"
+          # 👇 請填入圖片直連網址（支援 PNG / JPG / WebP）；若要顯示大圖請取消下方 embed["image"] 的註解
+          BANNER_URL: "https://azustock.github.io/assets/og.png"
         run: |
-          python3 -c '
-          import os, json, urllib.request
+          python3 - <<'PY'
+          import os
+          import json
+          import urllib.request
+          import urllib.error
           from datetime import datetime, timezone
 
-          title = os.environ["RELEASE_TITLE"] or os.environ["RELEASE_TAG"]
-          tag = os.environ["RELEASE_TAG"]
-          repo = os.environ["REPO_NAME"]
-          banner_url = os.environ.get("BANNER_URL", "").strip()）"
+          webhook_url = os.environ.get("DISCORD_WEBHOOK", "").strip()
+          if not webhook_url:
+              raise SystemExit("錯誤：未設定 DISCORD_WEBHOOK Secret。")
 
-          # 根據標題或內文關鍵字自動切換顏色
+          repo = os.environ.get("REPO_NAME", "").strip()
+          tag = os.environ.get("RELEASE_TAG", "").strip()
+          title = os.environ.get("RELEASE_TITLE", "").strip()
+          body = os.environ.get("RELEASE_BODY", "").strip()
+          release_url = os.environ.get("RELEASE_URL", "").strip()
+          author_name = os.environ.get("AUTHOR_NAME", "").strip()
+          author_avatar = os.environ.get("AUTHOR_AVATAR", "").strip()
+
+          # 手動觸發 (workflow_dispatch) 時，自動抓最新一筆 Release 來測試輸出樣式
+          if os.environ.get("EVENT_NAME") == "workflow_dispatch" and not tag:
+              api_req = urllib.request.Request(
+                  f"https://api.github.com/repos/{repo}/releases/latest",
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {os.environ.get('GITHUB_TOKEN', '')}",
+                      "User-Agent": "GitHub-Actions-Discord-Notify",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(api_req, timeout=15) as resp:
+                      latest = json.loads(resp.read().decode("utf-8"))
+                  tag = (latest.get("tag_name") or "").strip()
+                  title = (latest.get("name") or tag).strip()
+                  body = (latest.get("body") or "").strip()
+                  release_url = (latest.get("html_url") or "").strip()
+                  author = latest.get("author") or {}
+                  author_name = (author.get("login") or "").strip()
+                  author_avatar = (author.get("avatar_url") or "").strip()
+              except urllib.error.HTTPError as e:
+                  if e.code == 404:
+                      raise SystemExit("目前儲存庫還沒有已發佈的 Release，請先建立一筆 Release 再手動測試。")
+                  raise
+
+          title = title or tag
+          if len(body) > 4000:
+              body = body[:3997] + "..."
+          banner_url = os.environ.get("BANNER_URL", "").strip()
+
+          # 根據標題或內文前 200 字關鍵字自動切換顏色
           check_text = (title + " " + body[:200]).upper()
           if "REFACTOR" in check_text:
               embed_color = 0xC77DFF  # 紫色
           elif any(k in check_text for k in ["HOTFIX", "PATCH", "BUG"]):
               embed_color = 0xFF4D79  # 紅色
           elif any(k in check_text for k in ["FEATURE", "MAJOR", "NEW"]):
-              embed_color = 0xf5d547  # 綠色
+              embed_color = 0xF5D547  # 黃色
           else:
-              embed_color = 0x44D4BE  # 預設藍色
+              embed_color = 0x44D4BE  # 預設藍綠色
 
           embed = {
               "author": {
-                  "name": os.environ["AUTHOR_NAME"],
-                  "icon_url": os.environ["AUTHOR_AVATAR"]
+                  "name": author_name,
+                  "icon_url": author_avatar
               },
-              "title": f"{title}",
-              "url": os.environ["RELEASE_URL"],
+              "title": title,
+              "url": release_url,
               "description": body,
               "color": embed_color,
               "footer": {
@@ -56,9 +99,9 @@ jobs:
               "timestamp": datetime.now(timezone.utc).isoformat()
           }
 
-          # 若有設定 Banner 網址，則加入大圖預覽
+          # 若有設定 Banner 網址，取消下方兩行註解即可加入大圖預覽
           # if banner_url:
-          #    embed["image"] = {"url": banner_url}
+          #     embed["image"] = {"url": banner_url}
 
           payload = {
               "content": f"**{repo}** new release: {title} ({tag})",
@@ -66,9 +109,10 @@ jobs:
           }
 
           req = urllib.request.Request(
-              os.environ["DISCORD_WEBHOOK"],
+              webhook_url,
               data=json.dumps(payload).encode("utf-8"),
               headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
           )
-          urllib.request.urlopen(req)
-          '
+          with urllib.request.urlopen(req, timeout=15) as resp:
+              print(f"Discord notification sent (HTTP {resp.status}).")
+          PY
