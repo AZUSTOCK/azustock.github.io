@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.2.2",          // 目前系統版本號
+    VERSION: "U1.6.2.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -20,6 +20,17 @@ const CONFIG = {
     FAVICON_DARK: "https://azustock.github.io/assets/OG_light.png",
     DATA_SOURCE: "./all_projects.json",
     
+    // 🔗 Header 社群與分享圖示連結（修改網址或順序即可更新）
+    SOCIAL_LINKS: [
+        { name: "GitHub",   url: "https://github.com/AZUSTOCK",          icon: "socialGithub" },
+        { name: "YouTube",  url: "https://youtube.com/@azustock", icon: "socialYoutube" },
+        { name: "piapro",   url: "https://piapro.jp/azustock",        icon: "socialPiapro" },
+        { name: "pixiv",    url: "https://www.pixiv.net/users/131123043",   icon: "socialPixiv" },
+        { name: "Twitter",  url: "https://x.com/azustock_phy",            icon: "socialX" },
+        { name: "Discord",  url: "",                                     icon: "socialDiscord" },
+        { name: "分享本站", copyUrl: "https://azustock.github.io/",       icon: "socialShare" }
+    ],
+
     // 🐛 測試與除錯設定
     DEBUG_FETCH_DELAY: 0  // [測試專用] 強制延遲網路請求 (毫秒)。設定 0 即關閉延遲，正式發布請設為 0！
 };
@@ -115,7 +126,17 @@ const GLOBAL_SVGS = {
     retry: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -4px; margin-right: 6px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>`,
     spinner: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: lightbox-spin 0.8s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>`,
     warning: `<svg id="sensitive-warning-svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1.5rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`,
-    detailsArrow: `<svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>`
+    detailsArrow: `<svg class="details-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0;"><polyline points="9 18 15 12 9 6"></polyline></svg>`,
+
+    // 🌐 Header 社群與分享純圖示 SVG (單色 currentColor，深淺色自動同步)
+    socialGithub: `<svg viewBox="2 1.75 20 20" fill="currentColor" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>`,
+    socialYoutube: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`,
+    socialPixiv: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.935 0A4.924 4.924 0 0 0 0 4.935v14.13A4.924 4.924 0 0 0 4.935 24h14.13A4.924 4.924 0 0 0 24 19.065V4.935A4.924 4.924 0 0 0 19.065 0H4.935zm7.81 4.547c2.181 0 4.058.676 5.399 1.847a6.118 6.118 0 0 1 2.116 4.66c.005 1.854-.88 3.476-2.257 4.563-1.375 1.092-3.225 1.697-5.258 1.697-1.314 0-2.548-.288-3.605-.792v2.49c0 .317.163.563.566.563h.648v.878H6.139v-.878h.661c.418 0 .566-.246.566-.563V8.248c-.433.362-.833.763-1.158 1.186-.05.066-.135.106-.225.106H4.74V8.532c1.198-1.373 2.704-2.55 4.496-3.277 1.123-.458 2.3-.708 3.509-.708zm-.262 1.845c-1.14 0-2.29.392-3.343 1.073v7.484c.96.517 2.088.818 3.31.818 1.484 0 2.755-.474 3.652-1.268.894-.79 1.416-1.91 1.416-3.219 0-1.364-.522-2.567-1.423-3.443-.9-.876-2.155-1.445-3.612-1.445z"/></svg>`,
+    socialX: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
+    socialTwitter: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23.953 4.57a10 10 0 0 1-2.825.775 4.958 4.958 0 0 0 2.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 0 0-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 0 0-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 0 1-2.228-.616v.06a4.923 4.923 0 0 0 3.946 4.827 4.996 4.996 0 0 1-2.212.085 4.936 4.936 0 0 0 4.604 3.417 9.867 9.867 0 0 1-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 0 0 7.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0 0 24 4.59z"/></svg>`,
+    socialPiapro: `<svg role="img" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.988 0c-4.705 0 -8.7 3.492 -9.351 8.168 -0.06 0.207 -0.09 0.444 -0.09 0.68V24l5.21 -3.403V9.44c0 -2.338 1.893 -4.261 4.231 -4.261s4.261 1.894 4.261 4.232c0 2.337 -1.894 4.261 -4.231 4.261 -0.77 0 -1.54 -0.207 -2.22 -0.621v5.563A9.45 9.45 0 0 0 21.191 11.6C22.405 6.51 19.268 1.45 14.207 0.266A9.48 9.48 0 0 0 11.988 0Z"></path></svg>`,
+    socialDiscord: `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>`,
+    socialShare: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 10H7a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-2"></path><polyline points="8.5 6.5 12 3 15.5 6.5"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>`
 };
 
 // ==========================================
@@ -762,6 +783,7 @@ window.addEventListener('resize', () => {
     _cardMetaResizeFrame = window.requestAnimationFrame(() => {
         _cardMetaResizeFrame = null;
         window.syncCardMetaLayout();
+        if (window.syncSocialIconsLayout) window.syncSocialIconsLayout();
     });
 });
 
@@ -1024,6 +1046,9 @@ window.applyTextScale = function() {
         }
         if (window.syncCardMetaLayout) {
             window.syncCardMetaLayout();
+        }
+        if (window.syncSocialIconsLayout) {
+            window.syncSocialIconsLayout();
         }
     };
 
@@ -5108,7 +5133,75 @@ async function checkSystemVersionAndBoot() {
     loadProjects();
 }
 
+// ==========================================
+// ✨ Header 社群與分享圖示列渲染引擎 (純 SVG 圖示)
+// ==========================================
+window.renderSocialLinks = function() {
+    const container = document.getElementById('header-social-icons');
+    if (!container || !Array.isArray(CONFIG.SOCIAL_LINKS)) return;
+
+    if (CONFIG.SOCIAL_LINKS.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = '';
+    container.innerHTML = CONFIG.SOCIAL_LINKS.map((item, idx) => {
+        const iconSvg = GLOBAL_SVGS[item.icon] || GLOBAL_SVGS.linkLg;
+        const safeName = window.escapeHtml(item.name || '');
+        if (item.copyUrl) {
+            return `<button type="button" class="header-social-link icon-only-copy" data-social-copy-idx="${idx}" aria-label="${safeName}">${iconSvg}</button>`;
+        }
+        const rawUrl = typeof item.url === 'string' ? item.url.trim() : '';
+        if (!rawUrl) {
+            return `<span class="header-social-link is-disabled" aria-label="${safeName}" aria-disabled="true">${iconSvg}</span>`;
+        }
+        const safeUrl = window.escapeHtml(rawUrl);
+        return `<a class="header-social-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer" aria-label="${safeName}">${iconSvg}</a>`;
+    }).join('');
+
+    container.querySelectorAll('button[data-social-copy-idx]').forEach(btn => {
+        const item = CONFIG.SOCIAL_LINKS[Number(btn.dataset.socialCopyIdx)];
+        if (!item || !item.copyUrl) return;
+        btn.addEventListener('click', () => window.handleCopy(btn, item.copyUrl));
+    });
+
+    window.requestAnimationFrame(() => window.syncSocialIconsLayout());
+};
+
+// ==========================================
+// ✨ Header 社群圖示平衡換行計算 (避免單顆落單，例如 7 顆自動折為 4+3)
+// ==========================================
+window.syncSocialIconsLayout = function() {
+    const container = document.getElementById('header-social-icons');
+    if (!container) return;
+
+    const items = Array.from(container.children);
+    const total = items.length;
+    if (total <= 1) {
+        container.style.maxWidth = '';
+        return;
+    }
+
+    container.style.maxWidth = '';
+    const availableWidth = container.clientWidth;
+    if (availableWidth <= 0) return;
+
+    const styles = window.getComputedStyle(container);
+    const gap = parseFloat(styles.columnGap || styles.gap) || 16;
+    const itemWidth = items[0].getBoundingClientRect().width || 36;
+    const maxPerRow = Math.max(1, Math.floor((availableWidth + gap + 0.5) / (itemWidth + gap)));
+
+    if (maxPerRow >= total) return;
+
+    const rows = Math.ceil(total / maxPerRow);
+    const balancedCols = Math.ceil(total / rows);
+    const targetMaxWidth = Math.ceil(balancedCols * itemWidth + (balancedCols - 1) * gap) + 1;
+    container.style.maxWidth = `${targetMaxWidth}px`;
+};
+
 window.addEventListener('DOMContentLoaded', () => {
+    window.renderSocialLinks();
     checkSystemVersionAndBoot();
     window.getMermaidStyles(); // ✨ 在背景無感預先載入 Mermaid 樣式
     

@@ -3,6 +3,7 @@
 
 ## add
 1. GitHub metadata sync
+2. header-social-icons
 
 ## change / update
 1. `default_sort` in `categories`

@@ -300,7 +300,64 @@ header h1 {
     display: inline-block; /* 🔑 關鍵魔法：讓元素的寬度緊貼著文字，不再佔滿整行 */
 }
 header p { color: var(--muted); max-width: 720px; margin: 0.5rem auto 0; font-size: 1.05rem; }
-header .cta { margin-top: 1.75rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+.header-social-icons {
+    margin: 1.5rem auto 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.header-social-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    flex-shrink: 0;
+    color: var(--text);
+    opacity: 0.8;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.25s ease, opacity 0.25s ease;
+}
+.header-social-link svg {
+    width: 24px;
+    height: 24px;
+    display: block;
+}
+.header-social-link:hover,
+.header-social-link.copied {
+    opacity: 1;
+    color: var(--accent-2);
+}
+.header-social-link.icon-only-copy {
+    color: var(--accent);
+    opacity: 1;
+    background: var(--tag-bg);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    border-radius: 50%;
+    transition: color 0.25s ease, background-color 0.25s ease, border-color 0.25s ease;
+}
+.header-social-link.icon-only-copy svg {
+    width: 20px;
+    height: 20px;
+}
+.header-social-link.icon-only-copy:hover,
+.header-social-link.icon-only-copy.copied {
+    color: var(--accent-2);
+    background: color-mix(in srgb, var(--accent-2) 15%, transparent);
+    border-color: color-mix(in srgb, var(--accent-2) 50%, transparent);
+}
+.header-social-link.is-disabled,
+.header-social-link.is-disabled:hover {
+    color: var(--muted);
+    opacity: 0.6;
+    cursor: default;
+}
 main { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 4.5rem; }
 section { margin-top: 3.5rem; }
 
@@ -1071,7 +1128,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 /* 狀態徽章與特殊標籤特效 */
 @keyframes badge-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .status-badge, .tag.status-tag { display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; vertical-align: middle; cursor: default; transition: transform 0.4s ease, box-shadow 0.4s ease; background-image: linear-gradient(110deg, var(--s-color) 35%, rgba(255,255,255,0.4) 50%, var(--s-color) 65%) !important; background-color: var(--s-color) !important; background-size: 200% 100% !important; color: #fff !important; box-shadow: 0 0 8px var(--s-shadow); border: none !important; animation: badge-sweep 2.5s infinite linear; }
-.title-badge { margin-left: 8px; }
+.title-badge { margin-left: 8px; text-shadow: none !important; }
 .tag.status-tag { cursor: pointer; padding: 0.3rem 0.65rem; line-height: 1.4; border-radius: 999px; font-size: 0.72rem; margin-right: 0.3rem; margin-top: 0.3rem; transform: translateY(0) translateZ(0); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 .tag.status-tag:hover, .tag.status-tag.active-tag { transform: translateY(-2px) translateZ(0); box-shadow: 0 4px 15px var(--accent-2); background-image: linear-gradient(110deg, var(--accent-2) 35%, rgba(255,255,255,0.5) 50%, var(--accent-2) 65%) !important; background-color: var(--accent-2) !important; color: var(--card) !important; }
 .clickable-ticker-tag[data-status] .ticker-name { display: inline-block; padding: 2px 8px; border-radius: 4px; color: #fff !important; font-weight: 800; letter-spacing: 0.05em; transition: all 0.3s var(--ease-smooth); background-color: var(--s-color); box-shadow: 0 0 6px var(--s-shadow); will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }
@@ -1678,7 +1735,7 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
 #article-list-container { opacity: 1; transition: opacity 0.2s ease-in-out; will-change: opacity; }
 
 .article-list-ul { list-style: none !important; padding-left: 0 !important; }
-.article-li a.article-link { display: flex !important; align-items: center; gap: 1rem; text-decoration: none !important; padding: 0.5rem; border-radius: 0.8rem; border-left: 4px solid transparent !important; transition: transform 0.35s var(--ease-spring), background-color 0.25s ease, border-left-color 0.25s ease, box-shadow 0.25s ease !important; }
+.article-li a.article-link { display: flex !important; align-items: center; gap: 1rem; text-decoration: none !important; padding: 0.5rem; border-radius: 0.8rem; border-left: 4px solid transparent !important; transform: translate3d(0, 0, 0); transition: transform 0.28s var(--ease-smooth), background-color 0.25s ease, border-left-color 0.25s ease, box-shadow 0.25s ease !important; }
 .article-item-icon-wrap { position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
 img.article-item-cover { position: relative; z-index: 2; width: 44px !important; height: 44px !important; min-width: 44px !important; min-height: 44px !important; max-width: 44px !important; max-height: 44px !important; aspect-ratio: 1/1 !important; object-fit: cover; border-radius: 8px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 1px solid var(--card-border); box-sizing: border-box; display: block !important; }
 .article-item-fallback { position: relative; z-index: 2; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--card-border); box-sizing: border-box; }
@@ -1714,14 +1771,15 @@ span.article-item-date {
 .article-li a { 
     display: block; 
     border-left: 4px solid transparent !important; 
-    transition: transform 0.35s var(--ease-spring), background-color 0.25s ease, border-left-color 0.25s ease, box-shadow 0.25s ease !important; 
+    transform: translate3d(0, 0, 0);
+    transition: transform 0.28s var(--ease-smooth), background-color 0.25s ease, border-left-color 0.25s ease, box-shadow 0.25s ease !important; 
 }
 
-/* ✨ 由父層 li 承接 Hover，避免 a 右移 8~10px 時滑鼠脫離左邊界造成來回抖動 */
-.article-li:hover > a, .article-li.simulate-hover a {
+/* ✨ 由父層 li 承接 Hover（排除 is-highlight 避免離開左側橋接區時與 li 位移衝突抖動） */
+.article-li:not(.is-highlight):hover > a, .article-li:not(.is-highlight).simulate-hover > a {
     background: var(--tag-bg) !important; 
     border-left: 4px solid var(--accent) !important; 
-    transform: translateX(10px); 
+    transform: translate3d(8px, 0, 0); 
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
@@ -1732,20 +1790,20 @@ span.article-item-date {
     text-shadow: 0 0 8px var(--glow-1); /* 保留原本微弱的發光感，更有層次 */
 }
 
-.article-li.is-normal:hover > a, .article-li.is-normal.simulate-hover a {
+.article-li.is-normal:hover > a, .article-li.is-normal.simulate-hover > a {
     background: var(--tag-bg) !important; 
     border-left: 4px solid var(--accent) !important; 
-    transform: translateX(8px); 
+    transform: translate3d(8px, 0, 0); 
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
 
-.article-li.is-highlight { position: relative; padding: 0; margin-bottom: 0.8rem; border-bottom: none; background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 12%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 2%, transparent) 100%); border-left: 6px solid var(--tab-color, var(--accent)); border-radius: 4px 12px 12px 4px; transition: background 0.2s ease, transform 0.3s var(--ease-smooth); }
+.article-li.is-highlight { position: relative; padding: 0; margin-bottom: 0.8rem; border-bottom: none; background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 12%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 2%, transparent) 100%); border-left: 6px solid var(--tab-color, var(--accent)); border-radius: 4px 12px 12px 4px; transform: translate3d(0, 0, 0); transition: background 0.2s ease, transform 0.28s var(--ease-smooth); }
 /* ✨ 左側透明感應橋接區，防止 is-highlight 右移時在左邊界鬼畜抖動 */
 .article-li.is-highlight::before { content: ''; position: absolute; top: 0; bottom: 0; left: -12px; width: 12px; }
-.article-li.is-highlight:hover, .article-li.is-highlight.simulate-hover { transform: translateX(8px); background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 18%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 5%, transparent) 100%); }
+.article-li.is-highlight:hover, .article-li.is-highlight.simulate-hover { transform: translate3d(8px, 0, 0); background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 18%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 5%, transparent) 100%); }
 .article-li.is-highlight a { padding: 0.6rem 1rem !important; border-radius: 0 0.6rem 0.6rem 0 !important; }
-#modal-body .article-li.is-highlight a:hover, #modal-body .article-li.is-highlight.simulate-hover a { background-color: color-mix(in srgb, var(--tab-color, var(--accent)) 15%, transparent) !important; border-left-color: transparent !important; transform: none !important; }
-#modal-body .article-li.is-highlight a:hover span:not(.status-badge), #modal-body .article-li.is-highlight.simulate-hover a span:not(.status-badge) { color: var(--c1-text) !important; }
+#modal-body .article-li.is-highlight:hover > a, #modal-body .article-li.is-highlight.simulate-hover > a { background-color: color-mix(in srgb, var(--tab-color, var(--accent)) 15%, transparent) !important; border-left-color: transparent !important; transform: translate3d(0, 0, 0) !important; }
+#modal-body .article-li.is-highlight:hover > a span:not(.status-badge), #modal-body .article-li.is-highlight.simulate-hover > a span:not(.status-badge) { color: var(--c1-text) !important; }
 
 /* 排序按鈕動畫 */
 .sort-icon .sort-arr-left, .sort-icon .sort-arr-right { stroke-dasharray: 24 24; transition: stroke-dasharray 0.4s var(--ease-smooth); }
@@ -3929,7 +3987,7 @@ body {
 /* 卡片內容 */
 .card-meta-text { font-size: 0.95rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem; }
 .card-meta-text::before { content: '- '; }
-.card-text h3.is-meta-wrapped .card-meta-text { display: block; margin-left: 0; margin-top: 0.25rem; }
+.card-text h3.is-meta-wrapped .card-meta-text { display: block; margin-left: 0; margin-top: 0.5rem; }
 .card-text h3.is-meta-wrapped .card-meta-text::before { content: none; }
 .card-desc-text { color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; margin-bottom: 1rem; }
 .card-thumb-img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg); }
@@ -4938,11 +4996,12 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
     opacity: 1;
 }
 
-/* Hover 推薦卡片時，上方圖示散發友善的主題光暈 */
-.sensitive-modal-content:has(#sensitive-jump-unread-btn:hover) #sensitive-warning-icon-wrapper svg {
-    stroke: var(--current-warning-color, var(--accent)) !important;
-    filter: drop-shadow(0 0 18px var(--current-warning-color, var(--accent))) !important;
-    transform: scale(1.06);
+/* Hover 推薦卡片時，上方警告圖示轉為柔和黯淡 (mute) */
+.sensitive-modal-content.has-jump-card:has(.sensitive-jump-card:hover) #sensitive-warning-svg {
+    stroke: var(--muted) !important;
+    filter: none !important;
+    transform: scale(0.9);
+    opacity: 0.5;
 }
 
 /* 有推薦前篇時，讓「不感興趣」更低調、「我已了解並前往」降級為次要外框（Hover 仍轉紅光警告） */
