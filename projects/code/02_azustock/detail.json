@@ -1,0 +1,13 @@
+{
+  "order": 2,
+  "title": "azustock",
+  "category": "code",
+  "meta": "Stock Market Simulation Platform",
+  "description": "股票資訊與交易模擬系統",
+  "tags": ["Python", "Finance"],
+  "link": "",
+  "cover": "logo.webp",
+  "archived": true,
+  "version": "0.0.1",
+  "date": "2025-12-18"
+}

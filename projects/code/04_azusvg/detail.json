@@ -1,0 +1,13 @@
+{
+  "title": "azusvg",
+  "category": "code",
+  "meta": "SVG drawing & filmmaking tool",
+  "description": "基於 SVG 的繪圖與動畫創作工具",
+  "tags": ["Website", "SVG", "Draw", "wip"],
+  "link": "https://github.com/Kazekawa-azusa/azusvg",
+  "github": {
+    "repo": "Kazekawa-azusa/azusvg",
+    "sync": ["version", "date"],
+    "date_source": "release"
+  }
+}

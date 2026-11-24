@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>圖片與版權檢視</title>
+<style>
+:root{color-scheme:light;--bg:#f3f3ed;--paper:#fffefa;--ink:#252f2b;--muted:#717b74;--line:#e1e5dc;--green:#28684e;--soft:#e9f0e6;--radius:14px}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 system-ui,-apple-system,"Segoe UI","Microsoft JhengHei",sans-serif}button,input,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.4;cursor:default}button,input,select{border:1px solid var(--line);border-radius:9px}button{background:var(--paper);color:var(--ink);padding:9px 13px}button:hover:not(:disabled){border-color:#90aa95;background:#f2f6ee}input,select{padding:10px 12px;background:var(--paper);color:var(--ink);min-width:0}input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #96bda0;outline-offset:2px}.primary{background:var(--green);color:white;border-color:var(--green)}.primary:hover:not(:disabled){background:#1e553e;color:white}.top{padding:24px 32px 22px;border-bottom:1px solid var(--line);background:var(--paper)}.top-line{display:flex;justify-content:space-between;gap:16px;align-items:center}.brand{display:flex;gap:12px;align-items:center}.brand-mark{width:40px;height:40px;display:grid;place-items:center;background:var(--ink);color:#ecf1d7;border-radius:11px;font-size:23px}.eyebrow{font-size:10px;letter-spacing:2.3px;color:var(--green);font-weight:750}.brand h1{font-size:20px;letter-spacing:.5px;margin:1px 0 0}.top-actions{display:flex;gap:10px;align-items:center}.local{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}.local:before{content:"";width:6px;height:6px;border-radius:50%;background:#70a46a}.searchbar{display:flex;gap:10px;margin-top:24px}.searchbar input{flex:1;background:#f7f8f2;padding:13px 15px;font-size:15px}.searchbar button{padding-inline:24px}.workspace{display:grid;grid-template-columns:218px minmax(0,1fr) 345px;min-height:calc(100vh - 175px)}.filters{padding:26px 20px 24px 28px;border-right:1px solid var(--line)}.filters h2{font-size:11px;font-weight:750;letter-spacing:1.5px;margin:0 0 22px;color:var(--muted)}.field{display:flex;flex-direction:column;gap:7px;margin-bottom:19px}.field label{font-size:12px;font-weight:650}.field input,.field select{width:100%;font-size:13px}.hint{font-size:11px;line-height:1.7;color:var(--muted)}.filters .hint{margin-top:23px}.root{font:11px/1.6 ui-monospace,monospace;color:var(--muted);overflow-wrap:anywhere;margin-top:8px}.root-box{border-top:1px solid var(--line);margin-top:26px;padding-top:18px}.gallery{padding:25px 26px;min-width:0}.results-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:19px}.results-bar h2{font-size:15px;margin:0}.count{font-size:12px;color:var(--muted);margin-top:3px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:14px}.card{text-align:left;padding:0;overflow:hidden;border-radius:12px;background:var(--paper);box-shadow:0 2px 3px #25352a03;position:relative;transition:border-color .15s,transform .15s}.card:hover:not(:disabled){transform:translateY(-2px);background:var(--paper)}.card.selected{border:2px solid var(--green);box-shadow:0 0 0 3px #28684e0c}.thumb{height:143px;background-color:#e9ece6;background-image:linear-gradient(45deg,#dce3d9 25%,transparent 25%),linear-gradient(-45deg,#dce3d9 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#dce3d9 75%),linear-gradient(-45deg,transparent 75%,#dce3d9 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0;display:flex;align-items:center;justify-content:center;overflow:hidden}.thumb img{width:100%;height:100%;object-fit:contain;padding:10px}.thumb .unavailable{display:none;color:var(--muted);font-size:12px}.card-info{padding:12px}.filename{font-size:13px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-path{font-size:10px;color:var(--muted);margin-top:4px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}.file-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:11px;font-size:10px;color:var(--muted)}.pill{font-size:9px;font-weight:750;letter-spacing:.6px;background:var(--soft);padding:2px 6px;border-radius:4px;color:var(--green)}.inspector{padding:26px 23px;background:var(--paper);border-left:1px solid var(--line);min-width:0}.inspector-label{font-size:11px;letter-spacing:1px;color:var(--muted);font-weight:700}.detail-name{font-size:18px;line-height:1.4;margin:13px 0 15px;overflow-wrap:anywhere}.preview{height:208px;border:1px solid var(--line);border-radius:var(--radius);background:#f0f3eb;position:relative;display:flex;justify-content:center;align-items:center;overflow:hidden}.preview img{width:100%;height:100%;object-fit:contain;padding:12px}.preview button{position:absolute;bottom:8px;right:8px;padding:4px 9px;background:#fffefae8;font-size:11px}.meta-strip{font-size:11px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;margin:12px 0 22px}.rights{border:1px solid #d9e4d5;border-radius:var(--radius);background:#f1f6ec;padding:17px;margin-bottom:22px}.rights h3{font-size:12px;margin:0 0 17px;color:var(--green);display:flex;justify-content:space-between;align-items:center}.rights h4{font-size:11px;color:var(--muted);margin:13px 0 4px;font-weight:500}.rights p{margin:0;overflow-wrap:anywhere;white-space:pre-wrap;font-size:14px}.rights small{display:block;font-size:9px;color:var(--muted);margin-top:4px}.status-pill{font-size:9px;font-weight:500;color:var(--muted);background:#e4ecdd;border-radius:4px;padding:3px 6px}.detail-path{font:11px/1.7 ui-monospace,monospace;overflow-wrap:anywhere;background:#f7f8f3;border:1px solid var(--line);padding:11px;border-radius:8px;user-select:text}.path-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font-size:11px;color:var(--muted)}.path-heading button{padding:2px 8px;font-size:10px}details{margin-top:20px;border-top:1px solid var(--line);padding-top:15px}summary{cursor:pointer;font-size:12px;color:var(--muted)}table{border-collapse:collapse;width:100%;font-size:10px;margin-top:10px;table-layout:fixed}td{border-bottom:1px solid var(--line);padding:8px 3px;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}td:first-child{width:40%;color:var(--muted)}.empty{padding:70px 15px;text-align:center;color:var(--muted)}.empty-symbol{font-size:28px;opacity:.5}.empty h3{font-size:16px;color:var(--ink);font-weight:500}.empty p{font-size:12px}.empty-detail{color:var(--muted);font-size:12px;text-align:center;padding:90px 12px}.alert{margin:16px 26px 0;padding:12px 16px;border:1px solid #e5cdb5;border-radius:10px;background:#fff5e8;color:#805535;font-size:12px;white-space:pre-wrap}.notice{font-size:12px;white-space:pre-wrap;color:#97683b;margin:12px 0}.pagination{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:24px;font-size:12px;color:var(--muted)}.pagination>div{display:flex;gap:7px}.direct{margin-top:30px;padding-top:21px;border-top:1px solid var(--line)}.direct h3{font-size:12px;margin:0 0 8px}.direct input{width:100%;font-size:11px}.direct button{margin-top:8px;width:100%;font-size:12px}.footer{font-size:10px;color:var(--muted);margin-top:25px}.modal{padding:0;border:1px solid var(--line);border-radius:18px;background:var(--paper);max-width:94vw;max-height:94vh;width:1100px}.modal::backdrop{background:#18251fe6}.modal-head{padding:13px 18px;display:flex;justify-content:space-between;gap:15px;align-items:center}.modal-head strong{overflow-wrap:anywhere}.modal img{display:block;width:100%;height:76vh;object-fit:contain;background:#e9ece4;padding:18px}.spinner{display:inline-block;width:12px;height:12px;border:2px solid #bccbb8;border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}@keyframes spin{to{transform:rotate(360deg)}}[hidden]{display:none!important}@media(min-width:1550px){.workspace{grid-template-columns:235px minmax(0,1fr) 390px}.thumb{height:175px}.preview{height:240px}}@media(max-width:1100px){.workspace{grid-template-columns:190px minmax(0,1fr) 300px}.gallery{padding:22px 18px}.filters{padding:24px 16px}.grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}.inspector{padding:24px 18px}.top{padding-inline:22px}.thumb{height:125px}}@media(max-width:850px){.workspace{grid-template-columns:180px minmax(0,1fr)}.inspector{grid-column:1/-1;border-top:1px solid var(--line);border-left:none}.detail-body{display:grid;grid-template-columns:minmax(180px,1fr) 1fr;gap:20px}.preview{height:260px}.local{display:none}.empty-detail{padding:30px}}@media(max-width:540px){.top{padding:18px 15px}.brand h1{font-size:18px}.top-actions button{padding:8px;font-size:11px}.workspace{display:block}.filters{border-right:none;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:0 12px;padding:18px}.filters h2,.filters .hint,.root-box,.direct{grid-column:1/-1}.filters h2{margin-bottom:13px}.field{margin-bottom:13px}.filters>.hint{margin:3px 0}.root-box{margin-top:12px;padding-top:10px}.direct{margin-top:16px;padding-top:14px}.searchbar button{padding-inline:15px}.gallery{padding:22px 16px}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.thumb{height:140px}.detail-body{display:block}.modal img{height:65vh}}
+
+.folder-scope{margin:0 0 21px}.folder-scope>button{width:100%;text-align:left;color:var(--green);font-weight:650}.folder-scope-path{font-size:10px;color:var(--muted);overflow-wrap:anywhere;margin:7px 0}.folder-scope-path button{font-size:10px;padding:2px 6px;margin-top:5px}.folder-dialog{width:760px;max-width:94vw;max-height:88vh;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--paper);color:var(--ink)}.folder-dialog::backdrop{background:#18251fa6}.folder-dialog .modal-head{border-bottom:1px solid var(--line)}.folder-body{padding:18px 20px}.folder-search{display:flex;gap:9px;margin-bottom:12px}.folder-search input{flex:1}.folder-search select{max-width:150px}.folder-breadcrumbs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:12px 0;color:var(--muted);font-size:11px}.folder-breadcrumbs button{border:0;background:var(--soft);font-size:11px;padding:4px 7px}.folder-current{font-size:11px;color:var(--muted);overflow-wrap:anywhere;margin-bottom:12px}.folder-list{max-height:43vh;overflow:auto;border:1px solid var(--line);border-radius:10px}.folder-row{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line);padding:10px 12px}.folder-row:last-child{border:0}.folder-open{flex:1;min-width:0;border:0;background:transparent;padding:3px;text-align:left}.folder-open strong{display:block;font-size:13px;overflow-wrap:anywhere}.folder-open small{display:block;font-size:10px;color:var(--muted);overflow-wrap:anywhere;margin-top:3px}.folder-use{font-size:11px;padding:6px 10px;flex-shrink:0}.folder-empty{color:var(--muted);font-size:12px;text-align:center;padding:28px 12px}.folder-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px}.folder-footer small{color:var(--muted);font-size:10px}.folder-pages{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:12px}.folder-pages button{font-size:10px;padding:5px 9px}.folder-error{color:#97683b;font-size:12px;white-space:pre-wrap;margin:8px 0}.folder-loading{opacity:.6;pointer-events:none}@media(max-width:540px){.folder-scope{grid-column:1/-1;margin-bottom:15px}.folder-body{padding:14px}.folder-search{flex-wrap:wrap}.folder-search input{width:100%;flex-basis:100%}.folder-search select{max-width:none;width:100%}.folder-footer{align-items:flex-start}.folder-footer small{max-width:45%}}
+
+/* 視窗固定分區：gallery、inspector 與篩選欄各自捲動。 */
+html{height:100%;overflow:hidden}
+body{height:100vh;height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.top{flex:0 0 auto}
+.alert{flex:0 0 auto;max-height:20vh;overflow:auto}
+.workspace{position:relative;flex:1 1 0;min-height:0;grid-template-rows:minmax(0,1fr);overflow:hidden}
+.filters,.gallery,.inspector{min-height:0;max-height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:stable}
+.mobile-filter-toggle{display:none}
+@media(max-width:850px){
+ .workspace{grid-template-columns:160px minmax(0,1fr);grid-template-rows:minmax(0,42fr) minmax(0,58fr)}
+ .filters{grid-column:1;grid-row:1/3}
+ .gallery{grid-column:2;grid-row:1}
+ .inspector{grid-column:2;grid-row:2;border-top:1px solid var(--line);border-left:1px solid var(--line);padding:16px 18px}
+ .detail-body{display:block}
+ .detail-name{font-size:16px;margin:9px 0 11px}
+ .preview{height:120px}
+ .meta-strip{margin:8px 0 12px}
+ .rights{padding:13px;margin-bottom:15px}
+ .rights h3{margin-bottom:10px}
+ .rights h4{margin-top:8px}
+ .empty-detail{padding:24px 12px}
+}
+@media(max-width:540px){
+ .workspace{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,40fr) minmax(0,60fr)}
+ .gallery{grid-column:1;grid-row:1;padding:16px}
+ .inspector{grid-column:1;grid-row:2;border-left:none;padding:16px}
+ .filters{display:none;position:absolute;inset:0;z-index:5;max-height:none;background:var(--paper);padding:18px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-content:start;border:0}
+ .workspace.filters-open .filters{display:grid}
+ .mobile-filter-toggle{display:inline-flex}
+ .top-actions{gap:6px}
+ .top-actions button{padding:7px;font-size:11px}
+ .brand h1{font-size:16px}
+ .brand-mark{width:32px;height:32px;font-size:20px}
+ .brand{gap:8px}
+ .top{padding:12px 14px}
+ .searchbar{margin-top:14px}
+ .thumb{height:104px}
+ .grid{gap:10px}
+}
+@media(max-height:620px){
+ .top{padding-top:10px;padding-bottom:10px}
+ .searchbar{margin-top:10px}
+ .preview{height:105px}
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-line"><div class="brand"><div class="brand-mark" aria-hidden="true">▧</div><div><div class="eyebrow">IMAGE / RIGHTS</div><h1>圖片與版權檢視</h1></div></div><div class="top-actions"><span class="local">本機圖片</span><button id="toggle-filters" class="mobile-filter-toggle" type="button" aria-controls="search-filters" aria-expanded="false">篩選</button><button id="refresh" type="button">↻ 重新掃描</button></div></div>
+<form id="search-form" class="searchbar"><input id="query" aria-label="搜尋圖片" placeholder="搜尋檔名、路徑或專案文字…" autocomplete="off"><button class="primary" type="submit">搜尋圖片</button></form></header>
+<div id="alert" class="alert" role="alert" hidden></div>
+<div class="workspace">
+<aside id="search-filters" class="filters" aria-label="搜尋條件"><h2>搜尋範圍</h2>
+<div class="field"><label for="source">圖片來源</label><select id="source"><option value="all">所有圖片</option><option value="projects">projects · 原始圖片</option><option value="api">api · 生成圖片</option><option value="external">指定路徑</option></select></div>
+<div class="folder-scope"><button id="open-folders" type="button">▱ 資料夾路徑選單</button><div class="folder-scope-path"><span id="selected-folder">所有資料夾</span><br><button id="clear-folder" type="button" hidden>解除資料夾限制</button></div></div>
+<div class="field"><label for="category">分類</label><input id="category" placeholder="例：art" autocomplete="off"></div>
+<div class="field"><label for="project">專案</label><input id="project" placeholder="01、1、alpha 或全名" autocomplete="off"></div>
+<div class="field"><label for="article">文章</label><input id="article" placeholder="代號、文字或資料夾全名" autocomplete="off"></div>
+<div class="field"><label for="extension">圖片格式</label><select id="extension"><option value="">所有格式</option><option>PNG</option><option>WEBP</option><option>JPEG</option><option>JPG</option><option>GIF</option><option>SVG</option><option>AVIF</option><option>TIFF</option><option>BMP</option><option>HEIC</option></select></div>
+<button id="clear" type="button">清除條件</button><p class="hint">可省略圖片副檔名。<br>同名圖片會一起列出，點選即可比較。</p>
+<div class="root-box"><span class="hint">目前根目錄</span><div id="root" class="root">讀取中…</div></div>
+<form id="path-form" class="direct"><h3>指定完整路徑</h3><input id="direct-path" aria-label="圖片完整路徑" placeholder="C:\資料夾\圖片.png" autocomplete="off"><button type="submit">開啟路徑</button><p class="hint">也可省略副檔名；包含空白與中文的路徑可直接貼上。</p></form>
+</aside>
+<main id="gallery" class="gallery" tabindex="0" aria-label="搜尋結果"><div class="results-bar"><div><h2 id="result-title">圖片目錄</h2><div class="count" id="count" role="status" aria-live="polite">正在讀取圖片…</div></div><span class="pill" id="total-label">—</span></div>
+<div id="grid" class="grid"></div><div id="empty" class="empty" hidden><div class="empty-symbol" aria-hidden="true">▧</div><h3 id="empty-title">沒有符合的圖片</h3><p id="empty-help">試試其他關鍵字，或清除篩選條件。</p></div>
+<div class="pagination"><span id="page-label">第 1 / 1 頁</span><div><button id="prev" type="button" disabled>上一頁</button><button id="next" type="button" disabled>下一頁</button></div></div><div class="footer">圖片預覽與資訊檢視 · 原檔保持不變</div></main>
+<aside id="inspector" class="inspector" tabindex="0" aria-label="圖片與版權詳情"><div class="inspector-label">圖片詳情</div><div id="detail-empty" class="empty-detail">點選圖片，查看作者與版權資訊。</div>
+<div id="detail" hidden><h2 class="detail-name" id="detail-name"></h2><div class="detail-body"><div><div class="preview"><img id="detail-image" alt=""><button id="enlarge" type="button">放大檢視 ↗</button></div><div id="preview-error" class="notice" hidden>此格式無法預覽，仍可檢視檔案資訊。</div><div class="meta-strip"><span id="dimensions">—</span><span id="detail-format">—</span><span id="detail-size">—</span></div></div><div><section class="rights"><h3>作者與版權 <span class="status-pill" id="rights-status">讀取中</span></h3><h4>作者</h4><p id="author">讀取中…</p><small id="author-source"></small><h4>版權資訊</h4><p id="copyright">讀取中…</p><small id="copyright-source"></small></section><p id="metadata-error" class="notice" hidden></p><div class="path-heading"><span>完整路徑</span><button id="copy-path" type="button">複製</button></div><div id="detail-path" class="detail-path"></div><details><summary>查看原始 metadata</summary><table aria-label="原始 metadata"><tbody id="metadata-rows"></tbody></table><p id="no-metadata" class="hint" hidden>未讀取到 EXIF 或相關文字欄位。</p></details></div></div></div></aside>
+</div>
+<dialog id="folder-dialog" class="folder-dialog" aria-labelledby="folder-title"><div class="modal-head"><strong id="folder-title">選擇圖片資料夾</strong><button id="close-folders" type="button">關閉 ✕</button></div><div class="folder-body">
+<div class="folder-search"><input id="folder-query" aria-label="搜尋資料夾名稱" placeholder="搜尋資料夾名稱、01、alpha 或文字…" autocomplete="off"><select id="folder-source" aria-label="資料夾來源"><option value="all">所有來源</option><option value="projects">projects</option><option value="api">api</option><option value="external">指定路徑</option></select></div>
+<nav id="folder-breadcrumbs" class="folder-breadcrumbs" aria-label="目前資料夾路徑"></nav><div id="folder-current" class="folder-current"></div><div id="folder-message" class="count" role="status" aria-live="polite"></div><p id="folder-error" class="folder-error" role="alert" hidden></p>
+<div id="folder-list" class="folder-list"></div><div class="folder-pages"><button id="folder-prev" type="button" disabled>上一頁</button><span id="folder-page">第 1 / 1 頁</span><button id="folder-next" type="button" disabled>下一頁</button></div>
+<div class="folder-footer"><small>點資料夾名稱進入下一層，或按「選取」搜尋其中的圖片（包含子資料夾）。</small><button id="use-current-folder" class="primary" type="button" disabled>使用目前資料夾</button></div></div></dialog>
+<dialog id="lightbox" class="modal" aria-label="放大圖片"><div class="modal-head"><strong id="lightbox-name"></strong><button id="close-lightbox" type="button">關閉 ✕</button></div><img id="lightbox-image" alt=""></dialog>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const state = {page:1,pages:1,items:[],selected:null,searchController:null,detailController:null,timer:null,searchId:0,folder:null};
+const controls = ['query','source','category','project','article','extension'];
+function showError(message=''){ $('alert').textContent=message; $('alert').hidden=!message; }
+function bytes(n){return n>=1048576?(n/1048576).toFixed(2)+' MiB':(n/1024).toFixed(1)+' KiB';}
+function imageUrl(item,large=false){return '/api/image/'+encodeURIComponent(item.id)+'?v='+item.modified_ns+(large?'&large=1':'');}
+async function request(url,options={}){
+ const response=await fetch(url,options); let data;
+ try{data=await response.json();}catch{throw new Error('介面無法讀取資料，請確認 Python 程式仍在執行。');}
+ if(!response.ok)throw new Error(data.error||'無法完成操作。'); return data;
+}
+function post(url,data){return request(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});}
+function clearDetail(){state.detailController?.abort();state.selected=null;$('detail').hidden=true;$('detail-empty').hidden=false;}
+function setCount(text){$('count').textContent=text;}
+function render(data,direct=false){
+ state.items=data.items;state.page=data.page;state.pages=data.pages;$('gallery').scrollTop=0;
+ $('result-title').textContent=direct?'指定路徑的圖片':'圖片目錄';
+ setCount(data.total+' 張符合'+(direct?'':' · 本頁 '+data.items.length+' 張'));
+ $('page-label').textContent='第 '+data.page+' / '+data.pages+' 頁';$('prev').disabled=data.page<=1;$('next').disabled=data.page>=data.pages;
+ $('empty').hidden=!!data.items.length;$('grid').replaceChildren();
+ if(!data.items.length){clearDetail();return;}
+ for(const item of data.items){
+  const card=document.createElement('button');card.type='button';card.className='card';card.dataset.id=item.id;card.setAttribute('aria-label','檢視 '+item.name);card.setAttribute('aria-pressed','false');
+  const thumb=document.createElement('div');thumb.className='thumb';const img=document.createElement('img');img.src=imageUrl(item);img.alt='';img.loading='lazy';
+  const unavailable=document.createElement('span');unavailable.className='unavailable';unavailable.textContent='無法預覽';
+  img.addEventListener('error',()=>{img.hidden=true;unavailable.style.display='block';});thumb.append(img,unavailable);
+  const info=document.createElement('div');info.className='card-info';const name=document.createElement('div');name.className='filename';name.textContent=item.name;name.title=item.name;
+  const path=document.createElement('div');path.className='file-path';path.textContent=item.relative_path;path.title=item.path;
+  const bottom=document.createElement('div');bottom.className='file-bottom';const format=document.createElement('span');format.className='pill';format.textContent=item.extension;const size=document.createElement('span');size.textContent=bytes(item.size);bottom.append(format,size);info.append(name,path,bottom);card.append(thumb,info);card.addEventListener('click',()=>select(item));$('grid').append(card);
+ }
+ const selected=data.items.find(item=>item.id===state.selected)||data.items[0];select(selected);
+}
+async function select(item){
+ if(state.selected!==item.id)$('inspector').scrollTop=0;
+ state.detailController?.abort();const controller=new AbortController();state.detailController=controller;state.selected=item.id;
+ for(const card of $('grid').children){const chosen=card.dataset.id===item.id;card.classList.toggle('selected',chosen);card.setAttribute('aria-pressed',String(chosen));}
+ $('detail').hidden=false;$('detail-empty').hidden=true;$('detail-name').textContent=item.name;$('detail-path').textContent=item.path;
+ $('copy-path').textContent='複製';$('detail-format').textContent=item.extension;$('detail-size').textContent=bytes(item.size);$('dimensions').textContent='讀取尺寸…';
+ $('author').textContent='讀取中…';$('copyright').textContent='讀取中…';$('author-source').textContent='';$('copyright-source').textContent='';$('rights-status').textContent='讀取中';$('metadata-error').hidden=true;$('preview-error').hidden=true;$('metadata-rows').replaceChildren();$('no-metadata').hidden=true;
+ const preview=$('detail-image');preview.alt=item.name;preview.hidden=false;preview.onerror=()=>{if(state.selected===item.id){preview.hidden=true;$('preview-error').hidden=false;}};preview.src=imageUrl(item,true);
+ $('enlarge').onclick=()=>{$('lightbox-name').textContent=item.name;$('lightbox-image').src=imageUrl(item,true);$('lightbox-image').alt=item.name;$('lightbox').showModal();};
+ try{
+  const data=await request('/api/metadata/'+encodeURIComponent(item.id),{signal:controller.signal});if(state.selected!==item.id)return;
+  $('dimensions').textContent=data.width&&data.height?data.width+' × '+data.height:'尺寸未知';$('detail-format').textContent=data.format||item.extension;
+  $('author').textContent=data.author||'未找到作者資訊';$('copyright').textContent=data.copyright||'未找到版權資訊';$('author-source').textContent=data.author_source;$('copyright-source').textContent=data.copyright_source;$('rights-status').textContent=data.copyright?'含版權資訊':'未含版權欄位';
+  $('metadata-error').textContent=data.error;$('metadata-error').hidden=!data.error;
+  const rows=[...data.exif.map(row=>({name:row.name+' ('+row.tag+')',value:row.value})),...data.text_fields];
+  for(const row of rows){const tr=document.createElement('tr');for(const text of [row.name,row.value]){const td=document.createElement('td');td.textContent=text;tr.append(td);}$('metadata-rows').append(tr);}$('no-metadata').hidden=!!rows.length;
+ }catch(error){if(error.name!=='AbortError'&&state.selected===item.id){$('author').textContent='讀取失敗';$('copyright').textContent='讀取失敗';$('rights-status').textContent='無法讀取';$('metadata-error').textContent=error.message;$('metadata-error').hidden=false;}}
+}
+async function search(reset=true){
+ clearTimeout(state.timer);state.searchController?.abort();const controller=new AbortController();state.searchController=controller;const id=++state.searchId;if(reset)state.page=1;showError();setCount('搜尋中…');
+ const params=new URLSearchParams({page:String(state.page)});for(const key of controls)params.set(key,$(key).value);if(state.folder)params.set('folder',state.folder.id);
+ try{const data=await request('/api/search?'+params,{signal:controller.signal});if(id===state.searchId)render(data);}catch(error){if(error.name!=='AbortError'&&id===state.searchId){showError(error.message);setCount('搜尋失敗');}}
+}
+async function status(){const data=await request('/api/status');$('root').textContent=data.root;$('total-label').textContent=data.total+' 張';$('empty-help').textContent=data.total?'試試其他關鍵字，或清除篩選條件。':'目前根目錄下沒有圖片，可貼上完整路徑，或用 --root 指定你的網站目錄。';if(data.warning_count)showError('有 '+data.warning_count+' 個檔案或目錄無法讀取，其餘圖片已列出。');}
+function closeMobileFilters(){document.querySelector('.workspace').classList.remove('filters-open');$('toggle-filters').setAttribute('aria-expanded','false');}
+$('toggle-filters').addEventListener('click',()=>{const open=document.querySelector('.workspace').classList.toggle('filters-open');$('toggle-filters').setAttribute('aria-expanded',String(open));});
+$('search-form').addEventListener('submit',event=>{event.preventDefault();search();});
+for(const key of controls){$(key).addEventListener($(key).tagName==='SELECT'?'change':'input',()=>{if(key==='source')setFolder(null);clearTimeout(state.timer);state.timer=setTimeout(()=>search(),250);});}
+$('clear').addEventListener('click',()=>{for(const key of controls)$(key).value=key==='source'?'all':'';$('direct-path').value='';setFolder(null);search();});
+$('prev').addEventListener('click',()=>{if(state.page>1){state.page--;search(false);}});$('next').addEventListener('click',()=>{if(state.page<state.pages){state.page++;search(false);}});
+$('path-form').addEventListener('submit',async event=>{
+ event.preventDefault();clearTimeout(state.timer);state.searchController?.abort();const id=++state.searchId;showError();setCount('正在開啟路徑…');
+ try{const data=await post('/api/open',{path:$('direct-path').value});if(id===state.searchId){setFolder(null);render(data,true);await status();}}catch(error){if(id===state.searchId){showError(error.message);setCount('路徑開啟失敗');}}
+});
+$('refresh').addEventListener('click',async()=>{const button=$('refresh');button.disabled=true;button.textContent='掃描中…';showError();try{await post('/api/refresh',{});await status();await search();}catch(error){showError(error.message);}finally{button.disabled=false;button.textContent='↻ 重新掃描';}});
+$('copy-path').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('detail-path').textContent);$('copy-path').textContent='已複製';}catch{$('copy-path').textContent='請反白路徑複製';}});
+$('close-lightbox').addEventListener('click',()=>$('lightbox').close());$('lightbox').addEventListener('click',event=>{if(event.target===$('lightbox'))$('lightbox').close();});
+document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();$('query').focus();}});
+
+const folderState={parent:'',page:1,pages:1,current:null,controller:null,requestId:0,timer:null};
+function setFolder(folder){state.folder=folder;$('selected-folder').textContent=folder?folder.relative_path:'所有資料夾';$('clear-folder').hidden=!folder;}
+function chooseFolder(folder){
+ setFolder(folder);for(const id of ['category','project','article'])$(id).value='';$('source').value=folder.source;
+ $('folder-dialog').close();closeMobileFilters();search();
+}
+function folderLocation(parent){folderState.parent=parent;folderState.page=1;$('folder-query').value='';loadFolders();}
+function breadcrumb(name,parent){const button=document.createElement('button');button.type='button';button.textContent=name;button.addEventListener('click',()=>folderLocation(parent));$('folder-breadcrumbs').append(button);}
+async function loadFolders(reset=true){
+ clearTimeout(folderState.timer);folderState.controller?.abort();const controller=new AbortController();folderState.controller=controller;const requestId=++folderState.requestId;
+ if(reset)folderState.page=1;$('folder-error').hidden=true;$('folder-message').textContent='讀取資料夾…';$('folder-list').classList.add('folder-loading');$('use-current-folder').disabled=true;$('folder-prev').disabled=true;$('folder-next').disabled=true;
+ const params=new URLSearchParams({query:$('folder-query').value,source:$('folder-source').value,parent:folderState.parent,page:String(folderState.page)});
+ try{
+  const data=await request('/api/folders?'+params,{signal:controller.signal});if(requestId!==folderState.requestId)return;
+  folderState.current=data.current;folderState.page=data.page;folderState.pages=data.pages;$('folder-list').replaceChildren();$('folder-breadcrumbs').replaceChildren();breadcrumb('最上層','');
+  for(const part of data.breadcrumbs){const separator=document.createElement('span');separator.textContent='／';$('folder-breadcrumbs').append(separator);breadcrumb(part.name,part.id);}
+  const searching=!!$('folder-query').value.trim();$('folder-current').textContent=searching?'依名稱搜尋所有層級的資料夾':data.current?data.current.relative_path:'選擇來源資料夾開始瀏覽';
+  $('folder-message').textContent=data.total+' 個資料夾'+(searching?'符合搜尋':'');$('folder-page').textContent='第 '+data.page+' / '+data.pages+' 頁';$('folder-prev').disabled=data.page<=1;$('folder-next').disabled=data.page>=data.pages;
+  for(const folder of data.items){
+   const row=document.createElement('div');row.className='folder-row';const open=document.createElement('button');open.type='button';open.className='folder-open';
+   const name=document.createElement('strong');name.textContent='▱ '+folder.name;const description=document.createElement('small');description.textContent=(folder.title!==folder.name?folder.title+' · ':'')+folder.image_count+' 張圖片 · '+folder.relative_path;open.append(name,description);open.addEventListener('click',()=>folderLocation(folder.id));
+   const choose=document.createElement('button');choose.type='button';choose.className='folder-use';choose.textContent='選取';choose.setAttribute('aria-label','選取資料夾 '+folder.relative_path);choose.addEventListener('click',()=>chooseFolder(folder));row.append(open,choose);$('folder-list').append(row);
+  }
+  if(!data.items.length){const empty=document.createElement('div');empty.className='folder-empty';empty.textContent=searching?'找不到符合名稱的資料夾。':data.current?'沒有下一層資料夾，可按「使用目前資料夾」。':'尚無含圖片的資料夾，請重新掃描或先指定圖片完整路徑。';$('folder-list').append(empty);}
+  $('use-current-folder').disabled=!data.current||searching;
+ }catch(error){if(error.name!=='AbortError'&&requestId===folderState.requestId){$('folder-list').replaceChildren();$('folder-error').textContent=error.message;$('folder-error').hidden=false;$('folder-message').textContent='無法讀取資料夾，可點「最上層」重新選擇。';}}
+ finally{if(requestId===folderState.requestId)$('folder-list').classList.remove('folder-loading');}
+}
+$('open-folders').addEventListener('click',()=>{folderState.parent=state.folder?state.folder.id:'';folderState.page=1;$('folder-query').value='';$('folder-source').value=$('source').value;$('folder-breadcrumbs').replaceChildren();breadcrumb('最上層','');$('folder-dialog').showModal();$('folder-query').focus();loadFolders();});
+$('close-folders').addEventListener('click',()=>$('folder-dialog').close());$('folder-dialog').addEventListener('close',()=>{clearTimeout(folderState.timer);folderState.controller?.abort();folderState.requestId++;});
+$('folder-query').addEventListener('input',()=>{clearTimeout(folderState.timer);folderState.timer=setTimeout(()=>loadFolders(),250);});$('folder-query').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();loadFolders();}});
+$('folder-source').addEventListener('change',()=>{folderState.parent='';loadFolders();});
+$('folder-prev').addEventListener('click',()=>{if(folderState.page>1){folderState.page--;loadFolders(false);}});$('folder-next').addEventListener('click',()=>{if(folderState.page<folderState.pages){folderState.page++;loadFolders(false);}});
+$('use-current-folder').addEventListener('click',()=>{if(folderState.current)chooseFolder(folderState.current);});$('clear-folder').addEventListener('click',()=>{setFolder(null);search();});
+
+if(location.protocol==='file:'){showError('請先執行 python tools/check_exif.py --web，再使用自動開啟的本機頁面。');setCount('等待啟動 Python 程式');$('root').textContent='尚未連線';}else{status().then(()=>search()).catch(error=>{showError(error.message);setCount('連線失敗');});}
+</script>
+</body>
+</html>
