@@ -22,6 +22,7 @@ jobs:
           AUTHOR_NAME: ${{ github.event.release.author.login }}
           AUTHOR_AVATAR: ${{ github.event.release.author.avatar_url }}
           REPO_NAME: ${{ github.repository }}
+          SITE_URL: "https://azustock.github.io"
           # 👇 請填入圖片直連網址（支援 PNG / JPG / WebP）；若要顯示大圖請取消下方 embed["image"] 的註解
           BANNER_URL: "https://azustock.github.io/assets/og.png"
         run: |
@@ -37,6 +38,7 @@ jobs:
               raise SystemExit("錯誤：未設定 DISCORD_WEBHOOK Secret。")
 
           repo = os.environ.get("REPO_NAME", "").strip()
+          site_url = os.environ.get("SITE_URL", "").strip()
           tag = os.environ.get("RELEASE_TAG", "").strip()
           title = os.environ.get("RELEASE_TITLE", "").strip()
           body = os.environ.get("RELEASE_BODY", "").strip()
@@ -86,25 +88,28 @@ jobs:
           else:
               embed_color = 0x44D4BE  # 預設藍綠色
 
-          # 全部整合進 Embed：標題為 New Release，下方以 Discord 小字 (-#) 顯示儲存庫名稱
-          desc_parts = []
+          # 標題放進 description 頂端，才能把超連結精準掛在「版本號」上，並消除與內文之間的空行
+          header_line = f"### [{tag}]({release_url}) RELEASE" if release_url else f"### {tag} RELEASE"
+          lines = [header_line]
           if repo:
-              desc_parts.append(f"-# {repo}")
+              lines.append(f"-# {repo}")
           if title and title != tag:
-              desc_parts.append(f"**{title}**")
+              lines.append(f"**{title}**")
           if body:
-              desc_parts.append(body)
-          description = "\n\n".join(desc_parts)
-          if len(description) > 4000:
-              description = description[:3997] + "..."
+              lines.append(body)
+
+          footer_link = f"\n[前往網站 ↗]({site_url})" if site_url else ""
+          max_body_len = 4000 - len(footer_link)
+          description = "\n".join(lines)
+          if len(description) > max_body_len:
+              description = description[: max_body_len - 3] + "..."
+          description += footer_link
 
           embed = {
               "author": {
                   "name": author_name,
                   "icon_url": author_avatar
               },
-              "title": "New Release",
-              "url": release_url,
               "description": description,
               "color": embed_color,
               "footer": {
