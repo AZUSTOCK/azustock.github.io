@@ -31,6 +31,7 @@ jobs:
           import json
           import urllib.request
           import urllib.error
+          from urllib.parse import quote
           from datetime import datetime, timezone
 
           webhook_url = os.environ.get("DISCORD_WEBHOOK", "").strip()
@@ -98,7 +99,8 @@ jobs:
           if body:
               lines.append(body)
 
-          footer_link = f"\n[前往網站 ↗]({site_url})" if site_url else ""
+          site_link_url = f"{site_url.rstrip('/')}/?v={quote(tag, safe='')}" if (site_url and tag) else site_url
+          footer_link = f"\n[Visit Website ↗]({site_link_url})" if site_link_url else ""
           max_body_len = 4000 - len(footer_link)
           description = "\n".join(lines)
           if len(description) > max_body_len:
@@ -119,8 +121,8 @@ jobs:
           }
 
           # 若有設定 Banner 網址，取消下方兩行註解即可加入大圖預覽
-          # if banner_url:
-          #     embed["image"] = {"url": banner_url}
+          if banner_url:
+              embed["image"] = {"url": banner_url}
 
           payload = {
               "embeds": [embed]
