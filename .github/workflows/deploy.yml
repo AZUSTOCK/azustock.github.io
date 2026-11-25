@@ -3,19 +3,29 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main # 當推送代碼到 main 分支時觸發
+      - main
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      # ✨ 升級至 v4 避免系統警告，並移除已搬家的 all_projects.json
       - name: Cache Build Data
         uses: actions/cache@v4
         with:
@@ -29,43 +39,108 @@ jobs:
           restore-keys: |
             build-cache-
 
-      # ✨ 升級至 v5
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Install Dependencies
-        run: |
-          pip install pillow rjsmin rcssmin pymupdf  # 確保安裝壓縮套件
+        run: pip install pillow rjsmin rcssmin pymupdf
 
       - name: Generate API and Data
         env:
           GH_SYNC_TOKEN: ${{ secrets.GH_SYNC_TOKEN }}
         run: |
-          python generate_projects.py
+          printf '1\n' | python -u generate_projects.py
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Deploy
+      - name: Prepare public site
+        shell: bash
         run: |
           mkdir -p .gh-pages-temp
-          
-          # ✨ 加上 --exclude='main.js' 與 'style.css'，只發布壓縮過的 .min 版本，極致瘦身！
-          rsync -av --exclude='.git' --exclude='.gh-pages-temp' --exclude='main.js' --exclude='style.css' . .gh-pages-temp/
-          
-          cd .gh-pages-temp
-          git init
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          rm -f .gitignore
-          rm -f index_local.html
-          
-          git add .
-          git commit -m "Deploy to GitHub Pages"
-          
-          git push --force https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git master:gh-pages
+
+          # 保留網站的既有公開路徑；不發布私人檔案、建置暫存及原始入口。
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.gh-pages-temp' \
+            --exclude='private/' \
+            --exclude='.build_cache.json' \
+            --exclude='.gitignore' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='.venv/' \
+            --exclude='node_modules/' \
+            --exclude='__pycache__/' \
+            --exclude='/index_local.html' \
+            --exclude='/generate_projects.py' \
+            --exclude='/main.js' \
+            --exclude='/style.css' \
+            --exclude='/CNAME' \
+            ./ .gh-pages-temp/
+
+      - name: Verify public site
+        shell: bash
+        run: |
+          for file in index.html main.min.js style.min.css all_projects.json assets/site.webmanifest; do
+            test -s ".gh-pages-temp/$file" || { echo "::error::Missing or empty $file"; exit 1; }
+          done
+          test -d .gh-pages-temp/api
+          if find .gh-pages-temp -type d -name private -print -quit | grep -q .; then
+            echo "::error::Private directory in deployment output"
+            exit 1
+          fi
+          python -m json.tool .gh-pages-temp/assets/site.webmanifest > /dev/null
+
+          # 確認正式入口的圖示與 Manifest 不會引用舊網域或 HTTP。
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import urljoin, urlsplit
+
+          class Check(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.manifest = False
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  rel = attrs.get("rel", "").lower().split()
+                  if tag != "link" or not any(r == "manifest" or "icon" in r for r in rel):
+                      return
+                  self.manifest |= "manifest" in rel
+                  href = attrs.get("href", "")
+                  url = urlsplit(urljoin("https://azustock.com/", href))
+                  if not href or url.scheme != "https" or url.netloc != "azustock.com":
+                      raise SystemExit(f"Invalid icon/manifest URL: {href}")
+                  if not (Path(".gh-pages-temp") / url.path.lstrip("/")).is_file():
+                      raise SystemExit(f"Missing icon/manifest file: {url.path}")
+
+          parser = Check()
+          parser.feed(Path(".gh-pages-temp/index.html").read_text(encoding="utf-8"))
+          if not parser.manifest:
+              raise SystemExit("Missing manifest link")
+          PY
+
+          echo "Public root:"
+          ls -la .gh-pages-temp
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .gh-pages-temp
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

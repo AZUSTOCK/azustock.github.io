@@ -16,8 +16,8 @@ const CONFIG = {
     TAG_EXPIRE_DAYS: 14,
 
     // 🔗 資源路徑
-    FAVICON_LIGHT: "https://azustock.github.io/assets/OG_dark.png",
-    FAVICON_DARK: "https://azustock.github.io/assets/OG_light.png",
+    FAVICON_LIGHT: "./assets/OG_dark.png",
+    FAVICON_DARK: "./assets/OG_light.png",
     DATA_SOURCE: "./all_projects.json",
     
     // 🔗 Header 社群與分享圖示連結（修改網址或順序即可更新）
@@ -28,7 +28,7 @@ const CONFIG = {
         { name: "pixiv",    url: "https://www.pixiv.net/users/131123043",   icon: "socialPixiv" },
         { name: "Twitter",  url: "https://x.com/azustock_phy",            icon: "socialX" },
         { name: "Discord",  url: "",                                     icon: "socialDiscord" },
-        { name: "分享本站", copyUrl: "https://azustock.github.io/",       icon: "socialShare" }
+        { name: "分享本站", copyUrl: "https://azustock.com/",       icon: "socialShare" }
     ],
 
     // 🐛 測試與除錯設定
@@ -342,6 +342,127 @@ window.addEventListener('storage', event => {
         });
     }
 });
+
+// ==========================================
+// ✨ 系統記憶備份與還原 (System Memory Transfer)
+// ==========================================
+window.SysMemory = {
+    FORMAT: 'azustock-memory',
+    VERSION: 1,
+    MAX_BYTES: 2 * 1024 * 1024,
+    SET_KEYS: ['sys_unlocked_secrets', 'sys_read_articles', 'sys_animated_secrets', 'sys_agreed_sensitive'],
+
+    // 直接讀取持久化集合（含尚未合併的成員），不使用可能尚未同步的快取。
+    snapshot(includeAgreements = false) {
+        const data = {};
+        for (const key of this.SET_KEYS) {
+            if (key === 'sys_agreed_sensitive' && !includeAgreements) continue;
+            data[key] = [...window.SysStorage._members(key, localStorage)].sort();
+        }
+        const theme = localStorage.getItem('theme');
+        const scale = localStorage.getItem('sys_text_scale');
+        if (theme === 'light' || theme === 'dark') data.theme = theme;
+        if (['0', '1', '2'].includes(scale)) data.sys_text_scale = Number(scale);
+        return {
+            format: this.FORMAT, version: this.VERSION,
+            siteVersion: CONFIG.VERSION, sourceOrigin: window.location.origin,
+            exportedAt: new Date().toISOString(), data
+        };
+    },
+
+    // 完整驗證後才允許任何寫入；未列入白名單的欄位不會被還原。
+    validate(payload) {
+        const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+        if (!isObject(payload) || payload.format !== this.FORMAT || payload.version !== this.VERSION || !isObject(payload.data)) {
+            throw new Error('不支援的記憶備份格式或版本。');
+        }
+        const data = {};
+        const has = key => Object.prototype.hasOwnProperty.call(payload.data, key);
+        for (const key of this.SET_KEYS) {
+            if (!has(key)) continue;
+            const values = payload.data[key];
+            if (!Array.isArray(values) || values.some(value => typeof value !== 'string' || !value.trim())) {
+                throw new Error('記憶集合包含無效資料。');
+            }
+            data[key] = [...new Set(values)];
+        }
+        if (has('theme')) {
+            if (!['light', 'dark'].includes(payload.data.theme)) throw new Error('備份的主題設定無效。');
+            data.theme = payload.data.theme;
+        }
+        if (has('sys_text_scale')) {
+            const value = payload.data.sys_text_scale;
+            if (![0, 1, 2].includes(value)) throw new Error('備份的字體大小設定無效。');
+            data.sys_text_scale = value;
+        }
+        if (!Object.keys(data).length) throw new Error('備份沒有可辨識的系統記憶。');
+        return data;
+    },
+
+    describe(payload) {
+        const parts = [];
+        if (typeof payload.sourceOrigin === 'string' && payload.sourceOrigin.length <= 256) parts.push('來源：' + payload.sourceOrigin);
+        if (typeof payload.siteVersion === 'string' && payload.siteVersion.length <= 80) parts.push('系統版本：' + payload.siteVersion);
+        if (typeof payload.exportedAt === 'string' && payload.exportedAt.length <= 80) {
+            const date = new Date(payload.exportedAt);
+            if (!Number.isNaN(date.getTime())) parts.push('備份時間：' + date.toLocaleString());
+        }
+        return parts.join('｜') || '此備份未提供來源或版本資訊。';
+    },
+
+    // 沿用原有 SysStorage 的獨立成員寫入與 Web Locks 合併機制。
+    // add() 會攔截儲存錯誤，因此額外檢查實際持久化的結果，而非只信任回傳值。
+    merge(payload, { includeAgreements = false, restorePreferences = false } = {}) {
+        const data = this.validate(payload);
+        const result = { added: {}, preferences: 0, failed: 0 };
+        const storage = window.SysStorage;
+        for (const key of this.SET_KEYS) {
+            if (!data[key] || (key === 'sys_agreed_sensitive' && !includeAgreements)) continue;
+            const before = storage._members(key, localStorage);
+            storage.invalidate(key, localStorage);
+            for (const value of data[key]) {
+                if (!before.has(value)) storage.add(key, value, localStorage);
+            }
+            storage.invalidate(key, localStorage);
+            const after = storage._members(key, localStorage);
+            result.added[key] = data[key].filter(value => !before.has(value) && after.has(value)).length;
+            result.failed += data[key].filter(value => !after.has(value)).length;
+        }
+        if (restorePreferences) {
+            for (const key of ['theme', 'sys_text_scale']) {
+                if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+                try {
+                    const value = String(data[key]);
+                    if (localStorage.getItem(key) !== value) {
+                        localStorage.setItem(key, value);
+                        result.preferences++;
+                    }
+                } catch (_) { result.failed++; }
+            }
+        }
+        return result;
+    },
+
+    download(includeAgreements = false, reason = '') {
+        const payload = this.snapshot(includeAgreements);
+        // 在使用者點擊事件內直接建立本機檔案，不經過 fetch 或外部服務。
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        if (blob.size > this.MAX_BYTES) throw new Error('備份超過 2 MiB，無法以目前格式安全匯出。');
+        const filename = `azustock-memory${reason === 'before-import' || reason === 'before-reset' ? '-' + reason : ''}-${payload.exportedAt.replace(/[:.]/g, '-')}.json`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        try { link.click(); }
+        finally {
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+        }
+        return filename;
+    }
+};
 
 // 2. HTML 字串安全跳脫與標籤剝除工具
 window.escapeHtml = function(str) {
@@ -8048,6 +8169,159 @@ window.toggleWebFullscreen = function(videoEl) {
 // ==========================================
 // 🖥️ 系統重載與記憶重置底部選單 (完美借用 PDF Modal UI)
 // ==========================================
+// 記憶管理沿用 PDF Action Sheet，不另建一套彈窗引擎。
+window.showSystemMemoryModal = function(mode) {
+    const exporting = mode === 'export';
+    const { overlay, close } = openPdfActionSheet(`
+        <div class="pdf-action-sheet sys-memory-sheet">
+            <div class="pdf-drag-handle"></div>
+            <div class="pdf-sheet-title" style="color: var(--accent); font-family: monospace;">&gt;_ ${exporting ? '匯出系統記憶' : '匯入系統記憶'}</div>
+            <div class="pdf-sheet-subtitle">${exporting ? 'EXPORT_MEMORY' : 'IMPORT_MEMORY'}</div>
+            <div class="sys-memory-options">
+                <p>${exporting ? '備份目前的鑰匙、碎片、已讀及動畫紀錄與外觀偏好。檔案包含閱讀進度，請自行妥善保管。' : '選擇 Azustock 記憶備份（JSON）。鑰匙及閱讀紀錄將合併，不會覆蓋或刪除既有進度。'}</p>
+                ${exporting ? '' : '<input id="sys-memory-file" class="sys-memory-file" type="file" accept=".json,application/json" aria-label="選擇記憶備份">'}
+                <label><input type="checkbox" id="sys-memory-agreements" aria-describedby="sys-memory-agreement-hint">${exporting ? '一併備份' : '一併還原'}永久內容警告同意紀錄</label>
+                <p id="sys-memory-agreement-hint" class="sys-memory-hint"></p>
+                ${exporting ? '' : `<label><input type="checkbox" id="sys-memory-preferences" aria-describedby="sys-memory-preference-hint">覆寫現有外觀偏好（主題、字體大小）</label>
+                <p id="sys-memory-preference-hint" class="sys-memory-hint"></p>
+                <label><input type="checkbox" id="sys-memory-prebackup">合併前先下載目前記憶的完整備份（含永久同意紀錄）</label>
+                <p class="sys-memory-hint">備份交由瀏覽器下載，請自行確認檔案已儲存。</p>`}
+                <p id="sys-memory-meta" class="sys-memory-hint"></p>
+                <p id="sys-memory-status" class="sys-memory-status" role="status" aria-live="polite"></p>
+            </div>
+            <div class="pdf-btn-group">
+                <button id="sys-memory-confirm" class="pdf-action-btn primary" ${exporting ? '' : 'disabled'}>${exporting ? '下載 JSON 備份' : '確認合併'}</button>
+                <button id="sys-memory-back" class="pdf-action-btn secondary">返回系統維護</button>
+                <button class="pdf-action-btn cancel">取消</button>
+            </div>
+        </div>
+    `);
+    const $ = selector => overlay.querySelector(selector);
+    const status = $('#sys-memory-status');
+    const confirmBtn = $('#sys-memory-confirm');
+    const agreements = $('#sys-memory-agreements');
+    const agreementHint = $('#sys-memory-agreement-hint');
+    const preferences = $('#sys-memory-preferences');
+    const preferenceHint = $('#sys-memory-preference-hint');
+    const prebackup = $('#sys-memory-prebackup');
+    const metadata = $('#sys-memory-meta');
+    const fileInput = $('#sys-memory-file');
+    const report = (message, error = false) => {
+        status.textContent = message;
+        status.classList.toggle('is-error', error);
+    };
+    const describeCounts = data => `鑰匙／碎片 ${data.sys_unlocked_secrets?.length || 0} 筆、已讀 ${data.sys_read_articles?.length || 0} 筆、動畫 ${data.sys_animated_secrets?.length || 0} 筆、永久同意 ${data.sys_agreed_sensitive?.length || 0} 筆。`;
+    const setOptions = data => {
+        agreements.checked = false;
+        agreements.disabled = !data?.sys_agreed_sensitive?.length;
+        agreementHint.textContent = !data ? '請先選擇備份檔案。' : agreements.disabled
+            ? (exporting ? '目前沒有永久同意紀錄。' : '此備份未包含可還原的永久同意紀錄。')
+            : `可${exporting ? '備份' : '還原'} ${data.sys_agreed_sensitive.length} 筆永久同意紀錄。`;
+        if (preferences) {
+            preferences.checked = false;
+            preferences.disabled = !data || (data.theme === undefined && data.sys_text_scale === undefined);
+            preferenceHint.textContent = !data ? '請先選擇備份檔案。' : preferences.disabled ? '此備份沒有外觀偏好。' : '僅覆寫備份中存在的設定。';
+        }
+    };
+    $('#sys-memory-back').onclick = () => window.showSystemReloadModal();
+    let payload = null;
+    let readSequence = 0;
+    let committed = false;
+    let reloading = false;
+    const reload = () => {
+        if (reloading) return;
+        reloading = true;
+        close();
+        setTimeout(() => window.location.reload(), 300);
+    };
+    if (exporting) {
+        try {
+            const snapshot = window.SysMemory.snapshot(true);
+            setOptions(snapshot.data);
+            metadata.textContent = window.SysMemory.describe(snapshot);
+            report('目前記憶：' + describeCounts(snapshot.data));
+        } catch (_) { report('無法讀取目前記憶。', true); }
+    } else {
+        setOptions(null);
+        prebackup.disabled = true;
+        fileInput.onchange = async () => {
+            const sequence = ++readSequence;
+            payload = null;
+            confirmBtn.disabled = true;
+            setOptions(null);
+            prebackup.disabled = true;
+            metadata.textContent = '';
+            const file = fileInput.files?.[0];
+            if (!file) { report(''); return; }
+            if (file.size > window.SysMemory.MAX_BYTES) { report('檔案超過 2 MiB。', true); return; }
+            report('正在檢查備份格式…');
+            try {
+                const parsed = JSON.parse(await file.text());
+                const data = window.SysMemory.validate(parsed);
+                if (sequence !== readSequence || !overlay.isConnected) return;
+                payload = parsed;
+                setOptions(data);
+                metadata.textContent = window.SysMemory.describe(parsed);
+                report('備份內容：' + describeCounts(data));
+                confirmBtn.disabled = prebackup.disabled = false;
+            } catch (_) {
+                if (sequence !== readSequence || !overlay.isConnected) return;
+                report('無法讀取備份：JSON 格式、版本或資料內容無效。', true);
+            }
+        };
+    }
+    const finish = (message, error = false) => {
+        committed = true;
+        report(message, error);
+        confirmBtn.textContent = '重新整理系統';
+        confirmBtn.disabled = false;
+        fileInput.disabled = agreements.disabled = preferences.disabled = prebackup.disabled = true;
+        // 完成摘要留在畫面，離開時才重新整理，避免舊 UI 使用過期記憶。
+        $('#sys-memory-back').style.display = 'none';
+        $('.cancel').textContent = '關閉並重新整理';
+        $('.cancel').onclick = reload;
+        overlay.onclick = event => { if (event.target === overlay) reload(); };
+    };
+    confirmBtn.onclick = () => {
+        if (committed) { reload(); return; }
+        if (exporting) {
+            try {
+                const filename = window.SysMemory.download(agreements.checked);
+                report('已交由瀏覽器下載：' + filename + '。請確認檔案已儲存。');
+                window.triggerHaptic('success');
+            } catch (_) { report('無法匯出記憶，請確認瀏覽器允許儲存及下載。', true); }
+            return;
+        }
+        if (!payload) return;
+        confirmBtn.disabled = true;
+        if (prebackup.checked) {
+            try { window.SysMemory.download(true, 'before-import'); }
+            catch (_) {
+                report('無法建立匯入前備份，尚未合併任何記憶。', true);
+                confirmBtn.disabled = false;
+                return;
+            }
+        }
+        try {
+            const result = window.SysMemory.merge(payload, {
+                includeAgreements: agreements.checked,
+                restorePreferences: preferences.checked
+            });
+            const counts = Object.fromEntries(Object.entries(result.added).map(([key, length]) => [key, { length }]));
+            const summary = '本次新增：' + describeCounts(counts) + `更新 ${result.preferences} 項外觀偏好。`;
+            const backupNote = prebackup.checked ? '已交由瀏覽器下載匯入前備份，請確認檔案。' : '';
+            if (result.failed) {
+                finish(summary + ` ${result.failed} 筆資料未能儲存；請保留原始備份，重新整理後可再次匯入。` + backupNote, true);
+            } else {
+                finish('合併完成。' + summary + backupNote);
+                window.triggerHaptic('success');
+            }
+        } catch (_) {
+            finish('記憶儲存中斷，可能已有部分資料合併。請保留備份，重新整理後再試。', true);
+        }
+    };
+};
+
 window.showSystemReloadModal = function() {
     // 準備 SVG 圖示
     const refreshIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>`;
@@ -8055,13 +8329,19 @@ window.showSystemReloadModal = function() {
 
     // 套用與 PDF 彈窗 100% 相同的 HTML 結構 (pdf-action-sheet, pdf-action-btn)
     const { overlay, close } = openPdfActionSheet(`
-        <div class="pdf-action-sheet">
+        <div class="pdf-action-sheet sys-memory-sheet">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title" style="color: var(--accent); font-family: monospace;">&gt;_ 系統維護控制台</div>
             <div class="pdf-sheet-subtitle">SYSTEM MAINTENANCE CONSOLE</div>
             <div class="pdf-btn-group">
                 <button id="sys-btn-soft-reload" class="pdf-action-btn primary">
                     <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${refreshIcon}</span>重新整理系統 (SOFT_RELOAD)
+                </button>
+                <button id="sys-btn-export-memory" class="pdf-action-btn secondary">
+                    匯出系統記憶 (EXPORT_MEMORY)
+                </button>
+                <button id="sys-btn-import-memory" class="pdf-action-btn secondary">
+                    匯入系統記憶 (IMPORT_MEMORY)
                 </button>
                 <button id="sys-btn-format-memory" class="pdf-action-btn secondary" style="color: var(--error-color); border-color: var(--error-shadow); background: var(--card);">
                     <span style="width: 20px; height: 20px; display: inline-flex; align-items: center;">${trashIcon}</span>重置系統記憶 (FORMAT_MEMORY)
@@ -8079,37 +8359,101 @@ window.showSystemReloadModal = function() {
         setTimeout(() => window.location.reload(), 300);
     };
 
+    overlay.querySelector('#sys-btn-export-memory').onclick = () => window.showSystemMemoryModal('export');
+    overlay.querySelector('#sys-btn-import-memory').onclick = () => window.showSystemMemoryModal('import');
+
     overlay.querySelector('#sys-btn-format-memory').onclick = (e) => {
         e.stopPropagation();
-        if (typeof window.triggerHaptic === 'function') window.triggerHaptic('warning');
+        window.triggerHaptic('warning');
+        window.showSystemFormatMemoryModal();
+    };
+};
 
-        const savedTheme = localStorage.getItem('theme');
-        const savedTextScale = localStorage.getItem('sys_text_scale');
-
-        // ✨ 徹底清除所有由系統寫入的權限與快取紀錄
-        window.SysStorage.removeLocalSet('sys_unlocked_secrets');
-        window.SysStorage.removeLocalSet('sys_animated_secrets');
-        localStorage.removeItem('sys_data_versions');
-        window.SysStorage.removeLocalSet('sys_agreed_sensitive'); // ✨ 新增：清除永久同意的敏感內容紀錄
-        window.SysStorage.removeLocalSet('sys_read_articles');
-        
-        sessionStorage.clear();
-        window.SysStorage.clearCache();
-        window._agreedSensitiveTypes?.clear();
-
-        // 恢復無關權限的外觀偏好設定
-        if (savedTheme) localStorage.setItem('theme', savedTheme);
-        if (savedTextScale) localStorage.setItem('sys_text_scale', savedTextScale);
-
-        close();
-
-        setTimeout(() => {
-            try {
-                window.showSystemRebootScreen("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE", true);
-                setTimeout(() => { window.location.reload(); }, 1200);
-            } catch (error) {
-                window.location.reload();
+window.showSystemFormatMemoryModal = function() {
+    const { overlay, close } = openPdfActionSheet(`
+        <div class="pdf-action-sheet sys-memory-sheet">
+            <div class="pdf-drag-handle"></div>
+            <div class="pdf-sheet-title" style="color: var(--error-color); font-family: monospace;">&gt;_ 確認重置系統記憶</div>
+            <div class="pdf-sheet-subtitle">CONFIRM_FORMAT_MEMORY</div>
+            <div class="sys-memory-options">
+                <p>此操作將清除目前網域的鑰匙、碎片、已讀、動畫及永久內容警告同意紀錄，也會清除系統版本快取及暫時狀態。主題與字體大小將保留。</p>
+                <p>若沒有備份，清除後將無法透過本站還原。</p>
+                <label><input type="checkbox" id="sys-format-backup" checked>重置前先下載完整備份（含永久同意紀錄）</label>
+                <label><input type="checkbox" id="sys-format-ack">我已了解，確定要清除系統記憶。</label>
+                <p id="sys-format-status" class="sys-memory-status" role="status" aria-live="polite"></p>
+            </div>
+            <div class="pdf-btn-group">
+                <button id="sys-format-confirm" class="pdf-action-btn secondary" style="color: var(--error-color); border-color: var(--error-shadow);" disabled>確認重置 (FORMAT_MEMORY)</button>
+                <button id="sys-format-back" class="pdf-action-btn secondary">返回系統維護</button>
+                <button class="pdf-action-btn cancel">取消</button>
+            </div>
+        </div>
+    `);
+    const ack = overlay.querySelector('#sys-format-ack');
+    const backup = overlay.querySelector('#sys-format-backup');
+    const confirmBtn = overlay.querySelector('#sys-format-confirm');
+    const status = overlay.querySelector('#sys-format-status');
+    const reportError = message => { status.textContent = message; status.classList.add('is-error'); };
+    overlay.querySelector('#sys-format-back').onclick = () => window.showSystemReloadModal();
+    ack.onchange = () => { confirmBtn.disabled = !ack.checked; };
+    let resetting = false;
+    confirmBtn.onclick = () => {
+        if (!ack.checked || resetting) return;
+        confirmBtn.disabled = true;
+        if (backup.checked) {
+            try { window.SysMemory.download(true, 'before-reset'); }
+            catch (_) {
+                reportError('無法建立備份，尚未清除任何記憶。');
+                confirmBtn.disabled = false;
+                return;
             }
-        }, 300);
+            // 下載可能被瀏覽器取消。必須另行確認已儲存，才開始不可逆的重置。
+            backup.checked = false;
+            backup.disabled = true;
+            ack.checked = false;
+            status.textContent = '已交由瀏覽器下載備份。請確認檔案已儲存，再勾選確認並重置。';
+            status.classList.remove('is-error');
+            return;
+        }
+        resetting = true;
+        ack.disabled = backup.disabled = true;
+        try {
+            const savedTheme = localStorage.getItem('theme');
+            const savedTextScale = localStorage.getItem('sys_text_scale');
+
+            // ✨ 徹底清除所有由系統寫入的權限與快取紀錄
+            window.SysStorage.removeLocalSet('sys_unlocked_secrets');
+            window.SysStorage.removeLocalSet('sys_animated_secrets');
+            localStorage.removeItem('sys_data_versions');
+            window.SysStorage.removeLocalSet('sys_agreed_sensitive'); // ✨ 新增：清除永久同意的敏感內容紀錄
+            window.SysStorage.removeLocalSet('sys_read_articles');
+            
+            sessionStorage.clear();
+            window.SysStorage.clearCache();
+            window._agreedSensitiveTypes?.clear();
+
+            // 恢復無關權限的外觀偏好設定
+            if (savedTheme) localStorage.setItem('theme', savedTheme);
+            if (savedTextScale) localStorage.setItem('sys_text_scale', savedTextScale);
+
+            close();
+
+            setTimeout(() => {
+                try {
+                    window.showSystemRebootScreen("FORMATTING_MEMORY", CONFIG.VERSION, "N/A", "CLEARING_CACHE", true);
+                    setTimeout(() => { window.location.reload(); }, 1200);
+                } catch (error) {
+                    window.location.reload();
+                }
+            }, 300);
+        } catch (_) {
+            reportError('重置中斷，可能已有部分記憶被清除。請保留備份並重新整理系統。');
+            confirmBtn.textContent = '重新整理系統';
+            confirmBtn.disabled = false;
+            confirmBtn.onclick = () => window.location.reload();
+            overlay.querySelector('#sys-format-back').onclick = confirmBtn.onclick;
+            overlay.querySelector('.cancel').onclick = confirmBtn.onclick;
+            overlay.onclick = event => { if (event.target === overlay) window.location.reload(); };
+        }
     };
 };

@@ -1,4 +1,4 @@
-# [CLICK TO THE WEBSITE](https://azustock.github.io/ "風川梓 | AZUSTOCK Co., Phy.")
+# [CLICK TO THE WEBSITE](https://azustock.com/ "風川梓 | AZUSTOCK Co., Phy.")
 
 > [!IMPORTANT]
 > - 為了更好的體驗，請直接前往網站，且不建議閱讀儲存庫之內容。

@@ -37,7 +37,7 @@ from tools.cout import cout  # ✨ 引入 Cout 全域實例
 # 🧠 細項 Hash 快取與版本控制設定
 # ==========================================
 API_LOGIC_VERSION = "U2026-11-18"  # 修改 Markdown 解析或 contents.json 結構時更新
-HTML_LOGIC_VERSION = "U2026-11-18"  # 修改分享頁模板或網址生成規則時更新
+HTML_LOGIC_VERSION = "U2026-11-25"  # 修改分享頁模板或網址生成規則時更新
 IMAGE_LOGIC_VERSION = "U2026-09-24"  # ✨ 修改 OG圖合成、圖片轉檔品質時改這個
 
 # 本地原圖轉檔設定：演算法有改動時手動調整此版號。
@@ -46,7 +46,7 @@ WEBP_QUALITY = 90
 WEBP_MAX_SIZE = MAX_SIZE
 WEBP_RATIO = RATIO
 
-BASE_URL = "https://azustock.github.io"
+BASE_URL = "https://azustock.com"
 API_DIR = "api"
 JS_SOURCE_PATH = "main.js"
 HASH_CHUNK_SIZE = 1024 * 1024

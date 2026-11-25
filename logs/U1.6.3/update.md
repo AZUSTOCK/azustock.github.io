@@ -1,9 +1,11 @@
 ## refactor
 1. Discord WebHook
+2. deploy
 
 ## add
 1. GitHub metadata sync
 2. header-social-icons
+3. System Memory
 
 ## change / update
 1. `default_sort` in `categories`
