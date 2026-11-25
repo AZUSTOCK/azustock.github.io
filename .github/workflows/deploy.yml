@@ -64,6 +64,9 @@ jobs:
             --exclude='.github' \
             --exclude='.gh-pages-temp' \
             --exclude='private/' \
+            --exclude='/tools/' \
+            --exclude='.github_sync.json' \
+            --exclude='.secrets.json' \
             --exclude='.build_cache.json' \
             --exclude='.gitignore' \
             --exclude='.env' \
@@ -75,18 +78,46 @@ jobs:
             --exclude='/generate_projects.py' \
             --exclude='/main.js' \
             --exclude='/style.css' \
+            --exclude='/api/meta.json' \
+            --exclude='/api/**/meta.json' \
+            --exclude='/projects/detail.json' \
+            --exclude='/projects/**/detail.json' \
+            --exclude='/projects/index.md' \
+            --exclude='/projects/**/index.md' \
+            --exclude='/logs/' \
             --exclude='/CNAME' \
             ./ .gh-pages-temp/
 
       - name: Verify public site
         shell: bash
         run: |
-          for file in index.html main.min.js style.min.css all_projects.json assets/site.webmanifest; do
+          for file in index.html main.min.js style.min.css all_projects.json assets/site.webmanifest README.md; do
             test -s ".gh-pages-temp/$file" || { echo "::error::Missing or empty $file"; exit 1; }
           done
           test -d .gh-pages-temp/api
           if find .gh-pages-temp -type d -name private -print -quit | grep -q .; then
             echo "::error::Private directory in deployment output"
+            exit 1
+          fi
+          if [ -e .gh-pages-temp/tools ] || [ -L .gh-pages-temp/tools ]; then
+            echo "::error::Internal tools directory in deployment output"
+            exit 1
+          fi
+          if find .gh-pages-temp \( -name .github_sync.json -o -name .secrets.json \) -print -quit | grep -q .; then
+            echo "::error::Secret configuration file in deployment output"
+            exit 1
+          fi
+          # 僅檢查指定的建置來源，不限制隱藏文章或其他公開資源。
+          if [ -e .gh-pages-temp/logs ] || [ -L .gh-pages-temp/logs ]; then
+            echo "::error::Internal logs directory in deployment output"
+            exit 1
+          fi
+          if find .gh-pages-temp/api -name meta.json -print -quit | grep -q .; then
+            echo "::error::API metadata file in deployment output"
+            exit 1
+          fi
+          if [ -d .gh-pages-temp/projects ] && find .gh-pages-temp/projects \( -name detail.json -o -name index.md \) -print -quit | grep -q .; then
+            echo "::error::Project source file in deployment output"
             exit 1
           fi
           python -m json.tool .gh-pages-temp/assets/site.webmanifest > /dev/null
@@ -122,6 +153,8 @@ jobs:
 
           echo "Public root:"
           ls -la .gh-pages-temp
+          echo "Public site file list (staging directory):"
+          (cd .gh-pages-temp && find . -type f -printf '%P\n' | LC_ALL=C sort)
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

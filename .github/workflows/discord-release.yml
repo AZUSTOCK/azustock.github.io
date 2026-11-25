@@ -21,172 +21,19 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
+      # 使用預設分支的通知工具；舊 Release 也能套用最新版格式。
+      - name: Checkout notification tool
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
       - name: Send rich Discord embed
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EVENT_NAME: ${{ github.event_name }}
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_SEND: ${{ inputs.send }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          RELEASE_TITLE: ${{ github.event.release.name }}
-          RELEASE_BODY: ${{ github.event.release.body }}
-          RELEASE_URL: ${{ github.event.release.html_url }}
-          RELEASE_TIME: ${{ github.event.release.published_at || github.event.release.created_at }}
-          RELEASE_DRAFT: ${{ github.event.release.draft }}
-          AUTHOR_NAME: ${{ github.event.release.author.login }}
-          AUTHOR_AVATAR: ${{ github.event.release.author.avatar_url }}
-          REPO_NAME: ${{ github.repository }}
           SITE_URL: "https://azustock.com"
           BANNER_URL: "https://azustock.com/assets/og.png"
-        run: |
-          python3 - <<'PY'
-          import os
-          import json
-          import urllib.request
-          import urllib.error
-          from urllib.parse import quote
-          from datetime import datetime, timezone
-
-          event_name = os.environ.get("EVENT_NAME", "").strip()
-          input_tag = os.environ.get("INPUT_TAG", "").strip()
-          input_send = os.environ.get("INPUT_SEND", "").strip().lower() == "true"
-          should_send = (event_name == "release") or input_send
-
-          repo = os.environ.get("REPO_NAME", "").strip()
-          site_url = os.environ.get("SITE_URL", "").strip()
-          banner_url = os.environ.get("BANNER_URL", "").strip()
-
-          tag = os.environ.get("RELEASE_TAG", "").strip()
-          title = os.environ.get("RELEASE_TITLE", "").strip()
-          body = os.environ.get("RELEASE_BODY", "").strip()
-          release_url = os.environ.get("RELEASE_URL", "").strip()
-          release_time = os.environ.get("RELEASE_TIME", "").strip()
-          is_draft = os.environ.get("RELEASE_DRAFT", "").strip().lower() == "true"
-          author_name = os.environ.get("AUTHOR_NAME", "").strip()
-          author_avatar = os.environ.get("AUTHOR_AVATAR", "").strip()
-
-          # 手動觸發 (workflow_dispatch) 時，抓指定 tag 或最新一筆正式 Release
-          if event_name == "workflow_dispatch":
-              if input_tag:
-                  api_url = f"https://api.github.com/repos/{repo}/releases/tags/{quote(input_tag, safe='')}"
-              else:
-                  api_url = f"https://api.github.com/repos/{repo}/releases/latest"
-
-              api_req = urllib.request.Request(
-                  api_url,
-                  headers={
-                      "Accept": "application/vnd.github+json",
-                      "Authorization": f"Bearer {os.environ.get('GITHUB_TOKEN', '')}",
-                      "User-Agent": "GitHub-Actions-Discord-Notify",
-                  },
-              )
-              try:
-                  with urllib.request.urlopen(api_req, timeout=15) as resp:
-                      rel = json.loads(resp.read().decode("utf-8"))
-              except urllib.error.HTTPError as e:
-                  if e.code == 404:
-                      if input_tag:
-                          raise SystemExit(f"找不到 tag 為 {input_tag!r} 的已發佈 Release。") from None
-                      raise SystemExit("目前儲存庫還沒有已發佈的 Release，請先建立一筆 Release 再手動測試。") from None
-                  raise
-
-              is_draft = bool(rel.get("draft"))
-              tag = (rel.get("tag_name") or "").strip()
-              title = (rel.get("name") or tag).strip()
-              body = (rel.get("body") or "").strip()
-              release_url = (rel.get("html_url") or "").strip()
-              release_time = (rel.get("published_at") or rel.get("created_at") or "").strip()
-              author = rel.get("author") or {}
-              author_name = (author.get("login") or "").strip()
-              author_avatar = (author.get("avatar_url") or "").strip()
-
-          if is_draft:
-              raise SystemExit("Release 尚未發佈（draft），已取消通知。")
-
-          title = title or tag
-          release_time = release_time or datetime.now(timezone.utc).isoformat()
-
-          # 根據標題或內文前 200 字關鍵字自動切換顏色
-          check_text = (title + " " + body[:200]).upper()
-          if "REFACTOR" in check_text:
-              embed_color = 0xC77DFF  # 紫色
-          elif any(k in check_text for k in ["HOTFIX", "PATCH", "BUG"]):
-              embed_color = 0xFF4D79  # 紅色
-          elif any(k in check_text for k in ["FEATURE", "MAJOR", "NEW"]):
-              embed_color = 0xF5D547  # 黃色
-          else:
-              embed_color = 0x44D4BE  # 預設藍綠色
-
-          # 標題放進 description 頂端，才能把超連結精準掛在「版本號」上，並消除與內文之間的空行
-          header_line = f"## [{tag}]({release_url}) RELEASE" if release_url else f"## {tag} RELEASE"
-          lines = [header_line]
-          if repo:
-              lines.append(f"-# {repo}")
-          if title and title != tag:
-              lines.append(f"**{title}**")
-          if body:
-              lines.append(body)
-
-          # SITE_URL 留空時不附加網站跳轉連結
-          footer_link = ""
-          if site_url:
-              site_link_url = f"{site_url.rstrip('/')}/?v={quote(tag, safe='')}" if tag else site_url
-              footer_link = f"\n[Visit Website ↗]({site_link_url})"
-
-          max_body_len = 4000 - len(footer_link)
-          description = "\n".join(lines)
-          if len(description) > max_body_len:
-              description = description[: max_body_len - 3] + "..."
-          description += footer_link
-
-          embed = {
-              "description": description,
-              "color": embed_color,
-              "footer": {
-                  "text": f"Version {tag}"
-              },
-              "timestamp": release_time,
-          }
-          if author_name:
-              embed["author"] = {"name": author_name}
-              if author_avatar:
-                  embed["author"]["icon_url"] = author_avatar
-
-          # BANNER_URL 留空時不附加 Banner 大圖
-          if banner_url:
-              embed["image"] = {"url": banner_url}
-
-          payload = {
-              "allowed_mentions": {"parse": []},
-              "embeds": [embed],
-          }
-
-          # 輸出預覽到 GitHub Actions Step Summary
-          summary_path = os.environ.get("GITHUB_STEP_SUMMARY", "").strip()
-          if summary_path:
-              mode_label = "發送模式" if should_send else "僅預覽模式（未發送到 Discord）"
-              with open(summary_path, "a", encoding="utf-8") as out:
-                  out.write(f"**{mode_label}**\n\n{description}\n")
-
-          if not should_send:
-              print("預覽完成（send 未勾選，未發送到 Discord）。")
-              raise SystemExit(0)
-
-          webhook_url = os.environ.get("DISCORD_WEBHOOK", "").strip()
-          if not webhook_url:
-              raise SystemExit("錯誤：未設定 DISCORD_WEBHOOK Secret。")
-
-          req = urllib.request.Request(
-              webhook_url,
-              data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-              headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"},
-          )
-          try:
-              with urllib.request.urlopen(req, timeout=15) as resp:
-                  print(f"Discord notification sent (HTTP {resp.status}).")
-          except urllib.error.HTTPError as e:
-              raise SystemExit(f"Discord 拒絕通知（HTTP {e.code}），請檢查 webhook 與訊息設定。") from None
-          except (urllib.error.URLError, TimeoutError):
-              raise SystemExit("Discord 連線失敗；重新送出前請先確認頻道內是否已有公告。") from None
-          PY
+        run: python3 tools/discord_release.py

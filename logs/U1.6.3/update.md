@@ -1,3 +1,5 @@
+# [MAJOR] Domain live, deployment refactor, memory management, UI polish
+
 ## refactor
 1. Discord WebHook
 2. GitHub Pages deployment (Branch → Artifact)
@@ -10,12 +12,11 @@
 2. `header-social-icons`
 3. System Memory (export / import / reset)
 4. System Memory backup validation and merge mechanism
-5. Legacy domain memory migration page
-6. Kotoba click history (`sys_clicked_kotoba`)
-7. Kotoba collection progress in Filter Toast
-8. Pre-deployment file and resource validation
-9. Manual deployment trigger
-10. System Memory reset confirmation and optional backup
+5. Kotoba click history (`sys_clicked_kotoba`)
+6. Kotoba collection progress in Filter Toast
+7. Pre-deployment file and resource validation
+8. Manual deployment trigger
+9. System Memory reset confirmation and optional backup
 
 ## change / update
 1. `default_sort` in `categories`
