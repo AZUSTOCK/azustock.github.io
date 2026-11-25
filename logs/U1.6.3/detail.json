@@ -1,6 +1,6 @@
 {
-  "version": "U1.6.2.4",
-  "date": "",
-  "status": "",
-  "description": ""
+  "version": "U1.6.3",
+  "date": "2026-11-25",
+  "status": "MAJOR",
+  "description": "網域啟用、部署架構重構、新增記憶管理與介面優化"
 }

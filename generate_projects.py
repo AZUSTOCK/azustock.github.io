@@ -95,7 +95,6 @@ RE_HTML_IMG = re.compile(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)')
 RE_IMG_TITLE = re.compile(r'(.*?)\s+(["\'])(.*?)\2$')
 RE_CLEAN_TAG = re.compile(r'^.*?\[(.*?)\]$')
 RE_GITHUB_REPO_URL = re.compile(r'^https?://(?:www\.)?github\.com/([^/\s]+)/([^/\s#?]+?)(?:\.git)?/?$', re.IGNORECASE)
-RE_VERSION_PREFIX = re.compile(r'^[vV](?=\d)')
 
 SHARE_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-TW">
@@ -381,6 +380,12 @@ def _merge_tags(local_tags, remote_tags, mode="merge"):
     return result
 
 
+def normalize_github_version(raw_version):
+    """遠端版號僅在以數字開頭時補上小寫 v；保留既有前綴及大小寫。"""
+    version = str(raw_version).strip() if raw_version is not None else ""
+    return f"v{version}" if version.startswith(tuple("0123456789")) else version
+
+
 def sync_github_metadata(raw_data, context):
     """
     依 detail.json 內的 'github' 設定，從外部 GitHub 儲存庫同步 Metadata。
@@ -448,9 +453,10 @@ def sync_github_metadata(raw_data, context):
                         merged["tags"] = _merge_tags(merged.get("tags"), val, mode=tags_mode)
                         synced["tags"] = merged["tags"]
                     elif key == "version":
-                        clean_ver = RE_VERSION_PREFIX.sub('', str(val).strip())
-                        merged["version"] = clean_ver
-                        synced["version"] = clean_ver
+                        clean_ver = normalize_github_version(val)
+                        if clean_ver:
+                            merged["version"] = clean_ver
+                            synced["version"] = clean_ver
                     else:
                         merged[key] = val
                         synced[key] = val
@@ -476,12 +482,12 @@ def sync_github_metadata(raw_data, context):
             if "version" in api_needed:
                 rel = get_latest_release()
                 raw_tag = rel.get("tag_name") if isinstance(rel, dict) else None
-                if not raw_tag:
+                clean_ver = normalize_github_version(raw_tag)
+                if not clean_ver:
                     tags_resp = _github_api_get(f"{repo_api_base}/tags?per_page=1", allow_404=True)
                     if isinstance(tags_resp, list) and tags_resp:
-                        raw_tag = tags_resp[0].get("name")
-                if raw_tag:
-                    clean_ver = RE_VERSION_PREFIX.sub('', str(raw_tag).strip())
+                        clean_ver = normalize_github_version(tags_resp[0].get("name"))
+                if clean_ver:
                     merged["version"] = clean_ver
                     synced["version"] = clean_ver
 

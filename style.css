@@ -765,10 +765,12 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     display: flex; 
     align-items: flex-start; 
     overflow-y: auto; 
-    transform: translateY(-100%); 
-    transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease; 
+    transform: translateY(-100%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1), background-color 0.5s ease, visibility 0s linear 0.6s;
 }
-.fullscreen-nav.active { transform: translateY(0); }
+.fullscreen-nav.active { transform: translateY(0); visibility: visible; pointer-events: auto; transition-delay: 0s; }
 
 .fullscreen-nav-inner {
     width: 100%;
@@ -830,13 +832,23 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     box-sizing: border-box;
     padding: 1.25rem 1.4rem 1.25rem calc(1.4rem + 4px);
     border-radius: 0 0.3rem 0.3rem 0;
-    background: var(--box-bg);
+    background-color: var(--box-bg);
+    /* 高光從左側頁簽向右生長；只改背景繪製範圍，不移動卡片。 */
+    background-image: linear-gradient(90deg,
+        color-mix(in srgb, var(--nav-color) 10%, transparent) 0%,
+        color-mix(in srgb, var(--nav-color) 8%, transparent) 30%,
+        color-mix(in srgb, var(--nav-color) 5%, transparent) 65%,
+        transparent 100%);
+    background-repeat: no-repeat;
+    background-position: left center;
+    background-size: 0% 100%;
     border: none;
     box-shadow: inset 0 0 0 1px var(--card-border);
     text-decoration: none;
     text-align: left;
     overflow: hidden;
-    transition: transform 0.3s var(--ease-smooth), background-color 0.3s ease, box-shadow 0.3s ease;
+    /* 固定 Hover 命中區域，避免卡片上移後滑鼠反覆進出。 */
+    transition: background-size 0.55s var(--ease-smooth), background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* 左側 90 度直角高光條 */
@@ -890,11 +902,15 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     justify-content: center;
     color: var(--muted);
     flex-shrink: 0;
+    pointer-events: none; /* 裝飾圖示不參與滑鼠命中判定 */
     transition: color 0.3s ease, filter 0.3s ease;
 }
 
 .nav-plane-svg {
     display: block;
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
     overflow: visible;
     shape-rendering: geometricPrecision;
 }
@@ -906,21 +922,15 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 
 .nav-plane-svg .plane-dot {
     opacity: 0.22;
-    transform: scale(0.75);
-    transform-box: fill-box;
-    transform-origin: center center;
-    transition: opacity 0.25s ease, transform 0.35s var(--ease-bounce);
+    transition: opacity 0.25s ease;
 }
 
 .nav-plane-svg .plane-base {
     opacity: 0.35;
-    transform: scaleX(0.75);
-    transform-box: fill-box;
-    transform-origin: center center;
-    transition: opacity 0.25s ease, transform 0.3s var(--ease-smooth);
+    transition: opacity 0.25s ease;
 }
 
-/* Hover 狀態：純變色 + 軌跡點依序亮起，不水平位移 */
+/* Hover 狀態：固定圖形尺寸，純變色 + 軌跡點依序亮起 */
 .nav-item:hover .nav-item-arrow {
     color: var(--nav-color);
     filter: drop-shadow(0 0 6px color-mix(in srgb, var(--nav-color) 55%, transparent));
@@ -932,7 +942,6 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 
 .nav-item:hover .nav-plane-svg .plane-dot {
     opacity: 1;
-    transform: scale(1);
 }
 
 .nav-item:hover .nav-plane-svg .dot-1 { transition-delay: 120ms; }
@@ -942,7 +951,6 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 
 .nav-item:hover .nav-plane-svg .plane-base {
     opacity: 1;
-    transform: scaleX(1);
     transition-delay: 420ms;
 }
 
@@ -971,8 +979,7 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 .nav-item:hover {
-    transform: translateY(-4px);
-    background: color-mix(in srgb, var(--nav-color) 10%, var(--box-bg));
+    background-size: 100% 100%;
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nav-color) 55%, var(--card-border)),
                 0 10px 26px color-mix(in srgb, var(--nav-color) 18%, transparent);
 }
@@ -1154,7 +1161,14 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .toast-btn:active, .toast-btn.next-btn:active { transform: scale(0.875) translateZ(0); }
 .toast-btn svg { pointer-events: none; transform-origin: center center; }
 .toast-btn svg * { vector-effect: non-scaling-stroke; }
-.toast-btn:hover { background: var(--marquee-border); color: var(--accent); }
+.toast-btn:hover:not(:disabled) { background: var(--marquee-border); color: var(--accent); }
+/* 言葉模式暫不使用標籤 SVG；下一個按鈕維持尺寸但停用互動。 */
+.filter-toast.is-kotoba .toast-content > svg { display: none; }
+.toast-btn.next-btn:disabled { color: var(--muted); cursor: not-allowed; background: transparent; transform: none; }
+/* Match the disabled Lightbox tooltip without further dimming the muted arrow. */
+.toast-btn.next-btn:disabled:hover::after,
+.toast-btn.next-btn:disabled:hover::before { opacity: 0.3; }
+.filter-toast:not(.active) * { pointer-events: none !important; }
 .toast-btn.close-btn { font-size: 1.2rem; font-weight: bold; background: rgba(255, 50, 50, 0.15); border: none; outline: none; transition: transform 0.2s ease, background-color 0.2s ease; }
 .toast-btn.close-btn:hover { background: var(--error-color); color: #fff; }
 .toast-divider { width: 1px; height: 16px; background: var(--card-border); margin: 0 2px; }
@@ -1590,9 +1604,22 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
     width: 100%; box-sizing: border-box; 
     box-shadow: 30px 0 0 0 var(--glass-bg); 
     
-    height: 100vh; height: 100dvh; background: var(--glass-bg); backdrop-filter: blur(8px); z-index: 1050; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; will-change: opacity; overscroll-behavior: none; 
+    height: 100vh; height: 100dvh; background: var(--glass-bg); backdrop-filter: blur(8px); z-index: 1050; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease, visibility 0s linear 0.3s; will-change: opacity; overscroll-behavior: none; 
 }
-.modal-overlay.active { opacity: 1; pointer-events: auto; }
+/* 關閉時立即停止命中判定（包含自行啟用 pointer-events 的子元件），淡出後才隱藏。 */
+#md-modal:not(.active) *,
+#lightbox-modal:not(.is-active) *,
+#fullscreen-menu:not(.active) *,
+.toc-dropdown:not(.active) *,
+.toc-wrapper.content-fade-out *,
+#toc-mount-point.content-fade-out *,
+#modal-top-left.content-fade-out *,
+#modal-body.content-fade-out *,
+body.is-touch-device .toolbox-group:not(.is-open) *,
+#pdf-action-modal:not(.is-active) *,
+#sys-global-toast:not(.is-active) *,
+#sensitive-modal-overlay[inert] * { pointer-events: none !important; }
+.modal-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
 .modal-content { 
     background: var(--card); border: 1px solid var(--card-border); 
     border-radius: 1.1rem; box-sizing: border-box; width: 95%; 
@@ -1691,8 +1718,8 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
 .toc-toggle-btn.open:hover { border-color: var(--error-color); box-shadow: 0 0 10px var(--error-shadow); }
 .toc-toggle-btn.open:hover .bar:nth-child(2) { background-color: var(--error-color); transform: scaleX(0.75); }
 
-.toc-dropdown { box-sizing: border-box; position: absolute; top: 3rem; right: 0; z-index: 1052; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.2rem 1.5rem; width: 260px; max-width: calc(100vw - 5rem); box-shadow: 0 10px 30px var(--shadow-base); opacity: 0; pointer-events: none; transform: translateY(-10px) scale(0.95); transform-origin: top right; transition: all 0.3s var(--ease-smooth); }
-.toc-dropdown.active { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+.toc-dropdown { box-sizing: border-box; position: absolute; top: 3rem; right: 0; z-index: 1052; background: var(--nav-bg); backdrop-filter: blur(15px); border: 1px solid var(--card-border); border-radius: 1.1rem; padding: 1.2rem 1.5rem; width: 260px; max-width: calc(100vw - 5rem); box-shadow: 0 10px 30px var(--shadow-base); opacity: 0; pointer-events: none; transform: translateY(-10px) scale(0.95); transform-origin: top right; visibility: hidden; transition: opacity 0.3s var(--ease-smooth), transform 0.3s var(--ease-smooth), visibility 0s linear 0.3s; }
+.toc-dropdown.active { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0) scale(1); transition-delay: 0s; }
 .toc-dropdown ul { list-style: none !important; padding-left: 0 !important; margin: 0 !important; max-height: 50vh; overflow-y: auto; overflow-x: hidden; padding-right: 10px; }
 .toc-dropdown li { margin-bottom: 0.5rem; padding-bottom: 0.5rem; line-height: 1.5; border-bottom: 1px dashed var(--divider-line); }
 .toc-dropdown li:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
@@ -2832,9 +2859,9 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
     box-shadow: 30px 0 0 0 var(--bg); 
     background: var(--bg); 
     
-    height: 100vh; height: 100dvh; z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; 
+    height: 100vh; height: 100dvh; z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease, visibility 0s linear 0.3s; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; 
 }
-#lightbox-modal.is-active { opacity: 1; visibility: visible; }
+#lightbox-modal.is-active { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
 #lightbox-backdrop { 
     position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; 
     filter: blur(40px); /* 移除強制暗化 */
@@ -3017,13 +3044,13 @@ body.is-touch-device .toolbox-group {
     background: var(--glass-bg); backdrop-filter: blur(15px); padding: 8px; 
     border-radius: 12px; border: 1px solid var(--glass-border); 
     box-shadow: 0 10px 30px var(--shadow-base); width: max-content; 
-    will-change: transform, opacity; opacity: 0; visibility: hidden; 
+    will-change: transform, opacity; opacity: 0; visibility: hidden; pointer-events: none;
     transform: translateY(-15px) scale(0.95) translateZ(0); 
     transform-origin: top right; 
-    transition: transform 0.3s var(--ease-smooth), opacity 0.3s ease, visibility 0.3s ease; 
+    transition: transform 0.3s var(--ease-smooth), opacity 0.3s ease, visibility 0s linear 0.3s;
 }
-body.is-touch-device .toolbox-group.is-open { 
-    opacity: 1; visibility: visible; transform: translateY(0) scale(1) translateZ(0); pointer-events: auto; 
+body.is-touch-device .toolbox-group.is-open {
+    opacity: 1; visibility: visible; transform: translateY(0) scale(1) translateZ(0); pointer-events: auto; transition-delay: 0s;
 }
 
 /* 3. Mermaid 觸控版簡化為「預覽模式」 */
@@ -3541,8 +3568,9 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
     position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); 
     backdrop-filter: blur(4px); z-index: 99999; 
     display: flex; align-items: flex-end; justify-content: center; 
-    opacity: 0; transition: opacity 0.3s ease;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
 }
+#pdf-action-modal.is-active { pointer-events: auto; }
 .pdf-action-sheet {
     background: var(--card); width: 100%; max-width: 500px; 
     border-top-left-radius: 20px; border-top-right-radius: 20px; 
@@ -3566,8 +3594,10 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
 
 #sys-global-toast {
     position: fixed; top: max(90px, calc(var(--safe-top) + 80px)); right: max(30px, calc(var(--safe-right) + 20px)); max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 60px); z-index: 10000; opacity: 0; transform: translateY(-20px); 
-    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    pointer-events: none;
+    transition: opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
+#sys-global-toast.is-active { pointer-events: auto; }
 .sys-toast-box {
     color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; 
     font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; width: max-content; 
@@ -3800,6 +3830,22 @@ body {
 .sys-memory-status.is-error { color: var(--error-color); }
 .sys-memory-options .sys-memory-hint { font-size: 0.8rem; color: var(--muted); }
 .sys-memory-options label:has(input:disabled) { color: var(--muted); }
+/* 匯入／匯出：只顯示有效資訊，停用選項以淡色及刪除線區分。 */
+.sys-memory-transfer .pdf-sheet-subtitle { margin-bottom: 1rem; }
+.sys-memory-transfer .sys-memory-options { gap: 0.65rem; }
+.sys-memory-transfer .sys-memory-options p:empty { display: none; }
+.sys-memory-transfer .sys-memory-options input:disabled + span {
+    color: var(--muted);
+    opacity: 0.55;
+    text-decoration: line-through;
+    cursor: not-allowed;
+}
+.sys-memory-transfer .sys-memory-options input[type="checkbox"]:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.sys-memory-transfer .sys-memory-options label:has(input:disabled) { cursor: not-allowed; }
+
 .sys-memory-sheet .pdf-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ========================================================================== */
@@ -4016,6 +4062,8 @@ body {
 .card-meta-text::before { content: '- '; }
 .card-text h3.is-meta-wrapped .card-meta-text { display: block; margin-left: 0; margin-top: 0.5rem; }
 .card-text h3.is-meta-wrapped .card-meta-text::before { content: none; }
+/* 只擴展標籤列的可用寬度，保留卡片其他內容原有的內距。 */
+.card > .tags-container { margin-inline-end: -0.75rem; }
 .card-desc-text { color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; margin-bottom: 1rem; }
 .card-thumb-img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg); }
 .card-date-badge { position: absolute; top: 0.2rem; left: 1.6rem; font-family: monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); opacity: 0.6; letter-spacing: 0.05em; }

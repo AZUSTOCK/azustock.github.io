@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.6.2.3",          // 目前系統版本號
+    VERSION: "U1.6.3",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -334,6 +334,9 @@ window.addEventListener('storage', event => {
     const prefix = window.SysStorage._prefix;
     const key = event.key?.startsWith(prefix) ? event.key.slice(prefix.length).split(':', 1)[0] : event.key;
     window.SysStorage.invalidate(key, storage);
+    if (storage === localStorage && window.isKotobaActive && (key === null || key === 'sys_clicked_kotoba')) {
+        window.updateFilterToast?.();
+    }
     if (storage === localStorage && (key === null || key === 'sys_unlocked_secrets')) {
         window._keysUnlockedSinceLastIndex = true;
         if (!window._keysRefreshFrame) window._keysRefreshFrame = requestAnimationFrame(() => {
@@ -350,7 +353,7 @@ window.SysMemory = {
     FORMAT: 'azustock-memory',
     VERSION: 1,
     MAX_BYTES: 2 * 1024 * 1024,
-    SET_KEYS: ['sys_unlocked_secrets', 'sys_read_articles', 'sys_animated_secrets', 'sys_agreed_sensitive'],
+    SET_KEYS: ['sys_unlocked_secrets', 'sys_read_articles', 'sys_animated_secrets', 'sys_agreed_sensitive', 'sys_clicked_kotoba'],
 
     // 直接讀取持久化集合（含尚未合併的成員），不使用可能尚未同步的快取。
     snapshot(includeAgreements = false) {
@@ -401,13 +404,12 @@ window.SysMemory = {
 
     describe(payload) {
         const parts = [];
-        if (typeof payload.sourceOrigin === 'string' && payload.sourceOrigin.length <= 256) parts.push('來源：' + payload.sourceOrigin);
         if (typeof payload.siteVersion === 'string' && payload.siteVersion.length <= 80) parts.push('系統版本：' + payload.siteVersion);
         if (typeof payload.exportedAt === 'string' && payload.exportedAt.length <= 80) {
             const date = new Date(payload.exportedAt);
             if (!Number.isNaN(date.getTime())) parts.push('備份時間：' + date.toLocaleString());
         }
-        return parts.join('｜') || '此備份未提供來源或版本資訊。';
+        return parts.join('｜');
     },
 
     // 沿用原有 SysStorage 的獨立成員寫入與 Web Locks 合併機制。
@@ -1209,6 +1211,25 @@ document.addEventListener('DOMContentLoaded', () => window.applyTextScale());
 window.lockScroll = function() {
     document.body.style.overflow = 'hidden';
 };
+
+// 浮動層的視覺狀態與互動狀態同步：inert 同時阻止鍵盤焦點及滑鼠事件。
+function setInteractiveLayer(element, active, stateClass = 'active') {
+    if (!element) return;
+    element.toggleAttribute('inert', !active);
+    element.classList.toggle(stateClass, active);
+}
+
+function syncLightboxToolboxInteraction() {
+    const toolbox = document.getElementById('lightbox-toolbox');
+    if (toolbox) toolbox.toggleAttribute('inert',
+        document.body.classList.contains('is-touch-device') && !toolbox.classList.contains('is-open'));
+}
+
+// main.js 由 defer 載入；初始關閉的常駐容器也不得取得焦點。
+for (const [id, stateClass] of [['md-modal', 'active'], ['fullscreen-menu', 'active'], ['lightbox-modal', 'is-active'], ['filter-toast', 'active']]) {
+    const element = document.getElementById(id);
+    if (element) element.toggleAttribute('inert', !element.classList.contains(stateClass));
+}
 
 // 延遲動畫可能交錯；以仍在畫面上的捲動鎖定層為準。
 function hasActiveScrollLock() {
@@ -2338,6 +2359,7 @@ window.renderTocMenu = function(menuItems, tooltipText) {
             
             tocDropdown = document.createElement('div');
             tocDropdown.className = 'toc-dropdown';
+            tocDropdown.setAttribute('inert', '');
             tocDropdown.innerHTML = '<ul class="toc-list"></ul>';
             
             tocWrapper.appendChild(tocBtn);
@@ -2368,15 +2390,15 @@ window.renderTocMenu = function(menuItems, tooltipText) {
             a.onclick = () => {
                 window.executeAnchorScroll(item.targetHash, false);
                 tocBtn.classList.remove('open');
-                tocDropdown.classList.remove('active');
+                setInteractiveLayer(tocDropdown, false);
             };
             li.appendChild(a);
             tocList.appendChild(li);
         });
 
-        tocBtn.onclick = () => { tocBtn.classList.toggle('open'); tocDropdown.classList.toggle('active'); };
+        tocBtn.onclick = () => { tocBtn.classList.toggle('open'); setInteractiveLayer(tocDropdown, !tocDropdown.classList.contains('active')); };
         tocBtn.classList.remove('open');
-        tocDropdown.classList.remove('active');
+        setInteractiveLayer(tocDropdown, false);
 
     } else {
         // YES -> NO: 從有到無，瞬間移除無動畫，防止退場期間佔用 Flex 空間導致排版跳動！
@@ -2557,35 +2579,30 @@ window.showSystemToast = function(title, msg, subMsg, duration = 12000, type = '
         </div>
     `;
 
+    toast.setAttribute('inert', '');
     document.body.appendChild(toast);
 
-    // 4. 進場動畫
-    setTimeout(() => {
+    let closing = false;
+    const enterTimer = setTimeout(() => {
+        if (!toast.isConnected || closing) return;
+        setInteractiveLayer(toast, true, 'is-active');
         toast.style.opacity = '1';
         toast.style.transform = 'translateY(0)';
     }, 50);
 
+    const close = () => {
+        if (closing || !toast.isConnected) return;
+        closing = true;
+        clearTimeout(enterTimer);
+        clearTimeout(toast.autoRemoveTimer);
+        setInteractiveLayer(toast, false, 'is-active');
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-10px)';
+        setTimeout(() => toast.remove(), 400);
+    };
     const xIcon = toast.querySelector('.toast-x-icon');
-
-    // 6. 點擊 X 關閉事件
-    if (xIcon) {
-        xIcon.onclick = (e) => {
-            e.stopPropagation();
-            clearTimeout(toast.autoRemoveTimer);
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-10px)';
-            setTimeout(() => toast.remove(), 400);
-        };
-    }
-    
-    // 7. 定時自動消失
-    if (duration > 0) {
-        toast.autoRemoveTimer = setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-10px)';
-            setTimeout(() => toast.remove(), 400);
-        }, duration);
-    }
+    if (xIcon) xIcon.onclick = e => { e.stopPropagation(); close(); };
+    if (duration > 0) toast.autoRemoveTimer = setTimeout(close, duration);
 };
 
 // ==========================================
@@ -2799,7 +2816,7 @@ window.openLightbox = function(btn, event) {
         lightboxImg.style.transition = 'none';
 
         // 2. 顯示 Modal
-        lightboxModal.classList.add('is-active');
+        setInteractiveLayer(lightboxModal, true, 'is-active');
 
         // ✨ 彈窗首次開啟時，強制校正視窗座標，防漏底！
         if (window.adjustModalViewports) window.adjustModalViewports();
@@ -3019,6 +3036,7 @@ window.toggleLightboxTools = function(event) {
     
     if (toolbox) {
         toolbox.classList.toggle('is-open');
+        syncLightboxToolboxInteraction();
         if (btn) btn.classList.toggle('is-active'); // ✨ 同步切換狀態
     }
 };
@@ -3042,11 +3060,14 @@ window.closeLightbox = function() {
     }
 
     if (lightboxModal) {
-        lightboxModal.classList.remove('is-active');
+        setInteractiveLayer(lightboxModal, false, 'is-active');
         if (toolbox) toolbox.classList.remove('is-open');
+        syncLightboxToolboxInteraction();
         if (toggleBtn) toggleBtn.classList.remove('is-active'); // ✨ 關閉時拔除狀態
         
-        setTimeout(() => {
+        clearTimeout(lightboxModal._closeCleanupTimer);
+        lightboxModal._closeCleanupTimer = setTimeout(() => {
+            if (lightboxModal.classList.contains('is-active')) return;
             const lightboxImg = document.getElementById('lightbox-img');
             if (lightboxImg) {
                 // ✨ 核心修復 2：關閉前先拔掉 onerror 監聽，並使用 removeAttribute
@@ -3285,6 +3306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (toolbox) toolbox.classList.remove('is-open');
             if (toggleBtn) toggleBtn.classList.remove('is-active');
         }
+        syncLightboxToolboxInteraction();
     };
 
     // 初始化並綁定到 Resize 追蹤引擎
@@ -4536,9 +4558,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const fullscreenMenu = document.getElementById('fullscreen-menu');
 
     menuToggle.addEventListener('click', () => {
-        if (document.getElementById('pdf-action-modal')) return;
+        if (document.querySelector('#pdf-action-modal:not([data-closing])')) return;
         menuToggle.classList.toggle('open');
-        fullscreenMenu.classList.toggle('active');
+        setInteractiveLayer(fullscreenMenu, !fullscreenMenu.classList.contains('active'));
         if (fullscreenMenu.classList.contains('active')) {
             window.lockScroll();
         } else {
@@ -4552,7 +4574,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     fullscreenMenu.addEventListener('click', (e) => {
         // 開啟操作面板的點擊仍會冒泡；不要讓它同時導覽或收起選單。
-        if (document.getElementById('pdf-action-modal')) {
+        if (document.querySelector('#pdf-action-modal:not([data-closing])')) {
             e.preventDefault();
             return;
         }
@@ -4569,7 +4591,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 1. 關閉選單視覺
             menuToggle.classList.remove('open');
-            fullscreenMenu.classList.remove('active');
+            setInteractiveLayer(fullscreenMenu, false);
             
             // 如果網址列不一樣，就手動更新網址列 (不觸發預設跳動)
             if (window.location.hash !== targetHash) {
@@ -4853,9 +4875,11 @@ async function loadProjects() {
             // 處理言之箱 (這裡依據你的實際命名可能是 getKotobaList 或 getQuotesList)
             const kotobaList = await window.getKotobaList(); 
 
+            window.currentKotobaNote = null;
             if (kotobaList.length > 0) {
                 const randomKotoba = kotobaList[Math.floor(Math.random() * kotobaList.length)];
                 const insertIndex = Math.floor(Math.random() * (uniqueTags.length || 1));
+                window.currentKotobaNote = randomKotoba;
                 const inlineKotoba = randomKotoba.replace(/\n/g, ' ').replace(/> /g, '').trim();
                 uniqueTags.splice(insertIndex, 0, `KOTOBA_NO_BOX:『${inlineKotoba}』`);
             }
@@ -4978,7 +5002,7 @@ async function loadProjects() {
 
             const metaParts = [];
             if (data.date) metaParts.push(data.date);
-            if (data.version) metaParts.push(`v${data.version}`); 
+            if (data.version) metaParts.push(String(data.version).trim().replace(/^\d/, 'v$&')); 
             const cardDateHtml = metaParts.length > 0 ? `<div class="card-date-badge">[${metaParts.join(' • ')}]</div>` : '';
 
             card.innerHTML = `
@@ -5747,7 +5771,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 }, 200); 
             });
 
-            modalOverlay.classList.add('active');
+            setInteractiveLayer(modalOverlay, true);
             window.lockScroll();
             if (window.grantDetailKeys(proj.key)) {
                 const header = document.getElementById('modal-top-left');
@@ -5957,7 +5981,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
     switchModalContent(
         () => {
             document.querySelector('.modal-top-bar').classList.remove('is-index-mode');
-            modalOverlay.classList.add('active');
+            setInteractiveLayer(modalOverlay, true);
             window.lockScroll();
             window._lastMarkdownHeadings = [];
             
@@ -6434,6 +6458,37 @@ window.currentCardIndex = 0;
 // ✨ 言の箱專屬：置中閱讀與點擊切換引擎
 // ==========================================
 window.isKotobaActive = false;
+window.currentKotobaNote = null;
+
+// 共用篩選膠囊：言葉不跳轉；一般標籤維持原本的卡片序號。
+window.updateFilterToast = function() {
+    const toast = document.getElementById('filter-toast');
+    if (!toast) return;
+    const kotoba = window.isKotobaActive;
+    const total = window.highlightedCards.length;
+    const active = kotoba || (!!window.currentActiveTag && total > 0);
+    const next = toast.querySelector('.next-btn');
+    if (next) next.disabled = !active || kotoba || total <= 1;
+    toast.classList.toggle('is-kotoba', kotoba);
+    setInteractiveLayer(toast, active);
+    if (!active) return;
+    let count;
+    if (kotoba) {
+        // 跑馬燈有兩份相同的 DOM，但每則言葉只計一次；移除的舊言葉不算入現有總數。
+        const notes = new Set(window.cachedKotobaList || []);
+        const clicked = window.SysStorage.getSet('sys_clicked_kotoba');
+        count = `(${[...notes].filter(note => clicked.has(note)).length}/${notes.size})`;
+    } else {
+        count = `(${window.currentCardIndex + 1}/${total})`;
+    }
+    const name = document.createElement('span');
+    name.className = 'toast-tag-name';
+    name.textContent = kotoba ? '言葉' : window.currentActiveTag;
+    const text = toast.querySelector('#toast-text');
+    if (text) text.replaceChildren(name);
+    const counter = toast.querySelector('#toast-count');
+    if (counter) counter.textContent = count;
+};
 
 window.centerMarqueeTarget = function(targetTagEl, firstContent) {
     const contentWidth = firstContent.offsetWidth;
@@ -6459,18 +6514,22 @@ window.centerKotobaTag = function(event) {
     }
     
     window.clearFilter();
-    window.isKotobaActive = true;
     
     // ✨ 鎖定使用者實際點擊的那一顆言の箱元素
     const targetTagEl = event ? event.target.closest('.kotoba-whisper') : document.querySelector('.kotoba-whisper');
     const firstContent = targetTagEl ? targetTagEl.closest('.marquee-content') : document.querySelector('.marquee-content');
     
     if (targetTagEl && firstContent) {
+        window.isKotobaActive = true;
+        if (typeof window.currentKotobaNote === 'string' && window.currentKotobaNote.trim()) {
+            window.SysStorage.add('sys_clicked_kotoba', window.currentKotobaNote);
+        }
         document.querySelectorAll('.kotoba-whisper').forEach(t => {
             t.classList.add('is-active');
         });
 
         window.centerMarqueeTarget(targetTagEl, firstContent);
+        window.updateFilterToast();
     }
 };
 
@@ -6489,8 +6548,7 @@ window.clearFilter = function(event) {
         t.classList.remove('is-active');
     });
 
-    const toast = document.getElementById('filter-toast');
-    if (toast) toast.classList.remove('active');
+    window.updateFilterToast();
 
     document.querySelectorAll('.marquee-content').forEach(m => {
         if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
@@ -6551,13 +6609,7 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     let clickedCard = clickedElement ? clickedElement.closest('.card') : null;
     window.currentCardIndex = clickedCard ? Math.max(0, window.highlightedCards.indexOf(clickedCard)) : 0;
 
-    const toast = document.getElementById('filter-toast');
-    if (toast) {
-        document.getElementById('toast-text').innerHTML = `<span class="toast-tag-name">${targetTag}</span>`;
-        const toastCount = document.getElementById('toast-count');
-        if (toastCount) toastCount.innerText = `(${window.currentCardIndex + 1}/${window.highlightedCards.length})`;
-        toast.classList.add('active');
-    }
+    window.updateFilterToast();
 
     if (window.highlightedCards.length > 0) window.focusAndBumpCard(window.highlightedCards[window.currentCardIndex]);
 };
@@ -6584,11 +6636,10 @@ window.scrollMarqueeTo = function(targetX, contentWidth) {
 
 window.scrollToNextCard = function(event) {
     if (event) event.stopPropagation();
-    if (window.highlightedCards.length <= 1) return;
+    if (window.isKotobaActive || !window.currentActiveTag || window.highlightedCards.length <= 1) return;
 
     window.currentCardIndex = (window.currentCardIndex + 1) % window.highlightedCards.length;
-    const toastCount = document.getElementById('toast-count');
-    if (toastCount) toastCount.innerText = `(${window.currentCardIndex + 1}/${window.highlightedCards.length})`;
+    window.updateFilterToast();
     
     if (window.highlightedCards.length > 0) window.focusAndBumpCard(window.highlightedCards[window.currentCardIndex]);
 };
@@ -6609,7 +6660,7 @@ function closeModal() {
     window.beginModalNavigation();
 
     window.historyStack = []; 
-    modalOverlay.classList.remove('active');
+    setInteractiveLayer(modalOverlay, false);
     
     // ✨ 關閉 Modal 時，精準拔除 Jump Toast 捲動監聽器，防止 Memory Leak
     if (window.indexScrollHandler) {
@@ -6647,7 +6698,7 @@ modalOverlay.addEventListener('touchmove', (e) => { if (e.target === modalOverla
 document.addEventListener('keydown', (e) => {
     // ✨ 絕對防護：當敏感內容警告窗或 PDF 操作選單開啟時，阻斷所有的方向鍵與背景操作！
     const sensitiveModal = document.getElementById('sensitive-modal-overlay');
-    const pdfActionModal = document.getElementById('pdf-action-modal');
+    const pdfActionModal = document.querySelector('#pdf-action-modal:not([data-closing])');
 
     if (sensitiveModal || pdfActionModal) {
         if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(e.key)) {
@@ -6702,7 +6753,9 @@ document.addEventListener('keydown', (e) => {
             const toolbox = document.getElementById('lightbox-toolbox');
             const state = window.lightboxState;
             if (toolbox && toolbox.classList.contains('is-open')) {
-                toolbox.classList.remove('is-open'); 
+                toolbox.classList.remove('is-open');
+                syncLightboxToolboxInteraction();
+                document.querySelector('.toolbox-toggle-btn')?.classList.remove('is-active');
             } else if (state.zoom !== 1) {
                 window.lightboxAction('reset');      
             } else {
@@ -6888,7 +6941,7 @@ window.fullscreenMermaid = function(btn) {
         isDomMode: true
     };
 
-    lightboxModal.classList.add('is-active');
+    setInteractiveLayer(lightboxModal, true, 'is-active');
     window.updateLightboxView();
 };
 
@@ -7031,7 +7084,7 @@ function show404Modal(title, message) {
             </button>
         </div>`;
 
-    modalOverlay.classList.add('active');
+    setInteractiveLayer(modalOverlay, true);
     window.lockScroll();
 
     // ✨ 403 畫面中的「管理員解鎖彩蛋」與「遠端鎖頭連動特效」
@@ -7196,6 +7249,7 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
         closing = true;
         document.removeEventListener('keydown', escListener);
         overlay.style.opacity = '0';
+        overlay.setAttribute('inert', '');
         overlay.style.pointerEvents = 'none'; 
         setTimeout(() => {
             overlay.remove();
@@ -7249,6 +7303,7 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
             jumpUnreadBtn.disabled = true;
             document.removeEventListener('keydown', escListener);
             overlay.style.opacity = '0';
+            overlay.setAttribute('inert', '');
             overlay.style.pointerEvents = 'none';
             setTimeout(() => {
                 overlay.remove();
@@ -7284,6 +7339,7 @@ window.showSensitiveAgreementModal = function(sensitiveType, onAgreeCallback, on
 
         document.removeEventListener('keydown', escListener); 
         overlay.style.opacity = '0';
+        overlay.setAttribute('inert', '');
         overlay.style.pointerEvents = 'none'; 
         
         setTimeout(() => {
@@ -7420,7 +7476,7 @@ window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cach
             const topBar = document.querySelector('.modal-top-bar');
             if (modalContainer && topBar) window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
 
-            modalOverlay.classList.add('active');
+            setInteractiveLayer(modalOverlay, true);
             window.lockScroll();
         },
         () => {
@@ -7583,7 +7639,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                     modalBody.innerHTML = listHTML;
                 }
                 
-                modalOverlay.classList.add('active');
+                setInteractiveLayer(modalOverlay, true);
                 window.lockScroll();
             },
             () => {
@@ -8016,6 +8072,7 @@ function openPdfActionSheet(markup) {
     const previous = document.getElementById('pdf-action-modal');
     const overlay = document.createElement('div');
     overlay.id = 'pdf-action-modal';
+    overlay.setAttribute('inert', '');
     overlay.innerHTML = markup;
     const sheet = overlay.querySelector('.pdf-action-sheet');
     if (previous) previous.replaceWith(overlay);
@@ -8036,6 +8093,7 @@ function openPdfActionSheet(markup) {
 
     const enterTimer = setTimeout(() => {
         if (!overlay.isConnected) return;
+        setInteractiveLayer(overlay, true, 'is-active');
         overlay.style.opacity = '1';
         sheet.style.transform = 'translateY(0)';
     }, 10);
@@ -8045,6 +8103,8 @@ function openPdfActionSheet(markup) {
         if (closing || !overlay.isConnected) return;
         closing = true;
         clearTimeout(enterTimer);
+        setInteractiveLayer(overlay, false, 'is-active');
+        overlay.dataset.closing = 'true';
         sheet.querySelectorAll('button').forEach(button => { button.disabled = true; });
         overlay.style.opacity = '0';
         sheet.style.transform = 'translateY(100%)';
@@ -8173,19 +8233,16 @@ window.toggleWebFullscreen = function(videoEl) {
 window.showSystemMemoryModal = function(mode) {
     const exporting = mode === 'export';
     const { overlay, close } = openPdfActionSheet(`
-        <div class="pdf-action-sheet sys-memory-sheet">
+        <div class="pdf-action-sheet sys-memory-sheet sys-memory-transfer">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title" style="color: var(--accent); font-family: monospace;">&gt;_ ${exporting ? '匯出系統記憶' : '匯入系統記憶'}</div>
             <div class="pdf-sheet-subtitle">${exporting ? 'EXPORT_MEMORY' : 'IMPORT_MEMORY'}</div>
             <div class="sys-memory-options">
-                <p>${exporting ? '備份目前的鑰匙、碎片、已讀及動畫紀錄與外觀偏好。檔案包含閱讀進度，請自行妥善保管。' : '選擇 Azustock 記憶備份（JSON）。鑰匙及閱讀紀錄將合併，不會覆蓋或刪除既有進度。'}</p>
+                <p>${exporting ? '備份系統記憶與外觀設定，請妥善保管。' : '選擇 JSON 備份，合併既有記憶。'}</p>
                 ${exporting ? '' : '<input id="sys-memory-file" class="sys-memory-file" type="file" accept=".json,application/json" aria-label="選擇記憶備份">'}
-                <label><input type="checkbox" id="sys-memory-agreements" aria-describedby="sys-memory-agreement-hint">${exporting ? '一併備份' : '一併還原'}永久內容警告同意紀錄</label>
-                <p id="sys-memory-agreement-hint" class="sys-memory-hint"></p>
-                ${exporting ? '' : `<label><input type="checkbox" id="sys-memory-preferences" aria-describedby="sys-memory-preference-hint">覆寫現有外觀偏好（主題、字體大小）</label>
-                <p id="sys-memory-preference-hint" class="sys-memory-hint"></p>
-                <label><input type="checkbox" id="sys-memory-prebackup">合併前先下載目前記憶的完整備份（含永久同意紀錄）</label>
-                <p class="sys-memory-hint">備份交由瀏覽器下載，請自行確認檔案已儲存。</p>`}
+                <label><input type="checkbox" id="sys-memory-agreements" disabled><span>${exporting ? '一併備份' : '一併還原'}永久內容警告同意紀錄</span></label>
+                ${exporting ? '' : `<label><input type="checkbox" id="sys-memory-preferences" disabled><span>覆寫外觀偏好（主題、字體大小）</span></label>
+                <label><input type="checkbox" id="sys-memory-prebackup" disabled><span>合併前下載完整備份（含永久同意）</span></label>`}
                 <p id="sys-memory-meta" class="sys-memory-hint"></p>
                 <p id="sys-memory-status" class="sys-memory-status" role="status" aria-live="polite"></p>
             </div>
@@ -8200,9 +8257,7 @@ window.showSystemMemoryModal = function(mode) {
     const status = $('#sys-memory-status');
     const confirmBtn = $('#sys-memory-confirm');
     const agreements = $('#sys-memory-agreements');
-    const agreementHint = $('#sys-memory-agreement-hint');
     const preferences = $('#sys-memory-preferences');
-    const preferenceHint = $('#sys-memory-preference-hint');
     const prebackup = $('#sys-memory-prebackup');
     const metadata = $('#sys-memory-meta');
     const fileInput = $('#sys-memory-file');
@@ -8210,17 +8265,13 @@ window.showSystemMemoryModal = function(mode) {
         status.textContent = message;
         status.classList.toggle('is-error', error);
     };
-    const describeCounts = data => `鑰匙／碎片 ${data.sys_unlocked_secrets?.length || 0} 筆、已讀 ${data.sys_read_articles?.length || 0} 筆、動畫 ${data.sys_animated_secrets?.length || 0} 筆、永久同意 ${data.sys_agreed_sensitive?.length || 0} 筆。`;
+    const describeCounts = data => `鑰匙／碎片 ${data.sys_unlocked_secrets?.length || 0} 筆、已讀 ${data.sys_read_articles?.length || 0} 筆、動畫 ${data.sys_animated_secrets?.length || 0} 筆、言葉 ${data.sys_clicked_kotoba?.length || 0} 筆、永久同意 ${data.sys_agreed_sensitive?.length || 0} 筆。`;
     const setOptions = data => {
         agreements.checked = false;
         agreements.disabled = !data?.sys_agreed_sensitive?.length;
-        agreementHint.textContent = !data ? '請先選擇備份檔案。' : agreements.disabled
-            ? (exporting ? '目前沒有永久同意紀錄。' : '此備份未包含可還原的永久同意紀錄。')
-            : `可${exporting ? '備份' : '還原'} ${data.sys_agreed_sensitive.length} 筆永久同意紀錄。`;
         if (preferences) {
             preferences.checked = false;
             preferences.disabled = !data || (data.theme === undefined && data.sys_text_scale === undefined);
-            preferenceHint.textContent = !data ? '請先選擇備份檔案。' : preferences.disabled ? '此備份沒有外觀偏好。' : '僅覆寫備份中存在的設定。';
         }
     };
     $('#sys-memory-back').onclick = () => window.showSystemReloadModal();
@@ -8238,7 +8289,6 @@ window.showSystemMemoryModal = function(mode) {
         try {
             const snapshot = window.SysMemory.snapshot(true);
             setOptions(snapshot.data);
-            metadata.textContent = window.SysMemory.describe(snapshot);
             report('目前記憶：' + describeCounts(snapshot.data));
         } catch (_) { report('無法讀取目前記憶。', true); }
     } else {
@@ -8286,8 +8336,8 @@ window.showSystemMemoryModal = function(mode) {
         if (committed) { reload(); return; }
         if (exporting) {
             try {
-                const filename = window.SysMemory.download(agreements.checked);
-                report('已交由瀏覽器下載：' + filename + '。請確認檔案已儲存。');
+                window.SysMemory.download(agreements.checked);
+                report('已開始下載，請確認備份已儲存。');
                 window.triggerHaptic('success');
             } catch (_) { report('無法匯出記憶，請確認瀏覽器允許儲存及下載。', true); }
             return;
@@ -8309,7 +8359,7 @@ window.showSystemMemoryModal = function(mode) {
             });
             const counts = Object.fromEntries(Object.entries(result.added).map(([key, length]) => [key, { length }]));
             const summary = '本次新增：' + describeCounts(counts) + `更新 ${result.preferences} 項外觀偏好。`;
-            const backupNote = prebackup.checked ? '已交由瀏覽器下載匯入前備份，請確認檔案。' : '';
+            const backupNote = prebackup.checked ? ' 請確認匯入前備份已儲存。' : '';
             if (result.failed) {
                 finish(summary + ` ${result.failed} 筆資料未能儲存；請保留原始備份，重新整理後可再次匯入。` + backupNote, true);
             } else {
@@ -8376,7 +8426,7 @@ window.showSystemFormatMemoryModal = function() {
             <div class="pdf-sheet-title" style="color: var(--error-color); font-family: monospace;">&gt;_ 確認重置系統記憶</div>
             <div class="pdf-sheet-subtitle">CONFIRM_FORMAT_MEMORY</div>
             <div class="sys-memory-options">
-                <p>此操作將清除目前網域的鑰匙、碎片、已讀、動畫及永久內容警告同意紀錄，也會清除系統版本快取及暫時狀態。主題與字體大小將保留。</p>
+                <p>此操作將清除目前網域的鑰匙、碎片、已讀、動畫、言葉及永久內容警告同意紀錄，也會清除系統版本快取及暫時狀態。主題與字體大小將保留。</p>
                 <p>若沒有備份，清除後將無法透過本站還原。</p>
                 <label><input type="checkbox" id="sys-format-backup" checked>重置前先下載完整備份（含永久同意紀錄）</label>
                 <label><input type="checkbox" id="sys-format-ack">我已了解，確定要清除系統記憶。</label>
@@ -8427,6 +8477,7 @@ window.showSystemFormatMemoryModal = function() {
             localStorage.removeItem('sys_data_versions');
             window.SysStorage.removeLocalSet('sys_agreed_sensitive'); // ✨ 新增：清除永久同意的敏感內容紀錄
             window.SysStorage.removeLocalSet('sys_read_articles');
+            window.SysStorage.removeLocalSet('sys_clicked_kotoba');
             
             sessionStorage.clear();
             window.SysStorage.clearCache();
