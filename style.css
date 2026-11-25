@@ -3775,6 +3775,33 @@ body {
 }
 
 
+/* 系統記憶管理：沿用 PDF Action Sheet 的色彩與按鈕樣式 */
+.sys-memory-sheet {
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+}
+.sys-memory-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+.sys-memory-options p { margin: 0; overflow-wrap: anywhere; }
+.sys-memory-options label { display: flex; align-items: flex-start; gap: 0.5rem; color: var(--text); }
+.sys-memory-options input[type="checkbox"] { flex-shrink: 0; accent-color: var(--accent); margin-top: 0.25em; }
+.sys-memory-options .sys-memory-file { width: 100%; min-width: 0; font: inherit; color: var(--text); }
+.sys-memory-status { color: var(--accent); }
+.sys-memory-status.is-error { color: var(--error-color); }
+.sys-memory-options .sys-memory-hint { font-size: 0.8rem; color: var(--muted); }
+.sys-memory-options label:has(input:disabled) { color: var(--muted); }
+.sys-memory-sheet .pdf-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
 /* ========================================================================== */
 /* ✨ 影音破圖/失效提示畫面 (Media Error Fallback)                             */
 /* ========================================================================== */
