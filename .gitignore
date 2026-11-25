@@ -22,3 +22,6 @@ desktop.ini
 /tools/.cache/webp_manifest.json.lock
 /tools/.cache/site_build.lock
 .github_sync.json
+# Deployment artifacts
+/.gh-pages-temp/
+/tools/public-site-inventory/

@@ -20,6 +20,7 @@ jobs:
     permissions:
       contents: read
       pages: read
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,108 +54,22 @@ jobs:
         run: |
           printf '1\n' | python -u generate_projects.py
 
-      - name: Prepare public site
-        shell: bash
-        run: |
-          mkdir -p .gh-pages-temp
+      - name: Test public site tool
+        run: python -m unittest discover -s tools -p test_public_site.py -v
 
-          # 保留網站的既有公開路徑；不發布私人檔案、建置暫存及原始入口。
-          rsync -av \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='.gh-pages-temp' \
-            --exclude='private/' \
-            --exclude='/tools/' \
-            --exclude='.github_sync.json' \
-            --exclude='.secrets.json' \
-            --exclude='.build_cache.json' \
-            --exclude='.gitignore' \
-            --exclude='.env' \
-            --exclude='.env.*' \
-            --exclude='.venv/' \
-            --exclude='node_modules/' \
-            --exclude='__pycache__/' \
-            --exclude='/index_local.html' \
-            --exclude='/generate_projects.py' \
-            --exclude='/main.js' \
-            --exclude='/style.css' \
-            --exclude='/api/meta.json' \
-            --exclude='/api/**/meta.json' \
-            --exclude='/projects/detail.json' \
-            --exclude='/projects/**/detail.json' \
-            --exclude='/projects/index.md' \
-            --exclude='/projects/**/index.md' \
-            --exclude='/logs/' \
-            --exclude='/CNAME' \
-            ./ .gh-pages-temp/
+      - name: Prepare public site and inventory
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -u tools/prepare_public_site.py --compare-previous
 
-      - name: Verify public site
-        shell: bash
-        run: |
-          for file in index.html main.min.js style.min.css all_projects.json assets/site.webmanifest README.md; do
-            test -s ".gh-pages-temp/$file" || { echo "::error::Missing or empty $file"; exit 1; }
-          done
-          test -d .gh-pages-temp/api
-          if find .gh-pages-temp -type d -name private -print -quit | grep -q .; then
-            echo "::error::Private directory in deployment output"
-            exit 1
-          fi
-          if [ -e .gh-pages-temp/tools ] || [ -L .gh-pages-temp/tools ]; then
-            echo "::error::Internal tools directory in deployment output"
-            exit 1
-          fi
-          if find .gh-pages-temp \( -name .github_sync.json -o -name .secrets.json \) -print -quit | grep -q .; then
-            echo "::error::Secret configuration file in deployment output"
-            exit 1
-          fi
-          # 僅檢查指定的建置來源，不限制隱藏文章或其他公開資源。
-          if [ -e .gh-pages-temp/logs ] || [ -L .gh-pages-temp/logs ]; then
-            echo "::error::Internal logs directory in deployment output"
-            exit 1
-          fi
-          if find .gh-pages-temp/api -name meta.json -print -quit | grep -q .; then
-            echo "::error::API metadata file in deployment output"
-            exit 1
-          fi
-          if [ -d .gh-pages-temp/projects ] && find .gh-pages-temp/projects \( -name detail.json -o -name index.md \) -print -quit | grep -q .; then
-            echo "::error::Project source file in deployment output"
-            exit 1
-          fi
-          python -m json.tool .gh-pages-temp/assets/site.webmanifest > /dev/null
-
-          # 確認正式入口的圖示與 Manifest 不會引用舊網域或 HTTP。
-          python - <<'PY'
-          from html.parser import HTMLParser
-          from pathlib import Path
-          from urllib.parse import urljoin, urlsplit
-
-          class Check(HTMLParser):
-              def __init__(self):
-                  super().__init__()
-                  self.manifest = False
-              def handle_starttag(self, tag, attrs):
-                  attrs = dict(attrs)
-                  rel = attrs.get("rel", "").lower().split()
-                  if tag != "link" or not any(r == "manifest" or "icon" in r for r in rel):
-                      return
-                  self.manifest |= "manifest" in rel
-                  href = attrs.get("href", "")
-                  url = urlsplit(urljoin("https://azustock.com/", href))
-                  if not href or url.scheme != "https" or url.netloc != "azustock.com":
-                      raise SystemExit(f"Invalid icon/manifest URL: {href}")
-                  if not (Path(".gh-pages-temp") / url.path.lstrip("/")).is_file():
-                      raise SystemExit(f"Missing icon/manifest file: {url.path}")
-
-          parser = Check()
-          parser.feed(Path(".gh-pages-temp/index.html").read_text(encoding="utf-8"))
-          if not parser.manifest:
-              raise SystemExit("Missing manifest link")
-          PY
-
-          echo "Public root:"
-          ls -la .gh-pages-temp
-          echo "Public site file list (staging directory):"
-          (cd .gh-pages-temp && find . -type f -printf '%P\n' | LC_ALL=C sort)
+      - name: Upload public site inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-site-inventory
+          path: tools/public-site-inventory/
+          retention-days: 30
+          if-no-files-found: error
+          overwrite: true
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
