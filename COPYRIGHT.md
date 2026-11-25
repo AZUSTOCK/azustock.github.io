@@ -10,7 +10,7 @@
 <div id="lang-zh" style="display:block;">
 
 # 著作權聲明
-本網站([https://azustock.github.io/](https://azustock.github.io/))所提供之所有內容，包括但不限於文字（散文、資訊敘述）、音樂、圖片、圖表、Logo 及機構識別系統，均受著作權法保護。
+本網站([https://azustock.com/](https://azustock.com/))所提供之所有內容，包括但不限於文字（散文、資訊敘述）、音樂、圖片、圖表、Logo 及機構識別系統，均受著作權法保護。
 
 ### 1. 權利歸屬
 除另有標註外，本網站所有內容之著作權均歸屬於 **梓本投資控股偽存公司 (Azustock Co., Phy.)** 及作者 **風川梓 (Kazekawa Azusa)** 所有。
@@ -39,7 +39,7 @@
 <div id="lang-en" style="display:none;">
 
 # Copyright Notice
-All content provided on this website ([https://azustock.github.io/](https://azustock.github.io/)), including but not limited to text (essays, informational narratives), music, images, charts, logos, and organizational branding, is protected by copyright law.
+All content provided on this website ([https://azustock.com/](https://azustock.com/)), including but not limited to text (essays, informational narratives), music, images, charts, logos, and organizational branding, is protected by copyright law.
 
 ### 1. Ownership of Rights
 Unless otherwise noted, the copyright of all content on this website belongs to **Azustock Co., Phy. (Azustock company phony)** and the author, **Kazekawa-Azusa**.
@@ -68,7 +68,7 @@ We are currently not accepting inquiries. Thank you for your understanding.
 <div id="lang-ja" style="display:none;">
 
 # 著作権について
-当ウェブサイト（[https://azustock.github.io/](https://azustock.github.io/)）で提供されるすべてのコンテンツ（テキスト、散文、情報記述、音楽、画像、図表、ロゴ、および組織の識別システムを含みますが、これらに限定されません）は、著作権法によって保護されています。
+当ウェブサイト（[https://azustock.com/](https://azustock.com/)）で提供されるすべてのコンテンツ（テキスト、散文、情報記述、音楽、画像、図表、ロゴ、および組織の識別システムを含みますが、これらに限定されません）は、著作権法によって保護されています。
 
 ### 1. 権利の帰属
 特に明記されていない限り、当ウェブサイトの全コンテンツの著作権は、**梓本投資控股 (Azustock Co., Phy.)** および著作者 **風川梓 (Kazekawa-Azusa)** に帰属します。  

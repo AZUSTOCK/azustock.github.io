@@ -37,9 +37,8 @@ jobs:
           AUTHOR_NAME: ${{ github.event.release.author.login }}
           AUTHOR_AVATAR: ${{ github.event.release.author.avatar_url }}
           REPO_NAME: ${{ github.repository }}
-          SITE_URL: "https://azustock.github.io"
-          # 👇 請填入圖片直連網址（支援 PNG / JPG / WebP）；若要顯示大圖請取消下方 embed["image"] 的註解
-          BANNER_URL: "https://azustock.github.io/assets/og.png"
+          SITE_URL: "https://azustock.com"
+          BANNER_URL: "https://azustock.com/assets/og.png"
         run: |
           python3 - <<'PY'
           import os

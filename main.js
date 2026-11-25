@@ -16,8 +16,8 @@ const CONFIG = {
     TAG_EXPIRE_DAYS: 14,
 
     // 🔗 資源路徑
-    FAVICON_LIGHT: "https://azustock.github.io/assets/OG_dark.png",
-    FAVICON_DARK: "https://azustock.github.io/assets/OG_light.png",
+    FAVICON_LIGHT: "./assets/OG_dark.png",
+    FAVICON_DARK: "./assets/OG_light.png",
     DATA_SOURCE: "./all_projects.json",
     
     // 🔗 Header 社群與分享圖示連結（修改網址或順序即可更新）
@@ -28,7 +28,7 @@ const CONFIG = {
         { name: "pixiv",    url: "https://www.pixiv.net/users/131123043",   icon: "socialPixiv" },
         { name: "Twitter",  url: "https://x.com/azustock_phy",            icon: "socialX" },
         { name: "Discord",  url: "",                                     icon: "socialDiscord" },
-        { name: "分享本站", copyUrl: "https://azustock.github.io/",       icon: "socialShare" }
+        { name: "分享本站", copyUrl: "https://azustock.com/",       icon: "socialShare" }
     ],
 
     // 🐛 測試與除錯設定
