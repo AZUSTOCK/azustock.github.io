@@ -51,7 +51,7 @@ jobs:
         env:
           GH_SYNC_TOKEN: ${{ secrets.GH_SYNC_TOKEN }}
         run: |
-          printf '1\\n' | python -u generate_projects.py
+          printf '1\n' | python -u generate_projects.py
 
       - name: Prepare public site
         shell: bash
@@ -59,23 +59,23 @@ jobs:
           mkdir -p .gh-pages-temp
 
           # 保留網站的既有公開路徑；不發布私人檔案、建置暫存及原始入口。
-          rsync -av \\
-            --exclude='.git' \\
-            --exclude='.github' \\
-            --exclude='.gh-pages-temp' \\
-            --exclude='private/' \\
-            --exclude='.build_cache.json' \\
-            --exclude='.gitignore' \\
-            --exclude='.env' \\
-            --exclude='.env.*' \\
-            --exclude='.venv/' \\
-            --exclude='node_modules/' \\
-            --exclude='__pycache__/' \\
-            --exclude='/index_local.html' \\
-            --exclude='/generate_projects.py' \\
-            --exclude='/main.js' \\
-            --exclude='/style.css' \\
-            --exclude='/CNAME' \\
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.gh-pages-temp' \
+            --exclude='private/' \
+            --exclude='.build_cache.json' \
+            --exclude='.gitignore' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='.venv/' \
+            --exclude='node_modules/' \
+            --exclude='__pycache__/' \
+            --exclude='/index_local.html' \
+            --exclude='/generate_projects.py' \
+            --exclude='/main.js' \
+            --exclude='/style.css' \
+            --exclude='/CNAME' \
             ./ .gh-pages-temp/
 
       - name: Verify public site
