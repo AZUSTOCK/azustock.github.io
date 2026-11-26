@@ -1,4 +1,8 @@
 /* ========================================================================== */
+/* 🔖 第一層：系統核心與變數 (System & Variables)                                       */
+/* ========================================================================== */
+
+/* ========================================================================== */
 /* 🔖 第一層：系統核心與變數 (System & Variables)                               */
 /* ========================================================================== */
 
@@ -78,28 +82,6 @@
     font-family: var(--sys-font-ja);
 }
 
-/* ========================================================================== */
-/* ✨ 2. Ruby (注音) 專屬樣式                                                  */
-/* ========================================================================== */
-/* 防止 ruby 本身繼承錯誤，保持與外層一致 */
-.markdown-body ruby {
-    font-family: inherit; 
-}
-
-/* 當 ruby 是日文時，針對上方的小字 (rt) 套用優化排版 */
-.markdown-body ruby:lang(ja) rt {
-    font-family: var(--sys-font-ja);
-    color: var(--muted); 
-    font-size: 0.65em; 
-    user-select: none; 
-    /* transform: translateY(-2px);  */ /* 若不需要微調高度，這行註解掉沒關係 */
-}
-
-/* lang 區塊外殼，確保內部間距正常 */
-.lang-wrapper {
-    margin: 1rem 0;
-}
-
 /* ==========================================
    ✨ 全域動畫與圖層變數 (Design Tokens)
    ========================================== */
@@ -128,88 +110,6 @@
 .group-color-2 { --current-group-color: var(--group-c2); --c-text: var(--c2-text); }
 .group-color-3 { --current-group-color: var(--group-c3); --c-text: var(--c3-text); }
 .group-color-4 { --current-group-color: var(--group-c4); --c-text: var(--c4-text); }
-.group-color-5 { --current-group-color: var(--group-c5); --c-text: var(--c5-text); }
-
-/* ==========================================
-   ✨ 系列群組標題 (高度隨內部自適應修復版)
-   ========================================== */
-.group-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center; /* ✨ 1. 垂直置中，不強制拉伸 */
-    border-bottom: none; 
-    padding-bottom: 0;
-    transition: color 0.5s ease;
-    height: auto !important; /* ✨ 2. 強制高度隨內部元素自適應 */
-}
-
-.group-header-text {
-    flex: 1;
-    min-width: 0; 
-    display: block; /* ✨ 3. 拔除 Flex，回歸純區塊，高度完全由內部文字決定 */
-    margin: 0;
-}
-
-.group-header-title { 
-    font-size: 0.8rem; 
-    letter-spacing: 0.15em; 
-    font-weight: 700;
-    color: var(--current-group-color, var(--accent)); 
-    border-bottom: 1px solid var(--current-group-color, var(--accent)); /* ✨ 確保底線同步備用色 */
-    padding-bottom: 0.4rem; 
-    margin: 0; /* ✨ 歸零外距防撐破 */
-    line-height: 1.4; /* ✨ 鎖定行高，防止繼承到過大的文字間距 */
-    transition: color 0.5s ease, border-bottom-color 0.5s ease; 
-}
-
-.group-header-desc { 
-    font-size: 0.85rem; 
-    color: var(--muted); 
-    margin: 0.4rem 0 0 0; /* ✨ 鎖定精準間距 */
-    line-height: 1.4; 
-}
-
-/* ✨ 外層直角方框：負責群組專屬高光色與透明間隙 */
-.group-header-cover-wrapper {
-    display: inline-block;
-    flex-shrink: 0;
-    align-self: center;
-    margin: 0 !important;
-    
-    /* 這裡的 padding 就是內外框之間的「透明間隙」 */
-    padding: 2px; 
-    
-    /* 直角的外層群組主題色 */
-    border: 2px solid var(--current-group-color, var(--accent)); 
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-}
-
-/* ✨ 內層圖片本體：負責 8px 圓角與透明灰細框 */
-.group-header-cover {
-    width: 44px !important; 
-    height: 44px !important; 
-    min-width: 44px !important; 
-    min-height: 44px !important; 
-    max-width: 44px !important; 
-    max-height: 44px !important; 
-    aspect-ratio: 1/1 !important;
-    object-fit: cover;
-    
-    /* 完全同步 .article-item-cover 的樣式 */
-    border-radius: 8px !important; 
-    border: 1px solid var(--card-border) !important; 
-    
-    display: block;
-    margin: 0 !important; 
-    box-shadow: none !important; /* 陰影已經交給外層了 */
-}
-
-/* Fallback Icon Color */
-.article-li[class*="group-color-"] .article-item-fallback,
-.article-li[style*="--current-group-color"] .article-item-fallback {
-    color: var(--current-group-color);
-}
-
 
 /* 1-4. 標籤與徽章狀態色盤 (含 SemVer 擴充) */
 [data-status="NEW"]      { --s-color: var(--error-color); --s-shadow: var(--error-shadow); }
@@ -247,20 +147,23 @@
     --svg-arrow-left: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='19' y1='12' x2='5' y2='12'/%3E%3Cpolyline points='12 19 5 12 12 5'/%3E%3C/svg%3E");
 }
 
-/* 👇 1. 平時常駐狀態：拔除 will-change，解除 #modal-body 的濾鏡隔離結界！ */
-#modal-body, #modal-top-left, #toc-mount-point { 
-    transition: var(--modal-transition) !important; 
-    transform-origin: var(--modal-origin); 
+/* ========================================================================== */
+/* 📱 PWA 與安全可視區 (Safe Area & Viewport) 引擎處理                          */
+/* ========================================================================== */
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --vv-height: 100vh;
+    --vv-height: 100dvh;
+    --vv-width: 100vw;
+    --vv-width: 100dvw;
 }
 
-/* 👇 2. 只有在切換文章的過場瞬間才啟用硬體加速 */
-#modal-body.content-fade-out, #modal-top-left.content-fade-out, #toc-mount-point.content-fade-out { 
-    will-change: var(--modal-will-change);
-    opacity: var(--modal-out-opacity) !important; 
-    transform: var(--modal-out-transform) !important; 
-    filter: var(--modal-out-filter) !important; 
-    pointer-events: none; 
-}
+/* ========================================================================== */
+/* 🏗️ 第二層：全域基底與版面 (Base & Layout)                                           */
+/* ========================================================================== */
 
 /* ========================================================================== */
 /* 🏗️ 第二層：全域基底與版面 (Base & Layout)                                   */
@@ -448,6 +351,8 @@ img.is-broken { display: block; background-image: var(--svg-broken-img), linear-
 footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .copyright-box { max-width: 800px; width: 100%; background: var(--box-bg); border: 1px solid var(--box-border); border-radius: 0.8rem; padding: 1.5rem 2rem; text-align: center; color: var(--muted); font-size: 0.85rem; line-height: 1.6; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); transition: background-color 0.5s ease, border-color 0.5s ease; }
 .copyright-box p { margin: 0 0 0.8rem 0; }
+.copyright-link { color: var(--text); text-decoration: none; opacity: 0.8; transition: opacity 0.3s ease, color 0.3s ease; }
+.copyright-link:hover { opacity: 1; color: var(--accent-2); }
 .copyright-footer { border-top: 1px solid var(--divider-line); transition: border-color 0.5s ease; margin-bottom: 0 !important; font-family: 'Courier New', monospace; font-size: 0.8rem; padding-top: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
 
 /* ========================================================================== */
@@ -491,6 +396,9 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .markdown-body table::-webkit-scrollbar, .markdown-body .gallery::-webkit-scrollbar { height: 10px; }
 .markdown-body table::-webkit-scrollbar-thumb, .markdown-body .gallery::-webkit-scrollbar-thumb { border: 3px solid transparent; }
 
+/* ========================================================================== */
+/* 🧰 第三層：全域共用 UI 元件 (Global UI Components)                                  */
+/* ========================================================================== */
 
 /* ========================================================================== */
 /* 🧰 第三層：全域共用 UI 元件 (Global UI Components)                           */
@@ -619,69 +527,6 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
     box-shadow: 0 4px 12px var(--card); 
 }
 
-/* ==========================================
-   ✨ 敏感內容協議按鈕特效 (Content Warning)
-   ========================================== */
-#sensitive-agree-btn { 
-    background: var(--error-color) !important; 
-    color: #fff !important; 
-    border-color: var(--error-color) !important; 
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* 預設給一點基礎陰影讓它有實體感 */
-}
-
-#sensitive-agree-btn:hover { 
-    background: var(--error-color) !important; /* 維持實心紅底 */
-    color: #fff !important;                    /* 維持白字 */
-    border-color: var(--error-color) !important;
-    
-    /* ✨ 雙層強烈紅光：一層負責範圍擴散，一層負責中心高光 */
-    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important; 
-    
-    /* 讓紅色瞬間提亮，視覺更吸睛 */
-    filter: brightness(1.15); 
-}
-
-/* ==========================================
-   ✨ 內容警告大圖示動態連動 (Warning SVG Animation)
-   ========================================== */
-
-/* 1. SVG 預設狀態 */
-#sensitive-warning-svg {
-    stroke: var(--error-color);
-    transition: stroke 0.35s ease, filter 0.35s ease, transform 0.35s var(--ease-smooth), opacity 0.35s ease; /* 讓變化過程滑順柔和 */
-}
-
-/* ✨ 2. 當滑鼠 Hover 到「返回」、「X 按鈕」或「背景遮罩 (黑區)」時：警告標示解除武裝 (變黯淡、無陰影、稍微縮小) */
-.sensitive-modal-content:has(#sensitive-decline-btn:hover, #sensitive-close-x:hover) #sensitive-warning-svg,
-#sensitive-modal-overlay:hover:not(:has(.sensitive-modal-content:hover)) #sensitive-warning-svg {
-    stroke: var(--muted);
-    filter: none;
-    transform: scale(0.9);
-    opacity: 0.5;
-}
-
-/* ✨ 3. 當滑鼠 Hover 到「前往」時：警告標示危險升級 (放大、光暈爆發) */
-.sensitive-modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-svg {
-    stroke: var(--error-color);
-    filter: drop-shadow(0 0 25px var(--error-color)); /* 陰影變得更亮更狂暴 */
-    transform: scale(1.15);
-}
-
-/* ✨ 首頁大分享按鈕：鎖定尺寸 */
-.share-site-btn { 
-    display: inline-flex; 
-    align-items: center; 
-    justify-content: center; 
-    gap: 6px; 
-    line-height: 1; 
-    min-width: 120px;      /* 保持最小寬度，讓它在標準字體時不會太短 */
-    width: max-content;    /* ✨ 新增：允許按鈕隨文字放大而自由撐開寬度 */
-    height: 42px;          /* 鎖死高度 */
-    box-sizing: border-box; 
-    white-space: nowrap;   /* ✨ 新增：絕對禁止文字換行 */
-}
-.share-site-btn svg { flex-shrink: 0; }
-
 /* ✨ 文章/目錄分享按鈕：鎖定尺寸 */
 .share-link-btn { 
     margin-left: auto; 
@@ -708,13 +553,13 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .share-link-btn svg { display: block; flex-shrink: 0; }
 
 /* ✨ 共用複製狀態 */
-.share-link-btn.copied, .share-site-btn.copied { 
+.share-link-btn.copied { 
     background: var(--accent-2) !important; 
     color: var(--card) !important; 
     border-color: var(--accent-2) !important; 
     transform: none !important; 
 }
-.share-link-btn.copied svg, .share-site-btn.copied svg { 
+.share-link-btn.copied svg { 
     transform: none !important; 
 }
 
@@ -1399,6 +1244,265 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 /* ========================================================================== */
+/* ✨ 彈窗共用與日誌專屬排版 (Modals & Changelogs)                              */
+/* ========================================================================== */
+/* 1. 工具列專用細分隔線 (取代重複寫死的 1px div) */
+.action-btn-divider { 
+    width: 1px; height: 16px; background: var(--card-border); 
+    margin: 0 2px; align-self: center; 
+}
+
+/* ========================================================================== */
+/* ✨ 核心修復：統一按鈕 SVG 精準向量渲染，消除縮放結尾 0.5px 跳動與模糊         */
+/* ========================================================================== */
+#pdf-view-btn svg,
+#toggle-sort-btn svg,
+.share-link-btn svg,
+.footer-btn svg,
+.modal-tool-btn svg,
+.mermaid-btn svg,
+.toolbar-btn svg,
+.code-copy-btn svg,
+.toast-btn svg {
+    transform-origin: center center;
+    shape-rendering: geometricPrecision;
+}
+
+/* ==========================================
+/* PDF 選單樣式 */
+/* ========================================== */
+
+#pdf-action-modal {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); 
+    backdrop-filter: blur(4px); z-index: 99999; 
+    display: flex; align-items: flex-end; justify-content: center; 
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+#pdf-action-modal.is-active { pointer-events: auto; }
+.pdf-action-sheet {
+    background: var(--card); width: 100%; max-width: 500px; 
+    border-top-left-radius: 20px; border-top-right-radius: 20px; 
+    padding: 1.5rem 1.5rem 2.5rem 1.5rem; box-sizing: border-box;
+    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
+    border-top: 1px solid var(--card-border); box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+}
+.pdf-action-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 600; padding: 0.8rem; border-radius: 12px; border: none; 
+    cursor: pointer; font-size: 1rem; font-family: inherit;
+}
+.pdf-action-btn.primary { background: var(--accent); color: var(--card); }
+.pdf-action-btn.secondary { background: var(--glass-bg); color: var(--text); border: 1px solid var(--card-border); }
+.pdf-action-btn.warn { background: var(--error-color); color: var(--card); }
+.pdf-action-btn.cancel { background: transparent; color: var(--muted); margin-top: 0.3rem; }
+
+/* ========================================================================== */
+/* 「PDF PWA 選單內部排版」(showPdfActionModal)                            */
+/* ========================================================================== */
+/* 補充 PDF Modal 內部細節樣式 */
+.pdf-drag-handle {
+    width: 40px; 
+    height: 4px; 
+    background: var(--muted); 
+    opacity: 0.4; 
+    border-radius: 2px; 
+    margin: 0 auto 1.2rem auto;
+}
+.pdf-sheet-title {
+    font-weight: 700; 
+    font-size: 1.1rem; 
+    color: var(--text); 
+    margin-bottom: 0.4rem; 
+    text-align: center; 
+    word-break: break-all;
+}
+.pdf-sheet-subtitle {
+    font-size: 0.85rem; 
+    color: var(--muted); 
+    text-align: center; 
+    margin-bottom: 1.5rem; 
+    font-family: monospace;
+}
+.pdf-btn-group {
+    display: flex; 
+    flex-direction: column; 
+    gap: 0.8rem;
+}
+
+
+/* 系統記憶管理：沿用 PDF Action Sheet 的色彩與按鈕樣式 */
+.sys-memory-sheet {
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+}
+.sys-memory-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+.sys-memory-options p { margin: 0; overflow-wrap: anywhere; }
+.sys-memory-options label { display: flex; align-items: flex-start; gap: 0.5rem; color: var(--text); }
+.sys-memory-options input[type="checkbox"] { flex-shrink: 0; accent-color: var(--accent); margin-top: 0.25em; }
+.sys-memory-options .sys-memory-file { width: 100%; min-width: 0; font: inherit; color: var(--text); }
+.sys-memory-status { color: var(--accent); }
+.sys-memory-status.is-error { color: var(--error-color); }
+.sys-memory-options .sys-memory-hint { font-size: 0.8rem; color: var(--muted); }
+.sys-memory-options label:has(input:disabled) { color: var(--muted); }
+/* 匯入／匯出：只顯示有效資訊，停用選項以淡色及刪除線區分。 */
+.sys-memory-transfer .pdf-sheet-subtitle { margin-bottom: 1rem; }
+.sys-memory-transfer .sys-memory-options { gap: 0.65rem; }
+.sys-memory-transfer .sys-memory-options p:empty { display: none; }
+.sys-memory-transfer .sys-memory-options input:disabled + span {
+    color: var(--muted);
+    opacity: 0.55;
+    text-decoration: line-through;
+    cursor: not-allowed;
+}
+.sys-memory-transfer .sys-memory-options input[type="checkbox"]:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.sys-memory-transfer .sys-memory-options label:has(input:disabled) { cursor: not-allowed; }
+
+.sys-memory-sheet .pdf-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ==========================================
+/* 全域提示框樣式 */
+/* ========================================== */
+
+#sys-global-toast {
+    position: fixed; top: max(90px, calc(var(--safe-top) + 80px)); right: max(30px, calc(var(--safe-right) + 20px)); max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 60px); z-index: 10000; opacity: 0; transform: translateY(-20px); 
+    pointer-events: none;
+    transition: opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+#sys-global-toast.is-active { pointer-events: auto; }
+.sys-toast-box {
+    color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; 
+    font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; width: max-content; 
+    max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; position: relative; 
+    transition: box-shadow 0.3s ease;
+}
+
+/* ========================================================================== */
+/* ✨ 系統提示框 (System Toast) 進階樣式提取                                     */
+/* ========================================================================== */
+.toast-x-icon {
+    position: absolute; top: 5px; right: 7px; width: 32px; height: 32px; 
+    display: flex; justify-content: center; align-items: center; 
+    z-index: 2; /* ✨ 確保 X 的 32x32px 點擊範圍位於最上層，不被標題文字干擾 */
+    opacity: 0.85; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease; cursor: pointer;
+}
+
+/* ✨ 修正：只有滑鼠真正進入 X 按鈕的合法點擊範圍時，才觸發旋轉與放大特效 */
+.toast-x-icon:hover { 
+    opacity: 1;
+    transform: rotate(90deg) scale(1.1); 
+}
+
+.toast-title {
+    font-size: 1rem; letter-spacing: 0.05em; 
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2); padding-right: 1.5rem;
+}
+.toast-msg { opacity: 0.95; font-weight: 600; }
+.toast-sub { opacity: 0.85; font-size: 0.8rem; }
+
+/* 原本在 JS 裡的 Hover 發光特效轉移到 CSS */
+.sys-toast-box.error { background: var(--error-color); box-shadow: 0 4px 20px var(--error-shadow); }
+.sys-toast-box.error:hover { box-shadow: 0 0 25px var(--error-shadow), 0 0 10px rgba(255,255,255,0.2); }
+
+.sys-toast-box.success { background: var(--accent); box-shadow: 0 4px 20px var(--glow-1); }
+.sys-toast-box.success:hover { box-shadow: 0 0 25px var(--glow-1), 0 0 10px rgba(255,255,255,0.2); }
+
+/* ========================================================================== */
+/* ✨ 系統重啟 / 更新畫面 (System Reboot Screen)                              */
+/* ========================================================================== */
+#sys-reboot-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: var(--accent);
+    transition: opacity 0.3s ease;
+    cursor: wait;
+}
+
+#sys-reboot-screen .reboot-title {
+    font-family: 'Courier New', monospace;
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 10px var(--glow-1);
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+#sys-reboot-screen .reboot-version {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 2rem;
+}
+
+#sys-reboot-screen .loading-text {
+    font-size: 1.1rem;
+    transition: color 0.3s ease;
+}
+
+
+/* ========================================================================== */
+/* ✨ 404 / 403 系統錯誤畫面 (System Error Modal)                              */
+/* ========================================================================== */
+.sys-error-layout {
+    text-align: center; 
+    padding: 15vh 2rem 10vh 2rem; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center;
+}
+.sys-error-icon {
+    width: 64px;
+    height: 64px;
+    stroke: var(--muted);
+    margin-bottom: 1.5rem;
+    opacity: 0.5;
+}
+.sys-error-layout h1 {
+    margin: 0 0 1rem 0; 
+    border: none; 
+    font-size: 2rem; 
+    padding: 0;
+}
+.sys-error-desc {
+    color: var(--muted); 
+    font-size: 1.05rem; 
+    max-width: 400px; 
+    line-height: 1.6;
+}
+.sys-error-btn {
+    margin-top: 2.5rem; 
+    padding: 0.6rem 1.5rem; 
+    display: inline-flex; 
+    align-items: center; 
+    gap: 0.5rem;
+}
+
+/* ========================================================================== */
+/* 🏠 第四層：首頁專屬視圖 (Homepage View)                                             */
+/* ========================================================================== */
+
+/* ========================================================================== */
 /* 🏠 第四層：首頁專屬視圖 (Homepage View)                                      */
 /* ========================================================================== */
 
@@ -1593,6 +1697,142 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
 .card:has(.tag:hover) .icon-book-open { stroke-opacity: 0; }
 
 /* ========================================================================== */
+/* ✨ 首頁網格與分類卡片排版 (Home Grid & Cards)                               */
+/* ========================================================================== */
+/* 分類區塊 Header */
+.section-header-layout { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.8rem; }
+.section-header-left { flex: 1; }
+.section-header-left h2 { display: flex; align-items: baseline; flex-wrap: wrap; margin-bottom: 0; }
+.section-meta { font-size: 1.1rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem; }
+.section-desc { color: var(--muted); margin-top: 0.2rem; margin-bottom: 0; line-height: 1.6; max-width: 800px; font-size: 0.95rem; }
+.section-icon { width: 72px; height: 72px; border-radius: 16px; object-fit: cover; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); flex-shrink: 0; }
+
+/* 卡片內容 */
+.card-meta-text { font-size: 0.95rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem; }
+.card-meta-text::before { content: '- '; }
+.card-text h3.is-meta-wrapped .card-meta-text { display: block; margin-left: 0; margin-top: 0.5rem; }
+.card-text h3.is-meta-wrapped .card-meta-text::before { content: none; }
+/* 只擴展標籤列的可用寬度，保留卡片其他內容原有的內距。 */
+.card > .tags-container { margin-inline-end: -0.75rem; }
+.card-desc-text { color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; margin-bottom: 1rem; }
+.card-thumb-img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg); }
+.card-date-badge { position: absolute; top: 0.2rem; left: 1.6rem; font-family: monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); opacity: 0.6; letter-spacing: 0.05em; }
+
+/* 卡片按鈕 */
+.card-action-btn { margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease; }
+.card-action-icon-wrap { position: relative; width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.card-action-icon-wrap .icon-book-closed,
+.card-action-icon-wrap .icon-book-open {
+    position: absolute;
+    inset: 0;
+    width: 18px;
+    height: 18px;
+    display: block;
+    transition: stroke-opacity 0.2s ease;
+    shape-rendering: geometricPrecision;
+}
+.card-action-icon-wrap .icon-book-closed { stroke-opacity: 1; }
+.card-action-icon-wrap .icon-book-open { stroke-opacity: 0; }
+.card-action-arrow { 
+    display: flex; align-items: center; transition: transform 0.2s ease; 
+    will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); 
+}
+
+/* ========================================================================== */
+/* ✨ 鑰匙鎖定模式 (Key Locked Engine - 支援深淺主題變數版)                     */
+/* ========================================================================== */
+.card.is-key-locked {
+    /* 🎨 背景色：將主題卡片色 (--card) 混入 6% 的主題警告色 (--error-color) */
+    background: color-mix(in srgb, var(--card) 94%, var(--error-color)) !important;
+    
+    /* 🎨 邊框色：平常就帶有微弱的警告紅邊框，取代死板的灰色邊框 */
+    border-color: color-mix(in srgb, var(--error-color) 35%, var(--card-border)) !important;
+    
+    /* 🎨 陰影與卡片光暈變數：統一綁定為警告色 */
+    --card-glow: var(--error-color);
+    box-shadow: 0 10px 30px var(--shadow-base), inset 0 0 20px color-mix(in srgb, var(--error-color) 5%, transparent) !important;
+    
+    /* 保留適度的低飽和度，讓未解鎖狀態有「封印感」，但不會死灰 */
+    filter: grayscale(40%);
+    opacity: 0.9;
+    transition: all 0.4s var(--ease-smooth);
+}
+
+/* 讓卡片內的標題在鎖定時呈現低調的次要文字色 (--muted) */
+.card.is-key-locked h3 {
+    color: var(--muted);
+    transition: color 0.3s ease;
+}
+
+.card.is-key-locked .card-image img {
+    filter: blur(5px) grayscale(60%);
+    transition: filter 0.4s ease;
+}
+
+/* ✨ Hover 時：完全恢復色彩，標題變回主文字色 (--text)，外框與陰影爆發紅光 */
+.is-key-locked:hover,
+.is-key-locked.simulate-hover {
+    filter: grayscale(0%);
+    opacity: 1;
+    border-color: var(--error-color) !important;
+    box-shadow: 0 8px 25px var(--error-shadow) !important;
+}
+
+.card.is-key-locked:hover h3 {
+    color: var(--text);
+}
+
+/* 目錄列表鎖定視覺 */
+.is-key-locked-item {
+    opacity: 0.7;
+    filter: grayscale(80%);
+}
+.is-key-locked-item:hover, .is-key-locked-item.simulate-hover {
+    opacity: 1;
+    filter: grayscale(0%);
+    border-left-color: var(--error-color) !important;
+}
+.is-key-locked-item:hover .article-item-title {
+    color: var(--error-color) !important;
+    text-shadow: 0 0 8px var(--error-shadow);
+}
+
+/* 縮圖上的鎖頭遮罩 */
+.locked-cover-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    z-index: 10;
+}
+.locked-cover-overlay svg {
+    transition: transform 0.3s var(--ease-smooth);
+}
+
+/* ========================================================================== */
+/* 📖 第五層：文章系統、目錄與彈窗 (Article, Index & Modals)                               */
+/* ========================================================================== */
+
+#modal-body, #modal-top-left, #toc-mount-point { 
+    transition: var(--modal-transition) !important; 
+    transform-origin: var(--modal-origin); 
+}
+
+/* 👇 2. 只有在切換文章的過場瞬間才啟用硬體加速 */
+#modal-body.content-fade-out, #modal-top-left.content-fade-out, #toc-mount-point.content-fade-out { 
+    will-change: var(--modal-will-change);
+    opacity: var(--modal-out-opacity) !important; 
+    transform: var(--modal-out-transform) !important; 
+    filter: var(--modal-out-filter) !important; 
+    pointer-events: none; 
+}
+
+/* ========================================================================== */
 /* 📖 第五層：文章系統與 Modal (Article & Modal)                                 */
 /* ========================================================================== */
 
@@ -1664,8 +1904,6 @@ body.is-touch-device .toolbox-group:not(.is-open) *,
 .modal-back-btn svg { display: block; transition: transform 0.3s var(--ease-smooth); }
 .modal-back-btn:hover { background-color: var(--accent-hover); border-color: var(--accent-hover); color: var(--card); box-shadow: 0 4px 12px var(--card); }
 .modal-back-btn:hover svg { transform: translateX(-4px); }
-.modal-back-btn.history-back-btn { border-color: var(--accent-2); color: var(--accent-2); }
-.modal-back-btn.history-back-btn:hover { background-color: var(--accent-2); border-color: var(--accent-2); color: var(--card); }
 
 
 /* ✨ 統一所有的圓形工具按鈕樣式 (包含 T 與 X) */
@@ -1684,8 +1922,134 @@ body.is-touch-device .toolbox-group:not(.is-open) *,
 .modal-close-btn svg, .modal-tool-btn svg { display: block; transition: transform 0.4s var(--ease-smooth); transform-origin: center center; }
 .modal-tool-btn:hover svg { transform: scale(1.08); }
 
+/* ========================================================================== */
+/* ✨ 獨立捲軸與高度動態分配引擎 (Sticky 毛玻璃 + 原生完美卷軸版) */
+/* ========================================================================== */
 
+/* 1. 外層容器：拿回「捲動權」！ */
+.modal-content {
+    /* 恢復讓外層負責捲動，卷軸就會出現在最外側邊緣 */
+    overflow-y: auto !important; 
+    overflow-x: hidden !important; 
+    padding: 0 !important; 
+    display: block !important; /* 拔除 Flex，恢復原生流動，排版最穩 */
+}
 
+/* 2. 頂部導覽列：改回 Sticky (黏性定位) */
+.modal-top-bar {
+    position: sticky !important; /* ✨ 關鍵：黏在頂部，內文會自動鑽到它底下產生毛玻璃效果 */
+    top: 0;
+    left: 0;
+    right: 0;
+    margin: 0 !important; 
+    padding: 1.5rem 3rem 1.2rem 3rem !important; 
+    width: 100%;
+    box-sizing: border-box;
+    z-index: 1060 !important; 
+}
+
+/* 3. 中間容器：單純的包裝盒 */
+#modal-body {
+    display: block !important;
+    height: auto !important;
+}
+
+/* 4. 獨立雙容器：放棄內部捲動，把高度釋放給外層 */
+#view-index, #view-article {
+    position: relative !important;
+    overflow: visible !important; /* ✨ 關鍵：不准自己捲動，讓外層的 modal-content 捲！ */
+    height: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    
+    /* ✨ 補回 TopBar 失去的下方 margin 空間，讓內容往下推，保持完美呼吸感 */
+    padding-top: 1.3rem !important; 
+    
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+    padding-bottom: 3rem !important; 
+    margin: 0 !important;
+}
+
+/* ==========================================
+   ✨ 系列群組標題 (高度隨內部自適應修復版)
+   ========================================== */
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* ✨ 1. 垂直置中，不強制拉伸 */
+    border-bottom: none; 
+    padding-bottom: 0;
+    transition: color 0.5s ease;
+    height: auto !important; /* ✨ 2. 強制高度隨內部元素自適應 */
+}
+
+.group-header-text {
+    flex: 1;
+    min-width: 0; 
+    display: block; /* ✨ 3. 拔除 Flex，回歸純區塊，高度完全由內部文字決定 */
+    margin: 0;
+}
+
+.group-header-title { 
+    font-size: 0.8rem; 
+    letter-spacing: 0.15em; 
+    font-weight: 700;
+    color: var(--current-group-color, var(--accent)); 
+    border-bottom: 1px solid var(--current-group-color, var(--accent)); /* ✨ 確保底線同步備用色 */
+    padding-bottom: 0.4rem; 
+    margin: 0; /* ✨ 歸零外距防撐破 */
+    line-height: 1.4; /* ✨ 鎖定行高，防止繼承到過大的文字間距 */
+    transition: color 0.5s ease, border-bottom-color 0.5s ease; 
+}
+
+.group-header-desc { 
+    font-size: 0.85rem; 
+    color: var(--muted); 
+    margin: 0.4rem 0 0 0; /* ✨ 鎖定精準間距 */
+    line-height: 1.4; 
+}
+
+/* ✨ 外層直角方框：負責群組專屬高光色與透明間隙 */
+.group-header-cover-wrapper {
+    display: inline-block;
+    flex-shrink: 0;
+    align-self: center;
+    margin: 0 !important;
+    
+    /* 這裡的 padding 就是內外框之間的「透明間隙」 */
+    padding: 2px; 
+    
+    /* 直角的外層群組主題色 */
+    border: 2px solid var(--current-group-color, var(--accent)); 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+/* ✨ 內層圖片本體：負責 8px 圓角與透明灰細框 */
+.group-header-cover {
+    width: 44px !important; 
+    height: 44px !important; 
+    min-width: 44px !important; 
+    min-height: 44px !important; 
+    max-width: 44px !important; 
+    max-height: 44px !important; 
+    aspect-ratio: 1/1 !important;
+    object-fit: cover;
+    
+    /* 完全同步 .article-item-cover 的樣式 */
+    border-radius: 8px !important; 
+    border: 1px solid var(--card-border) !important; 
+    
+    display: block;
+    margin: 0 !important; 
+    box-shadow: none !important; /* 陰影已經交給外層了 */
+}
+
+/* Fallback Icon Color */
+.article-li[class*="group-color-"] .article-item-fallback,
+.article-li[style*="--current-group-color"] .article-item-fallback {
+    color: var(--current-group-color);
+}
 
 /* 5-3. 文章目錄系統 (TOC) */
 .toc-wrapper { 
@@ -1780,14 +2144,6 @@ span.article-item-date {
     flex-shrink: 0; 
     white-space: nowrap; /* ✨ 關鍵修復 2：防止日期被連字號 (Hyphen) 從中間切斷 */
 }
-.group-header-title { 
-    font-size: 0.75rem; 
-    letter-spacing: 0.15em; 
-    border-bottom: 1px solid; 
-    padding-bottom: 0.3rem; 
-    transition: color 0.5s ease, border-bottom-color 0.5s ease; /* ✨ 讓標題顏色跟著主題平滑切換 */
-}
-.group-header-desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
 
 /* 文章清單 Hover 磁吸動畫系統 */
 .article-li { margin-bottom: 0.5rem; padding-bottom: 0.5rem; }
@@ -1902,6 +2258,356 @@ span.article-item-date {
 }
 .capsule-btn.disabled { opacity: 0.3; cursor: not-allowed; }
 
+/* 2. 版本日誌 (Changelog) 專屬排版 */
+.changelog-header-row { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
+.changelog-version { 
+    font-family: monospace; font-weight: 900; color: var(--accent); 
+    font-size: 1.5rem; letter-spacing: 0.05em; line-height: 1; transform: translateY(1px); 
+}
+.changelog-date { 
+    font-family: monospace; 
+    color: var(--muted); 
+    font-size: 0.9rem; 
+    margin-left: 0.2rem; 
+    transform: translateY(2px); 
+    white-space: nowrap; /* ✨ 關鍵魔法：強制日期絕對不准從中間斷開 */
+}
+.changelog-list-item { margin-bottom: 1rem; }
+.changelog-item-version { font-family: monospace; color: var(--tab-color); font-size: 1.15rem; }
+.changelog-item-icon { color: var(--tab-color, var(--accent)); }
+
+/* ========================================================================== */
+/* ✨ 敏感內容協議畫面 (Sensitive Content Modal)                               */
+/* ========================================================================== */
+.sensitive-modal-content {
+    cursor: auto; 
+    width: 90%;
+    max-width: 500px; 
+    min-width: min(85vw, 320px);  /* ✨ 設定最小寬度 */
+    min-height: 280px;            /* ✨ 設定最小高度 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center; 
+    padding: 3rem 2rem; 
+    opacity: 1; 
+    position: relative;
+    background: var(--card); 
+    border: 1px solid var(--card-border); 
+    border-radius: 1.1rem; 
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    transition: background-color 0.5s ease, border-color 0.5s ease;
+}
+.sensitive-close-btn {
+    position: absolute; 
+    top: 1.2rem; 
+    right: 1.2rem; 
+    background: transparent; 
+    border: none; 
+    color: var(--muted); 
+    cursor: pointer; 
+    padding: 0.5rem; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
+    transform-origin: center center; 
+    opacity: 0.7;
+}
+.sensitive-close-btn:hover,
+.sensitive-modal-content:has(#sensitive-decline-btn:hover) .sensitive-close-btn,
+#sensitive-modal-overlay:hover:not(:has(.sensitive-modal-content:hover)) .sensitive-close-btn {
+    opacity: 1; 
+    color: var(--current-warning-color, var(--error-color)); /* ✨ 關閉按鈕 Hover 變色 */
+    transform: rotate(90deg) scale(1.1);
+}
+.sensitive-title {
+    margin: 0 0 1rem 0; 
+    color: var(--current-warning-color, var(--error-color));
+}
+.sensitive-desc {
+    color: var(--muted); 
+    font-size: 0.95rem; 
+    line-height: 1.6; 
+    margin-bottom: 2rem;
+}
+.sensitive-desc-hint {
+    font-size: 0.8rem; 
+    opacity: 0.7;
+}
+.sensitive-actions {
+    display: flex; 
+    justify-content: center; 
+    gap: 1rem; 
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+/* ✨ 動態模板按鈕與圖示色彩連動 */
+#sensitive-agree-btn { 
+    background: var(--current-warning-color, var(--error-color)) !important; 
+    color: #fff !important; 
+    border-color: var(--current-warning-color, var(--error-color)) !important; 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); 
+    transition: all 0.3s ease;
+}
+
+/* ✨ Hover 時：按鈕全面化身為危險紅色 (--error-color) */
+#sensitive-agree-btn:hover { 
+    background: var(--error-color) !important;
+    border-color: var(--error-color) !important;
+    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important; 
+    filter: brightness(1.15); 
+}
+
+#sensitive-warning-icon-wrapper svg {
+    stroke: var(--current-warning-color, var(--error-color));
+    overflow: visible;
+    transform-origin: center center;
+    transition: stroke 0.35s ease, filter 0.35s ease, transform 0.35s var(--ease-smooth), opacity 0.35s ease;
+}
+
+/* ✨ Hover 時：警告 SVG 標誌同步化身為危險紅色，並發出紅光 */
+.sensitive-modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-icon-wrapper svg {
+    stroke: var(--error-color) !important;
+    filter: drop-shadow(0 0 25px var(--error-color)) !important; 
+    transform: scale(1.15);
+}
+
+/* ==========================================
+   ✨ 敏感內容協議核取方塊 (Checkbox)
+   ========================================== */
+.sensitive-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    margin-top: 0.2rem;
+    margin-bottom: 1rem;
+    user-select: none;
+    transition: opacity 0.2s ease;
+}
+.sensitive-checkbox-label:hover {
+    text-decoration: underline 2px solid var(--muted);
+}
+.sensitive-checkbox-label input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--muted);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    /* transition: all 0.2s ease; */
+}
+.sensitive-checkbox-label input[type="checkbox"]:checked {
+    background: var(--current-warning-color, var(--error-color));
+    border-color: var(--current-warning-color, var(--error-color));
+}
+.sensitive-checkbox-label input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    inset: 0; /* 讓內部元素完美貼合整個框的長寬 */
+    
+    /* 直接嵌入純白色的高質感 SVG 打勾圖示 */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+    
+    background-size: 75%; /* 讓打勾稍微小於外框，留出呼吸空間 */
+    background-position: center; /* 永遠保持絕對置中 */
+    background-repeat: no-repeat;
+    
+    /* 清除舊版的變形與邊框設定 */
+    border: none;
+    transform: none;
+}
+.sensitive-checkbox-text {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+/* ==========================================
+   ✨ MAIN 警告：推薦未讀前篇跳轉卡片與按鈕層級優化
+   ========================================== */
+.sensitive-modal-content.has-jump-card .sensitive-desc {
+    margin-bottom: 1.4rem;
+}
+
+.sensitive-jump-card {
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 1.05rem;
+    margin-bottom: 1.4rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--current-warning-color, var(--accent)) 45%, var(--card-border));
+    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 10%, var(--box-bg));
+    color: var(--text);
+    text-align: left;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--current-warning-color, var(--accent)) 12%, transparent);
+    transition: transform 0.25s var(--ease-smooth), border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.sensitive-jump-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 -6px 0;
+    border-radius: 12px;
+}
+
+.sensitive-jump-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--current-warning-color, var(--accent));
+    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 18%, var(--box-bg));
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--current-warning-color, var(--accent)) 28%, transparent);
+}
+
+.sensitive-jump-card:active {
+    transform: translateY(0) scale(0.99);
+}
+
+.sensitive-jump-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--current-warning-color, var(--accent));
+    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--current-warning-color, var(--accent)) 30%, transparent);
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.sensitive-jump-card:hover .sensitive-jump-icon {
+    background: var(--current-warning-color, var(--accent));
+    color: var(--card);
+}
+
+.sensitive-jump-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sensitive-jump-kicker {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--current-warning-color, var(--accent));
+    opacity: 0.9;
+}
+
+.sensitive-jump-title {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sensitive-jump-arrow {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    color: var(--current-warning-color, var(--accent));
+    opacity: 0.85;
+    transition: transform 0.25s var(--ease-smooth), opacity 0.25s ease;
+}
+
+.sensitive-jump-card:hover .sensitive-jump-arrow {
+    transform: translateX(4px);
+    opacity: 1;
+}
+
+/* Hover 推薦卡片時，上方警告圖示轉為柔和黯淡 (mute) */
+.sensitive-modal-content.has-jump-card:has(.sensitive-jump-card:hover) #sensitive-warning-svg {
+    stroke: var(--muted) !important;
+    filter: none !important;
+    transform: scale(0.9);
+    opacity: 0.5;
+}
+
+/* 有推薦前篇時，讓「不感興趣」更低調、「我已了解並前往」降級為次要外框（Hover 仍轉紅光警告） */
+.sensitive-modal-content.has-jump-card #sensitive-decline-btn {
+    border-color: var(--card-border);
+    color: var(--muted);
+}
+.sensitive-modal-content.has-jump-card #sensitive-decline-btn:hover {
+    background: var(--box-bg);
+    border-color: var(--muted);
+    color: var(--text);
+    box-shadow: none;
+}
+
+.sensitive-modal-content.has-jump-card #sensitive-agree-btn {
+    background: transparent !important;
+    color: var(--current-warning-color, var(--error-color)) !important;
+    border-color: color-mix(in srgb, var(--current-warning-color, var(--error-color)) 60%, transparent) !important;
+    box-shadow: none;
+}
+.sensitive-modal-content.has-jump-card #sensitive-agree-btn:hover {
+    background: var(--error-color) !important;
+    color: #fff !important;
+    border-color: var(--error-color) !important;
+    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important;
+}
+
+/* 深色模式 MAIN 無推薦卡片時，修正亮青底配白字對比度偏低的問題 */
+[data-theme="dark"] .sensitive-modal-content[data-sensitive-type="MAIN"]:not(.has-jump-card) #sensitive-agree-btn {
+    color: var(--bg) !important;
+    font-weight: 700;
+}
+[data-theme="dark"] .sensitive-modal-content[data-sensitive-type="MAIN"]:not(.has-jump-card) #sensitive-agree-btn:hover {
+    color: #fff !important;
+}
+
+/* ✨ 2. 當滑鼠 Hover 到「返回」、「X 按鈕」或「背景遮罩 (黑區)」時：警告標示解除武裝 (變黯淡、無陰影、稍微縮小) */
+.sensitive-modal-content:has(#sensitive-decline-btn:hover, #sensitive-close-x:hover) #sensitive-warning-svg,
+#sensitive-modal-overlay:hover:not(:has(.sensitive-modal-content:hover)) #sensitive-warning-svg {
+    stroke: var(--muted);
+    filter: none;
+    transform: scale(0.9);
+    opacity: 0.5;
+}
+
+/* ========================================================================== */
+/* 🖋️ 第六層：Markdown 渲染與媒體引擎 (Markdown, Media & Secrets)                      */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* ✨ 2. Ruby (注音) 專屬樣式                                                  */
+/* ========================================================================== */
+/* 防止 ruby 本身繼承錯誤，保持與外層一致 */
+.markdown-body ruby {
+    font-family: inherit; 
+}
+
+/* 當 ruby 是日文時，針對上方的小字 (rt) 套用優化排版 */
+.markdown-body ruby:lang(ja) rt {
+    font-family: var(--sys-font-ja);
+    color: var(--muted); 
+    font-size: 0.65em; 
+    user-select: none; 
+    /* transform: translateY(-2px);  */ /* 若不需要微調高度，這行註解掉沒關係 */
+}
+
+/* lang 區塊外殼，確保內部間距正常 */
+.lang-wrapper {
+    margin: 1rem 0;
+}
 
 /* ========================================================================== */
 /* 🖋️ 第六層：Markdown 渲染引擎 (Markdown Renderer)                             */
@@ -2678,8 +3384,7 @@ figure.standalone-figure:has(img:hover) .zoom-btn {
 }
 
 /* 2. 無圖說獨立圖片/影片：滑鼠移到媒體上時，懸浮放大鏡跟著填滿顏色並發光 */
-figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
-.video-wrapper:has(video:hover) .zoom-btn.floating { 
+figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating { 
     background: var(--accent-2); 
     color: var(--card);
     opacity: 1; 
@@ -2689,7 +3394,6 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 /* 6-4. 畫廊系統 (Gallery) */
 .markdown-body .gallery { --g-width: 200px; --g-rows: 1; --g-ratio: 1/1; display: grid; gap: 1rem; margin: 0.2rem -0.8rem 0.2rem -0.8rem; padding: 0.5rem 0.8rem 1.5rem 0.8rem; grid-template-rows: repeat(var(--g-rows), auto); grid-auto-flow: column; grid-auto-columns: minmax(var(--g-width), var(--g-width)); overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 .markdown-body .gallery figure { margin: 0; padding: 0; width: var(--g-width) !important; aspect-ratio: var(--g-ratio); max-width: none !important; flex-shrink: 0; border-radius: 0.6rem; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); overflow: hidden; position: relative; backface-visibility: hidden; transform: translateZ(0); transition: transform 0.3s var(--ease-smooth), border-radius 0.3s ease; cursor: pointer; }
-.markdown-body .gallery.row-fill-mode { grid-auto-flow: row; grid-template-columns: repeat(var(--g-cols, 1), max-content); }
 .markdown-body .gallery figure:hover { transform: scale(1.05) translateZ(0); z-index: 10; }
 .markdown-body .gallery figure img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; border: none; border-radius: 0; transform: scale(1.02); }
 .markdown-body .gallery figure img.is-broken { transform: none; }
@@ -2845,608 +3549,142 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating,
 @keyframes hint-pulse-right { 0%, 100% { transform: translateX(-8px); opacity: 0.4; } 50% { transform: translateX(5px); opacity: 1; } }
 @keyframes hint-pulse-left { 0%, 100% { transform: translateX(8px); opacity: 0.4; } 50% { transform: translateX(-5px); opacity: 1; } }
 
-
 /* ========================================================================== */
-/* 🖼️ 第七層：大圖預覽引擎 (Lightbox Engine)                                    */
+/* ✨ 影音破圖/失效提示畫面 (Media Error Fallback)                             */
 /* ========================================================================== */
-
-/* 7-1. Modal 基礎佈局 */
-#lightbox-modal { 
-    position: fixed; top: 0; left: 0; 
-    width: 100%; box-sizing: border-box; 
-    
-    /* ✨ 讓防抖動陰影與背景色都完美跟隨系統 Theme */
-    box-shadow: 30px 0 0 0 var(--bg); 
+.media-error-fallback {
+    width: 100%; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
     background: var(--bg); 
-    
-    height: 100vh; height: 100dvh; z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease, visibility 0s linear 0.3s; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; 
-}
-#lightbox-modal.is-active { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
-#lightbox-backdrop { 
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; 
-    filter: blur(40px); /* 移除強制暗化 */
-    opacity: 0.35;      /* ✨ 改用透明度，讓底層的主題色 var(--bg) 漂亮地透出來 */
-    transform: scale(1.1); z-index: 1; pointer-events: none; 
-}
-
-/* 7-2. 工具列 */
-#lightbox-toolbar { 
-    position: absolute; top: 0; left: 0; width: 100%; height: 70px; 
-    background: linear-gradient(to bottom, var(--bg), transparent); /* ✨ 漸層跟隨主題 */
-    z-index: 50; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; box-sizing: border-box; pointer-events: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; 
-}
-.toolbar-left, .toolbar-right{ display: flex; align-items: center; gap: 8px; pointer-events: auto; }
-#lightbox-counter { color: var(--text); font-family: monospace; font-size: 1.1rem; font-weight: bold; letter-spacing: 0.05em; margin-left: 10px; }
-
-/* 工具列按鈕 (動態主題適應) */
-.toolbar-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 40px; height: 40px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; backdrop-filter: blur(4px); position: relative; }
-.toolbar-btn:hover { background: var(--accent); color: var(--card); border-color: var(--accent); }
-.toolbar-btn:hover svg { transform: scale(1.08); }
-.toolbar-btn[onclick*="zoom-out"]:hover svg { transform: scale(0.85); transition: transform 0.2s var(--ease-smooth); }
-.toolbar-btn svg { display: block; transition: transform 0.2s var(--ease-smooth); }
-.toolbar-btn.close-btn { background: rgba(255, 50, 50, 0.15); border: 1px solid rgba(255, 50, 50, 0.3); color: var(--error-color); }
-.toolbar-btn.close-btn:hover { background: var(--error-color); color: var(--card); border-color: var(--error-color); }
-.toolbar-divider { width: 1px; height: 24px; background: var(--divider-line); margin: 0 4px; }
-
-/* 7-3. 相簿膠囊 (動態主題適應) */
-.lightbox-capsule { display: none; position: static; transform: none; align-items: center; height: 40px; border: 1px solid var(--box-border); border-radius: 999px; background: var(--box-bg); backdrop-filter: blur(8px); box-sizing: border-box; transition: all 0.3s ease; pointer-events: auto; margin-left: 10px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-.lightbox-capsule-btn { display: inline-flex; align-items: center; justify-content: center; height: 100%; background: transparent; border: none; color: var(--text); cursor: pointer; padding: 0 0.5rem; transition: all 0.2s ease; position: relative; }
-.lightbox-capsule-btn:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
-.lightbox-capsule-btn:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
-.lightbox-capsule-btn:hover:not(.disabled) { background: var(--tag-bg); color: var(--accent); }
-.lightbox-capsule-btn.disabled { opacity: 0.3; cursor: not-allowed; }
-.lightbox-capsule-btn svg { display: block; transition: transform 0.2s ease; }
-.lightbox-capsule-btn:hover:not(.disabled):first-child svg { transform: translateX(-3px); }
-.lightbox-capsule-btn:hover:not(.disabled):last-child svg { transform: translateX(3px); }
-.lightbox-capsule-divider { width: 1px; height: 18px; background: var(--divider-line); margin: 0; }
-.lightbox-capsule-progress { font-family: monospace; font-size: 0.95rem; font-weight: 600; color: var(--text); padding: 0 0.8rem; letter-spacing: 0.05em; pointer-events: none; }
-
-/* 7-4. 圖片主體與文字 */
-.lightbox-content-wrapper { position: relative; z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; padding: 80px 20px 120px 20px; box-sizing: border-box; pointer-events: none; }
-.lightbox-img-wrapper { flex: 1; min-height: 0; min-width: 0; width: 100%; display: flex; justify-content: center; align-items: center; overflow: visible; pointer-events: auto; position: relative; }
-
-/* ✨ 新增：大圖預覽的專屬讀取動畫 (Loading Spinner) */
-.lightbox-img-wrapper::before {
-    content: '';
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--card-border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: lightbox-spin 0.8s linear infinite;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease;
-    z-index: 1;
-}
-.lightbox-img-wrapper.is-fetching::before {
-    opacity: 1;
-    visibility: visible;
-}
-@keyframes lightbox-spin {
-    to { transform: rotate(360deg); }
-}
-
-/* ✨ 加入 opacity 過渡，讓圖片載入後平滑淡入 */
-#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s var(--ease-smooth), opacity 0.3s ease; transform-origin: center center; touch-action: none; cursor: grab; }
-#lightbox-img.is-dragging,
-.lightbox-img-wrapper.is-dragging #lightbox-img { 
-    cursor: grabbing; 
-    transition: none !important; 
-    
-    /* ✨ 加上這四行魔法，強制手機開啟 3D 繪圖引擎，防止拖曳時圖片變模糊！ */
-    will-change: transform; 
-    -webkit-backface-visibility: hidden; /* 給 Safari/iOS 看的 */
-    backface-visibility: hidden;         /* 給標準瀏覽器看的 (加上這行黃色波浪線就會消失！) */
-    transform: translateZ(0);
-}
-
-/* 底部圖片說明膠囊 (動態主題適應) */
-.lightbox-caption { position: absolute; bottom: max(60px, calc(var(--safe-bottom) + 30px)); left: 50%; max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px); transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 999px; padding: 8px 24px; color: var(--text); font-size: 1rem; font-weight: 500; pointer-events: none; z-index: 50; max-width: 90%; box-shadow: 0 4px 20px var(--shadow-base); display: none; }
-.toolbox-group { display: flex; align-items: center; gap: 8px; }
-.toolbox-toggle-btn { display: none; }
-
-/* ========================================================================== */
-/* ✨ 閱讀進度條系統 (Reading Progress Bar Engine)                             */
-/* ========================================================================== */
-
-/* 共用基底樣式 */
-.sys-progress-bar {
-    position: absolute;
-    width: 0%;
-    pointer-events: none;
-    z-index: 1; 
-    transition: width 0.15s ease-out, background-color 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease;
-    background: var(--accent);
-}
-
-/* ✨ 新增：0% 起點的待機呼吸燈動畫 */
-@keyframes progress-standby-breathe {
-    0%, 100% { opacity: 0.5; box-shadow: 0 0 4px var(--accent); }
-    50% { opacity: 1; box-shadow: 0 0 12px var(--accent), 0 0 4px rgba(255, 255, 255, 0.4); }
-}
-
-/* 當掛上 is-start 時，觸發平滑呼吸 */
-.sys-progress-bar.is-start {
-    animation: progress-standby-breathe 2.5s infinite ease-in-out;
-}
-
-/* 1. 頂部主進度條 */
-.sys-progress-bar.is-top-bar {
-    bottom: -2px;
-    left: 0;
-    height: 2px;
-    min-width: 10px; /* ✨ 永遠保持一顆發光小點在起點 */
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px;
-    box-shadow: 0 0 8px var(--accent);
-}
-
-/* 頂部主進度條：100% 滿版狀態 */
-.sys-progress-bar.is-top-bar.is-complete {
-    background: var(--accent-2);
-    box-shadow: 0 0 15px var(--accent-2);
-}
-
-/* 2. 直書專屬進度條 */
-.sys-progress-bar.is-vertical-bar {
-    top: 0;
-    right: 0;
-    height: 3px;
-    min-width: 15px; /* ✨ 直書模式的發光起始點 */
-    border-bottom-right-radius: 12px;
-    border-bottom-left-radius: 12px;
-    border-top-right-radius: 12px; 
-    border-top-left-radius: 2px;   
-    box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 50%, transparent);
-}
-
-/* 直書專屬進度條：100% 滿版狀態 */
-.sys-progress-bar.is-vertical-bar.is-complete {
-    background: var(--accent-2);
-    box-shadow: 0 2px 15px var(--accent-2);
-    border-top-left-radius: 12px;
-}
-
-/* ========================================================================== */
-/* 📱 第八層：行動版與觸控優化 (Mobile & Touch)                                 */
-/* ========================================================================== */
-
-/* ========================================================================== */
-/* ✨ 觸控裝置專屬 (is-touch-device) 全域優化                                     */
-/* ========================================================================== */
-
-/* 1. 隱藏觸控裝置 Tooltip (全面封殺所有氣泡，防止點擊後卡住殘影) */
-body.is-touch-device [data-tooltip]::after, 
-body.is-touch-device [data-tooltip]::before { 
-    display: none !important; 
-}
-
-/* ✨ 新增這段：強制觸控裝置隱藏桌面專屬元素，徹底解決平板穿透問題！ */
-body.is-touch-device .desktop-only {
-    display: none !important;
-}
-
-/* 2. Lightbox 收合工具列 (觸控版彈出選單) */
-body.is-touch-device .toolbox-toggle-btn { display: flex; }
-body.is-touch-device .desktop-only-divider { display: none; }
-body.is-touch-device .toolbar-right { position: relative; }
-
-body.is-touch-device .toolbox-group { 
-    position: absolute; top: 100%; margin-top: 15px; right: 0; 
-    flex-direction: row; align-items: center; justify-content: center; 
-    
-    /* ✨ 加入這兩行魔法：允許彈性換行，並設定安全邊界防超出螢幕 */
-    flex-wrap: wrap;
-    max-width: calc(100vw - 32px);
-    
-    background: var(--glass-bg); backdrop-filter: blur(15px); padding: 8px; 
-    border-radius: 12px; border: 1px solid var(--glass-border); 
-    box-shadow: 0 10px 30px var(--shadow-base); width: max-content; 
-    will-change: transform, opacity; opacity: 0; visibility: hidden; pointer-events: none;
-    transform: translateY(-15px) scale(0.95) translateZ(0); 
-    transform-origin: top right; 
-    transition: transform 0.3s var(--ease-smooth), opacity 0.3s ease, visibility 0s linear 0.3s;
-}
-body.is-touch-device .toolbox-group.is-open {
-    opacity: 1; visibility: visible; transform: translateY(0) scale(1) translateZ(0); pointer-events: auto; transition-delay: 0s;
-}
-
-/* 3. Mermaid 觸控版簡化為「預覽模式」 */
-body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]):not([onclick*="reloadMermaid"]) {
-    display: none !important; /* 隱藏除了放大檢視與重新整理以外的所有按鈕 */
-}
-
-/* 8-1. 桌機到平板的過渡 (max-width: 700px) */
-@media (max-width: 700px) {
-    .desktop-only { display: none; }
-    
-    /* 版面與邊界壓縮 */
-    .modal-content { width: 100%; max-height: 100vh; max-height: 100dvh; padding: 0 1.5rem 2rem 1.5rem; }
-    .modal-top-bar { top: 0; margin: 0 -1.5rem 1.5rem -1.5rem; padding: 1.5rem 1.5rem 1.2rem 1.5rem; border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; box-shadow: 0 -2px 0 0 var(--glass-bg); }
-    .modal-back-btn { height: 32px !important; padding: 0 0.8rem !important; margin: 0 !important; }
-    
-    /* 目錄 */
-    .toc-toggle-btn .bar { width: 14px; }
-    .toc-dropdown { right: -0.2rem; width: min(260px, calc(100dvw - 4.5rem)); }
-    #article-list-container { transition: opacity 0.2s ease; padding-bottom: 20px; }
-    .new-jump-toast {
-        bottom: max(40px, calc(var(--safe-bottom) + 40px));
-    }
-
-    /* Markdown 排版優化 */
-    .markdown-body img[alt="float-right"], .markdown-body figure.float-right, .markdown-body img[alt="float-left"], .markdown-body figure.float-left { float: none; display: block; width: 75%; max-width: 260px; margin: 1.5rem auto; }
-
-    .markdown-body :is(.spoiler-text, .md-highlight-text, .md-inline-secret) {
-        max-width: 100% !important;
-    }
-    .markdown-body img[alt="center"] { width: 90%; }
-
-    /* 文章導覽膠囊與底部卡片 */
-    .capsule-btn.main-back { padding: 0 0.8rem; }
-    .capsule-progress { padding: 0 0.2rem; font-size: 0.75rem; }
-    .nav-card { min-width: 0; padding: 0.8rem; overflow: hidden; }
-    .nav-card.prev { text-align: left; align-items: flex-start; }
-    .nav-card.next { text-align: right; align-items: flex-end; }
-    .nav-card .nav-label { font-size: 0.75rem; gap: 4px; }
-    .nav-card .nav-label svg { width: 14px; height: 14px; }
-    .nav-card.next .nav-label { flex-direction: row-reverse; }
-
-    /* 捲軸提示漸層優化 */
-    .scroll-hint { width: 40px !important; }
-    .hint-right, .modal-content .hint-right { background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--bg) 70%, var(--bg) 100%) !important; }
-    .hint-left, .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--bg) 70%, var(--bg) 100%) !important; }
-    .modal-content .hint-right { background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
-    .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
-
-    /* ✨ 響應式分享與排序按鈕：手機版隱藏文字，把按鈕壓縮回純圖示 */
-    .btn-text-hideable { 
-        display: none !important; 
-    }
-    
-    .responsive-share-btn {
-        min-width: 34px !important;
-        width: 34px !important;
-        padding: 0 !important;
-        justify-content: center !important;
-    }
-
-    /* ✨ 手機版隱藏複製按鈕的文字，並縮為方形圖示按鈕 */
-    .markdown-body .code-copy-btn {
-        width: 36px;
-        height: 36px;
-        padding: 0;
-        justify-content: center;
-    }
-    
-    .markdown-body .code-copy-btn .copy-text {
-        display: none;
-    }
-
-    /* ✨ 配合縮小的按鈕，釋放更多空間給語言標籤 */
-    .markdown-body .code-lang-label {
-        max-width: calc(100% - 50px);
-    }
-}
-
-/* 8-2. 針對非常小的手機螢幕 (max-width: 500px) */
-@media (max-width: 500px) {
-    /* 縮小返回頂部按鈕，並避開跳轉膠囊 */
-    .capsule-btn.main-back { padding: 0 0.5rem; }
-    .index-header-actions {gap: 0.3rem;}
-    #modal-top-left {gap: 0.3rem;}
-    #modal-top-right {gap: 0.3rem;}
-    .capsule-btn { padding: 0 0.4rem; }
-    .toggle-sort-btn { padding: 0 0.3rem; }
-    .btt-btn { width: 42px; height: 42px; right: max(1rem, calc(var(--safe-right) + 1rem)); bottom: max(1.5rem, calc(var(--safe-bottom) + 1rem)); }
-    body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(var(--safe-bottom) + 80px)); }
-}
-
-/* 調整觸控狀態的游標 */
-body.is-touch-device #lightbox-img { cursor: default; }
-
-/* ========================================================================== */
-/* ✨ 8-4. 觸控裝置專屬物理點擊回饋 (Touch Feedback Engine)                         */
-/* ========================================================================== */
-/* 將所有在手機上可以點擊的大型區塊納入管理 (影片/音樂限定「失效破圖」時才套用) */
-/* ✨ 已經將 .gallery figure 移除，不再干擾圖說切換 */
-body.is-touch-device .pdf-container,
-body.is-touch-device .mermaid-container,
-body.is-touch-device .media-container-wrapper[data-is-broken="true"],
-body.is-touch-device figure.standalone-figure { 
+    color: var(--muted); 
+    text-align: center; 
     cursor: pointer; 
-    -webkit-tap-highlight-color: transparent; 
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease !important;
+    transition: all 0.3s ease;
 }
-
-/* 點擊瞬間微縮，給予像實體按鈕般的物理反饋 */
-body.is-touch-device .pdf-container:active,
-body.is-touch-device .mermaid-container:active,
-body.is-touch-device .media-container-wrapper[data-is-broken="true"]:active,
-body.is-touch-device figure.standalone-figure:active { 
-    transform: scale(0.97) !important; 
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important; 
+.media-error-fallback:hover {
+    background-color: var(--box-bg);
 }
-
-/* ✨ 核心魔法：使用 :has() 阻斷標題列的點擊回饋！ */
-/* 如果使用者按在 .pdf-container-header 等工具列上，強制取消整個容器的縮放特效 */
-body.is-touch-device .pdf-container:has(.pdf-container-header:active):active,
-body.is-touch-device .mermaid-container:has(.mermaid-toolbar:active):active,
-body.is-touch-device .media-container-wrapper[data-is-broken="true"]:has(.media-container-header:active):active {
-    transform: none !important;
-    box-shadow: 0 4px 15px var(--shadow-base) !important; /* 恢復原本預設的陰影 */
+.media-error-fallback:hover .retry-text {
+    color: var(--accent-2);
 }
-
-/* 在觸控裝置下，強制隱藏 PDF iframe 閱讀器，顯示動態預覽圖 */
-body.is-touch-device .pdf-iframe { display: none !important; }
-body.is-touch-device .pdf-mobile-cover { display: block !important; }
-
-/* ========================================================================== */
-/* ✨ 手機版 PDF 首次引導遮罩 (First-time Onboarding Overlay) */
-/* ========================================================================== */
-.pdf-first-time-overlay {
-    position: absolute;
-    inset: 0;
-    background: color-mix(in srgb, var(--bg) 5%, transparent); /* 較深的半透明黑底 */
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    z-index: 20;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    color: #fff;
-    transition: opacity 0.4s ease;
-    
-    /* ✨ 核心魔法：讓點擊事件直接穿透遮罩，觸發下方的卡片開啟功能 */
-    pointer-events: none; 
+.media-error-icon {
+    width: 42px;
+    height: 42px;
+    opacity: 0.5;
+    margin-bottom: 1rem;
 }
-
-.pdf-first-time-text {
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
-    text-align: center;
-    line-height: 1.6;
+.media-error-title {
+    font-family: 'Courier New', monospace; 
+    font-size: 1rem; 
+    font-weight: bold; 
+    letter-spacing: 0.05em; 
+    color: var(--error-color);
 }
-
-.pdf-first-time-icon {
-    width: 56px;
-    height: 56px;
-    background: var(--accent);
-    color: var(--card);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 20px var(--glow-1);
-    animation: pdf-hint-pulse 2s infinite ease-in-out;
-    will-change: transform;
-    transform: translateZ(0);
-}
-
-.pdf-first-time-icon svg {
-    width: 24px;
-    height: 24px;
-}
-
-/* 吸引目光的呼吸放大特效 */
-@keyframes pdf-hint-pulse {
-    0%, 100% { transform: scale(1) translateZ(0); box-shadow: 0 4px 15px var(--glow-1); }
-    50% { transform: scale(1.15) translateZ(0); box-shadow: 0 4px 25px var(--accent); }
-}
-
-/* ✨ 當系統判定使用者已經看過時，直接從根目錄強制隱藏所有遮罩！ */
-html.pdf-hint-dismissed .pdf-first-time-overlay {
-    display: none !important;
-}
-
-/* ✨ 觸控點擊回饋：按下整個 PDF 區塊時 (排除點擊標題列的情況) */
-/* 1. 如果有圖片，右上角跳轉按鈕會發光放大 */
-body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):active .pdf-floating-btn {
-    background: var(--accent);
-    color: #fff;
-    opacity: 1;
-    transform: translateZ(0) scale(1.15);
-}
-
-/* 2. 如果處於破圖 Fallback 狀態，底部的膠囊按鈕會微縮變色 */
-body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):active .pdf-hint-capsule {
-    transform: scale(0.95);
-    background: var(--accent);
-    color: var(--card);
-    box-shadow: 0 4px 15px var(--glow-1);
-}
-
-/* ========================================================================== */
-/* 🌐 第九層：語言系統                                */
-/* ========================================================================== */
-
-/* 雙語切換標籤 UI */
-.lang-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--box-bg); padding: 0.4rem; border-radius: 0.8rem; width: max-content; border: 1px solid var(--box-border); }
-.lang-btn { background: transparent; border: none; color: var(--muted); padding: 0.4rem 1rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
-.lang-btn:hover { color: var(--accent-2); }
-.lang-btn.active { background: var(--accent-2); color: var(--card); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-.hide-on-site {
-    display: none !important;
-}
-
-/* ==========================================
-   🌐 多語系專屬字體與排版設定
-========================================== */
-
-/* 🇹🇼 中文版 */
-#lang-zh, .lang-zh {
-    text-align: justify;
-}
-
-/* 🇺🇸 英文版 */
-#lang-en, .lang-en {
-    font-family: "Helvetica Neue", Helvetica, Arial, "Segoe UI", Roboto, sans-serif;
-    line-height: 1.6;
-    letter-spacing: 0.02em;
-    text-align: left;
-}
-
-/* 🇯🇵 日文版 */
-#lang-ja, .lang-ja {
-    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
-    line-height: 1.7;
-    letter-spacing: 0.03em;
-    text-align: justify;
-}
-
-/* ✨ 分頁獨立作用區：padding-bottom 設為 0，讓 sticky 頁籤列能一路滑到底線才捲走 */
-.markdown-body .tab-section-wrapper {
-    position: relative;
-    display: flow-root;
-    padding-bottom: 0.25rem;
-}
-
-/* ✨ 移除 sticky 頁籤列的 margin-bottom，讓它能滑到底部 0px 處才解除吸附 */
-.markdown-body .tab-section-wrapper > .tab-buttons {
-    margin-bottom: 0;
-}
-
-/* ✨ 將上下間距交給 .tab-panel，並設為 flow-root 徹底封鎖內部語系區塊的外距穿透 */
-.markdown-body .tab-section-wrapper > .tab-panel {
-    display: flow-root;
-    margin-top: 1.2rem;
-    padding-bottom: 1.2rem;
-    box-sizing: border-box;
-}
-
-/* ✨ 核心魔法：當 .tab-section-wrapper 後方緊接著 .article-nav-cards 時，
-   讓 .tab-panel 的底端 padding 穿透歸零，改由 article-nav-cards 的間距為主！ */
-.markdown-body .tab-section-wrapper:has(+ .article-nav-cards) > .tab-panel {
-    padding-bottom: 0 !important;
-}
-
-/* ✨ 清除 .tab-panel 內部首尾元素（含 .lang-wrapper 與 <p>）的上下外距，防止多餘空白灌入 min-height */
-.markdown-body .tab-panel > :first-child,
-.markdown-body .tab-panel > :first-child > :first-child {
-    margin-top: 0 !important;
-}
-
-.markdown-body .tab-panel > :last-child,
-.markdown-body .tab-panel > :last-child > :last-child {
-    margin-bottom: 0 !important;
-}
-
-
-/* ✨ 分頁結束結界：支援隱形結束 (<div class="md-tab-end"></div>) 或帶分隔線 (<div class="md-tab-end divider"></div>) */
-.markdown-body .md-tab-end {
-    clear: both;
-    display: block;
-    width: auto; /* ✨ 改為 auto，搭配負外距即可自然與 .tab-buttons 底線同寬 */
-    height: 0;
-    border: none;
-    margin: 0 -1rem; 
-    padding: 0;
-}
-
-.markdown-body .md-tab-end.divider {
-    border-top: 2px solid var(--card-border);
-    margin-top: 0;
-    margin-bottom: 0.8rem;
-}
-
-/* 針對英文與日文版內的標題微調字重 */
-#lang-en h1, #lang-en h2, #lang-en h3, 
-#lang-ja h1, #lang-ja h2, #lang-ja h3 {
-    font-weight: 700;
-}
-
-/* ✨ 不改行距與排版模式：支援 :::lang[ja|no-format] 與 <div id="lang-en" class="no-format"> */
-#lang-zh:is(.no-format, [data-no-format="true"]),
-#lang-en:is(.no-format, [data-no-format="true"]),
-#lang-ja:is(.no-format, [data-no-format="true"]),
-.lang-wrapper:is(.no-format, [data-no-format="true"]),
-.lang-wrapper:is(.no-format, [data-no-format="true"]) > div {
-    line-height: inherit !important;
-    letter-spacing: inherit !important;
-    text-align: inherit !important;
-    margin: 0 !important;
-}
-
-/* ========================================================================== */
-/* 🔓 第十層：System Override 系統覆寫 (隱藏解鎖彩蛋)                           */
-/* ========================================================================== */
-
-/* 1. 預設狀態：披上隱形斗篷，不佔用任何版面空間 */
-.sys-hidden-card,
-.sys-hidden-item,
-.key-hidden-card,
-.key-hidden-item,
-.sys-hidden-ticker,
-.sys-hidden-tag { 
-    display: none !important; 
-}
-
-/* 2. 解鎖狀態：強制顯示（但如果同時帶有 key-hidden 則維持隱藏！） */
-body.system-override-active .card.sys-hidden-card:not(.key-hidden-card) {
-    display: block !important;
-}
-
-body.system-override-active .article-li.sys-hidden-item:not(.key-hidden-item) {
-    display: block !important;
+.media-error-fallback .retry-text {
+    font-size: 0.85rem; 
+    opacity: 0.8; 
+    margin-top: 0.8rem; 
+    display: flex; 
+    align-items: center; 
+    gap: 6px; 
+    transition: color 0.3s ease;
 }
 
 
 /* ========================================================================== */
-/* 🔓 第十一層：403 錯誤畫面隱藏解鎖彩蛋 (Admin Trigger)                       */
+/* ✨ 媒體與 PDF 容器標題列 (Media & PDF Containers)                           */
 /* ========================================================================== */
-.secret-admin-trigger {
-    color: var(--muted);
-    transition: color 0.3s ease, text-shadow 0.3s ease;
+.pdf-container {
+    margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; 
+    overflow: visible; box-shadow: 0 4px 15px var(--shadow-base); 
+    background: var(--bg); transition: transform 0.2s ease;
+}
+.pdf-container-header {
+    position: relative; z-index: 10; background: var(--glass-bg); padding: 0.6rem 1rem; 
+    border-bottom: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; 
+    font-family: monospace; font-size: 0.9rem; color: var(--muted); 
+    display: flex; justify-content: space-between; align-items: center;
+}
+.pdf-container-title, .media-container-title {
+    display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);
 }
 
-.secret-admin-trigger:hover {
-    color: var(--accent); /* 滑過時亮起高光色 */
-    text-shadow: 0 0 8px var(--glow-1);
-}
-
-/* 在文字下方加上一條微弱的底線，暗示它可以互動 */
-.secret-admin-trigger::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
+/* ========================================================================== */
+/* ✨ 手機版 PDF 動態高度預覽區 (無遮擋版與破圖回退設計) */
+/* ========================================================================== */
+.pdf-mobile-cover {
+    display: none; /* 桌機預設隱藏 */
     width: 100%;
-    height: 1px;
-    background: currentColor;
-    opacity: 0.3;
-    transition: opacity 0.3s ease;
+    position: relative;
+    background: var(--bg);
+    overflow: hidden;
 }
 
-.secret-admin-trigger:hover::after {
-    opacity: 1;
+.pdf-poster-img {
+    width: 100%;
+    height: auto; /* ✨ 讓圖片依照原比例自動往下撐開 */
+    display: block;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
-/* ==========================================
-   ✨ 跑馬燈光速注入引擎 (Warp Speed Injection)
-   ========================================== */
-/* 1. 量測未來寬度時的強制顯示器 */
-.marquee-content.force-show-secrets .sys-hidden-ticker { 
-    display: inline-block !important; 
-}
-/* 2. 動畫醞釀期的隱形壓抑器 */
-.marquee-content.suppress-secrets .sys-hidden-ticker { 
-    display: none !important; 
+/* ========================================================================== */
+/* ✨ 新增：PDF 縮圖載入中 (含重試) 的狀態 */
+/* ========================================================================== */
+.pdf-poster-img.is-loading {
+    max-height: none !important;
+    width: 100% !important;
+    height: auto !important;
 }
 
-/* 3. 標籤注入瞬間的「高光爆發與動態傾斜」特效 */
-@keyframes inject-flash {
-    0% { filter: brightness(2) drop-shadow(0 0 12px var(--accent-2)); transform: scale(1.15) skewX(-15deg); }
-    100% { filter: brightness(1) drop-shadow(0 0 0 transparent); transform: scale(1) skewX(0); }
+/* Fallback 容器：完美還原為原始的文字與膠囊排版 */
+.pdf-fallback-wrapper {
+    flex-direction: column;
+    width: 100%;
+    background: var(--bg); 
+    padding: 1.5rem 1rem;
+    
+    /* ✨ 關鍵修復：鎖定 padding 不會撐破寬度 */
+    box-sizing: border-box; 
+    
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
-/* 只要隱形壓抑器一解除，機密標籤就會以爆發動畫現身！ */
-body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-ticker {
-    animation: inject-flash 0.6s var(--ease-smooth) forwards;
+.pdf-fallback-text {
+    font-size: 1.05rem;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-bottom: 1.2rem;
+}
+
+.pdf-hint-capsule {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0.6rem 1.5rem;
+    background: var(--tag-bg);
+    color: var(--accent);
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    transition: all 0.2s var(--ease-smooth);
+    will-change: transform;
+}
+
+/* 讓 PDF 專屬的懸浮按鈕比平常的稍微明顯一點，且不干擾外層的點擊事件 */
+.pdf-floating-btn {
+    opacity: 0.85; 
+    pointer-events: none; 
 }
 
 /* ==========================================
@@ -3557,841 +3795,6 @@ body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-
 @keyframes video-btn-pop {
     0% { transform: scale(0.5); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
-}
-
-
-/* ==========================================
-/* PDF 選單樣式 */
-/* ========================================== */
-
-#pdf-action-modal {
-    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); 
-    backdrop-filter: blur(4px); z-index: 99999; 
-    display: flex; align-items: flex-end; justify-content: center; 
-    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-}
-#pdf-action-modal.is-active { pointer-events: auto; }
-.pdf-action-sheet {
-    background: var(--card); width: 100%; max-width: 500px; 
-    border-top-left-radius: 20px; border-top-right-radius: 20px; 
-    padding: 1.5rem 1.5rem 2.5rem 1.5rem; box-sizing: border-box;
-    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
-    border-top: 1px solid var(--card-border); box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
-}
-.pdf-action-btn {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    font-weight: 600; padding: 0.8rem; border-radius: 12px; border: none; 
-    cursor: pointer; font-size: 1rem; font-family: inherit;
-}
-.pdf-action-btn.primary { background: var(--accent); color: var(--card); }
-.pdf-action-btn.secondary { background: var(--glass-bg); color: var(--text); border: 1px solid var(--card-border); }
-.pdf-action-btn.warn { background: var(--error-color); color: var(--card); }
-.pdf-action-btn.cancel { background: transparent; color: var(--muted); margin-top: 0.3rem; }
-
-/* ==========================================
-/* 全域提示框樣式 */
-/* ========================================== */
-
-#sys-global-toast {
-    position: fixed; top: max(90px, calc(var(--safe-top) + 80px)); right: max(30px, calc(var(--safe-right) + 20px)); max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 60px); z-index: 10000; opacity: 0; transform: translateY(-20px); 
-    pointer-events: none;
-    transition: opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-#sys-global-toast.is-active { pointer-events: auto; }
-.sys-toast-box {
-    color: #fff; padding: 14px 24px; border-radius: 8px; font-family: 'Courier New', monospace; 
-    font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; width: max-content; 
-    max-width: calc(100vw - 60px); box-sizing: border-box; line-height: 1.4; position: relative; 
-    transition: box-shadow 0.3s ease;
-}
-.sys-toast-box.error { background: var(--error-color); box-shadow: 0 4px 20px var(--error-shadow); }
-.sys-toast-box.success { background: var(--accent); box-shadow: 0 4px 20px var(--glow-1); }
-
-
-/* ========================================================================== */
-/* 📱 PWA 與安全可視區 (Safe Area & Viewport) 引擎處理                          */
-/* ========================================================================== */
-:root {
-    --safe-top: env(safe-area-inset-top, 0px);
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-left: env(safe-area-inset-left, 0px);
-    --safe-right: env(safe-area-inset-right, 0px);
-    --vv-height: 100vh;
-    --vv-height: 100dvh;
-    --vv-width: 100vw;
-    --vv-width: 100dvw;
-}
-
-/* 全域限制在頂部工具列下方 */
-body {
-    padding-top: var(--safe-top) !important;
-}
-
-/* 讓所有滿版遮罩從頭頂 0px 開始蓋滿 */
-.modal-overlay, 
-#lightbox-modal, 
-#sys-reboot-screen, 
-#pdf-action-modal, 
-#sensitive-modal-overlay,
-.fullscreen-nav {
-    top: 0 !important;
-    left: 0 !important;
-    width: var(--vv-width) !important;
-    height: var(--vv-height) !important;
-    position: fixed !important;
-}
-
-.modal-overlay {
-    padding-top: max(1rem, var(--safe-top)) !important;
-    padding-bottom: max(1rem, var(--safe-bottom)) !important;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.fullscreen-nav,
-#pdf-action-modal,
-#sensitive-modal-overlay {
-    padding-top: var(--safe-top) !important;
-    box-sizing: border-box; 
-}
-
-/* ✨ Lightbox 工具列：上方 safe-top 區域改為實心主題底色，消除半透明漸層穿透 */
-#lightbox-toolbar {
-    top: 0 !important;
-    padding-top: calc(15px + var(--safe-top)) !important;
-    height: calc(70px + var(--safe-top)) !important;
-    background: linear-gradient(
-        to bottom, 
-        var(--bg) 0%, 
-        var(--bg) var(--safe-top), 
-        color-mix(in srgb, var(--bg) 85%, transparent) calc(var(--safe-top) + 35px), 
-        transparent 100%
-    ) !important;
-}
-
-/* ✨ Lightbox 圖片容器同步往下推開 safe-top，防止大圖頂到狀態列 */
-.lightbox-content-wrapper {
-    padding-top: calc(80px + var(--safe-top)) !important;
-}
-
-/* 📱 手機窄版 (<= 700px)：保留頂部 safe-top 遮罩空間，其餘填滿視窗 */
-@media (max-width: 700px) {
-    .modal-overlay {
-        padding-top: var(--safe-top) !important;
-        padding-bottom: var(--safe-bottom) !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-    }
-    .modal-content {
-        width: 100% !important;
-        max-width: 100% !important;
-        max-height: calc(var(--vv-height) - var(--safe-top) - var(--safe-bottom)) !important;
-    }
-}
-
-
-/* ========================================================================== */
-/* ✨ 系統重啟 / 更新畫面 (System Reboot Screen)                              */
-/* ========================================================================== */
-#sys-reboot-screen {
-    position: fixed;
-    inset: 0;
-    background: var(--bg);
-    z-index: 99999;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: var(--accent);
-    transition: opacity 0.3s ease;
-    cursor: wait;
-}
-
-#sys-reboot-screen .reboot-title {
-    font-family: 'Courier New', monospace;
-    font-size: 1.2rem;
-    font-weight: bold;
-    margin-bottom: 1rem;
-    letter-spacing: 0.1em;
-    text-shadow: 0 0 10px var(--glow-1);
-    transition: color 0.3s ease, text-shadow 0.3s ease;
-}
-
-#sys-reboot-screen .reboot-version {
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    color: var(--muted);
-    margin-bottom: 2rem;
-}
-
-#sys-reboot-screen .loading-text {
-    font-size: 1.1rem;
-    transition: color 0.3s ease;
-}
-
-
-/* ========================================================================== */
-/* ✨ 404 / 403 系統錯誤畫面 (System Error Modal)                              */
-/* ========================================================================== */
-.sys-error-layout {
-    text-align: center; 
-    padding: 15vh 2rem 10vh 2rem; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    justify-content: center;
-}
-.sys-error-icon {
-    width: 64px;
-    height: 64px;
-    stroke: var(--muted);
-    margin-bottom: 1.5rem;
-    opacity: 0.5;
-}
-.sys-error-layout h1 {
-    margin: 0 0 1rem 0; 
-    border: none; 
-    font-size: 2rem; 
-    padding: 0;
-}
-.sys-error-desc {
-    color: var(--muted); 
-    font-size: 1.05rem; 
-    max-width: 400px; 
-    line-height: 1.6;
-}
-.sys-error-btn {
-    margin-top: 2.5rem; 
-    padding: 0.6rem 1.5rem; 
-    display: inline-flex; 
-    align-items: center; 
-    gap: 0.5rem;
-}
-
-
-/* ========================================================================== */
-/* 「PDF PWA 選單內部排版」(showPdfActionModal)                            */
-/* ========================================================================== */
-/* 補充 PDF Modal 內部細節樣式 */
-.pdf-drag-handle {
-    width: 40px; 
-    height: 4px; 
-    background: var(--muted); 
-    opacity: 0.4; 
-    border-radius: 2px; 
-    margin: 0 auto 1.2rem auto;
-}
-.pdf-sheet-title {
-    font-weight: 700; 
-    font-size: 1.1rem; 
-    color: var(--text); 
-    margin-bottom: 0.4rem; 
-    text-align: center; 
-    word-break: break-all;
-}
-.pdf-sheet-subtitle {
-    font-size: 0.85rem; 
-    color: var(--muted); 
-    text-align: center; 
-    margin-bottom: 1.5rem; 
-    font-family: monospace;
-}
-.pdf-btn-group {
-    display: flex; 
-    flex-direction: column; 
-    gap: 0.8rem;
-}
-
-
-/* 系統記憶管理：沿用 PDF Action Sheet 的色彩與按鈕樣式 */
-.sys-memory-sheet {
-    max-height: 90vh;
-    max-height: 90dvh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
-}
-.sys-memory-options {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    margin-bottom: 1.2rem;
-    color: var(--muted);
-    font-size: 0.88rem;
-    line-height: 1.5;
-}
-.sys-memory-options p { margin: 0; overflow-wrap: anywhere; }
-.sys-memory-options label { display: flex; align-items: flex-start; gap: 0.5rem; color: var(--text); }
-.sys-memory-options input[type="checkbox"] { flex-shrink: 0; accent-color: var(--accent); margin-top: 0.25em; }
-.sys-memory-options .sys-memory-file { width: 100%; min-width: 0; font: inherit; color: var(--text); }
-.sys-memory-status { color: var(--accent); }
-.sys-memory-status.is-error { color: var(--error-color); }
-.sys-memory-options .sys-memory-hint { font-size: 0.8rem; color: var(--muted); }
-.sys-memory-options label:has(input:disabled) { color: var(--muted); }
-/* 匯入／匯出：只顯示有效資訊，停用選項以淡色及刪除線區分。 */
-.sys-memory-transfer .pdf-sheet-subtitle { margin-bottom: 1rem; }
-.sys-memory-transfer .sys-memory-options { gap: 0.65rem; }
-.sys-memory-transfer .sys-memory-options p:empty { display: none; }
-.sys-memory-transfer .sys-memory-options input:disabled + span {
-    color: var(--muted);
-    opacity: 0.55;
-    text-decoration: line-through;
-    cursor: not-allowed;
-}
-.sys-memory-transfer .sys-memory-options input[type="checkbox"]:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-}
-.sys-memory-transfer .sys-memory-options label:has(input:disabled) { cursor: not-allowed; }
-
-.sys-memory-sheet .pdf-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-/* ========================================================================== */
-/* ✨ 影音破圖/失效提示畫面 (Media Error Fallback)                             */
-/* ========================================================================== */
-.media-error-fallback {
-    width: 100%; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    justify-content: center; 
-    background: var(--bg); 
-    color: var(--muted); 
-    text-align: center; 
-    cursor: pointer; 
-    transition: all 0.3s ease;
-}
-.media-error-fallback:hover {
-    background-color: var(--box-bg);
-}
-.media-error-fallback:hover .retry-text {
-    color: var(--accent-2);
-}
-.media-error-icon {
-    width: 42px;
-    height: 42px;
-    opacity: 0.5;
-    margin-bottom: 1rem;
-}
-.media-error-title {
-    font-family: 'Courier New', monospace; 
-    font-size: 1rem; 
-    font-weight: bold; 
-    letter-spacing: 0.05em; 
-    color: var(--error-color);
-}
-.media-error-fallback .retry-text {
-    font-size: 0.85rem; 
-    opacity: 0.8; 
-    margin-top: 0.8rem; 
-    display: flex; 
-    align-items: center; 
-    gap: 6px; 
-    transition: color 0.3s ease;
-}
-
-
-/* ========================================================================== */
-/* ✨ 系統提示框 (System Toast) 進階樣式提取                                     */
-/* ========================================================================== */
-.toast-x-icon {
-    position: absolute; top: 5px; right: 7px; width: 32px; height: 32px; 
-    display: flex; justify-content: center; align-items: center; 
-    z-index: 2; /* ✨ 確保 X 的 32x32px 點擊範圍位於最上層，不被標題文字干擾 */
-    opacity: 0.85; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease; cursor: pointer;
-}
-
-/* ✨ 修正：只有滑鼠真正進入 X 按鈕的合法點擊範圍時，才觸發旋轉與放大特效 */
-.toast-x-icon:hover { 
-    opacity: 1;
-    transform: rotate(90deg) scale(1.1); 
-}
-
-.toast-title {
-    font-size: 1rem; letter-spacing: 0.05em; 
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2); padding-right: 1.5rem;
-}
-.toast-msg { opacity: 0.95; font-weight: 600; }
-.toast-sub { opacity: 0.85; font-size: 0.8rem; }
-
-/* 原本在 JS 裡的 Hover 發光特效轉移到 CSS */
-.sys-toast-box.error { background: var(--error-color); box-shadow: 0 4px 20px var(--error-shadow); }
-.sys-toast-box.error:hover { box-shadow: 0 0 25px var(--error-shadow), 0 0 10px rgba(255,255,255,0.2); }
-
-.sys-toast-box.success { background: var(--accent); box-shadow: 0 4px 20px var(--glow-1); }
-.sys-toast-box.success:hover { box-shadow: 0 0 25px var(--glow-1), 0 0 10px rgba(255,255,255,0.2); }
-
-
-/* ========================================================================== */
-/* ✨ 媒體與 PDF 容器標題列 (Media & PDF Containers)                           */
-/* ========================================================================== */
-.pdf-container {
-    margin: 2rem 0; border: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; 
-    overflow: visible; box-shadow: 0 4px 15px var(--shadow-base); 
-    background: var(--bg); transition: transform 0.2s ease;
-}
-.pdf-container-header {
-    position: relative; z-index: 10; background: var(--glass-bg); padding: 0.6rem 1rem; 
-    border-bottom: 1px solid var(--card-border); border-radius: 0.8rem 0.8rem 0 0; 
-    font-family: monospace; font-size: 0.9rem; color: var(--muted); 
-    display: flex; justify-content: space-between; align-items: center;
-}
-.pdf-container-title, .media-container-title {
-    display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--accent);
-}
-
-/* ========================================================================== */
-/* ✨ 手機版 PDF 動態高度預覽區 (無遮擋版與破圖回退設計) */
-/* ========================================================================== */
-.pdf-mobile-cover {
-    display: none; /* 桌機預設隱藏 */
-    width: 100%;
-    position: relative;
-    background: var(--bg);
-    overflow: hidden;
-}
-
-.pdf-poster-img {
-    width: 100%;
-    height: auto; /* ✨ 讓圖片依照原比例自動往下撐開 */
-    display: block;
-    margin: 0 !important;
-    border-radius: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-/* ========================================================================== */
-/* ✨ 新增：PDF 縮圖載入中 (含重試) 的狀態 */
-/* ========================================================================== */
-.pdf-poster-img.is-loading {
-    max-height: none !important;
-    width: 100% !important;
-    height: auto !important;
-}
-
-/* Fallback 容器：完美還原為原始的文字與膠囊排版 */
-.pdf-fallback-wrapper {
-    flex-direction: column;
-    width: 100%;
-    background: var(--bg); 
-    padding: 1.5rem 1rem;
-    
-    /* ✨ 關鍵修復：鎖定 padding 不會撐破寬度 */
-    box-sizing: border-box; 
-    
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-.pdf-fallback-text {
-    font-size: 1.05rem;
-    letter-spacing: 0.05em;
-    color: var(--muted);
-    margin-bottom: 1.2rem;
-}
-
-.pdf-hint-capsule {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 0.6rem 1.5rem;
-    background: var(--tag-bg);
-    color: var(--accent);
-    border: 1px solid var(--glass-border);
-    border-radius: 999px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    transition: all 0.2s var(--ease-smooth);
-    will-change: transform;
-}
-
-/* 讓 PDF 專屬的懸浮按鈕比平常的稍微明顯一點，且不干擾外層的點擊事件 */
-.pdf-floating-btn {
-    opacity: 0.85; 
-    pointer-events: none; 
-}
-
-
-/* ========================================================================== */
-/* ✨ 彈窗共用與日誌專屬排版 (Modals & Changelogs)                              */
-/* ========================================================================== */
-/* 1. 工具列專用細分隔線 (取代重複寫死的 1px div) */
-.action-btn-divider { 
-    width: 1px; height: 16px; background: var(--card-border); 
-    margin: 0 2px; align-self: center; 
-}
-
-/* 2. 版本日誌 (Changelog) 專屬排版 */
-.changelog-header-row { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
-.changelog-version { 
-    font-family: monospace; font-weight: 900; color: var(--accent); 
-    font-size: 1.5rem; letter-spacing: 0.05em; line-height: 1; transform: translateY(1px); 
-}
-.changelog-date { 
-    font-family: monospace; 
-    color: var(--muted); 
-    font-size: 0.9rem; 
-    margin-left: 0.2rem; 
-    transform: translateY(2px); 
-    white-space: nowrap; /* ✨ 關鍵魔法：強制日期絕對不准從中間斷開 */
-}
-.changelog-list-item { margin-bottom: 1rem; }
-.changelog-item-version { font-family: monospace; color: var(--tab-color); font-size: 1.15rem; }
-.changelog-item-icon { color: var(--tab-color, var(--accent)); }
-
-
-/* ========================================================================== */
-/* ✨ 首頁網格與分類卡片排版 (Home Grid & Cards)                               */
-/* ========================================================================== */
-/* 分類區塊 Header */
-.section-header-layout { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.8rem; }
-.section-header-left { flex: 1; }
-.section-header-left h2 { display: flex; align-items: baseline; flex-wrap: wrap; margin-bottom: 0; }
-.section-meta { font-size: 1.1rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem; }
-.section-desc { color: var(--muted); margin-top: 0.2rem; margin-bottom: 0; line-height: 1.6; max-width: 800px; font-size: 0.95rem; }
-.section-icon { width: 72px; height: 72px; border-radius: 16px; object-fit: cover; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); flex-shrink: 0; }
-
-/* 卡片內容 */
-.card-meta-text { font-size: 0.95rem; color: var(--muted); font-weight: normal; margin-left: 0.5rem; }
-.card-meta-text::before { content: '- '; }
-.card-text h3.is-meta-wrapped .card-meta-text { display: block; margin-left: 0; margin-top: 0.5rem; }
-.card-text h3.is-meta-wrapped .card-meta-text::before { content: none; }
-/* 只擴展標籤列的可用寬度，保留卡片其他內容原有的內距。 */
-.card > .tags-container { margin-inline-end: -0.75rem; }
-.card-desc-text { color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; margin-bottom: 1rem; }
-.card-thumb-img { width: 56px; height: 56px; border-radius: 12px; object-fit: cover; border: 1px solid var(--card-border); flex-shrink: 0; background: var(--bg); }
-.card-date-badge { position: absolute; top: 0.2rem; left: 1.6rem; font-family: monospace; font-size: 0.72rem; font-weight: 600; color: var(--accent); opacity: 0.6; letter-spacing: 0.05em; }
-
-/* 卡片按鈕 */
-.card-action-btn { margin-top: 1.2rem; color: var(--accent); font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.4rem; transition: color 0.2s ease; }
-.card-action-icon-wrap { position: relative; width: 18px; height: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
-.card-action-icon-wrap .icon-book-closed,
-.card-action-icon-wrap .icon-book-open {
-    position: absolute;
-    inset: 0;
-    width: 18px;
-    height: 18px;
-    display: block;
-    transition: stroke-opacity 0.2s ease;
-    shape-rendering: geometricPrecision;
-}
-.card-action-icon-wrap .icon-book-closed { stroke-opacity: 1; }
-.card-action-icon-wrap .icon-book-open { stroke-opacity: 0; }
-.card-action-arrow { 
-    display: flex; align-items: center; transition: transform 0.2s ease; 
-    will-change: transform; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); 
-}
-
-
-/* ========================================================================== */
-/* ✨ 觸控裝置專屬：Lightbox 工具列開關 (正三角形變形特效)                        */
-/* ========================================================================== */
-body.is-touch-device .toolbox-toggle-btn { display: flex; }
-
-/* 按鈕亮起的高光狀態 */
-.toolbox-toggle-btn.is-active {
-    background: var(--accent) !important;
-    color: var(--card) !important;
-    border-color: var(--accent) !important;
-    box-shadow: 0 4px 12px var(--glow-1) !important;
-}
-
-/* 給予 SVG 與三個點點 Q 彈的物理過渡 */
-.toolbox-toggle-btn svg {
-    transition: transform 0.4s var(--ease-bounce);
-}
-.toolbox-toggle-btn svg circle {
-    transition: transform 0.4s var(--ease-bounce);
-    transform-box: fill-box;
-    transform-origin: center center;
-}
-
-/* 動作 1：開啟時，整顆 SVG 順時針旋轉 90 度 */
-.toolbox-toggle-btn.is-active svg {
-    transform: rotate(90deg);
-}
-
-/* 動作 2：核心魔法計算，利用平移讓三個點旋轉後剛好構成「完美的正三角形」！ */
-
-/* Dot 1 (原本在左)：原地不動。因為 SVG 轉了 90 度，它會直接被甩到畫面的「正上方」 */
-.toolbox-toggle-btn.is-active svg .dot-1 {
-    transform: translate(0, 0); 
-}
-
-/* Dot 2 (原本在正中)：向右下平移。經過旋轉系疊加後，它會精準落位在畫面的「右下角」 */
-.toolbox-toggle-btn.is-active svg .dot-2 {
-    transform: translate(3px, -6px);
-}
-
-/* Dot 3 (原本在右)：向左下平移。經過旋轉系疊加後，它會精準落位在畫面的「左下角」 */
-.toolbox-toggle-btn.is-active svg .dot-3 {
-    transform: translate(-4px, 6px);
-}
-
-
-
-/* ========================================================================== */
-/* ✨ PWA 專屬：下拉重新整理指示器 (Pull to Refresh)                              */
-/* ========================================================================== */
-.pwa-refresh-indicator {
-    position: fixed;
-    /* 躲在頂部瀏海/狀態列下方，預設往上隱藏 */
-    top: max(10px, env(safe-area-inset-top, 0px));
-    left: 50%;
-    /* ✨ 修正：外層容器只負責「位移」與「縮放」，不負責旋轉 */
-    transform: translate(-50%, -100%); 
-    z-index: 100000;
-    background: var(--glass-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--glass-border);
-    color: var(--accent);
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 15px var(--shadow-base);
-    opacity: 0;
-    pointer-events: none;
-    will-change: transform, opacity;
-}
-
-/* ✨ 修正：旋轉動畫交給內部的 SVG 負責 */
-.pwa-refresh-indicator svg {
-    display: block;
-    width: 20px;
-    height: 20px;
-    transform-origin: center center;
-}
-
-/* 達到重整門檻時的高光與放大 (✨ 移除寫死的 transform !important，交由 JS 精準釘死終點) */
-.pwa-refresh-indicator.ready {
-    color: var(--card);
-    background: var(--accent-2);
-    border-color: var(--accent-2);
-    box-shadow: 0 4px 15px var(--glow-1);
-}
-
-/* ✨ 新增：專屬的逆時針無限旋轉動畫 */
-@keyframes pwa-spin {
-    to { transform: rotate(-360deg); }
-}
-
-/* 載入中的狀態 */
-.pwa-refresh-indicator.is-reloading {
-    color: var(--card);
-    background: var(--accent-2);
-    border-color: var(--accent-2);
-    box-shadow: 0 4px 15px var(--glow-1);
-}
-.pwa-refresh-indicator.is-reloading svg {
-    /* ✨ 改用逆時針動畫 */
-    animation: pwa-spin 0.7s linear infinite; 
-}
-
-
-/* ✨ 新增：專屬的打勾彈出動畫 (拔除了會讓位置跑掉的 translate) */
-@keyframes pwa-check-pop {
-    0% { transform: scale(0.5); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-/* 成功打勾的狀態 */
-.pwa-refresh-indicator.is-success {
-    color: var(--card);
-    background: var(--accent-2);
-    border-color: var(--accent-2);
-    box-shadow: 0 4px 15px var(--glow-1);
-}
-.pwa-refresh-indicator.is-success svg {
-    /* ✨ 改用專屬的彈跳動畫，保證乖乖待在正中間！ */
-    animation: pwa-check-pop 0.4s var(--ease-bounce) forwards;
-}
-
-
-/* Preset: 非 PWA 模式下隱藏實體遮罩 */
-#pwa-status-bar-shield {
-    display: none;
-}
-
-/* ========================================================================== */
-/* ✨ PWA 全域設定 (實體 DOM 頂部遮罩永不消失 + 位置高度 1:1 貼齊原生狀態列)  */
-/* ========================================================================== */
-@media (display-mode: standalone) {
-    html {
-        width: 100%;
-        min-height: 100dvh;
-        background-color: var(--bg);
-        overscroll-behavior-y: auto !important; /* 恢復主頁滾過頭回彈 */
-    }
-
-    body {
-        width: 100%;
-        min-height: 100dvh;
-        padding-top: var(--safe-top) !important;
-        overflow-x: hidden !important;
-        overscroll-behavior-y: auto !important;
-        -webkit-overflow-scrolling: touch;
-        scroll-behavior: smooth;
-        box-sizing: border-box;
-    }
-
-    /* 關閉舊的虛擬元素，避免重疊 */
-    body::after {
-        display: none !important;
-    }
-
-    /* ✨ 實體 DOM 頂部遮罩：獨立 GPU 合成層，切換主題 100 次也絕對不會消失！ */
-    #pwa-status-bar-shield {
-        display: block !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        width: 100vw !important;
-        /* 保持盒子高於 10px，讓 WebKit 有機會辨識這個頂部固定色塊。
-           透明下邊框不繪製底色；實際色帶只覆蓋安全區，安全區為 0 時保留 1px。
-           這是針對 WebKit 取樣行為的相容處理，需以實機驗證。 */
-        --shield-paint-height: max(1px, var(--safe-top));
-        --shield-box-height: max(12px, var(--shield-paint-height));
-        height: var(--shield-box-height) !important;
-        box-sizing: border-box !important;
-        border: 0 solid transparent !important;
-        border-bottom-width: calc(var(--shield-box-height) - var(--shield-paint-height)) !important;
-        background-color: var(--bg);
-        background-clip: padding-box;
-        z-index: 999999 !important; /* 壓過主頁目錄 (999)、文章 (1050)、Lightbox (9999) */
-        pointer-events: none !important;
-        transition: none; /* 保持純色，讓 WebKit 在主題切換時有機會取樣。 */
-        /* ✨ 關鍵：強制鎖定獨立 GPU 圖層，防止 body overflow 切換或主題變色時被 WebKit 回收 */
-        transform: translate3d(0, 0, 0) !important;
-        -webkit-backface-visibility: hidden !important;
-        backface-visibility: hidden !important;
-        will-change: background-color;
-    }
-
-    @media (max-width: 700px) {
-        .modal-overlay {
-            /* 頂部推開 0.6rem 避開遮罩 */
-            padding-top: calc(var(--safe-top) + 0.6rem) !important;
-        }
-
-        .modal-content {
-            /* ✨ 同步扣掉多出來的 0.6rem，保證底部完全貼合在安全區內，不被推出去 */
-            max-height: calc(var(--vv-height) - var(--safe-top) - var(--safe-bottom) - 0.6rem) !important;
-        }
-    }
-}
-
-
-/* ========================================================================== */
-/* ✨ 獨立捲軸與高度動態分配引擎 (Sticky 毛玻璃 + 原生完美卷軸版) */
-/* ========================================================================== */
-
-/* 1. 外層容器：拿回「捲動權」！ */
-.modal-content {
-    /* 恢復讓外層負責捲動，卷軸就會出現在最外側邊緣 */
-    overflow-y: auto !important; 
-    overflow-x: hidden !important; 
-    padding: 0 !important; 
-    display: block !important; /* 拔除 Flex，恢復原生流動，排版最穩 */
-}
-
-/* 2. 頂部導覽列：改回 Sticky (黏性定位) */
-.modal-top-bar {
-    position: sticky !important; /* ✨ 關鍵：黏在頂部，內文會自動鑽到它底下產生毛玻璃效果 */
-    top: 0;
-    left: 0;
-    right: 0;
-    margin: 0 !important; 
-    padding: 1.5rem 3rem 1.2rem 3rem !important; 
-    width: 100%;
-    box-sizing: border-box;
-    z-index: 1060 !important; 
-}
-
-/* 3. 中間容器：單純的包裝盒 */
-#modal-body {
-    display: block !important;
-    height: auto !important;
-}
-
-/* 4. 獨立雙容器：放棄內部捲動，把高度釋放給外層 */
-#view-index, #view-article {
-    position: relative !important;
-    overflow: visible !important; /* ✨ 關鍵：不准自己捲動，讓外層的 modal-content 捲！ */
-    height: auto !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-    
-    /* ✨ 補回 TopBar 失去的下方 margin 空間，讓內容往下推，保持完美呼吸感 */
-    padding-top: 1.3rem !important; 
-    
-    padding-left: 3rem !important;
-    padding-right: 3rem !important;
-    padding-bottom: 3rem !important; 
-    margin: 0 !important;
-}
-
-/* 📱 手機版微調 */
-@media (max-width: 700px) {
-    .modal-top-bar {
-        padding: 1.5rem 1.5rem 1.2rem 1.5rem !important;
-    }
-    #view-index, #view-article {
-        /* ✨ 手機版的上方間距也適度補回 */
-        padding-top: 1rem !important; 
-        
-        padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important; 
-        padding-bottom: 2.5rem !important;
-    }
-}
-
-/* ========================================================================== */
-/* ✨ 從 JS 抽離出的共用 UI 樣式 (Decoupled Styles) */
-/* ========================================================================== */
-
-/* Mermaid 全螢幕大圖克隆體 */
-.lightbox-mermaid-clone {
-    pointer-events: auto;
-    padding: 24px;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px var(--shadow-base);
-    width: fit-content !important;
-    height: fit-content !important;
-    max-width: min(90vw, 1200px) !important;
-    max-height: calc(var(--vv-height, 100vh) - 200px) !important;
-    box-sizing: border-box;
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--card); /* 淺色模式預設 */
-    transition: transform 0.15s var(--ease-smooth), opacity 0.3s ease, background-color 0.5s ease;
-    transform-origin: center center;
-    cursor: grab;
-}
-.lightbox-img-wrapper.is-dragging .lightbox-mermaid-clone {
-    cursor: grabbing;
-    transition: none !important;
-}
-.lightbox-mermaid-clone svg {
-    display: block;
-    max-width: calc(min(90vw, 1200px) - 48px) !important;
-    max-height: calc(var(--vv-height, 100vh) - 248px) !important;
-    width: auto;
-    height: auto !important;
-}
-[data-theme="dark"] .lightbox-mermaid-clone {
-    background-color: var(--bg); /* 深色模式自動切換 */
 }
 
 /* ========================================================================== */
@@ -4708,407 +4111,937 @@ body.is-touch-device .toolbox-toggle-btn { display: flex; }
 }
 
 /* ========================================================================== */
-/* ✨ 核心修復：統一按鈕 SVG 精準向量渲染，消除縮放結尾 0.5px 跳動與模糊         */
+/* 🖼️ 第七層：大圖預覽與閱讀進度條 (Lightbox & Progress Bar)                              */
 /* ========================================================================== */
-#pdf-view-btn svg,
-#toggle-sort-btn svg,
-.share-link-btn svg,
-.footer-btn svg,
-.modal-tool-btn svg,
-.mermaid-btn svg,
-.toolbar-btn svg,
-.code-copy-btn svg,
-.toast-btn svg {
+
+/* ========================================================================== */
+/* 🖼️ 第七層：大圖預覽引擎 (Lightbox Engine)                                    */
+/* ========================================================================== */
+
+/* 7-1. Modal 基礎佈局 */
+#lightbox-modal { 
+    position: fixed; top: 0; left: 0; 
+    width: 100%; box-sizing: border-box; 
+    
+    /* ✨ 讓防抖動陰影與背景色都完美跟隨系統 Theme */
+    box-shadow: 30px 0 0 0 var(--bg); 
+    background: var(--bg); 
+    
+    height: 100vh; height: 100dvh; z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease, visibility 0s linear 0.3s; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; 
+}
+#lightbox-modal.is-active { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+#lightbox-backdrop { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; 
+    filter: blur(40px); /* 移除強制暗化 */
+    opacity: 0.35;      /* ✨ 改用透明度，讓底層的主題色 var(--bg) 漂亮地透出來 */
+    transform: scale(1.1); z-index: 1; pointer-events: none; 
+}
+
+/* 7-2. 工具列 */
+#lightbox-toolbar { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 70px; 
+    background: linear-gradient(to bottom, var(--bg), transparent); /* ✨ 漸層跟隨主題 */
+    z-index: 50; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; box-sizing: border-box; pointer-events: none; touch-action: manipulation; user-select: none; -webkit-user-select: none; 
+}
+.toolbar-left, .toolbar-right{ display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+#lightbox-counter { color: var(--text); font-family: monospace; font-size: 1.1rem; font-weight: bold; letter-spacing: 0.05em; margin-left: 10px; }
+
+/* 工具列按鈕 (動態主題適應) */
+.toolbar-btn { background: var(--box-bg); border: 1px solid var(--box-border); color: var(--text); width: 40px; height: 40px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; backdrop-filter: blur(4px); position: relative; }
+.toolbar-btn:hover { background: var(--accent); color: var(--card); border-color: var(--accent); }
+.toolbar-btn:hover svg { transform: scale(1.08); }
+.toolbar-btn[onclick*="zoom-out"]:hover svg { transform: scale(0.85); transition: transform 0.2s var(--ease-smooth); }
+.toolbar-btn svg { display: block; transition: transform 0.2s var(--ease-smooth); }
+.toolbar-btn.close-btn { background: rgba(255, 50, 50, 0.15); border: 1px solid rgba(255, 50, 50, 0.3); color: var(--error-color); }
+.toolbar-btn.close-btn:hover { background: var(--error-color); color: var(--card); border-color: var(--error-color); }
+.toolbar-divider { width: 1px; height: 24px; background: var(--divider-line); margin: 0 4px; }
+
+/* 7-3. 相簿膠囊 (動態主題適應) */
+.lightbox-capsule { display: none; position: static; transform: none; align-items: center; height: 40px; border: 1px solid var(--box-border); border-radius: 999px; background: var(--box-bg); backdrop-filter: blur(8px); box-sizing: border-box; transition: all 0.3s ease; pointer-events: auto; margin-left: 10px; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.lightbox-capsule-btn { display: inline-flex; align-items: center; justify-content: center; height: 100%; background: transparent; border: none; color: var(--text); cursor: pointer; padding: 0 0.5rem; transition: all 0.2s ease; position: relative; }
+.lightbox-capsule-btn:first-child { border-top-left-radius: 999px; border-bottom-left-radius: 999px; }
+.lightbox-capsule-btn:last-child { border-top-right-radius: 999px; border-bottom-right-radius: 999px; }
+.lightbox-capsule-btn:hover:not(.disabled) { background: var(--tag-bg); color: var(--accent); }
+.lightbox-capsule-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+.lightbox-capsule-btn svg { display: block; transition: transform 0.2s ease; }
+.lightbox-capsule-btn:hover:not(.disabled):first-child svg { transform: translateX(-3px); }
+.lightbox-capsule-btn:hover:not(.disabled):last-child svg { transform: translateX(3px); }
+.lightbox-capsule-divider { width: 1px; height: 18px; background: var(--divider-line); margin: 0; }
+.lightbox-capsule-progress { font-family: monospace; font-size: 0.95rem; font-weight: 600; color: var(--text); padding: 0 0.8rem; letter-spacing: 0.05em; pointer-events: none; }
+
+/* 7-4. 圖片主體與文字 */
+.lightbox-content-wrapper { position: relative; z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; padding: 80px 20px 120px 20px; box-sizing: border-box; pointer-events: none; }
+.lightbox-img-wrapper { flex: 1; min-height: 0; min-width: 0; width: 100%; display: flex; justify-content: center; align-items: center; overflow: visible; pointer-events: auto; position: relative; }
+
+/* ✨ 新增：大圖預覽的專屬讀取動畫 (Loading Spinner) */
+.lightbox-img-wrapper::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--card-border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: lightbox-spin 0.8s linear infinite;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+.lightbox-img-wrapper.is-fetching::before {
+    opacity: 1;
+    visibility: visible;
+}
+@keyframes lightbox-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ✨ 加入 opacity 過渡，讓圖片載入後平滑淡入 */
+#lightbox-img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 10px 40px var(--shadow-base); transition: transform 0.3s var(--ease-smooth), opacity 0.3s ease; transform-origin: center center; touch-action: none; cursor: grab; }
+#lightbox-img.is-dragging,
+.lightbox-img-wrapper.is-dragging #lightbox-img { 
+    cursor: grabbing; 
+    transition: none !important; 
+    
+    /* ✨ 加上這四行魔法，強制手機開啟 3D 繪圖引擎，防止拖曳時圖片變模糊！ */
+    will-change: transform; 
+    -webkit-backface-visibility: hidden; /* 給 Safari/iOS 看的 */
+    backface-visibility: hidden;         /* 給標準瀏覽器看的 (加上這行黃色波浪線就會消失！) */
+    transform: translateZ(0);
+}
+
+/* 底部圖片說明膠囊 (動態主題適應) */
+.lightbox-caption { position: absolute; bottom: max(60px, calc(var(--safe-bottom) + 30px)); left: 50%; max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px); transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 999px; padding: 8px 24px; color: var(--text); font-size: 1rem; font-weight: 500; pointer-events: none; z-index: 50; max-width: 90%; box-shadow: 0 4px 20px var(--shadow-base); display: none; }
+.toolbox-group { display: flex; align-items: center; gap: 8px; }
+.toolbox-toggle-btn { display: none; }
+
+/* ========================================================================== */
+/* ✨ 閱讀進度條系統 (Reading Progress Bar Engine)                             */
+/* ========================================================================== */
+
+/* 共用基底樣式 */
+.sys-progress-bar {
+    position: absolute;
+    width: 0%;
+    pointer-events: none;
+    z-index: 1; 
+    transition: width 0.15s ease-out, background-color 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease;
+    background: var(--accent);
+}
+
+/* ✨ 新增：0% 起點的待機呼吸燈動畫 */
+@keyframes progress-standby-breathe {
+    0%, 100% { opacity: 0.5; box-shadow: 0 0 4px var(--accent); }
+    50% { opacity: 1; box-shadow: 0 0 12px var(--accent), 0 0 4px rgba(255, 255, 255, 0.4); }
+}
+
+/* 當掛上 is-start 時，觸發平滑呼吸 */
+.sys-progress-bar.is-start {
+    animation: progress-standby-breathe 2.5s infinite ease-in-out;
+}
+
+/* 1. 頂部主進度條 */
+.sys-progress-bar.is-top-bar {
+    bottom: -2px;
+    left: 0;
+    height: 2px;
+    min-width: 10px; /* ✨ 永遠保持一顆發光小點在起點 */
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 0 8px var(--accent);
+}
+
+/* 頂部主進度條：100% 滿版狀態 */
+.sys-progress-bar.is-top-bar.is-complete {
+    background: var(--accent-2);
+    box-shadow: 0 0 15px var(--accent-2);
+}
+
+/* 2. 直書專屬進度條 */
+.sys-progress-bar.is-vertical-bar {
+    top: 0;
+    right: 0;
+    height: 3px;
+    min-width: 15px; /* ✨ 直書模式的發光起始點 */
+    border-bottom-right-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-top-right-radius: 12px; 
+    border-top-left-radius: 2px;   
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+/* 直書專屬進度條：100% 滿版狀態 */
+.sys-progress-bar.is-vertical-bar.is-complete {
+    background: var(--accent-2);
+    box-shadow: 0 2px 15px var(--accent-2);
+    border-top-left-radius: 12px;
+}
+
+/* ========================================================================== */
+/* ✨ 從 JS 抽離出的共用 UI 樣式 (Decoupled Styles) */
+/* ========================================================================== */
+
+/* Mermaid 全螢幕大圖克隆體 */
+.lightbox-mermaid-clone {
+    pointer-events: auto;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px var(--shadow-base);
+    width: fit-content !important;
+    height: fit-content !important;
+    max-width: min(90vw, 1200px) !important;
+    max-height: calc(var(--vv-height, 100vh) - 200px) !important;
+    box-sizing: border-box;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--card); /* 淺色模式預設 */
+    transition: transform 0.15s var(--ease-smooth), opacity 0.3s ease, background-color 0.5s ease;
     transform-origin: center center;
-    shape-rendering: geometricPrecision;
+    cursor: grab;
+}
+.lightbox-img-wrapper.is-dragging .lightbox-mermaid-clone {
+    cursor: grabbing;
+    transition: none !important;
+}
+.lightbox-mermaid-clone svg {
+    display: block;
+    max-width: calc(min(90vw, 1200px) - 48px) !important;
+    max-height: calc(var(--vv-height, 100vh) - 248px) !important;
+    width: auto;
+    height: auto !important;
+}
+[data-theme="dark"] .lightbox-mermaid-clone {
+    background-color: var(--bg); /* 深色模式自動切換 */
 }
 
 /* ========================================================================== */
-/* ✨ 鑰匙鎖定模式 (Key Locked Engine - 支援深淺主題變數版)                     */
+/* 🌐 第八層：多語系、分頁結界與 System Override (i18n & Override)                        */
 /* ========================================================================== */
-.card.is-key-locked {
-    /* 🎨 背景色：將主題卡片色 (--card) 混入 6% 的主題警告色 (--error-color) */
-    background: color-mix(in srgb, var(--card) 94%, var(--error-color)) !important;
-    
-    /* 🎨 邊框色：平常就帶有微弱的警告紅邊框，取代死板的灰色邊框 */
-    border-color: color-mix(in srgb, var(--error-color) 35%, var(--card-border)) !important;
-    
-    /* 🎨 陰影與卡片光暈變數：統一綁定為警告色 */
-    --card-glow: var(--error-color);
-    box-shadow: 0 10px 30px var(--shadow-base), inset 0 0 20px color-mix(in srgb, var(--error-color) 5%, transparent) !important;
-    
-    /* 保留適度的低飽和度，讓未解鎖狀態有「封印感」，但不會死灰 */
-    filter: grayscale(40%);
-    opacity: 0.9;
-    transition: all 0.4s var(--ease-smooth);
+
+/* ========================================================================== */
+/* 🌐 第九層：語言系統                                */
+/* ========================================================================== */
+
+/* 雙語切換標籤 UI */
+.lang-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--box-bg); padding: 0.4rem; border-radius: 0.8rem; width: max-content; border: 1px solid var(--box-border); }
+.lang-btn { background: transparent; border: none; color: var(--muted); padding: 0.4rem 1rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+.lang-btn:hover { color: var(--accent-2); }
+.lang-btn.active { background: var(--accent-2); color: var(--card); box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.hide-on-site {
+    display: none !important;
 }
 
-/* 讓卡片內的標題在鎖定時呈現低調的次要文字色 (--muted) */
-.card.is-key-locked h3 {
+/* ==========================================
+   🌐 多語系專屬字體與排版設定
+========================================== */
+
+/* 🇹🇼 中文版 */
+#lang-zh, .lang-zh {
+    text-align: justify;
+}
+
+/* 🇺🇸 英文版 */
+#lang-en, .lang-en {
+    font-family: "Helvetica Neue", Helvetica, Arial, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+    text-align: left;
+}
+
+/* 🇯🇵 日文版 */
+#lang-ja, .lang-ja {
+    font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
+    line-height: 1.7;
+    letter-spacing: 0.03em;
+    text-align: justify;
+}
+
+/* ✨ 分頁獨立作用區：padding-bottom 設為 0，讓 sticky 頁籤列能一路滑到底線才捲走 */
+.markdown-body .tab-section-wrapper {
+    position: relative;
+    display: flow-root;
+    padding-bottom: 0.25rem;
+}
+
+/* ✨ 移除 sticky 頁籤列的 margin-bottom，讓它能滑到底部 0px 處才解除吸附 */
+.markdown-body .tab-section-wrapper > .tab-buttons {
+    margin-bottom: 0;
+}
+
+/* ✨ 將上下間距交給 .tab-panel，並設為 flow-root 徹底封鎖內部語系區塊的外距穿透 */
+.markdown-body .tab-section-wrapper > .tab-panel {
+    display: flow-root;
+    margin-top: 1.2rem;
+    padding-bottom: 1.2rem;
+    box-sizing: border-box;
+}
+
+/* ✨ 核心魔法：當 .tab-section-wrapper 後方緊接著 .article-nav-cards 時，
+   讓 .tab-panel 的底端 padding 穿透歸零，改由 article-nav-cards 的間距為主！ */
+.markdown-body .tab-section-wrapper:has(+ .article-nav-cards) > .tab-panel {
+    padding-bottom: 0 !important;
+}
+
+/* ✨ 清除 .tab-panel 內部首尾元素（含 .lang-wrapper 與 <p>）的上下外距，防止多餘空白灌入 min-height */
+.markdown-body .tab-panel > :first-child,
+.markdown-body .tab-panel > :first-child > :first-child {
+    margin-top: 0 !important;
+}
+
+.markdown-body .tab-panel > :last-child,
+.markdown-body .tab-panel > :last-child > :last-child {
+    margin-bottom: 0 !important;
+}
+
+
+/* ✨ 分頁結束結界：支援隱形結束 (<div class="md-tab-end"></div>) 或帶分隔線 (<div class="md-tab-end divider"></div>) */
+.markdown-body .md-tab-end {
+    clear: both;
+    display: block;
+    width: auto; /* ✨ 改為 auto，搭配負外距即可自然與 .tab-buttons 底線同寬 */
+    height: 0;
+    border: none;
+    margin: 0 -1rem; 
+    padding: 0;
+}
+
+.markdown-body .md-tab-end.divider {
+    border-top: 2px solid var(--card-border);
+    margin-top: 0;
+    margin-bottom: 0.8rem;
+}
+
+/* 針對英文與日文版內的標題微調字重 */
+#lang-en h1, #lang-en h2, #lang-en h3, 
+#lang-ja h1, #lang-ja h2, #lang-ja h3 {
+    font-weight: 700;
+}
+
+/* ✨ 不改行距與排版模式：支援 :::lang[ja|no-format] 與 <div id="lang-en" class="no-format"> */
+#lang-zh:is(.no-format, [data-no-format="true"]),
+#lang-en:is(.no-format, [data-no-format="true"]),
+#lang-ja:is(.no-format, [data-no-format="true"]),
+.lang-wrapper:is(.no-format, [data-no-format="true"]),
+.lang-wrapper:is(.no-format, [data-no-format="true"]) > div {
+    line-height: inherit !important;
+    letter-spacing: inherit !important;
+    text-align: inherit !important;
+    margin: 0 !important;
+}
+
+/* ========================================================================== */
+/* 🔓 第十層：System Override 系統覆寫 (隱藏解鎖彩蛋)                           */
+/* ========================================================================== */
+
+/* 1. 預設狀態：披上隱形斗篷，不佔用任何版面空間 */
+.sys-hidden-card,
+.sys-hidden-item,
+.key-hidden-card,
+.key-hidden-item,
+.sys-hidden-ticker,
+.sys-hidden-tag { 
+    display: none !important; 
+}
+
+/* 2. 解鎖狀態：強制顯示（但如果同時帶有 key-hidden 則維持隱藏！） */
+body.system-override-active .card.sys-hidden-card:not(.key-hidden-card) {
+    display: block !important;
+}
+
+body.system-override-active .article-li.sys-hidden-item:not(.key-hidden-item) {
+    display: block !important;
+}
+
+
+/* ========================================================================== */
+/* 🔓 第十一層：403 錯誤畫面隱藏解鎖彩蛋 (Admin Trigger)                       */
+/* ========================================================================== */
+.secret-admin-trigger {
     color: var(--muted);
-    transition: color 0.3s ease;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 
-.card.is-key-locked .card-image img {
-    filter: blur(5px) grayscale(60%);
-    transition: filter 0.4s ease;
+.secret-admin-trigger:hover {
+    color: var(--accent); /* 滑過時亮起高光色 */
+    text-shadow: 0 0 8px var(--glow-1);
 }
 
-/* ✨ Hover 時：完全恢復色彩，標題變回主文字色 (--text)，外框與陰影爆發紅光 */
-.is-key-locked:hover,
-.is-key-locked.simulate-hover {
-    filter: grayscale(0%);
+/* 在文字下方加上一條微弱的底線，暗示它可以互動 */
+.secret-admin-trigger::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+}
+
+.secret-admin-trigger:hover::after {
     opacity: 1;
-    border-color: var(--error-color) !important;
-    box-shadow: 0 8px 25px var(--error-shadow) !important;
 }
 
-.card.is-key-locked:hover h3 {
-    color: var(--text);
+/* ==========================================
+   ✨ 跑馬燈光速注入引擎 (Warp Speed Injection)
+   ========================================== */
+/* 1. 量測未來寬度時的強制顯示器 */
+.marquee-content.force-show-secrets .sys-hidden-ticker { 
+    display: inline-block !important; 
+}
+/* 2. 動畫醞釀期的隱形壓抑器 */
+.marquee-content.suppress-secrets .sys-hidden-ticker { 
+    display: none !important; 
 }
 
-.is-key-locked {
-    filter: grayscale(80%);
-    opacity: 0.85;
-    transition: all 0.3s ease;
-}
-.is-key-locked .card-image img {
-    filter: blur(5px);
-}
-.is-key-locked:hover {
-    filter: grayscale(0%);
-    opacity: 1;
-    border-color: var(--error-color) !important;
-    box-shadow: 0 8px 25px var(--error-shadow) !important;
+/* 3. 標籤注入瞬間的「高光爆發與動態傾斜」特效 */
+@keyframes inject-flash {
+    0% { filter: brightness(2) drop-shadow(0 0 12px var(--accent-2)); transform: scale(1.15) skewX(-15deg); }
+    100% { filter: brightness(1) drop-shadow(0 0 0 transparent); transform: scale(1) skewX(0); }
 }
 
-/* 目錄列表鎖定視覺 */
-.is-key-locked-item {
-    opacity: 0.7;
-    filter: grayscale(80%);
-}
-.is-key-locked-item:hover, .is-key-locked-item.simulate-hover {
-    opacity: 1;
-    filter: grayscale(0%);
-    border-left-color: var(--error-color) !important;
-}
-.is-key-locked-item:hover .article-item-title {
-    color: var(--error-color) !important;
-    text-shadow: 0 0 8px var(--error-shadow);
+/* 只要隱形壓抑器一解除，機密標籤就會以爆發動畫現身！ */
+body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-ticker {
+    animation: inject-flash 0.6s var(--ease-smooth) forwards;
 }
 
-/* 縮圖上的鎖頭遮罩 */
-.locked-cover-overlay {
+/* ========================================================================== */
+/* 📱 第九層：行動版、觸控優化與 PWA 安全區 (Mobile, Touch & PWA)                            */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* 📱 第八層：行動版與觸控優化 (Mobile & Touch)                                 */
+/* ========================================================================== */
+
+/* ========================================================================== */
+/* ✨ 觸控裝置專屬 (is-touch-device) 全域優化                                     */
+/* ========================================================================== */
+
+/* 1. 隱藏觸控裝置 Tooltip (全面封殺所有氣泡，防止點擊後卡住殘影) */
+body.is-touch-device [data-tooltip]::after, 
+body.is-touch-device [data-tooltip]::before { 
+    display: none !important; 
+}
+
+/* ✨ 新增這段：強制觸控裝置隱藏桌面專屬元素，徹底解決平板穿透問題！ */
+body.is-touch-device .desktop-only {
+    display: none !important;
+}
+
+/* 2. Lightbox 收合工具列 (觸控版彈出選單) */
+body.is-touch-device .toolbox-toggle-btn { display: flex; }
+body.is-touch-device .desktop-only-divider { display: none; }
+body.is-touch-device .toolbar-right { position: relative; }
+
+body.is-touch-device .toolbox-group { 
+    position: absolute; top: 100%; margin-top: 15px; right: 0; 
+    flex-direction: row; align-items: center; justify-content: center; 
+    
+    /* ✨ 加入這兩行魔法：允許彈性換行，並設定安全邊界防超出螢幕 */
+    flex-wrap: wrap;
+    max-width: calc(100vw - 32px);
+    
+    background: var(--glass-bg); backdrop-filter: blur(15px); padding: 8px; 
+    border-radius: 12px; border: 1px solid var(--glass-border); 
+    box-shadow: 0 10px 30px var(--shadow-base); width: max-content; 
+    will-change: transform, opacity; opacity: 0; visibility: hidden; pointer-events: none;
+    transform: translateY(-15px) scale(0.95) translateZ(0); 
+    transform-origin: top right; 
+    transition: transform 0.3s var(--ease-smooth), opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+body.is-touch-device .toolbox-group.is-open {
+    opacity: 1; visibility: visible; transform: translateY(0) scale(1) translateZ(0); pointer-events: auto; transition-delay: 0s;
+}
+
+/* 3. Mermaid 觸控版簡化為「預覽模式」（原由 JS 動態注入之 touch-action 規則亦收斂至此） */
+body.is-touch-device .mermaid-wrapper { touch-action: auto !important; }
+
+body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid"]):not([onclick*="reloadMermaid"]) {
+    display: none !important; /* 隱藏除了放大檢視與重新整理以外的所有按鈕 */
+}
+
+/* 8-1. 桌機到平板的過渡 (max-width: 700px) */
+@media (max-width: 700px) {
+    .desktop-only { display: none; }
+    
+    /* 版面與邊界壓縮 */
+    .modal-content { width: 100%; max-height: 100vh; max-height: 100dvh; padding: 0 1.5rem 2rem 1.5rem; }
+    .modal-top-bar { top: 0; margin: 0 -1.5rem 1.5rem -1.5rem; padding: 1.5rem 1.5rem 1.2rem 1.5rem; border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; box-shadow: 0 -2px 0 0 var(--glass-bg); }
+    .modal-back-btn { height: 32px !important; padding: 0 0.8rem !important; margin: 0 !important; }
+    
+    /* 目錄 */
+    .toc-toggle-btn .bar { width: 14px; }
+    .toc-dropdown { right: -0.2rem; width: min(260px, calc(100dvw - 4.5rem)); }
+    #article-list-container { transition: opacity 0.2s ease; padding-bottom: 20px; }
+    .new-jump-toast {
+        bottom: max(40px, calc(var(--safe-bottom) + 40px));
+    }
+
+    /* Markdown 排版優化 */
+    .markdown-body img[alt="float-right"], .markdown-body figure.float-right, .markdown-body img[alt="float-left"], .markdown-body figure.float-left { float: none; display: block; width: 75%; max-width: 260px; margin: 1.5rem auto; }
+
+    .markdown-body :is(.spoiler-text, .md-highlight-text, .md-inline-secret) {
+        max-width: 100% !important;
+    }
+    .markdown-body img[alt="center"] { width: 90%; }
+
+    /* 文章導覽膠囊與底部卡片 */
+    .capsule-btn.main-back { padding: 0 0.8rem; }
+    .capsule-progress { padding: 0 0.2rem; font-size: 0.75rem; }
+    .nav-card { min-width: 0; padding: 0.8rem; overflow: hidden; }
+    .nav-card.prev { text-align: left; align-items: flex-start; }
+    .nav-card.next { text-align: right; align-items: flex-end; }
+    .nav-card .nav-label { font-size: 0.75rem; gap: 4px; }
+    .nav-card .nav-label svg { width: 14px; height: 14px; }
+    .nav-card.next .nav-label { flex-direction: row-reverse; }
+
+    /* 捲軸提示漸層優化 */
+    .scroll-hint { width: 40px !important; }
+    .hint-right, .modal-content .hint-right { background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--bg) 70%, var(--bg) 100%) !important; }
+    .hint-left, .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--bg) 70%, var(--bg) 100%) !important; }
+    .modal-content .hint-right { background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
+    .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
+
+    /* ✨ 響應式分享與排序按鈕：手機版隱藏文字，把按鈕壓縮回純圖示 */
+    .btn-text-hideable { 
+        display: none !important; 
+    }
+    
+    .responsive-share-btn {
+        min-width: 34px !important;
+        width: 34px !important;
+        padding: 0 !important;
+        justify-content: center !important;
+    }
+
+    /* ✨ 手機版隱藏複製按鈕的文字，並縮為方形圖示按鈕 */
+    .markdown-body .code-copy-btn {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        justify-content: center;
+    }
+    
+    .markdown-body .code-copy-btn .copy-text {
+        display: none;
+    }
+
+    /* ✨ 配合縮小的按鈕，釋放更多空間給語言標籤 */
+    .markdown-body .code-lang-label {
+        max-width: calc(100% - 50px);
+    }
+}
+
+/* 8-2. 針對非常小的手機螢幕 (max-width: 500px) */
+@media (max-width: 500px) {
+    /* 縮小返回頂部按鈕，並避開跳轉膠囊 */
+    .capsule-btn.main-back { padding: 0 0.5rem; }
+    .index-header-actions {gap: 0.3rem;}
+    #modal-top-left {gap: 0.3rem;}
+    #modal-top-right {gap: 0.3rem;}
+    .capsule-btn { padding: 0 0.4rem; }
+    #toggle-sort-btn { padding: 0 0.3rem; }
+    .btt-btn { width: 42px; height: 42px; right: max(1rem, calc(var(--safe-right) + 1rem)); bottom: max(1.5rem, calc(var(--safe-bottom) + 1rem)); }
+    body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(var(--safe-bottom) + 80px)); }
+}
+
+/* 調整觸控狀態的游標 */
+body.is-touch-device #lightbox-img { cursor: default; }
+
+/* ========================================================================== */
+/* ✨ 8-4. 觸控裝置專屬物理點擊回饋 (Touch Feedback Engine)                         */
+/* ========================================================================== */
+/* 將所有在手機上可以點擊的大型區塊納入管理 (影片/音樂限定「失效破圖」時才套用) */
+/* ✨ 已經將 .gallery figure 移除，不再干擾圖說切換 */
+body.is-touch-device .pdf-container,
+body.is-touch-device .mermaid-container,
+body.is-touch-device .media-container-wrapper[data-is-broken="true"],
+body.is-touch-device figure.standalone-figure { 
+    cursor: pointer; 
+    -webkit-tap-highlight-color: transparent; 
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease !important;
+}
+
+/* 點擊瞬間微縮，給予像實體按鈕般的物理反饋 */
+body.is-touch-device .pdf-container:active,
+body.is-touch-device .mermaid-container:active,
+body.is-touch-device .media-container-wrapper[data-is-broken="true"]:active,
+body.is-touch-device figure.standalone-figure:active { 
+    transform: scale(0.97) !important; 
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important; 
+}
+
+/* ✨ 核心魔法：使用 :has() 阻斷標題列的點擊回饋！ */
+/* 如果使用者按在 .pdf-container-header 等工具列上，強制取消整個容器的縮放特效 */
+body.is-touch-device .pdf-container:has(.pdf-container-header:active):active,
+body.is-touch-device .mermaid-container:has(.mermaid-toolbar:active):active,
+body.is-touch-device .media-container-wrapper[data-is-broken="true"]:has(.media-container-header:active):active {
+    transform: none !important;
+    box-shadow: 0 4px 15px var(--shadow-base) !important; /* 恢復原本預設的陰影 */
+}
+
+/* 在觸控裝置下，強制隱藏 PDF iframe 閱讀器，顯示動態預覽圖 */
+body.is-touch-device .pdf-iframe { display: none !important; }
+body.is-touch-device .pdf-mobile-cover { display: block !important; }
+
+/* ========================================================================== */
+/* ✨ 手機版 PDF 首次引導遮罩 (First-time Onboarding Overlay) */
+/* ========================================================================== */
+.pdf-first-time-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    z-index: 10;
-}
-.locked-cover-overlay svg {
-    transition: transform 0.3s var(--ease-smooth);
-}
-
-
-/* ========================================================================== */
-/* ✨ 敏感內容協議畫面 (Sensitive Content Modal)                               */
-/* ========================================================================== */
-.sensitive-modal-content {
-    cursor: auto; 
-    width: 90%;
-    max-width: 500px; 
-    min-width: min(85vw, 320px);  /* ✨ 設定最小寬度 */
-    min-height: 280px;            /* ✨ 設定最小高度 */
+    background: color-mix(in srgb, var(--bg) 5%, transparent); /* 較深的半透明黑底 */
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    text-align: center; 
-    padding: 3rem 2rem; 
-    opacity: 1; 
-    position: relative;
-    background: var(--card); 
-    border: 1px solid var(--card-border); 
-    border-radius: 1.1rem; 
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-    transition: background-color 0.5s ease, border-color 0.5s ease;
-}
-.sensitive-close-btn {
-    position: absolute; 
-    top: 1.2rem; 
-    right: 1.2rem; 
-    background: transparent; 
-    border: none; 
-    color: var(--muted); 
-    cursor: pointer; 
-    padding: 0.5rem; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
-    transform-origin: center center; 
-    opacity: 0.7;
-}
-.sensitive-close-btn:hover,
-.sensitive-modal-content:has(#sensitive-decline-btn:hover) .sensitive-close-btn,
-#sensitive-modal-overlay:hover:not(:has(.sensitive-modal-content:hover)) .sensitive-close-btn {
-    opacity: 1; 
-    color: var(--current-warning-color, var(--error-color)); /* ✨ 關閉按鈕 Hover 變色 */
-    transform: rotate(90deg) scale(1.1);
-}
-.sensitive-title {
-    margin: 0 0 1rem 0; 
-    color: var(--current-warning-color, var(--error-color));
-}
-.sensitive-desc {
-    color: var(--muted); 
-    font-size: 0.95rem; 
-    line-height: 1.6; 
-    margin-bottom: 2rem;
-}
-.sensitive-desc-hint {
-    font-size: 0.8rem; 
-    opacity: 0.7;
-}
-.sensitive-actions {
-    display: flex; 
-    justify-content: center; 
-    gap: 1rem; 
-    flex-wrap: wrap;
-    margin-top: 0.5rem;
+    gap: 16px;
+    color: #fff;
+    transition: opacity 0.4s ease;
+    
+    /* ✨ 核心魔法：讓點擊事件直接穿透遮罩，觸發下方的卡片開啟功能 */
+    pointer-events: none; 
 }
 
-/* ✨ 動態模板按鈕與圖示色彩連動 */
-#sensitive-agree-btn { 
-    background: var(--current-warning-color, var(--error-color)) !important; 
-    color: #fff !important; 
-    border-color: var(--current-warning-color, var(--error-color)) !important; 
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); 
-    transition: all 0.3s ease;
+.pdf-first-time-text {
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    text-align: center;
+    line-height: 1.6;
 }
 
-/* ✨ Hover 時：按鈕全面化身為危險紅色 (--error-color) */
-#sensitive-agree-btn:hover { 
-    background: var(--error-color) !important;
-    border-color: var(--error-color) !important;
-    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important; 
-    filter: brightness(1.15); 
-}
-
-#sensitive-warning-icon-wrapper svg {
-    stroke: var(--current-warning-color, var(--error-color));
-    overflow: visible;
-    transform-origin: center center;
-    transition: stroke 0.35s ease, filter 0.35s ease, transform 0.35s var(--ease-smooth), opacity 0.35s ease;
-}
-
-/* ✨ Hover 時：警告 SVG 標誌同步化身為危險紅色，並發出紅光 */
-.sensitive-modal-content:has(#sensitive-agree-btn:hover) #sensitive-warning-icon-wrapper svg {
-    stroke: var(--error-color) !important;
-    filter: drop-shadow(0 0 25px var(--error-color)) !important; 
-    transform: scale(1.15);
-}
-
-/* ==========================================
-   ✨ 敏感內容協議核取方塊 (Checkbox)
-   ========================================== */
-.sensitive-checkbox-label {
+.pdf-first-time-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--accent);
+    color: var(--card);
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    margin-top: 0.2rem;
-    margin-bottom: 1rem;
-    user-select: none;
-    transition: opacity 0.2s ease;
-}
-.sensitive-checkbox-label:hover {
-    text-decoration: underline 2px solid var(--muted);
-}
-.sensitive-checkbox-label input[type="checkbox"] {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    border: 2px solid var(--muted);
-    border-radius: 4px;
-    background: transparent;
-    cursor: pointer;
-    position: relative;
-    /* transition: all 0.2s ease; */
-}
-.sensitive-checkbox-label input[type="checkbox"]:checked {
-    background: var(--current-warning-color, var(--error-color));
-    border-color: var(--current-warning-color, var(--error-color));
-}
-.sensitive-checkbox-label input[type="checkbox"]:checked::after {
-    content: '';
-    position: absolute;
-    inset: 0; /* 讓內部元素完美貼合整個框的長寬 */
-    
-    /* 直接嵌入純白色的高質感 SVG 打勾圖示 */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
-    
-    background-size: 75%; /* 讓打勾稍微小於外框，留出呼吸空間 */
-    background-position: center; /* 永遠保持絕對置中 */
-    background-repeat: no-repeat;
-    
-    /* 清除舊版的變形與邊框設定 */
-    border: none;
-    transform: none;
-}
-.sensitive-checkbox-text {
-    font-size: 0.85rem;
-    color: var(--muted);
-    font-weight: 500;
+    justify-content: center;
+    box-shadow: 0 4px 20px var(--glow-1);
+    animation: pdf-hint-pulse 2s infinite ease-in-out;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
-/* ==========================================
-   ✨ MAIN 警告：推薦未讀前篇跳轉卡片與按鈕層級優化
-   ========================================== */
-.sensitive-modal-content.has-jump-card .sensitive-desc {
-    margin-bottom: 1.4rem;
+.pdf-first-time-icon svg {
+    width: 24px;
+    height: 24px;
 }
 
-.sensitive-jump-card {
-    position: relative;
-    width: 100%;
+/* 吸引目光的呼吸放大特效 */
+@keyframes pdf-hint-pulse {
+    0%, 100% { transform: scale(1) translateZ(0); box-shadow: 0 4px 15px var(--glow-1); }
+    50% { transform: scale(1.15) translateZ(0); box-shadow: 0 4px 25px var(--accent); }
+}
+
+/* ✨ 當系統判定使用者已經看過時，直接從根目錄強制隱藏所有遮罩！ */
+html.pdf-hint-dismissed .pdf-first-time-overlay {
+    display: none !important;
+}
+
+/* ✨ 觸控點擊回饋：按下整個 PDF 區塊時 (排除點擊標題列的情況) */
+/* 1. 如果有圖片，右上角跳轉按鈕會發光放大 */
+body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):active .pdf-floating-btn {
+    background: var(--accent);
+    color: #fff;
+    opacity: 1;
+    transform: translateZ(0) scale(1.15);
+}
+
+/* 2. 如果處於破圖 Fallback 狀態，底部的膠囊按鈕會微縮變色 */
+body.is-touch-device .pdf-container:not(:has(.pdf-container-header:active)):active .pdf-hint-capsule {
+    transform: scale(0.95);
+    background: var(--accent);
+    color: var(--card);
+    box-shadow: 0 4px 15px var(--glow-1);
+}
+
+/* ========================================================================== */
+/* ✨ 觸控裝置專屬：Lightbox 工具列開關 (正三角形變形特效)                        */
+/* ========================================================================== */
+/* 按鈕亮起的高光狀態 */
+.toolbox-toggle-btn.is-active {
+    background: var(--accent) !important;
+    color: var(--card) !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 4px 12px var(--glow-1) !important;
+}
+
+/* 給予 SVG 與三個點點 Q 彈的物理過渡 */
+.toolbox-toggle-btn svg {
+    transition: transform 0.4s var(--ease-bounce);
+}
+.toolbox-toggle-btn svg circle {
+    transition: transform 0.4s var(--ease-bounce);
+    transform-box: fill-box;
+    transform-origin: center center;
+}
+
+/* 動作 1：開啟時，整顆 SVG 順時針旋轉 90 度 */
+.toolbox-toggle-btn.is-active svg {
+    transform: rotate(90deg);
+}
+
+/* 動作 2：核心魔法計算，利用平移讓三個點旋轉後剛好構成「完美的正三角形」！ */
+
+/* Dot 1 (原本在左)：原地不動。因為 SVG 轉了 90 度，它會直接被甩到畫面的「正上方」 */
+.toolbox-toggle-btn.is-active svg .dot-1 {
+    transform: translate(0, 0); 
+}
+
+/* Dot 2 (原本在正中)：向右下平移。經過旋轉系疊加後，它會精準落位在畫面的「右下角」 */
+.toolbox-toggle-btn.is-active svg .dot-2 {
+    transform: translate(3px, -6px);
+}
+
+/* Dot 3 (原本在右)：向左下平移。經過旋轉系疊加後，它會精準落位在畫面的「左下角」 */
+.toolbox-toggle-btn.is-active svg .dot-3 {
+    transform: translate(-4px, 6px);
+}
+
+body {
+    padding-top: var(--safe-top) !important;
+}
+
+/* 讓所有滿版遮罩從頭頂 0px 開始蓋滿 */
+.modal-overlay, 
+#lightbox-modal, 
+#sys-reboot-screen, 
+#pdf-action-modal, 
+#sensitive-modal-overlay,
+.fullscreen-nav {
+    top: 0 !important;
+    left: 0 !important;
+    width: var(--vv-width) !important;
+    height: var(--vv-height) !important;
+    position: fixed !important;
+}
+
+.modal-overlay {
+    padding-top: max(1rem, var(--safe-top)) !important;
+    padding-bottom: max(1rem, var(--safe-bottom)) !important;
     box-sizing: border-box;
     display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding: 0.85rem 1.05rem;
-    margin-bottom: 1.4rem;
-    border-radius: 12px;
-    border: 1px solid color-mix(in srgb, var(--current-warning-color, var(--accent)) 45%, var(--card-border));
-    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 10%, var(--box-bg));
-    color: var(--text);
-    text-align: left;
-    font-family: inherit;
-    cursor: pointer;
-    box-shadow: 0 4px 16px color-mix(in srgb, var(--current-warning-color, var(--accent)) 12%, transparent);
-    transition: transform 0.25s var(--ease-smooth), border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
-.sensitive-jump-card::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 -6px 0;
-    border-radius: 12px;
+.fullscreen-nav,
+#pdf-action-modal,
+#sensitive-modal-overlay {
+    padding-top: var(--safe-top) !important;
+    box-sizing: border-box; 
 }
 
-.sensitive-jump-card:hover {
-    transform: translateY(-2px);
-    border-color: var(--current-warning-color, var(--accent));
-    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 18%, var(--box-bg));
-    box-shadow: 0 8px 24px color-mix(in srgb, var(--current-warning-color, var(--accent)) 28%, transparent);
+/* ✨ Lightbox 工具列：上方 safe-top 區域改為實心主題底色，消除半透明漸層穿透 */
+#lightbox-toolbar {
+    top: 0 !important;
+    padding-top: calc(15px + var(--safe-top)) !important;
+    height: calc(70px + var(--safe-top)) !important;
+    background: linear-gradient(
+        to bottom, 
+        var(--bg) 0%, 
+        var(--bg) var(--safe-top), 
+        color-mix(in srgb, var(--bg) 85%, transparent) calc(var(--safe-top) + 35px), 
+        transparent 100%
+    ) !important;
 }
 
-.sensitive-jump-card:active {
-    transform: translateY(0) scale(0.99);
+/* ✨ Lightbox 圖片容器同步往下推開 safe-top，防止大圖頂到狀態列 */
+.lightbox-content-wrapper {
+    padding-top: calc(80px + var(--safe-top)) !important;
 }
 
-.sensitive-jump-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--current-warning-color, var(--accent));
-    background: color-mix(in srgb, var(--current-warning-color, var(--accent)) 15%, transparent);
-    border: 1px solid color-mix(in srgb, var(--current-warning-color, var(--accent)) 30%, transparent);
-    transition: background-color 0.25s ease, color 0.25s ease;
+/* 📱 手機窄版 (<= 700px)：保留頂部 safe-top 遮罩空間，其餘填滿視窗 */
+@media (max-width: 700px) {
+    .modal-overlay {
+        padding-top: var(--safe-top) !important;
+        padding-bottom: var(--safe-bottom) !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: calc(var(--vv-height) - var(--safe-top) - var(--safe-bottom)) !important;
+    }
 }
 
-.sensitive-jump-card:hover .sensitive-jump-icon {
-    background: var(--current-warning-color, var(--accent));
-    color: var(--card);
+/* 📱 手機版微調 */
+@media (max-width: 700px) {
+    .modal-top-bar {
+        padding: 1.5rem 1.5rem 1.2rem 1.5rem !important;
+    }
+    #view-index, #view-article {
+        /* ✨ 手機版的上方間距也適度補回 */
+        padding-top: 1rem !important; 
+        
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important; 
+        padding-bottom: 2.5rem !important;
+    }
 }
 
-.sensitive-jump-body {
-    flex: 1;
-    min-width: 0;
+/* ========================================================================== */
+/* ✨ PWA 專屬：下拉重新整理指示器 (Pull to Refresh)                              */
+/* ========================================================================== */
+.pwa-refresh-indicator {
+    position: fixed;
+    /* 躲在頂部瀏海/狀態列下方，預設往上隱藏 */
+    top: max(10px, env(safe-area-inset-top, 0px));
+    left: 50%;
+    /* ✨ 修正：外層容器只負責「位移」與「縮放」，不負責旋轉 */
+    transform: translate(-50%, -100%); 
+    z-index: 100000;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    color: var(--accent);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.sensitive-jump-kicker {
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--current-warning-color, var(--accent));
-    opacity: 0.9;
-}
-
-.sensitive-jump-title {
-    font-size: 0.98rem;
-    font-weight: 700;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.sensitive-jump-arrow {
-    flex-shrink: 0;
-    display: inline-flex;
+    justify-content: center;
     align-items: center;
-    color: var(--current-warning-color, var(--accent));
-    opacity: 0.85;
-    transition: transform 0.25s var(--ease-smooth), opacity 0.25s ease;
+    box-shadow: 0 4px 15px var(--shadow-base);
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
 }
 
-.sensitive-jump-card:hover .sensitive-jump-arrow {
-    transform: translateX(4px);
-    opacity: 1;
+/* ✨ 修正：旋轉動畫交給內部的 SVG 負責 */
+.pwa-refresh-indicator svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    transform-origin: center center;
 }
 
-/* Hover 推薦卡片時，上方警告圖示轉為柔和黯淡 (mute) */
-.sensitive-modal-content.has-jump-card:has(.sensitive-jump-card:hover) #sensitive-warning-svg {
-    stroke: var(--muted) !important;
-    filter: none !important;
-    transform: scale(0.9);
-    opacity: 0.5;
+/* 達到重整門檻時的高光與放大 (✨ 移除寫死的 transform !important，交由 JS 精準釘死終點) */
+.pwa-refresh-indicator.ready {
+    color: var(--card);
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    box-shadow: 0 4px 15px var(--glow-1);
 }
 
-/* 有推薦前篇時，讓「不感興趣」更低調、「我已了解並前往」降級為次要外框（Hover 仍轉紅光警告） */
-.sensitive-modal-content.has-jump-card #sensitive-decline-btn {
-    border-color: var(--card-border);
-    color: var(--muted);
-}
-.sensitive-modal-content.has-jump-card #sensitive-decline-btn:hover {
-    background: var(--box-bg);
-    border-color: var(--muted);
-    color: var(--text);
-    box-shadow: none;
+/* ✨ 新增：專屬的逆時針無限旋轉動畫 */
+@keyframes pwa-spin {
+    to { transform: rotate(-360deg); }
 }
 
-.sensitive-modal-content.has-jump-card #sensitive-agree-btn {
-    background: transparent !important;
-    color: var(--current-warning-color, var(--error-color)) !important;
-    border-color: color-mix(in srgb, var(--current-warning-color, var(--error-color)) 60%, transparent) !important;
-    box-shadow: none;
+/* 載入中的狀態 */
+.pwa-refresh-indicator.is-reloading {
+    color: var(--card);
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    box-shadow: 0 4px 15px var(--glow-1);
 }
-.sensitive-modal-content.has-jump-card #sensitive-agree-btn:hover {
-    background: var(--error-color) !important;
-    color: #fff !important;
-    border-color: var(--error-color) !important;
-    box-shadow: 0 8px 25px var(--error-shadow), 0 0 12px var(--error-color) !important;
+.pwa-refresh-indicator.is-reloading svg {
+    /* ✨ 改用逆時針動畫 */
+    animation: pwa-spin 0.7s linear infinite; 
 }
 
-/* 深色模式 MAIN 無推薦卡片時，修正亮青底配白字對比度偏低的問題 */
-[data-theme="dark"] .sensitive-modal-content[data-sensitive-type="MAIN"]:not(.has-jump-card) #sensitive-agree-btn {
-    color: var(--bg) !important;
-    font-weight: 700;
+
+/* ✨ 新增：專屬的打勾彈出動畫 (拔除了會讓位置跑掉的 translate) */
+@keyframes pwa-check-pop {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
 }
-[data-theme="dark"] .sensitive-modal-content[data-sensitive-type="MAIN"]:not(.has-jump-card) #sensitive-agree-btn:hover {
-    color: #fff !important;
+
+/* 成功打勾的狀態 */
+.pwa-refresh-indicator.is-success {
+    color: var(--card);
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    box-shadow: 0 4px 15px var(--glow-1);
+}
+.pwa-refresh-indicator.is-success svg {
+    /* ✨ 改用專屬的彈跳動畫，保證乖乖待在正中間！ */
+    animation: pwa-check-pop 0.4s var(--ease-bounce) forwards;
+}
+
+
+/* Preset: 非 PWA 模式下隱藏實體遮罩 */
+#pwa-status-bar-shield {
+    display: none;
+}
+
+/* ========================================================================== */
+/* ✨ PWA 全域設定 (實體 DOM 頂部遮罩永不消失 + 位置高度 1:1 貼齊原生狀態列)  */
+/* ========================================================================== */
+@media (display-mode: standalone) {
+    html {
+        width: 100%;
+        min-height: 100dvh;
+        background-color: var(--bg);
+        overscroll-behavior-y: auto !important; /* 恢復主頁滾過頭回彈 */
+    }
+
+    body {
+        width: 100%;
+        min-height: 100dvh;
+        padding-top: var(--safe-top) !important;
+        overflow-x: hidden !important;
+        overscroll-behavior-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        box-sizing: border-box;
+    }
+
+    /* 關閉舊的虛擬元素，避免重疊 */
+    body::after {
+        display: none !important;
+    }
+
+    /* ✨ 實體 DOM 頂部遮罩：獨立 GPU 合成層，切換主題 100 次也絕對不會消失！ */
+    #pwa-status-bar-shield {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100vw !important;
+        /* 保持盒子高於 10px，讓 WebKit 有機會辨識這個頂部固定色塊。
+           透明下邊框不繪製底色；實際色帶只覆蓋安全區，安全區為 0 時保留 1px。
+           這是針對 WebKit 取樣行為的相容處理，需以實機驗證。 */
+        --shield-paint-height: max(1px, var(--safe-top));
+        --shield-box-height: max(12px, var(--shield-paint-height));
+        height: var(--shield-box-height) !important;
+        box-sizing: border-box !important;
+        border: 0 solid transparent !important;
+        border-bottom-width: calc(var(--shield-box-height) - var(--shield-paint-height)) !important;
+        background-color: var(--bg);
+        background-clip: padding-box;
+        z-index: 999999 !important; /* 壓過主頁目錄 (999)、文章 (1050)、Lightbox (9999) */
+        pointer-events: none !important;
+        transition: none; /* 保持純色，讓 WebKit 在主題切換時有機會取樣。 */
+        /* ✨ 關鍵：強制鎖定獨立 GPU 圖層，防止 body overflow 切換或主題變色時被 WebKit 回收 */
+        transform: translate3d(0, 0, 0) !important;
+        -webkit-backface-visibility: hidden !important;
+        backface-visibility: hidden !important;
+        will-change: background-color;
+    }
+
+    @media (max-width: 700px) {
+        .modal-overlay {
+            /* 頂部推開 0.6rem 避開遮罩 */
+            padding-top: calc(var(--safe-top) + 0.6rem) !important;
+        }
+
+        .modal-content {
+            /* ✨ 同步扣掉多出來的 0.6rem，保證底部完全貼合在安全區內，不被推出去 */
+            max-height: calc(var(--vv-height) - var(--safe-top) - var(--safe-bottom) - 0.6rem) !important;
+        }
+    }
 }
