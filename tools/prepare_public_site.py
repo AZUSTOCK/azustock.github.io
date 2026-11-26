@@ -10,11 +10,12 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from datetime import datetime, timezone
-from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
-from urllib.parse import unquote, urljoin, urlsplit
 
-SITE_URL = "https://azustock.com/"
+if __package__:
+    from .release_validation import SITE_URL, CORE_FILES, validate_release
+else:
+    from release_validation import SITE_URL, CORE_FILES, validate_release
 STAGING = ".gh-pages-temp"
 REPORT_DIR = "tools/public-site-inventory"
 LEGACY_REPORT_DIR = "public-site-inventory"
@@ -25,21 +26,16 @@ BRANCH = "main"
 # Single source of truth for copying AND validation. Case-sensitive like rsync.
 ROOT_EXCLUDED = frozenset({
     "tools", "logs", "README.md", "CNAME", "index_local.html",
-    "generate_projects.py", "main.js", "style.css", STAGING, LEGACY_REPORT_DIR,
+    "generate_projects.py", "main.js", "style.css", LEGACY_REPORT_DIR,
 })
-ANYWHERE_EXCLUDED = frozenset({
-    ".git", ".github", ".gh-pages-temp", "private", ".github_sync.json",
-    ".secrets.json", ".build_cache.json", ".gitignore", ".env", ".venv",
-    "node_modules", "__pycache__",
-})
+# All dotfiles/dotdirs (.git, .github, .gh-pages-temp, .env, .secrets.json,
+# .github_sync.json, .build_cache.json, etc.) are excluded by p.startswith(".").
+ANYWHERE_EXCLUDED = frozenset({"private", "node_modules", "__pycache__"})
 SCOPED_EXCLUDED = {
     "api": frozenset({"meta.json"}),
     "projects": frozenset({"detail.json", "index.md"}),
 }
-REQUIRED_FILES = (
-    "index.html", "main.min.js", "style.min.css", "all_projects.json",
-    "assets/site.webmanifest",
-)
+REQUIRED_FILES = CORE_FILES
 REQUIRED_DIRS = ("api",)
 
 
@@ -111,38 +107,7 @@ def prepare_public_site(root):
     return stage
 
 
-class ResourceCheck(HTMLParser):
-    def __init__(self, stage):
-        super().__init__()
-        self.stage = stage
-        self.manifest = False
-
-    def handle_starttag(self, tag, attrs):
-        attrs = dict(attrs)
-        rel = (attrs.get("rel") or "").lower().split()
-        if tag != "link" or not any(r == "manifest" or "icon" in r for r in rel):
-            return
-        self.manifest |= "manifest" in rel
-        href = attrs.get("href") or ""
-        url = urlsplit(urljoin(SITE_URL, href))
-        if not href or url.scheme != "https" or url.netloc != urlsplit(SITE_URL).netloc:
-            raise ValueError(f"Invalid icon/manifest URL: {href}")
-        relative = unquote(url.path).lstrip("/")
-        if "\\" in relative or ".." in PurePosixPath(relative).parts:
-            raise ValueError(f"Invalid resource path: {href}")
-        if not (self.stage / relative).is_file():
-            raise ValueError(f"Missing icon/manifest file: {url.path}")
-
-
-def verify_html_resources(stage):
-    parser = ResourceCheck(stage)
-    parser.feed((stage / "index.html").read_text(encoding="utf-8"))
-    parser.close()
-    if not parser.manifest:
-        raise ValueError("Missing manifest link")
-
-
-def verify_public_site(stage):
+def verify_public_site(stage, source_root=None, *, file_hashes=None):
     if stage.is_symlink() or not stage.is_dir():
         raise ValueError("Invalid staging directory")
     for rel, _ in walk_entries(stage):
@@ -155,8 +120,7 @@ def verify_public_site(stage):
     for rel in REQUIRED_DIRS:
         if not (stage / rel).is_dir():
             raise ValueError(f"Missing directory: {rel}")
-    json.loads((stage / "assets/site.webmanifest").read_text(encoding="utf-8"))
-    verify_html_resources(stage)
+    return validate_release(stage, source_root if source_root is not None else stage.parent, file_hashes=file_hashes)
 
 
 def file_hash(path):
@@ -167,14 +131,16 @@ def file_hash(path):
     return digest.hexdigest()
 
 
-def generate_inventory(stage):
+def generate_inventory(stage, *, file_hashes=None):
     files = []
     groups = defaultdict(lambda: {"files": 0, "bytes": 0})
+    cached_hashes = file_hashes if file_hashes is not None else {}
     for rel, path in walk_entries(stage):
         if not path.is_file():
             continue
         size = path.stat().st_size
-        files.append({"path": rel, "bytes": size, "sha256": file_hash(path)})
+        digest = cached_hashes.get(rel) or file_hash(path)
+        files.append({"path": rel, "bytes": size, "sha256": digest})
         group = rel.split("/", 1)[0] + "/" if "/" in rel else "(root)"
         groups[group]["files"] += 1
         groups[group]["bytes"] += size
@@ -265,6 +231,15 @@ def generate_summary(inventory):
     for group, stats in inventory["directories"].items():
         safe = group.replace("|", "\\|").replace("\n", " ").replace("\r", " ").replace("<", "&lt;").replace(">", "&gt;")
         lines.append(f"| {safe} | {stats['files']:,} | {mib(stats['bytes'])} |")
+    validation = inventory.get("validation")
+    if validation:
+        lines.extend(["", "### Release validation", "",
+                      f"- System version: `{validation['version']}`",
+                      f"- Article JSON files checked: **{validation['articles_checked']}**",
+                      f"- Warnings: **{len(validation['warnings'])}**"])
+        for warning in validation['warnings']:
+            safe = warning.replace("\n", " ").replace("\r", " ").replace("<", "&lt;").replace(">", "&gt;")
+            lines.append(f"  - {safe}")
     diff = inventory["comparison"]
     lines.extend(["", "### Deployment changes", ""])
     if diff["available"]:
@@ -311,8 +286,10 @@ def main(argv=None):
             previous, source = previous_inventory()
         report = reset_output(root, REPORT_DIR)
         stage = prepare_public_site(root)
-        verify_public_site(stage)
-        inventory = generate_inventory(stage)
+        shared_hashes = {}
+        validation = verify_public_site(stage, root, file_hashes=shared_hashes)
+        inventory = generate_inventory(stage, file_hashes=shared_hashes)
+        inventory["validation"] = validation
         inventory["comparison"] = compare_inventories(inventory, previous, source=source)
         write_reports(report, inventory)
         print(f"Staged {inventory['total_files']} files in {stage}")

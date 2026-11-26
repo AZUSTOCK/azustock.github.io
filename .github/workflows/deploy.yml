@@ -34,8 +34,6 @@ jobs:
             .build_cache.json
             api/
             data_version.json
-            version.json
-            changelogs.json
           key: build-cache-${{ github.sha }}
           restore-keys: |
             build-cache-
@@ -48,14 +46,13 @@ jobs:
       - name: Install Dependencies
         run: pip install pillow rjsmin rcssmin pymupdf
 
+      - name: Test public site tool
+        run: python -m unittest discover -s tools -p test_public_site.py -v
+
       - name: Generate API and Data
         env:
           GH_SYNC_TOKEN: ${{ secrets.GH_SYNC_TOKEN }}
-        run: |
-          printf '1\n' | python -u generate_projects.py
-
-      - name: Test public site tool
-        run: python -m unittest discover -s tools -p test_public_site.py -v
+        run: python -u generate_projects.py
 
       - name: Prepare public site and inventory
         env:
