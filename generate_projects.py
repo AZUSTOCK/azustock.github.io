@@ -3,6 +3,7 @@ import json
 import re
 import time
 import hashlib
+import html as html_lib
 import tempfile
 import posixpath
 import threading
@@ -29,6 +30,10 @@ from tools.convert_webp import (
 )
 from tools.update_paths import update_extensions_to_webp
 from tools.cout import cout  # ✨ 引入 Cout 全域實例
+from tools.release_validation import (
+    HASH_HEX_LENGTH, DATA_VERSION_FILES, collect_log_entries, parse_version,
+    is_public_log, public_log_record, validate_version, replace_config_version,
+)
 
 # ✨ 若想切換為純文字標籤模式 (如 [STAGE], [WARN], [IMG])，取消註解下面這行即可：
 # cout.set_icon_mode('text')
@@ -50,7 +55,6 @@ BASE_URL = "https://azustock.com"
 API_DIR = "api"
 JS_SOURCE_PATH = "main.js"
 HASH_CHUNK_SIZE = 1024 * 1024
-HASH_HEX_LENGTH = 16
 _UNSET = object()
 
 # GitHub 遠端 Metadata 同步設定
@@ -77,6 +81,7 @@ PDF_RENDER_OVERSAMPLE = 2
 PDF_RENDER_STRATEGY = 'target-width-2x-v1'
 
 VALID_IMAGE_EXTS = frozenset({'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'})
+RASTER_IMAGE_EXTS = VALID_IMAGE_EXTS - {'.svg'}
 VALID_MEDIA_EXTS = VALID_IMAGE_EXTS | frozenset({'.mp4', '.webm', '.ogg', '.mp3', '.wav', '.pdf'})
 SYS_TAGS = frozenset({
     'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED',
@@ -90,7 +95,12 @@ RE_DYNAMIC_TEXT = re.compile(r'\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*
 RE_FOLDER_META = re.compile(r'^(-?\d+)_+(.*)$')
 RE_TAG_EXPIRE = re.compile(r'^(NEW|UPDATED|LATEST|FEATURE):(\d{4}[-/]\d{2}[-/]\d{2})$', re.IGNORECASE)
 RE_DATE_STR = re.compile(r'^\d{4}[-/]\d{2}[-/]\d{2}$')
-RE_MD_IMG = re.compile(r'!\[([^\]]*)\]\(([^)]+)\)')
+RE_HIGHLIGHT_BLOCK_OPEN = re.compile(r'^[ \t]*:::\s*highlight\[(.*?)\][ \t]*$', re.IGNORECASE | re.MULTILINE)
+RE_HIGHLIGHT_INLINE = re.compile(r'\+\+\[(.*?)\][\s\S]*?\+\+')
+RE_HIGHLIGHT_PURE_DATE = re.compile(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
+RE_HIGHLIGHT_SUFFIX_DATE = re.compile(r'^(.*?):\s*(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
+RE_HIGHLIGHT_HIDE_FLAG = re.compile(r'^EXPIRED?$', re.IGNORECASE)
+RE_MD_IMG = re.compile(r'(?<!\\)!\[([^\]]*)\]\(((?:[^()\n]|\([^()\n]*\))+)\)')
 RE_HTML_IMG = re.compile(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)')
 RE_IMG_TITLE = re.compile(r'(.*?)\s+(["\'])(.*?)\2$')
 RE_CLEAN_TAG = re.compile(r'^.*?\[(.*?)\]$')
@@ -111,7 +121,7 @@ SHARE_HTML_TEMPLATE = """<!DOCTYPE html>
     <meta name="twitter:title" content="{title}">
     <meta name="twitter:description" content="{description}">
     <meta name="twitter:image" content="{image}">
-    <script>window.location.replace("{target_url}");</script>
+    <script>window.location.replace({target_url_js});</script>
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: center; padding-top: 15vh; background: #f4f4f5; color: #3f3f46; margin: 0;">
     <div style="max-width: 500px; margin: 0 auto; padding: 2.5rem 2rem; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
@@ -202,12 +212,18 @@ class ShareHtmlTask:
         title = clean_dynamic_text(self.title)
         if self.project_title is not _UNSET:
             title = f"{title} | {clean_dynamic_text(self.project_title)}"
+        safe_title = html_lib.escape(str(title or ''), quote=True)
+        safe_desc = html_lib.escape(str(clean_dynamic_text(self.description) or ''), quote=True)
+        safe_image = html_lib.escape(str(image_url), quote=True)
+        safe_target = html_lib.escape(str(self.target_url), quote=True)
+        safe_share = html_lib.escape(str(self.share_url), quote=True)
         return SHARE_HTML_TEMPLATE.format(
-            title=title,
-            description=clean_dynamic_text(self.description),
-            image=image_url,
-            target_url=self.target_url,
-            share_url=self.share_url,
+            title=safe_title,
+            description=safe_desc,
+            image=safe_image,
+            target_url=safe_target,
+            target_url_js=json.dumps(self.target_url).replace("</", "<\/"),
+            share_url=safe_share,
         )
 
 
@@ -602,11 +618,6 @@ def _should_omit_project_link(raw_proj_data, context):
 # ==========================================
 # 🛠️ 通用輔助與快取函式
 # ==========================================
-def parse_version(v_str):
-    """將版本字串拆解為整數列表以供排序 (例如 'v1.10.2' -> [1, 10, 2])"""
-    return [int(x) for x in re.findall(r'\d+', str(v_str))]
-
-
 def safe_int(val, default=999):
     """安全轉換整數（支援負數字串如 '-1'）"""
     if isinstance(val, bool):
@@ -714,6 +725,8 @@ def clean_dynamic_text(text):
 def get_image_dimensions(img_path):
     if not img_path or not os.path.isfile(img_path):
         return None
+    if os.path.splitext(img_path)[1].lower() == '.svg':
+        return None
     absolute = os.path.abspath(img_path)
     key = (absolute, *stat_key(absolute))
     if key not in _IMG_DIM_MEMO:
@@ -820,7 +833,11 @@ def render_release_homepage(latest_version):
     with open('index_local.html', encoding='utf-8') as stream:
         html = stream.read()
     html = re.sub(r'(\.(?:css|js)\?u=)[^"]+(")', lambda m: m[1] + str(latest_version) + m[2], html)
-    html = re.sub(r'(<span id="sys-version"[^>]*>)[^<]+(</span>)', lambda m: m[1] + str(latest_version) + m[2], html)
+    html = re.sub(
+        r'(<(?P<tag>[a-zA-Z][\w-]*)\b[^>]*\bid=(["\'])sys-version\3[^>]*>)[^<]*(</(?P=tag)>)',
+        lambda m: m.group(1) + html_lib.escape(str(latest_version), quote=False) + m.group(4),
+        html,
+    )
     html = re.sub(r'<!--[\s\S]*?-->', '', html)
     html = re.sub(r'/\*[\s\S]*?\*/', '', html)
     html = re.sub(r'^\s*//.*$', '', html, flags=re.MULTILINE)
@@ -853,8 +870,7 @@ def minify_assets(latest_version=None):
             with open(source_html, 'r', encoding='utf-8') as f:
                 html = f.read()
         else:
-            cout.skip("沒有可使用的正式首頁，略過首頁掛載。", indent=0)
-            return
+            raise FileNotFoundError("沒有可使用的正式首頁，停止建置。")
 
         html = re.sub(r'src="(\./)?main\.js([?"#])', r'src="\g<1>main.min.js\g<2>', html)
         html = re.sub(r'href="(\./)?style\.css([?"#])', r'href="\g<1>style.min.css\g<2>', html)
@@ -956,6 +972,40 @@ def resolve_media_reference(url, base_dir):
     return os.path.normpath(local_path), urlunsplit(('', '', web_path, parts.query, parts.fragment))
 
 
+def _transform_markdown_outside_code(text, transform_fn):
+    """僅對 Markdown 程式碼區塊與行內程式碼以外的段落套用轉換函式。"""
+    inline_code_re = re.compile(r'(`+)[^\n]*?\1')
+
+    def transform_line(line):
+        parts = []
+        last = 0
+        for match in inline_code_re.finditer(line):
+            if match.start() > last:
+                parts.append(transform_fn(line[last:match.start()]))
+            parts.append(match.group(0))
+            last = match.end()
+        if last < len(line):
+            parts.append(transform_fn(line[last:]))
+        return ''.join(parts)
+
+    out = []
+    fence = None
+    for line in text.splitlines(keepends=True):
+        stripped = re.sub(r'^\s*(?:>\s*)*', '', line.rstrip('\r\n'))
+        marker = re.match(r'(`{3,}|~{3,})(.*)$', stripped)
+        if fence:
+            out.append(line)
+            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
+                fence = None
+            continue
+        if marker and not (marker[1][0] == '`' and '`' in marker[2]):
+            fence = marker[1]
+            out.append(line)
+            continue
+        out.append(transform_line(line))
+    return ''.join(out)
+
+
 def resolve_content_tokens(content, replacements):
     if not replacements:
         return content
@@ -1045,21 +1095,101 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
                 pass
 
 
+def _mask_markdown_code_preserve_lines(text):
+    """將 Markdown 程式碼區塊與行內程式碼替換為等長空白並保留換行，避免範例語法誤報過期。"""
+    inline_code_re = re.compile(r'(`+)[^\n]*?\1')
+    out = []
+    fence = None
+    for line in text.splitlines(keepends=True):
+        body = line.rstrip('\r\n')
+        eol = line[len(body):]
+        stripped = re.sub(r'^\s*(?:>\s*)*', '', body)
+        marker = re.match(r'(`{3,}|~{3,})(.*)$', stripped)
+        if fence:
+            out.append((' ' * len(body)) + eol)
+            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
+                fence = None
+            continue
+        if marker and not (marker[1][0] == '`' and '`' in marker[2]):
+            fence = marker[1]
+            out.append((' ' * len(body)) + eol)
+            continue
+        masked_body = inline_code_re.sub(lambda m: ' ' * len(m.group(0)), body)
+        out.append(masked_body + eol)
+    return ''.join(out)
+
+
+def _parse_highlight_badge_date(raw_badge):
+    """解析 highlight 標籤中的日期與過期隱藏旗標 (|EXPIRE / |EXPIRED)，略過 KEY: 觸發語法。"""
+    trimmed = str(raw_badge or '').strip()
+    if not trimmed or trimmed.startswith('KEY:'):
+        return None, False
+
+    hide_on_expire = False
+    kept_segments = []
+    for seg in trimmed.split('|'):
+        clean_seg = seg.strip()
+        if not clean_seg:
+            continue
+        if RE_HIGHLIGHT_HIDE_FLAG.fullmatch(clean_seg):
+            hide_on_expire = True
+        else:
+            kept_segments.append(clean_seg)
+
+    core = '|'.join(kept_segments).strip()
+    match = RE_HIGHLIGHT_PURE_DATE.match(core)
+    if match:
+        y, m, d = int(match.group(1)), int(match.group(2)), int(match.group(3))
+    else:
+        suffix_match = RE_HIGHLIGHT_SUFFIX_DATE.match(core)
+        if not suffix_match:
+            return None, hide_on_expire
+        y, m, d = int(suffix_match.group(2)), int(suffix_match.group(3)), int(suffix_match.group(4))
+
+    try:
+        return datetime(y, m, d), hide_on_expire
+    except ValueError:
+        return None, hide_on_expire
+
+
+def check_markdown_highlight_expirations(item_title, md_content, md_path, days=None):
+    """掃描文章 Markdown 中的區塊與行內 highlight 日期，過期時交由 Cout 收集提醒。"""
+    if not md_content:
+        return
+    if days is None:
+        days = get_tag_expire_days()
+    now = datetime.now()
+    expire_delta = timedelta(days=days)
+    masked = _mask_markdown_code_preserve_lines(md_content)
+
+    matches = []
+    for m in RE_HIGHLIGHT_BLOCK_OPEN.finditer(masked):
+        matches.append((m.start(), '區塊 highlight', m.group(1)))
+    for m in RE_HIGHLIGHT_INLINE.finditer(masked):
+        matches.append((m.start(), '行內 highlight', m.group(1)))
+    matches.sort(key=lambda item: item[0])
+
+    for pos, kind, raw_badge in matches:
+        dt, hide_on_expire = _parse_highlight_badge_date(raw_badge)
+        if dt is None:
+            continue
+        if now - dt > expire_delta:
+            line_no = masked.count('\n', 0, pos) + 1
+            mode_note = "(已隱藏)" if hide_on_expire else "(已降級為純內文)"
+            cout.collect_reminder(
+                "高光過期",
+                f"文章 '{item_title}' 第 {line_no} 行的{kind} '[{raw_badge.strip()}]' 已過 {days} 天 {mode_note}。",
+                filepath=md_path,
+                color='yellow',
+                icon_key='expired',
+            )
+
+
 def update_data_version():
     """計算各獨立項目的 Hash，並寫入 data_version.json"""
     cout.stage("快取引擎", "開始計算細項 Hash 值...", icon_key='cache')
 
-    items = {
-        "projects": get_file_hash("all_projects.json"),
-        "kotoba.md": get_file_hash("kotoba.md"),
-        "quotes.md": get_file_hash("quotes.md"),
-        "COPYRIGHT.md": get_file_hash("COPYRIGHT.md"),
-        "credits.md": get_file_hash("credits.md"),
-        "changelogs.json": get_file_hash("changelogs.json"),
-        "mermaid_styles.txt": get_file_hash("mermaid_styles.txt"),
-        "main.min.js": get_file_hash("main.min.js"),
-        "style.min.css": get_file_hash("style.min.css"),
-    }
+    items = {key: get_file_hash(path) for key, path in DATA_VERSION_FILES.items()}
 
     old_versions = load_cache_json('data_version.json')
     changed_items = [k for k, v in items.items() if old_versions.get(k) != v]
@@ -1080,21 +1210,6 @@ def update_data_version():
 # ==========================================
 # 📝 系統日誌與版本同步器
 # ==========================================
-def collect_log_entries(base_dir='logs'):
-    entries = []
-    for folder, _, files in os.walk(base_dir):
-        if 'detail.json' in files:
-            path = os.path.join(folder, 'detail.json')
-            detail = load_detail_json(path, required=True)
-            version = detail.get('version', os.path.basename(folder))
-            if isinstance(version, bool):
-                raise ValueError(f"{path} 的 version 不能是布林值")
-            entries.append((folder, version, detail))
-    entries.sort(key=lambda entry: parse_version(entry[1]), reverse=True)
-    latest = next((version for _, version, detail in entries if not detail.get('no_track')), None)
-    return entries, latest
-
-
 def generate_changelogs_json():
     """打包系統日誌 (changelogs.json)，並回傳最新追蹤版號"""
     cout.stage("版本紀錄", "開始打包系統日誌 (Changelog)...", icon_key='stage')
@@ -1120,26 +1235,12 @@ def generate_changelogs_json():
         if detail.get('no_track'):
             cout.skip(f"略過不追蹤版本: {version}", indent=1)
 
-        if str(version).count('.') >= 3 or str(version_folder).count('.') >= 3 or detail.get('hidden', False):
+        if not is_public_log(folder_path, version, detail):
             cout.skip(f"隱藏內部紀錄: 目錄 {version_folder} (對外版號: {version})", indent=1)
             continue
-
-        content = ""
-        for file in os.listdir(folder_path):
-            if file.endswith('.md'):
-                with open(os.path.join(folder_path, file), 'r', encoding='utf-8') as f:
-                    content = f.read()
-                break
-
-        if content:
-            output_data.append({
-                "id": version_folder,
-                "version": version,
-                "date": detail.get('date', "2026-01-01"),
-                "status": detail.get('status', "UPDATE"),
-                "description": detail.get('description', "系統更新與優化記錄。"),
-                "content": content,
-            })
+        record = public_log_record(folder_path, version, detail)
+        if record is not None:
+            output_data.append(record)
 
     atomic_write('changelogs.json', json.dumps(output_data, ensure_ascii=False, indent=2), _FILE_HASH_MEMO)
     cout.success(f"升級版版本日誌 (Changelog) 打包完成，共發布 {len(output_data)} 筆紀錄。")
@@ -1161,36 +1262,31 @@ def generate_version_json(latest_version=_UNSET, is_github_actions=False, *, pre
         latest_version = precomputed_latest
     if latest_version is _UNSET:
         _, latest_version = collect_log_entries()
-    if isinstance(latest_version, bool):
-        raise ValueError("版號不能是布林值")
     if not latest_version:
-        cout.warn('找不到任何有效的版號！')
-        return
+        raise ValueError('找不到任何有效的版號，停止建置！')
+    validate_version(latest_version, 'latest tracked log')
 
     try:
+        # 先確認來源及版號欄位存在，再寫入任何版本產物。
+        with open(JS_SOURCE_PATH, 'r', encoding='utf-8') as f:
+            js_content = f.read()
+        new_js_content = replace_config_version(js_content, latest_version)
+        if is_github_actions:
+            new_js_content = re.sub(r'(DEBUG_FETCH_DELAY:\s*)\d+', r'\g<1>0', new_js_content, count=1)
+
+        if js_content != new_js_content:
+            atomic_write(JS_SOURCE_PATH, new_js_content, _FILE_HASH_MEMO)
+            mode_note = "並自動關閉 DEBUG_FETCH_DELAY" if is_github_actions else "(本地開發模式，保留 DEBUG 設定)"
+            cout.success(f"成功將 {JS_SOURCE_PATH} 同步更新為 {latest_version} {mode_note}")
+        else:
+            cout.skip(f"{JS_SOURCE_PATH} 設定已是最新，無須修改。", indent=0)
         atomic_write('version.json', json.dumps({"version": latest_version}, indent=2), _FILE_HASH_MEMO)
         cout.success(f"成功提取最新系統版號 ({latest_version}) 並寫入 version.json")
-
-        if os.path.isfile(JS_SOURCE_PATH):
-            with open(JS_SOURCE_PATH, 'r', encoding='utf-8') as f:
-                js_content = f.read()
-
-            new_js_content = re.sub(r'(VERSION:\s*")[^"]+(")', rf'\g<1>{latest_version}\g<2>', js_content, count=1)
-            if is_github_actions:
-                new_js_content = re.sub(r'(DEBUG_FETCH_DELAY:\s*)\d+', r'\g<1>0', new_js_content, count=1)
-
-            if js_content != new_js_content:
-                atomic_write(JS_SOURCE_PATH, new_js_content, _FILE_HASH_MEMO)
-                mode_note = "並自動關閉 DEBUG_FETCH_DELAY" if is_github_actions else "(本地開發模式，保留 DEBUG 設定)"
-                cout.success(f"成功將 {JS_SOURCE_PATH} 同步更新為 {latest_version} {mode_note}")
-            else:
-                cout.skip(f"{JS_SOURCE_PATH} 設定已是最新，無須修改。", indent=0)
-        else:
-            cout.warn("找不到 main.js 檔案，無法更新前端系統版本！")
         if legacy_call and os.path.isfile('index_local.html'):
             atomic_write('index.html', render_release_homepage(latest_version), _FILE_HASH_MEMO)
     except Exception as e:
         cout.warn(f"系統版本號同步失敗: {e}")
+        raise RuntimeError("系統版本號同步失敗，停止建置。") from e
 
 
 # ==========================================
@@ -1324,6 +1420,8 @@ def process_article(
         if sub_data.get('title') is None and raw_md_content.startswith('# '):
             meta_title = raw_md_content.split('\n', 1)[0].replace('# ', '').strip()
 
+        check_markdown_highlight_expirations(meta_title, raw_md_content, md_file_path, expire_days)
+
         real_path = f"./{rel_base}/"
         pending_replacements = []
 
@@ -1388,7 +1486,7 @@ def process_article(
 
             final_stamped_url = '#'.join(stamped_parts)
 
-            if ext in VALID_IMAGE_EXTS and os.path.exists(local_main_path):
+            if ext in RASTER_IMAGE_EXTS and os.path.exists(local_main_path):
                 token, orig_url_t, dims = register_inline_image(local_main_path, main_url, "THUMB_URL")
                 ar_str = f"&w={dims[0]}&h={dims[1]}" if dims else ""
                 if '#full=' in final_stamped_url:
@@ -1443,10 +1541,13 @@ def process_article(
                 if local_img_path is None:
                     return match.group(0)
 
-                if os.path.splitext(local_img_path)[1].lower() not in VALID_IMAGE_EXTS:
+                img_ext = os.path.splitext(local_img_path)[1].lower()
+                if img_ext not in VALID_IMAGE_EXTS:
                     return f"{prefix}{orig_url}{suffix}"
 
                 if os.path.exists(local_img_path):
+                    if img_ext not in RASTER_IMAGE_EXTS:
+                        return f"{prefix}{get_hash_url(local_img_path, orig_url)}{suffix}"
                     token, orig_url_t, dims = register_inline_image(local_img_path, orig_url, "HTML_THUMB")
                     size_attrs = f' width="{dims[0]}" height="{dims[1]}" style="aspect-ratio: {dims[0]}/{dims[1]};"' if dims else ""
                     closing_quote = prefix[-1]
@@ -1457,8 +1558,10 @@ def process_article(
                 cout.warn(f"HTML 圖片替換發生錯誤 ({url}): {inner_e}", indent=2)
                 return match.group(0)
 
-        content = RE_MD_IMG.sub(replace_md_img, raw_md_content)
-        content = RE_HTML_IMG.sub(replace_html_img, content)
+        content = _transform_markdown_outside_code(
+            raw_md_content,
+            lambda chunk: RE_HTML_IMG.sub(replace_html_img, RE_MD_IMG.sub(replace_md_img, chunk)),
+        )
 
         stats["json_total"] += 1
         json_status, md_hash = check_hash_status(
@@ -2045,7 +2148,7 @@ if __name__ == "__main__":
         update_data_version()
 
         # 5. 統一輸出過期或解封提醒清單
-        cout.flush_reminders("過期 tag 提示")
+        cout.flush_reminders("過期 tag / highlight 提示")
 
         total_elapsed = time.perf_counter() - build_start_time
         cout.success(f"全站建置流程執行完畢！總耗時: {total_elapsed:.2f} 秒。", icon_key='party')

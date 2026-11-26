@@ -72,8 +72,25 @@ class TrackerEngine:
         self.projects = self.root / 'projects'
         self.history_dir = self.root / 'tools' / 'tracker' / 'backups' / 'web'
         self.lock = ENGINE_LOCK
-        self.modules = {name: importlib.import_module('track_' + name)
-                        for name in ('keys', 'versions', 'tags', 'sensitive')}
+        self.tool_specs = (
+            dict(slug='keys', default_field='key'),
+            dict(slug='versions', default_field='min_sys_version'),
+            dict(slug='tags', default_field='tags'),
+            dict(slug='sensitive', default_field='sensitive'),
+            dict(slug='hidden', default_field='hidden'),
+            dict(slug='pinned', default_field='pinned'),
+        )
+        self.field_specs = (
+            dict(name='key', label='key · 發放金鑰', default_value=''),
+            dict(name='required_key', label='required_key · 上鎖條件', default_value=''),
+            dict(name='min_sys_version', label='min_sys_version · 最低版本', default_value=''),
+            dict(name='tags', label='tags · 標籤', default_value=[]),
+            dict(name='sensitive', label='sensitive · 內容警告', default_value={'MAIN': True}),
+            dict(name='hidden', label='hidden · 限時隱藏', default_value=True),
+            dict(name='pinned', label='pinned · 置頂項目', default_value=True),
+        )
+        self.modules = {spec['slug']: importlib.import_module('track_' + spec['slug'])
+                        for spec in self.tool_specs}
         self.reports = {}
         self.pending = {}
         self.scan()
@@ -168,8 +185,11 @@ class TrackerEngine:
 
     def status(self):
         with self.lock:
+            default_fields = {spec['slug']: spec['default_field'] for spec in self.tool_specs}
             return dict(root=str(self.root), projects=str(self.projects), scanned_at=self.scanned_at,
-                        tools=[dict(slug=name, title=report['title'], groups=len(report['groups']),
+                        fields=list(self.field_specs),
+                        tools=[dict(slug=name, title=report['title'], default_field=default_fields.get(name, ''),
+                                    groups=len(report['groups']),
                                     records=sum(len(g['records']) for g in report['groups']))
                                for name, report in self.reports.items()])
 
@@ -212,12 +232,15 @@ class TrackerEngine:
     def in_scope(self, relative, folder):
         return not folder or relative == folder or relative.startswith(folder.rstrip('/') + '/')
 
-    def report(self, tool='keys', query='', folder='', group='', filter_key='', filter_value='all', unset=False, page=1):
+    def report(self, tool='keys', query='', folder='', group='', groups=None, badges=None,
+               filter_key='', filter_value='all', unset=False, page=1):
         if tool not in self.reports:
             raise ValueError('未知的 tracker。')
         with self.lock:
             report = deepcopy(self.reports[tool])
         records = report.get('unset', []) if unset else [r for g in report['groups'] for r in g['records']]
+        selected_groups = [g for g in (groups if groups is not None else ([group] if group else [])) if g]
+        selected_badges = [b for b in (badges or []) if b]
         matched = []
         for record in records:
             if not self.in_scope(record['edit_path'], folder):
@@ -230,17 +253,22 @@ class TrackerEngine:
                         continue
                 elif str(record.get(filter_key, '')) != filter_value:
                     continue
+            if selected_badges:
+                rec_badges = {str(x) for x in (record.get('group'), record.get('kind'), *(record.get('badges') or [])) if x}
+                if not all(b in rec_badges for b in selected_badges):
+                    continue
             matched.append(record)
-        groups = {}
+        group_counts = {}
         for record in matched:
-            groups[record['group']] = groups.get(record['group'], 0) + 1
-        if group:
-            matched = [r for r in matched if r['group'] == group]
+            group_counts[record['group']] = group_counts.get(record['group'], 0) + 1
+        if selected_groups:
+            group_set = set(selected_groups)
+            matched = [r for r in matched if r['group'] in group_set]
         total = len(matched)
         pages = max(1, (total + 49) // 50)
         page = min(max(1, int(page)), pages)
         return dict(items=matched[(page - 1) * 50:page * 50], total=total, page=page, pages=pages,
-                    groups=[dict(name=name, count=count) for name, count in groups.items()],
+                    groups=[dict(name=name, count=count) for name, count in group_counts.items()],
                     filters=report['filters'], scan=report['scan'], title=report['title'])
 
     def files(self, query='', folder='', page=1):
@@ -323,16 +351,16 @@ class TrackerEngine:
             elif action == 'field':
                 if path.name != 'detail.json':
                     raise ValueError('欄位操作只適用 detail.json。')
-                allowed = {'key', 'required_key', 'min_sys_version', 'tags', 'sensitive'}
+                allowed = {spec['name'] for spec in self.field_specs}
                 field = request.get('field')
                 if field not in allowed:
                     raise ValueError('請選擇支援的設定欄位。')
                 value = common.REMOVE if request.get('remove') is True else request.get('value')
                 data = strict_json(before.decode('utf-8-sig'))
-                if field == 'sensitive':
-                    module = self.modules['sensitive']
+                if field in ('sensitive', 'hidden', 'pinned'):
+                    module = self.modules[field]
                     module.PROJECTS_DIR = str(self.projects)
-                    module.APP.validate_target({'data':data, 'path':path})
+                    module.APP.validate_target({'data': data, 'path': path})
                     field = module.APP.select_field_name(data)
                     if value is not common.REMOVE:
                         module.APP.validate_value(value)
@@ -540,8 +568,14 @@ class TrackerHandler(BaseHTTPRequestHandler):
             if route.path == '/api/status':
                 return self.reply({**engine.status(), 'token':self.server.csrf})
             if route.path == '/api/report':
-                keys = ('tool','query','folder','group','filter_key','filter_value','page')
-                return self.reply(engine.report(**{k:params[k] for k in keys if k in params}, unset=params.get('unset') == '1'))
+                raw_qs = parse_qs(route.query)
+                keys = ('tool','query','folder','filter_key','filter_value','page')
+                return self.reply(engine.report(
+                    **{k:params[k] for k in keys if k in params},
+                    groups=raw_qs.get('group'),
+                    badges=raw_qs.get('badge'),
+                    unset=params.get('unset') == '1',
+                ))
             if route.path == '/api/folders':
                 return self.reply({'items':engine.folders(params.get('query',''))})
             if route.path == '/api/files':

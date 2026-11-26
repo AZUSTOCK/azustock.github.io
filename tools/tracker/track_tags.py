@@ -134,12 +134,54 @@ def normalize_tag(raw_tag, expire_days=14):
     return s, s, None, False
 
 
+RE_INLINE_CODE = re.compile(r'(`+)[^\n]*?\1')
+RE_HL_PURE_DATE = re.compile(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
+RE_HL_SUFFIX_DATE = re.compile(r'^(.*?):\s*(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
+RE_HL_HIDE_FLAG = re.compile(r'^EXPIRED?$', re.IGNORECASE)
+
+
 def mask_fenced_code(md_text):
-    """將 ```...``` 程式碼區塊內的字元替換為空白（保留換行符號），確保行號與欄位計算完全精準且不誤判。"""
-    return RE_FENCED_CODE.sub(
+    """將程式碼區塊與行內程式碼替換為空白（保留換行符號），確保行號與欄位精準且不誤判範例語法。"""
+    masked = RE_FENCED_CODE.sub(
         lambda m: ''.join('\n' if ch == '\n' else ' ' for ch in m.group(0)),
         md_text
     )
+    return RE_INLINE_CODE.sub(lambda m: ' ' * len(m.group(0)), masked)
+
+
+def parse_highlight_badge(raw_badge, expire_days=14):
+    """解析高光標籤中的文字、日期與 |EXPIRE / |EXPIRED 隱藏旗標，回傳 (tag_key, expire_date, is_expired, hide_on_expire)。"""
+    trimmed = str(raw_badge or '').strip()
+    hide_on_expire = False
+    kept = []
+    for seg in trimmed.split('|'):
+        clean = seg.strip()
+        if not clean:
+            continue
+        if RE_HL_HIDE_FLAG.fullmatch(clean):
+            hide_on_expire = True
+        else:
+            kept.append(clean)
+    core = '|'.join(kept).strip()
+    expire_date = None
+    badge = core
+
+    pure_m = RE_HL_PURE_DATE.match(core)
+    if pure_m:
+        badge = ''
+        expire_date = pure_m.group(0)
+    else:
+        suf_m = RE_HL_SUFFIX_DATE.match(core)
+        if suf_m:
+            badge = suf_m.group(1).strip()
+            expire_date = f'{suf_m.group(2)}-{suf_m.group(3)}-{suf_m.group(4)}'
+
+    is_expired = check_date_expired(expire_date, expire_days) if expire_date else False
+    if not badge:
+        tag_key = 'HIGHLIGHT'
+    else:
+        tag_key = badge.upper() if badge.upper() in STATUS_TAGS else badge
+    return tag_key, expire_date, is_expired, hide_on_expire
 
 
 def add_record(tag_name, record_type, detail_path, line_num, column, raw_str,
@@ -178,8 +220,8 @@ def add_record(tag_name, record_type, detail_path, line_num, column, raw_str,
     entry[record_type].append(item)
 
 
-def scan_markdown_highlights_in_dir(dir_path, detail_path, title, target_id):
-    """掃描該目錄下的 .md 檔案，找出 ++[TAG]文字++ 與 :::highlight[TAG] 並綁定至所屬的 detail.json。"""
+def scan_markdown_highlights_in_dir(dir_path, detail_path, title, target_id, expire_days=14):
+    """掃描該目錄下的 .md 檔案，找出 ++[TAG]文字++ 與 :::highlight[TAG]（含日期與 |EXPIRE 過期判斷）。"""
     found_tags = []
     md_files_scanned = 0
     for md_path in sorted(Path(dir_path).glob('*.md')):
@@ -195,46 +237,55 @@ def scan_markdown_highlights_in_dir(dir_path, detail_path, title, target_id):
         lines = md_text.splitlines()
         rel_md = os.path.relpath(md_path).replace('\\', '/')
 
+        def format_date_note(expire_date, is_exp, hide_on_exp):
+            if not expire_date:
+                return ''
+            if is_exp:
+                return f' (時效: {expire_date} · {"已過期·隱藏" if hide_on_exp else "已過期·降級"})'
+            return f' (時效: {expire_date} · {"有效·到期隱藏" if hide_on_exp else "有效"})'
+
         # 1. 行內高光 ++[TAG]文字++
         for m in RE_MD_INLINE_HL.finditer(masked):
             raw_badge = m.group(1).strip()
             if not raw_badge or raw_badge.upper().startswith('KEY:'):
                 continue
-            tag_key = raw_badge.upper() if raw_badge.upper() in STATUS_TAGS else raw_badge
+            tag_key, expire_date, is_exp, hide_on_exp = parse_highlight_badge(raw_badge, expire_days)
             tag_start = m.start(1)
             md_line = md_text.count('\n', 0, tag_start) + 1
             md_col = tag_start - md_text.rfind('\n', 0, tag_start)
             line_text = lines[md_line - 1] if 1 <= md_line <= len(lines) else m.group(0)
             snippet = re.sub(r'\s+', ' ', m.group(2).strip())[:45]
-            raw_display = f'[Markdown ++[{raw_badge}]++] "{snippet}" · {rel_md}:{md_line}:{md_col}'
+            date_note = format_date_note(expire_date, is_exp, hide_on_exp)
+            raw_display = f'[Markdown ++[{raw_badge}]++]{date_note} "{snippet}" · {rel_md}:{md_line}:{md_col}'
 
-            # 路徑指向該文章／專案所在的 detail.json (line 1, col 1)，並額外附帶 md_file 座標
             add_record(
                 tag_key, 'markdown', detail_path, 1, 1,
                 raw_display, line_text, title, target_id,
                 source_type='md_inline', raw_tag_val=f'++[{raw_badge}]++',
-                is_expired=False, md_file=str(md_path), md_line=md_line, md_col=md_col
+                is_expired=is_exp, md_file=str(md_path), md_line=md_line, md_col=md_col
             )
             found_tags.append(tag_key)
 
         # 2. 區塊高光 :::highlight[TAG]
         for m in RE_MD_BLOCK_HL.finditer(masked):
             raw_badge = (m.group(1) or '').strip()
-            if not raw_badge or raw_badge.upper().startswith('KEY:'):
+            if raw_badge.upper().startswith('KEY:'):
                 continue
-            tag_key = raw_badge.upper() if raw_badge.upper() in STATUS_TAGS else raw_badge
+            tag_key, expire_date, is_exp, hide_on_exp = parse_highlight_badge(raw_badge, expire_days)
             tag_start = m.start(1) if m.group(1) is not None else m.start(0)
             md_line = md_text.count('\n', 0, tag_start) + 1
             md_col = tag_start - md_text.rfind('\n', 0, tag_start)
             line_text = lines[md_line - 1] if 1 <= md_line <= len(lines) else m.group(0).splitlines()[0]
             snippet = re.sub(r'\s+', ' ', m.group(2).strip())[:45]
-            raw_display = f'[Markdown :::highlight[{raw_badge}]] "{snippet}" · {rel_md}:{md_line}:{md_col}'
+            date_note = format_date_note(expire_date, is_exp, hide_on_exp)
+            badge_label = f'[{raw_badge}]' if raw_badge else ''
+            raw_display = f'[Markdown :::highlight{badge_label}]{date_note} "{snippet}" · {rel_md}:{md_line}:{md_col}'
 
             add_record(
                 tag_key, 'markdown', detail_path, 1, 1,
                 raw_display, line_text, title, target_id,
-                source_type='md_block', raw_tag_val=f':::highlight[{raw_badge}]',
-                is_expired=False, md_file=str(md_path), md_line=md_line, md_col=md_col
+                source_type='md_block', raw_tag_val=f':::highlight{badge_label}',
+                is_expired=is_exp, md_file=str(md_path), md_line=md_line, md_col=md_col
             )
             found_tags.append(tag_key)
 
@@ -352,7 +403,7 @@ def collect_tags():
 
                 # 3. 掃描同目錄下 Markdown 檔案中的 ++[TAG]文字++ 與 :::highlight[TAG]
                 md_tags, md_cnt = scan_markdown_highlights_in_dir(
-                    path_obj.parent, path, title, target_id
+                    path_obj.parent, path, title, target_id, expire_days
                 )
                 total_md_files += md_cnt
 

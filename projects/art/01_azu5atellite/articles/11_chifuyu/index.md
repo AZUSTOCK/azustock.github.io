@@ -4,11 +4,11 @@
   <figcaption>基礎方塊</figcaption>
 </figure>
 
-單純的甜，但不只如此。
+單純的甜，但不只如此。  
 ||— 也許，在這段旅途中，我可以跟著千冬一起成長||
 > #只是想畫畫
 
-:::highlight[UPDATED]
+:::highlight[UPDATED:2026-11-17]
 
 ## 服裝
 <div class="gallery" style="--g-width: 200px; --g-rows: 1; --g-ratio: 9/16">
