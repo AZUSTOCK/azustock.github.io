@@ -71,6 +71,29 @@ def is_public_log(folder, version, detail):
     return str(version).count('.') < 3 and os.path.basename(folder).count('.') < 3 and not detail.get('hidden', False)
 
 
+LOG_GROUP_PREFIX_RE = re.compile(r'^([A-Za-z]*\d+\.\d+)')
+
+
+def derive_log_group(version, detail):
+    """優先使用 detail.json 指定的 group，否則自動依版號前綴 (如 U1.7.1 -> U1.7) 歸類。"""
+    explicit = detail.get('group') if isinstance(detail, dict) else None
+    if isinstance(explicit, str) and explicit.strip():
+        return explicit.strip()
+    match = LOG_GROUP_PREFIX_RE.match(str(version or '').strip())
+    return match.group(1) if match else 'other'
+
+
+def load_log_groups(logs_dir='logs'):
+    """讀取可選的 logs/groups.json；不存在時回傳空字典。"""
+    groups_path = Path(logs_dir) / 'groups.json'
+    if not groups_path.is_file():
+        return {}
+    data = json.loads(groups_path.read_text(encoding='utf-8'))
+    if not isinstance(data, dict):
+        raise ValueError(f'{groups_path} must be a JSON object')
+    return data
+
+
 def public_log_record(folder, version, detail):
     """Same publication rule for the generator and the validator; no_track only affects tracking."""
     if not is_public_log(folder, version, detail):
@@ -85,7 +108,8 @@ def public_log_record(folder, version, detail):
     return {
         "id": os.path.basename(folder), "version": version,
         "date": detail.get('date', '2026-01-01'), "status": detail.get('status', 'UPDATE'),
-        "description": detail.get('description', '系統更新與優化記錄。'), "content": content,
+        "description": detail.get('description', '系統更新與優化記錄。'),
+        "group": derive_log_group(version, detail), "content": content,
     }
 
 
@@ -189,11 +213,33 @@ class Validator:
         entries, latest = collect_log_entries(self.source_root / 'logs')
         if version != latest:
             raise ValueError(f"System version mismatch: version.json={version!r}, latest tracked log={latest!r}")
-        actual = read_json(self.stage / 'changelogs.json', list)
-        self._changelogs = actual
+        actual_doc = read_json(self.stage / 'changelogs.json', dict)
+        actual_groups = actual_doc.get('groups')
+        actual_logs = actual_doc.get('logs')
+        if not isinstance(actual_groups, dict) or not isinstance(actual_logs, list):
+            raise ValueError("changelogs.json must contain 'groups' (object) and 'logs' (list)")
+        expected_groups = load_log_groups(self.source_root / 'logs')
+        if actual_groups != expected_groups:
+            raise ValueError("changelogs.json groups differ from logs/groups.json")
         expected = [record for folder, v, detail in entries if (record := public_log_record(folder, v, detail)) is not None]
-        if actual != expected:
+        if len(actual_logs) != len(expected):
             raise ValueError("changelogs.json differs from source logs (including tracking and visibility rules)")
+        verified_contents = []
+        for actual_row, expected_row in zip(actual_logs, expected):
+            if not isinstance(actual_row, dict):
+                raise ValueError("changelogs.json entry must be an object")
+            for field in ('id', 'version', 'date', 'status', 'description', 'group'):
+                if actual_row.get(field) != expected_row.get(field):
+                    raise ValueError("changelogs.json differs from source logs (including tracking and visibility rules)")
+            content_path = actual_row.get('content_path')
+            if not content_path:
+                raise ValueError(f"Missing content_path for changelog {actual_row.get('version')}")
+            chunk_path = self.resource(content_path, f"changelog {actual_row['version']} content", local_only=True)
+            chunk_data = read_json(self.stage / chunk_path, dict)
+            if chunk_data.get('content') != expected_row['content']:
+                raise ValueError(f"Changelog content chunk differs from source log: {actual_row['version']}")
+            verified_contents.append((actual_row['version'], chunk_data['content']))
+        self._changelogs = verified_contents
         if not any(row['version'] == version for row in expected):
             self.warn(f"Tracked version {version} has no public changelog entry (internal/hidden or no Markdown content)")
         return version
@@ -279,9 +325,15 @@ class Validator:
                     self.verify_markdown_media(content, f'{path} ({where})')
                     self.checked_articles.add(path)
         # The public changelog contains Markdown too, rendered on the homepage.
-        changelogs = self._changelogs if self._changelogs is not None else read_json(self.stage / 'changelogs.json', list)
-        for record in changelogs:
-            self.verify_markdown_media(record['content'], f"changelog {record['version']}")
+        if self._changelogs is not None:
+            for cl_ver, cl_content in self._changelogs:
+                self.verify_markdown_media(cl_content, f"changelog {cl_ver}")
+        else:
+            cl_doc = read_json(self.stage / 'changelogs.json', dict)
+            for record in cl_doc.get('logs', []):
+                chunk_path = self.resource(record.get('content_path', ''), f"changelog {record.get('version')} content", local_only=True)
+                chunk_data = read_json(self.stage / chunk_path, dict)
+                self.verify_markdown_media(chunk_data.get('content', ''), f"changelog {record.get('version')}")
 
     def verify_share_page(self, url, context):
         path = self.resource(url, f'{context} share page', local_only=True)

@@ -1,6 +1,7 @@
 """Run with python -m unittest discover -s tools -p test_public_site.py -v."""
 import hashlib
 import json
+import shutil
 import os
 import subprocess
 import tempfile
@@ -49,8 +50,24 @@ class PublicSiteTests(unittest.TestCase):
     def sync_logs(self):
         entries, latest = release.collect_log_entries(self.root / "logs")
         self.put("version.json", json.dumps({"version": latest}))
-        self.put("changelogs.json", json.dumps([rec for folder, v, detail in entries
-                                                  if (rec := release.public_log_record(folder, v, detail)) is not None]))
+        cl_dir = self.root / "api" / "_changelogs"
+        if cl_dir.exists():
+            shutil.rmtree(cl_dir)
+        logs_index = []
+        for folder, v, detail in entries:
+            rec = release.public_log_record(folder, v, detail)
+            if rec is None:
+                continue
+            chunk_rel = f"api/_changelogs/{rec['id']}.json"
+            chunk_path = self.put(chunk_rel, json.dumps({"content": rec['content']}, ensure_ascii=False))
+            chunk_hash = hashlib.sha256(chunk_path.read_bytes()).hexdigest()[:16]
+            logs_index.append({
+                "id": rec['id'], "version": rec['version'], "date": rec['date'],
+                "status": rec['status'], "description": rec['description'], "group": rec['group'],
+                "content_path": f"./{chunk_rel}?v={chunk_hash}",
+            })
+        groups = release.load_log_groups(self.root / "logs")
+        self.put("changelogs.json", json.dumps({"groups": groups, "logs": logs_index}, ensure_ascii=False))
 
     def refresh_hashes(self):
         self.put("data_version.json", json.dumps({key: hashlib.sha256((self.root / path).read_bytes()).hexdigest()[:16]
@@ -242,7 +259,7 @@ class PublicSiteTests(unittest.TestCase):
             (stage / name).unlink()
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, "Missing or empty"):
                 site.verify_public_site(stage)
-        for name, invalid in (("version.json", "[]"), ("data_version.json", "[]"), ("all_projects.json", "[]"), ("changelogs.json", "{}")):
+        for name, invalid in (("version.json", "[]"), ("data_version.json", "[]"), ("all_projects.json", "[]"), ("changelogs.json", "[]")):
             stage = self.stage()
             (stage / name).write_text(invalid)
             with self.subTest(name=name), self.assertRaises(ValueError):
@@ -259,7 +276,7 @@ class PublicSiteTests(unittest.TestCase):
 
     def test_stale_changelog_and_latest_source(self):
         stage = self.stage()
-        (stage / "changelogs.json").write_text("[]")
+        (stage / "changelogs.json").write_text('{"groups": {}, "logs": []}')
         with self.assertRaisesRegex(ValueError, "differs from source logs"):
             site.verify_public_site(stage)
         self.put("logs/U1.7.1/detail.json", '{"version":"U1.7.1"}')
@@ -279,8 +296,8 @@ class PublicSiteTests(unittest.TestCase):
         result = site.verify_public_site(self.stage())
         self.assertEqual(result["version"], self.version)
         self.assertTrue(any("no public changelog entry" in w for w in result["warnings"]))
-        logs = json.loads((self.root / "changelogs.json").read_text())
-        self.assertEqual([row["version"] for row in logs], ["U2.0.0", "U1.7.0"])
+        cl_doc = json.loads((self.root / "changelogs.json").read_text())
+        self.assertEqual([row["version"] for row in cl_doc["logs"]], ["U2.0.0", "U1.7.0"])
 
     def test_optional_files_warn(self):
         (self.root / "kotoba.md").unlink()

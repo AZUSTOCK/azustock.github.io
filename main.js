@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.7.1",          // 目前系統版本號
+    VERSION: "U1.7.1.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -5896,7 +5896,8 @@ window.syncIndexHeaderLayout = function() {
     const clCapsule = topBar.querySelector('.changelog-header-row .unified-nav-capsule');
     const clMeta = topBar.querySelector('.changelog-header-row .changelog-meta');
 
-    if (!(title && actions) && !(clCapsule && clMeta)) {
+    const anyCapsule = topBar.querySelector('#modal-top-left .unified-nav-capsule');
+    if (!(title && actions) && !(clCapsule && clMeta) && !anyCapsule) {
         topBar.classList.remove('is-topbar-wrapped');
         return;
     }
@@ -5917,6 +5918,23 @@ window.syncIndexHeaderLayout = function() {
             const kids = Array.from(container.children).filter(el => getComputedStyle(el).display !== 'none');
             if (!kids.length) return 0;
             return kids.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + gap * (kids.length - 1);
+        };
+
+        // ✨ 膠囊三級漸進壓縮（1. 隱藏返回文字 → 2. 壓縮內距 → 3. 隱藏進度數字 12/27）
+        const fitCapsule = (capsule) => {
+            if (!capsule) return 0;
+            const availCapsule = innerWidth - rightW - colGap - 6;
+            capsule.classList.remove('capsule-compact-1', 'capsule-compact-2', 'capsule-compact-3');
+            if (capsule.getBoundingClientRect().width > availCapsule) {
+                capsule.classList.add('capsule-compact-1');
+                if (capsule.getBoundingClientRect().width > availCapsule) {
+                    capsule.classList.add('capsule-compact-2');
+                    if (capsule.getBoundingClientRect().width > availCapsule) {
+                        capsule.classList.add('capsule-compact-3');
+                    }
+                }
+            }
+            return capsule.getBoundingClientRect().width;
         };
 
         topBar.classList.remove('is-topbar-wrapped');
@@ -5945,11 +5963,15 @@ window.syncIndexHeaderLayout = function() {
                 }
             }
         } else if (clCapsule && clMeta) {
-            const capsuleW = clCapsule.getBoundingClientRect().width;
+            const capsuleW = fitCapsule(clCapsule);
+            const clStack = topBar.querySelector('.changelog-header-row .top-nav-stack');
+            const leftW = clStack ? Math.max(capsuleW, clStack.getBoundingClientRect().width) : capsuleW;
             const metaW = measureChildrenWidth(clMeta);
-            if (capsuleW + metaW + rightW + colGap * 2 + 6 > innerWidth) {
+            if (leftW + metaW + rightW + colGap * 2 + 6 > innerWidth) {
                 topBar.classList.add('is-topbar-wrapped');
             }
+        } else if (anyCapsule) {
+            fitCapsule(anyCapsule);
         }
     } finally {
         window._syncingIndexHeader = false;
@@ -6905,7 +6927,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 <div class="top-nav-stack">
                     ${groupHtml}
                     <div class="unified-nav-capsule">
-                        <button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}
+                        <button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="capsule-back-text">目錄</span></button>${sequenceHtml}${historyBtnHtml}
                     </div>
                 </div>
             `;
@@ -7446,14 +7468,67 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
         if (logResult.aborted || navigation !== window._modalNavigation) return;
         if (logResult.success && Array.isArray(logResult.data)) {
             window.cachedChangelogs = logResult.data;
+            window.cachedChangelogGroups = {};
+        } else if (logResult.success && logResult.data && Array.isArray(logResult.data.logs)) {
+            window.cachedChangelogs = logResult.data.logs;
+            window.cachedChangelogGroups = (logResult.data.groups && typeof logResult.data.groups === 'object') ? logResult.data.groups : {};
         } else {
             console.error("日誌讀取或更新檢查失敗:", logResult.error || '無法載入 changelogs.json');
             fetchError = true;
         }
     }
+    if (!window.cachedChangelogContents) window.cachedChangelogContents = {};
 
     // 另一個頁面或錯誤畫面已接手時，不再更新 DOM。
     if (navigation !== window._modalNavigation) return;
+
+    // 共用版本分組推導與樣式輔助函式（列表與內文頂部共用）
+    const deriveLogGroup = (log) => {
+        if (log && log.group && String(log.group).trim()) return String(log.group).trim();
+        const m = String((log && log.version) || '').trim().match(/^([A-Za-z]*\d+\.\d+)/);
+        return m ? m[1] : 'other';
+    };
+    const buildLogGroupContext = () => {
+        const groupsMeta = window.cachedChangelogGroups || {};
+        const logs = Array.isArray(window.cachedChangelogs) ? window.cachedChangelogs : [];
+        const groupedMap = new Map();
+        logs.forEach(log => {
+            const gId = deriveLogGroup(log);
+            if (!groupedMap.has(gId)) groupedMap.set(gId, []);
+            groupedMap.get(gId).push(log);
+        });
+        const orderedGroupIds = Array.from(groupedMap.keys()).sort((a, b) => {
+            const oa = groupsMeta[a] && Number.isFinite(Number(groupsMeta[a].order)) ? Number(groupsMeta[a].order) : null;
+            const ob = groupsMeta[b] && Number.isFinite(Number(groupsMeta[b].order)) ? Number(groupsMeta[b].order) : null;
+            if (oa !== null && ob !== null) return oa - ob;
+            if (oa !== null) return -1;
+            if (ob !== null) return 1;
+            return 0;
+        });
+        const styleMap = new Map();
+        let colorIndex = 0;
+        orderedGroupIds.forEach(groupId => {
+            const groupData = groupsMeta[groupId] || {};
+            const groupTitle = groupData.title || (groupId === 'other' ? 'Other' : `${groupId} Series`);
+            const groupColor = groupData.color;
+            const isHighlight = groupData.highlight === true;
+            let themeClass = '';
+            let customStyle = '';
+            if (isHighlight) {
+                if (groupColor) {
+                    customStyle = ` style="--current-group-color: ${groupColor}; --tab-color: ${groupColor};"`;
+                } else {
+                    const groupNum = (colorIndex % 5) + 1;
+                    themeClass = ` group-color-${groupNum}`;
+                    colorIndex++;
+                }
+            } else if (groupColor) {
+                customStyle = ` style="--current-group-color: ${groupColor};"`;
+            }
+            styleMap.set(groupId, { groupId, groupData, groupTitle, groupColor, isHighlight, themeClass, customStyle });
+        });
+        return { groupedMap, orderedGroupIds, styleMap };
+    };
 
     // 共用標題渲染 (邏輯同步精簡)
     function renderChangelogHeader(isDetail = false, logData = null) {
@@ -7462,20 +7537,16 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
         
         if (!isDetail) {
             modalTopLeft.innerHTML = `
-                <div class="index-header-container">
-                    <h1 class="index-header-title">System Changelog</h1>
-                    <div class="index-header-actions">
-                        <span class="article-count-badge">Update History</span>
-                    </div>
+                <div class="changelog-header-row">
+                    <h2 style="margin: 0; font-size: 1.35rem; color: var(--accent); letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.6rem;">
+                        <span>系統更新日誌</span>
+                        <span style="font-family: monospace; font-size: 0.85rem; color: var(--muted); font-weight: normal;">Changelog</span>
+                    </h2>
                 </div>
             `;
         } else {
-            let badgeHTML = '';
-            if (logData) {
-                // 自動對應 CSS 的狀態名稱
-                let activeStatus = logData.status === 'LATEST' ? 'NEW' : logData.status;
-                badgeHTML = `<span class="status-badge" data-status="${activeStatus}">${logData.status}</span>`;
-            }
+            let activeStatus = logData && logData.status === 'LATEST' ? 'NEW' : (logData ? logData.status : 'UPDATE');
+            let badgeHTML = logData ? `<span class="status-badge title-badge" data-status="${activeStatus}">${logData.status}</span>` : '';
 
             const logs = Array.isArray(window.cachedChangelogs) ? window.cachedChangelogs : [];
             const logIndex = logData ? logs.findIndex(l => l.id === logData.id) : -1;
@@ -7497,10 +7568,22 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                 ? `<div class="capsule-divider"></div>${makeCapsuleBtn(prevLog, 'prev')}<span class="capsule-progress">${logIndex + 1} / ${logs.length}</span>${makeCapsuleBtn(nextLog, 'next')}`
                 : '';
 
+            let groupHtml = '';
+            if (logData) {
+                const { styleMap } = buildLogGroupContext();
+                const gInfo = styleMap.get(deriveLogGroup(logData));
+                if (gInfo) {
+                    groupHtml = `<div class="article-group-label${gInfo.themeClass}"${gInfo.customStyle}>${window.parseDynamicText(gInfo.groupTitle, 'GROUP_TITLE')}</div>`;
+                }
+            }
+
             modalTopLeft.innerHTML = `
                 <div class="changelog-header-row">
-                    <div class="unified-nav-capsule">
-                        <button class="capsule-btn main-back" onclick="window.renderChangelogIndex(true)" data-tooltip="返回清單">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">清單</span></button>${sequenceHtml}
+                    <div class="top-nav-stack">
+                        ${groupHtml}
+                        <div class="unified-nav-capsule">
+                            <button class="capsule-btn main-back" onclick="window.renderChangelogIndex(true)" data-tooltip="返回清單">${GLOBAL_SVGS.arrowLeft}<span class="capsule-back-text">清單</span></button>${sequenceHtml}
+                        </div>
                     </div>
                     <div class="changelog-meta">
                         <span class="changelog-version">${logData ? logData.version : ''}</span>
@@ -7530,17 +7613,18 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
 
                 if (fetchError || !window.cachedChangelogs) {
                     modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版本日誌。');
+                    if (window.renderTocMenu) window.renderTocMenu([]);
                 } else {
-                    let listHTML = '<ul class="article-list-ul">';
-                    window.cachedChangelogs.forEach(log => {
-                        
-                        let activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
-                        let badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
+                    const { groupedMap, orderedGroupIds, styleMap } = buildLogGroupContext();
 
-                        // 1. 在 li 加上 data-status 與 ID 屬性
-                        listHTML += `
-                            <li id="changelog-item-${log.id}" class="article-li is-highlight changelog-list-item" data-status="${activeStatus}">
-                                <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${log.id}')">
+                    const renderLogLi = (log, isHighlightGroup, themeClass = '', customStyle = '') => {
+                        const activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
+                        const badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
+                        const safeId = String(log.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        const liClass = isHighlightGroup ? `article-li is-highlight changelog-list-item${themeClass}` : `article-li is-highlight changelog-list-item`;
+                        return `
+                            <li id="changelog-item-${log.id}" class="${liClass}" data-status="${activeStatus}"${customStyle}>
+                                <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${safeId}')" >
                                     <div class="article-item-icon-wrap">
                                         <div class="article-item-fallback changelog-item-icon">${GLOBAL_SVGS.docIconLg}</div>
                                     </div>
@@ -7554,9 +7638,45 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                                 </a>
                             </li>
                         `;
+                    };
+
+                    let listHTML = '';
+                    let tocItems = [];
+                    let isFirstGroup = true;
+
+                    orderedGroupIds.forEach(groupId => {
+                        const groupLogs = groupedMap.get(groupId) || [];
+                        if (groupLogs.length === 0) return;
+                        const { groupData, groupTitle, groupColor, isHighlight, themeClass, customStyle } = styleMap.get(groupId);
+                        const topMargin = isFirstGroup ? '0rem' : '1.2rem';
+                        const inlineStyles = groupColor ? ` --current-group-color: ${groupColor};` : '';
+                        const safeGroupId = `changelog-group-${groupId.replace(/[\s.&]+/g, '-').replace(/-+/g, '-')}`;
+
+                        listHTML += `
+                            <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;${inlineStyles}">
+                                <div class="group-header-text">
+                                    <div class="group-header-title">${window.parseDynamicText(groupTitle, 'GROUP_TITLE')}</div>${groupData.description ? `<div class="group-header-desc">${window.parseDynamicText(groupData.description, 'GROUP_DESC')}</div>` : ''}
+                                </div>
+                            </div>
+                            <ul class="article-list-ul">
+                        `;
+                        groupLogs.forEach(log => {
+                            listHTML += renderLogLi(log, isHighlight, themeClass, customStyle);
+                        });
+                        listHTML += '</ul>';
+
+                        tocItems.push({
+                            label: window.parseDynamicText(groupTitle, 'TOC_GROUP'),
+                            targetHash: `#${safeGroupId}`,
+                            className: 'toc-h1'
+                        });
+                        isFirstGroup = false;
                     });
-                    listHTML += '</ul>';
+
                     modalBody.innerHTML = listHTML;
+                    if (window.renderTocMenu) {
+                        window.renderTocMenu(tocItems.length >= 2 ? tocItems : [], '版本分群');
+                    }
                 }
                 
                 window.updateSystemModalUrl('changelog');
@@ -7579,7 +7699,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
     };
 
     // 3. 渲染第二層：詳細記錄
-    window.renderChangelogDetail = function(logId) {
+    window.renderChangelogDetail = async function(logId) {
         // ✨ 核心修復 2：改抓真正負責捲動的容器 (modalContainer)
         if (window._changelogScrollTopCache === undefined) {
             const scroller = window.getActiveScrollContainer();
@@ -7592,6 +7712,22 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
 
         const targetLog = window.cachedChangelogs.find(l => l.id === logId);
         if (!targetLog) return;
+
+        // ✨ 比照一般文章：一律走 beginModalNavigation + safeFetchWithGuard 顯示載入中膠囊（由 ?v=Hash 走瀏覽器快取）
+        let logContent = typeof targetLog.content === 'string' ? targetLog.content : null;
+        let contentLoadError = false;
+        if (logContent === null) {
+            const detailNav = window.beginModalNavigation();
+            const fetchUrl = targetLog.content_path || `./api/_changelogs/${encodeURIComponent(targetLog.id)}.json`;
+            const chunkResult = await window.safeFetchWithGuard(fetchUrl, { isJson: true });
+            if (chunkResult.aborted || detailNav !== window._modalNavigation) return;
+            if (chunkResult.success && chunkResult.data && typeof chunkResult.data.content === 'string') {
+                logContent = chunkResult.data.content;
+            } else {
+                console.error('無法載入版本日誌分片:', chunkResult.error || fetchUrl);
+                contentLoadError = true;
+            }
+        }
 
         // ✨ 比照一般文章：已在版本頁內切換前後版本時，鎖定頂部列不縮放淡出
         const isCurrentlyChangelogDetail = document.querySelector('#modal-top-left .changelog-header-row .unified-nav-capsule') !== null;
@@ -7621,12 +7757,28 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                     ? `<div class="article-nav-cards">${makeNavCard(prevLog, 'prev')}${makeNavCard(nextLog, 'next')}</div>`
                     : '';
 
-                modalBody.innerHTML = `
-                    <div class="markdown-body" style="margin-top: -0.5rem;">
-                        ${marked.parse(targetLog.content)}
-                    </div>
-                    ${navCardsHtml}
-                `;
+                const renderedBody = contentLoadError
+                    ? window.getSystemErrorHtml('日誌載入失敗', '無法讀取該版本的更新記錄，請確認網路連線後重試。')
+                    : `<div class="markdown-body" style="margin-top: -0.5rem;">${marked.parse(logContent || '')}</div>`;
+                modalBody.innerHTML = `${renderedBody}${navCardsHtml}`;
+
+                // ✨ 比照一般文章：掃描版本內文標題建立右側 toc-toggle-btn 目錄選單
+                const detailHeadings = contentLoadError ? [] : modalBody.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
+                const detailMenuItems = [];
+                if (detailHeadings.length > 1) {
+                    detailHeadings.forEach((h, index) => {
+                        if (!h.id) h.id = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-') || `changelog-heading-${index}`;
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = h.innerHTML;
+                        tempDiv.querySelectorAll('a').forEach(aTag => {
+                            const span = document.createElement('span');
+                            span.innerHTML = aTag.innerHTML;
+                            aTag.parentNode.replaceChild(span, aTag);
+                        });
+                        detailMenuItems.push({ label: tempDiv.innerHTML, targetHash: `#${h.id}`, className: `toc-${h.tagName.toLowerCase()}` });
+                    });
+                }
+                if (window.renderTocMenu) window.renderTocMenu(detailMenuItems, '本頁目錄');
 
                 // ✨ 核心修復：閱讀進度條改為監聽真正的捲動容器 modalContainer
                 const modalOverlay = document.getElementById('md-modal');
