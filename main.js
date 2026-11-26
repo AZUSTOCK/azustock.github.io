@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.7.1.1",          // 目前系統版本號
+    VERSION: "U1.7.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -7537,11 +7537,11 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
         
         if (!isDetail) {
             modalTopLeft.innerHTML = `
-                <div class="changelog-header-row">
-                    <h2 style="margin: 0; font-size: 1.35rem; color: var(--accent); letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.6rem;">
-                        <span>系統更新日誌</span>
-                        <span style="font-family: monospace; font-size: 0.85rem; color: var(--muted); font-weight: normal;">Changelog</span>
-                    </h2>
+                <div class="index-header-container">
+                    <h1 class="index-header-title">System Changelog</h1>
+                    <div class="index-header-actions">
+                        <span class="article-count-badge">Update History</span>
+                    </div>
                 </div>
             `;
         } else {
