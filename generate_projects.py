@@ -32,7 +32,7 @@ from tools.update_paths import update_extensions_to_webp
 from tools.cout import cout  # ✨ 引入 Cout 全域實例
 from tools.release_validation import (
     HASH_HEX_LENGTH, DATA_VERSION_FILES, collect_log_entries, parse_version,
-    is_public_log, public_log_record, validate_version, replace_config_version,
+    is_public_log, public_log_record, load_log_groups, validate_version, replace_config_version,
 )
 
 # ✨ 若想切換為純文字標籤模式 (如 [STAGE], [WARN], [IMG])，取消註解下面這行即可：
@@ -1210,18 +1210,25 @@ def update_data_version():
 # ==========================================
 # 📝 系統日誌與版本同步器
 # ==========================================
-def generate_changelogs_json():
-    """打包系統日誌 (changelogs.json)，並回傳最新追蹤版號"""
+def generate_changelogs_json(overwrite_json=False, target_folders=None):
+    """打包系統日誌索引 (changelogs.json) 與分片內文 (api/_changelogs/*.json)，支援智慧快取並回傳最新追蹤版號"""
     cout.stage("版本紀錄", "開始打包系統日誌 (Changelog)...", icon_key='stage')
 
     base_dir = 'logs'
-    output_data = []
+    target_folders = target_folders or set()
+    changelog_api_dir = os.path.join(API_DIR, '_changelogs')
+    changelog_meta_path = os.path.join(changelog_api_dir, 'meta.json')
+    output_logs = []
 
     if not os.path.exists(base_dir):
         os.makedirs(base_dir, exist_ok=True)
         cout.info(f"已自動建立 '{base_dir}' 資料夾。", icon_key='folder')
         return None
 
+    os.makedirs(changelog_api_dir, exist_ok=True)
+    log_cache = load_cache_json(changelog_meta_path)
+    current_log_hashes = {'_source_dir': source_identity(base_dir)}
+    groups_config = load_log_groups(base_dir)
     entries, latest = collect_log_entries(base_dir)
     for folder_path, version, detail in entries:
         version_folder = os.path.basename(folder_path)
@@ -1240,10 +1247,41 @@ def generate_changelogs_json():
             continue
         record = public_log_record(folder_path, version, detail)
         if record is not None:
-            output_data.append(record)
+            stats['log_total'] += 1
+            chunk_filename = f"{record['id']}.json"
+            chunk_path = os.path.join(changelog_api_dir, chunk_filename)
+            md_src = next((os.path.join(folder_path, n) for n in sorted(os.listdir(folder_path)) if n.endswith('.md')), folder_path)
+            is_log_targeted = bool(target_folders and (version_folder in target_folders or version in target_folders))
+            log_key = f"log:{record['id']}"
+            log_status, log_hash = check_hash_status(
+                md_src, chunk_path, log_cache, log_key, overwrite_json or is_log_targeted,
+                logic_version=API_LOGIC_VERSION,
+            )
+            current_log_hashes[log_key] = log_hash
+            if log_status in ('NEW', 'UPDATED'):
+                changed = atomic_write(chunk_path, json.dumps({'content': record['content']}, ensure_ascii=False), _FILE_HASH_MEMO)
+                stats[f"log_{'new' if log_status == 'NEW' else ('updated' if changed else 'skipped')}"] += 1
+            else:
+                stats['log_skipped'] += 1
+            valid_api_files.add(os.path.abspath(chunk_path))
+            content_url = f"./api/_changelogs/{quote(chunk_filename, safe='')}"
+            output_logs.append({
+                'id': record['id'],
+                'version': record['version'],
+                'date': record['date'],
+                'status': record['status'],
+                'description': record['description'],
+                'group': record['group'],
+                'content_path': get_hash_url(chunk_path, content_url),
+            })
 
-    atomic_write('changelogs.json', json.dumps(output_data, ensure_ascii=False, indent=2), _FILE_HASH_MEMO)
-    cout.success(f"升級版版本日誌 (Changelog) 打包完成，共發布 {len(output_data)} 筆紀錄。")
+    valid_api_files.add(os.path.abspath(changelog_meta_path))
+    if current_log_hashes != log_cache or not os.path.isfile(changelog_meta_path):
+        atomic_write(changelog_meta_path, json.dumps(current_log_hashes, ensure_ascii=False, sort_keys=True), _FILE_HASH_MEMO)
+
+    index_payload = {'groups': groups_config, 'logs': output_logs}
+    atomic_write('changelogs.json', json.dumps(index_payload, ensure_ascii=False, indent=2), _FILE_HASH_MEMO)
+    cout.success(f"升級版版本日誌 (Changelog) 分片打包完成，共發布 {len(output_logs)} 筆紀錄。")
 
     return latest
 
@@ -2125,10 +2163,14 @@ if __name__ == "__main__":
             target_folders=target_folders,
         )
 
+        # 3. 產生 changelogs.json 索引與分片內文（含智慧快取與獨立計數）
+        latest_ver = generate_changelogs_json(overwrite_json=overwrite_json, target_folders=target_folders)
+
         cout.stats_table(stats, [
             ("專案 HTML (index)", "proj"),
             ("文章 HTML (index)", "art"),
             ("內文 JSON (contents)", "json"),
+            ("版本日誌 JSON (logs)", "log"),
             ("專案與文章 OG 圖", "og"),
             ("專案與文章封面縮圖", "thumb"),
             ("群組分享圖 (group_og)", "group_og"),
@@ -2138,9 +2180,6 @@ if __name__ == "__main__":
         ])
 
         cleanup_old_api_files()
-
-        # 3. 產生 changelogs.json 並同步版號至 version.json 與 main.js
-        latest_ver = generate_changelogs_json()
         generate_version_json(latest_ver, is_github_actions=is_github_actions)
 
         # 4. 壓縮 JS/CSS、單次輸出 index.html，最後發布 data_version.json

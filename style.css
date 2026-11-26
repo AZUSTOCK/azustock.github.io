@@ -2258,9 +2258,89 @@ span.article-item-date {
     flex-shrink: 0; 
 }
 .capsule-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+/* ✨ 導覽膠囊三級漸進壓縮（依實際可用寬度動態切換，文章頁與版本頁共用） */
+.unified-nav-capsule.capsule-compact-1 .capsule-back-text { display: none !important; }
+.unified-nav-capsule.capsule-compact-1 .capsule-btn.main-back { padding: 0 0.7rem; gap: 0; }
+.unified-nav-capsule.capsule-compact-2 .capsule-btn.main-back { padding: 0 0.5rem; }
+.unified-nav-capsule.capsule-compact-2 .capsule-btn { padding: 0 0.35rem; }
+.unified-nav-capsule.capsule-compact-2 .capsule-progress { padding: 0 0.3rem; font-size: 0.75rem; }
+.unified-nav-capsule.capsule-compact-3 .capsule-progress { display: none !important; }
 
 /* 2. 版本日誌 (Changelog) 專屬排版 */
 .changelog-header-row { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
+.changelog-meta { display: flex; align-items: center; gap: 0.6rem 0.8rem; flex-wrap: wrap; }
+
+/* ✨ 頂部控制列換行全寬擴散（限定 Changelog 與目錄頁，不動一般文章頁與膠囊） */
+.modal-top-bar:has(.changelog-header-row, .index-header-container) {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    row-gap: 0.75rem;
+    column-gap: 0.8rem;
+}
+.modal-top-bar:has(.changelog-header-row, .index-header-container) #modal-top-left,
+.modal-top-bar:has(.changelog-header-row) .changelog-header-row,
+.modal-top-bar:has(.index-header-container) .index-header-container {
+    display: contents;
+}
+.modal-top-bar:has(.changelog-header-row) .top-nav-stack,
+.modal-top-bar:has(.changelog-header-row) .unified-nav-capsule,
+.modal-top-bar:has(.index-header-container) .index-header-title {
+    order: 1;
+}
+.modal-top-bar:has(.index-header-container) .index-header-title {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+.modal-top-bar:has(.changelog-header-row) .changelog-meta,
+.modal-top-bar:has(.index-header-container) .index-header-actions {
+    order: 2;
+}
+.modal-top-bar:has(.changelog-header-row, .index-header-container) #modal-top-right {
+    order: 3;
+    margin-left: auto !important;
+    flex-shrink: 0;
+}
+.modal-top-bar:has(.changelog-header-row, .index-header-container) #modal-top-left :is(.top-nav-stack, .unified-nav-capsule, .changelog-meta, .index-header-title, .index-header-actions) {
+    transition: var(--modal-transition) !important;
+    transform-origin: var(--modal-origin);
+}
+.modal-top-bar:has(.changelog-header-row, .index-header-container) #modal-top-left.content-fade-out :is(.top-nav-stack, .unified-nav-capsule, .changelog-meta, .index-header-title, .index-header-actions) {
+    will-change: var(--modal-will-change);
+    opacity: var(--modal-out-opacity) !important;
+    transform: var(--modal-out-transform) !important;
+    filter: var(--modal-out-filter) !important;
+    pointer-events: none;
+}
+/* ✨ 動態換行狀態（不寫死寬度，當純圖示也放不下時由 JS 掛上；#modal-top-right 永保第一行右上角） */
+.modal-top-bar.is-topbar-wrapped:has(.changelog-header-row, .index-header-container) #modal-top-right {
+    order: 2;
+}
+.modal-top-bar.is-topbar-wrapped:has(.index-header-container) .index-header-title {
+    max-width: calc(100% - var(--top-right-width, 130px) - 0.8rem);
+}
+.modal-top-bar.is-topbar-wrapped:has(.changelog-header-row) .changelog-meta,
+.modal-top-bar.is-topbar-wrapped:has(.index-header-container) .index-header-actions {
+    order: 3;
+    flex: 1 0 100%;
+}
+/* ✨ 目錄頁與文章頁共用的兩段式按鈕模式：1. 完整文字（隱藏重複 tooltip） 2. 純圖示（非觸控顯示 tooltip） */
+.index-header-actions .article-count-badge,
+:is(.index-header-actions, .header-right) .responsive-share-btn {
+    white-space: nowrap;
+}
+:is(.index-header-actions, .header-right):not(.is-icon-only) [data-tooltip]::after,
+:is(.index-header-actions, .header-right):not(.is-icon-only) [data-tooltip]::before {
+    display: none !important;
+}
+:is(.index-header-actions, .header-right).is-icon-only .btn-text-hideable {
+    display: none !important;
+}
+:is(.index-header-actions, .header-right).is-icon-only .responsive-share-btn {
+    min-width: 34px !important;
+    width: 34px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+}
 .changelog-version { 
     font-family: monospace; font-weight: 900; color: var(--accent); 
     font-size: 1.5rem; letter-spacing: 0.05em; line-height: 1; transform: translateY(1px); 
@@ -4665,17 +4745,7 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
     .modal-content .hint-right { background: linear-gradient(to right, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
     .modal-content .hint-left { background: linear-gradient(to left, rgba(0,0,0,0) 0%, var(--card) 70%, var(--card) 100%) !important; }
 
-    /* ✨ 響應式分享與排序按鈕：手機版隱藏文字，把按鈕壓縮回純圖示 */
-    .btn-text-hideable { 
-        display: none !important; 
-    }
-    
-    .responsive-share-btn {
-        min-width: 34px !important;
-        width: 34px !important;
-        padding: 0 !important;
-        justify-content: center !important;
-    }
+    /* 響應式分享與排序按鈕已改由 JS 動態依實際寬度與字級切換，不再於 700px 寫死 */
 
     /* ✨ 手機版隱藏複製按鈕的文字，並縮為方形圖示按鈕 */
     .markdown-body .code-copy-btn {
@@ -4703,7 +4773,6 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
     #modal-top-left {gap: 0.3rem;}
     #modal-top-right {gap: 0.3rem;}
     .capsule-btn { padding: 0 0.4rem; }
-    #toggle-sort-btn { padding: 0 0.3rem; }
     .btt-btn { width: 42px; height: 42px; right: max(1rem, calc(var(--safe-right) + 1rem)); bottom: max(1.5rem, calc(var(--safe-bottom) + 1rem)); }
     body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(var(--safe-bottom) + 80px)); }
 }

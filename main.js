@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.7.1",          // 目前系統版本號
+    VERSION: "U1.7.2",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1383,6 +1383,15 @@ window.applyTextScale = function() {
         if (viewArticle && viewArticle.style.display !== 'none') {
             if (window.syncTabPanelsHeight) window.syncTabPanelsHeight(viewArticle);
             if (window.syncSpoilerLayout) window.syncSpoilerLayout(viewArticle);
+        }
+        if (window.syncIndexHeaderLayout) {
+            window.syncIndexHeaderLayout();
+        }
+        if (window.syncArticleHeaderLayout) {
+            window.syncArticleHeaderLayout();
+        }
+        if (window.updateTopBarHeight) {
+            window.updateTopBarHeight();
         }
         if (window.syncCardMetaLayout) {
             window.syncCardMetaLayout();
@@ -4488,17 +4497,28 @@ window.applyIndentToVerticalWrapper = function(container) {
 // ✨ 多語系切換引擎 (支援無限擴充語言)
 // ==========================================
 window.switchBilingualTab = function(lang, btn) {
+    const normalizedLang = ['zh', 'en', 'ja'].includes(String(lang || '').toLowerCase())
+        ? String(lang).toLowerCase()
+        : 'zh';
     // 1. 隱藏所有語言區塊，只顯示選中的語言
     ['zh', 'en', 'ja'].forEach(l => {
         const el = document.getElementById('lang-' + l);
-        if (el) el.style.display = (l === lang) ? 'block' : 'none';
+        if (el) el.style.display = (l === normalizedLang) ? 'block' : 'none';
     });
     // 2. 更新按鈕的 active 狀態
-    const tabs = btn.closest('.lang-tabs');
-    if (tabs) {
-        tabs.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    const targetBtn = btn || document.querySelector(`#bilingual-switcher .lang-btn[data-lang="${normalizedLang}"]`);
+    if (targetBtn) {
+        const tabs = targetBtn.closest('.lang-tabs');
+        if (tabs) {
+            tabs.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+        }
+        targetBtn.classList.add('active');
     }
-    btn.classList.add('active');
+    // 3. 若目前在 License 系統彈窗內，將語系分頁同步至網址參數
+    const currentSys = (new URLSearchParams(window.location.search).get('sys') || '').toLowerCase();
+    if (currentSys === 'license' || currentSys === 'licence') {
+        window.updateSystemModalUrl?.('license', normalizedLang !== 'zh' ? { lang: normalizedLang } : {});
+    }
 };
 
 // ==========================================
@@ -5599,9 +5619,13 @@ async function loadProjects() {
         }, { root: null, rootMargin: '0px 0px -50px 0px', threshold: 0.1 });
         document.querySelectorAll('.card').forEach(card => cardObserver.observe(card));
 
-        // 路由解析 (加入 hash 讀取)
+        // 路由解析 (支援系統彈窗 ?sys=... 與文章 ?p=...&a=... + hash)
         const urlParams = new URLSearchParams(window.location.search);
-        setTimeout(() => window.handleAppRouting(urlParams.get('p'), urlParams.get('a'), window.location.hash || null), 300);
+        setTimeout(() => {
+            if (!window.handleSystemModalRouting?.(urlParams)) {
+                window.handleAppRouting(urlParams.get('p'), urlParams.get('a'), window.location.hash || null);
+            }
+        }, 300);
 
     } catch (err) {
         console.error("載入失敗:", err);
@@ -5859,6 +5883,147 @@ const modalOverlay = document.getElementById('md-modal');
 const closeModalBtn = document.getElementById('close-modal');
 const modalBody = document.getElementById('modal-body');
 
+// ✨ 頂部列動態自適應引擎（完整文字優先：1.單行完整文字 → 2.換行完整文字 → 3.單行純圖示 → 4.換行純圖示；#modal-top-right 永不掉行）
+window.syncIndexHeaderLayout = function() {
+    if (window._syncingIndexHeader) return;
+    const topBar = document.querySelector('.modal-top-bar');
+    if (!topBar || topBar.clientWidth <= 0) return;
+    const topRight = document.getElementById('modal-top-right');
+    if (!topRight) return;
+
+    const title = topBar.querySelector('.index-header-title');
+    const actions = topBar.querySelector('.index-header-actions');
+    const clCapsule = topBar.querySelector('.changelog-header-row .unified-nav-capsule');
+    const clMeta = topBar.querySelector('.changelog-header-row .changelog-meta');
+
+    const anyCapsule = topBar.querySelector('#modal-top-left .unified-nav-capsule');
+    if (!(title && actions) && !(clCapsule && clMeta) && !anyCapsule) {
+        topBar.classList.remove('is-topbar-wrapped');
+        return;
+    }
+
+    window._syncingIndexHeader = true;
+    try {
+        const barStyle = getComputedStyle(topBar);
+        const innerWidth = topBar.clientWidth
+            - parseFloat(barStyle.paddingLeft || 0)
+            - parseFloat(barStyle.paddingRight || 0);
+        const colGap = parseFloat(barStyle.columnGap || 0) || 12.8;
+        const rightW = topRight.getBoundingClientRect().width;
+        topBar.style.setProperty('--top-right-width', `${Math.ceil(rightW)}px`);
+
+        const measureChildrenWidth = (container) => {
+            const cs = getComputedStyle(container);
+            const gap = parseFloat(cs.columnGap || cs.gap || 0) || 0;
+            const kids = Array.from(container.children).filter(el => getComputedStyle(el).display !== 'none');
+            if (!kids.length) return 0;
+            return kids.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + gap * (kids.length - 1);
+        };
+
+        // ✨ 膠囊三級漸進壓縮（1. 隱藏返回文字 → 2. 壓縮內距 → 3. 隱藏進度數字 12/27）
+        const fitCapsule = (capsule) => {
+            if (!capsule) return 0;
+            const availCapsule = innerWidth - rightW - colGap - 6;
+            capsule.classList.remove('capsule-compact-1', 'capsule-compact-2', 'capsule-compact-3');
+            if (capsule.getBoundingClientRect().width > availCapsule) {
+                capsule.classList.add('capsule-compact-1');
+                if (capsule.getBoundingClientRect().width > availCapsule) {
+                    capsule.classList.add('capsule-compact-2');
+                    if (capsule.getBoundingClientRect().width > availCapsule) {
+                        capsule.classList.add('capsule-compact-3');
+                    }
+                }
+            }
+            return capsule.getBoundingClientRect().width;
+        };
+
+        topBar.classList.remove('is-topbar-wrapped');
+
+        if (title && actions) {
+            actions.classList.remove('is-icon-only');
+            const titleW = title.getBoundingClientRect().width;
+            const availRow1 = innerWidth - titleW - rightW - colGap * 2 - 6;
+            const availRow2 = innerWidth - 6;
+            const fullW = measureChildrenWidth(actions);
+
+            if (fullW <= availRow1) {
+                // 1. 單行完整文字
+            } else if (fullW <= availRow2) {
+                // 2. 換行完整文字（#modal-top-right 鎖在第一行右上角）
+                topBar.classList.add('is-topbar-wrapped');
+            } else {
+                // 完整文字連換行都放不下 → 改試純圖示
+                actions.classList.add('is-icon-only');
+                const iconW = measureChildrenWidth(actions);
+                if (iconW <= availRow1) {
+                    // 3. 單行純圖示
+                } else {
+                    // 4. 換行純圖示
+                    topBar.classList.add('is-topbar-wrapped');
+                }
+            }
+        } else if (clCapsule && clMeta) {
+            const capsuleW = fitCapsule(clCapsule);
+            const clStack = topBar.querySelector('.changelog-header-row .top-nav-stack');
+            const leftW = clStack ? Math.max(capsuleW, clStack.getBoundingClientRect().width) : capsuleW;
+            const metaW = measureChildrenWidth(clMeta);
+            if (leftW + metaW + rightW + colGap * 2 + 6 > innerWidth) {
+                topBar.classList.add('is-topbar-wrapped');
+            }
+        } else if (anyCapsule) {
+            fitCapsule(anyCapsule);
+        }
+    } finally {
+        window._syncingIndexHeader = false;
+    }
+};
+
+// ✨ 文章標題列分享按鈕動態自適應（同樣採完整文字優先：1.單行完整文字 → 2.換行完整文字 → 3.單行純圖示 → 4.換行純圖示）
+window.syncArticleHeaderLayout = function() {
+    if (window._syncingArticleHeader) return;
+    const viewArticle = document.getElementById('view-article');
+    if (!viewArticle || viewArticle.style.display === 'none') return;
+    const wrappers = viewArticle.querySelectorAll('.article-header-wrapper');
+    if (!wrappers.length) return;
+
+    window._syncingArticleHeader = true;
+    try {
+        const measureChildrenWidth = (container) => {
+            const cs = getComputedStyle(container);
+            const gap = parseFloat(cs.columnGap || cs.gap || 0) || 0;
+            const kids = Array.from(container.children).filter(el => getComputedStyle(el).display !== 'none');
+            if (!kids.length) return 0;
+            return kids.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + gap * (kids.length - 1);
+        };
+        wrappers.forEach(wrapper => {
+            if (wrapper.clientWidth <= 0) return;
+            const leftGroup = wrapper.querySelector('.header-left');
+            const rightGroup = wrapper.querySelector('.header-right');
+            if (!leftGroup || !rightGroup) return;
+
+            const wStyle = getComputedStyle(wrapper);
+            const innerW = wrapper.clientWidth
+                - parseFloat(wStyle.paddingLeft || 0)
+                - parseFloat(wStyle.paddingRight || 0);
+            const rowGap = parseFloat(wStyle.columnGap || wStyle.gap || 0) || 8;
+
+            rightGroup.classList.remove('is-icon-only');
+            const leftW = leftGroup.getBoundingClientRect().width;
+            const fullRightW = measureChildrenWidth(rightGroup);
+            const availRow1 = innerW - leftW - rowGap - 4;
+            const availRow2 = innerW - 4;
+
+            // 1. 單行完整文字 / 2. 換行完整文字（flex-wrap 自然換行）均放得下則維持完整文字；
+            // 連換行都放不下完整文字才切為純圖示（單行放得下則留在單行，否則換行純圖示）
+            if (fullRightW > availRow1 && fullRightW > availRow2) {
+                rightGroup.classList.add('is-icon-only');
+            }
+        });
+    } finally {
+        window._syncingArticleHeader = false;
+    }
+};
+
 // ✨ 新增：動態計算 TopBar 真實高度的引擎
 window.updateTopBarHeight = function() {
     const topBar = document.querySelector('.modal-top-bar');
@@ -5869,6 +6034,8 @@ window.updateTopBarHeight = function() {
 
 if (!window.modalBodyObserver) {
     window.modalBodyObserver = new ResizeObserver(() => {
+        if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
+        if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
         // 高度改變時，即時更新 CSS 變數
         window.updateTopBarHeight();
 
@@ -5884,9 +6051,25 @@ if (!window.modalBodyObserver) {
     });
     window.modalBodyObserver.observe(modalBody);
     
-    // 順便監聽 TopBar 本身，預防標題換行時高度改變
+    // 順便監聽 TopBar 與右側控制區（含 TOC 出現/消失時的寬度變化）
     const initialTopBar = document.querySelector('.modal-top-bar');
     if (initialTopBar) window.modalBodyObserver.observe(initialTopBar);
+    const initialTopRight = document.getElementById('modal-top-right');
+    if (initialTopRight) window.modalBodyObserver.observe(initialTopRight);
+}
+if (!window._responsiveHeaderResizeBound) {
+    window._responsiveHeaderResizeBound = true;
+    let headerResizeRaf = null;
+    window.addEventListener('resize', () => {
+        if (!modalOverlay || !modalOverlay.classList.contains('active')) return;
+        if (headerResizeRaf) cancelAnimationFrame(headerResizeRaf);
+        headerResizeRaf = requestAnimationFrame(() => {
+            headerResizeRaf = null;
+            if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
+            if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
+            if (window.updateTopBarHeight) window.updateTopBarHeight();
+        });
+    }, { passive: true });
 }
 
 function switchModalContent(updateDOMCallback, afterUpdateCallback = null, animateTopBar = true) {
@@ -5918,7 +6101,9 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
             // 執行 DOM 替換
             updateDOMCallback();
             
-            // ✨ DOM 替換完畢後，立刻強制更新 TopBar 高度變數！
+            // ✨ DOM 替換完畢後，先依寬度校正目錄按鈕，再更新 TopBar 高度變數！
+            if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
+            if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
             window.updateTopBarHeight();
             
             if (afterUpdateCallback) afterUpdateCallback();
@@ -5942,6 +6127,8 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
         };
     } else {
         updateDOMCallback();
+        if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
+        if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
         window.updateTopBarHeight(); // ✨ 第一次開啟也要更新
         if (afterUpdateCallback) afterUpdateCallback();
         
@@ -6017,7 +6204,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             ${GLOBAL_SVGS.sortArrows}
                             <span id="sort-btn-text" class="btn-text-hideable"></span>
                         </button>
-                        <button class="share-link-btn responsive-share-btn" id="index-share-btn" style="margin: 0;">
+                        <button class="share-link-btn responsive-share-btn" id="index-share-btn" style="margin: 0;" data-tooltip="複製連結">
                             ${GLOBAL_SVGS.link}
                             <span class="btn-text-hideable">複製連結</span>
                         </button>
@@ -6218,9 +6405,11 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             const updateSortBtnUI = () => {
                 const isAsc = currentSort === 'asc';
+                const labelText = isAsc ? '由舊到新' : '由新到舊';
                 sortBtn.classList.toggle('is-asc', isAsc);
                 sortBtn.classList.toggle('is-desc', !isAsc);
-                sortBtn.querySelector('#sort-btn-text').innerText = isAsc ? '由舊到新' : '由新到舊';
+                sortBtn.querySelector('#sort-btn-text').innerText = labelText;
+                sortBtn.setAttribute('data-tooltip', labelText);
             };
 
             updateSortBtnUI();
@@ -6678,6 +6867,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 // ✨ 替換這兩行，將文章內的複製按鈕升級為無氣泡的響應式
                 const shareBtn = document.createElement('button');
                 shareBtn.className = 'share-link-btn responsive-share-btn';
+                shareBtn.setAttribute('data-tooltip', '複製連結');
                 shareBtn.innerHTML = `${GLOBAL_SVGS.link} <span class="btn-text-hideable">複製連結</span>`;
                 shareBtn.addEventListener('click', function() { window.handleCopy(this, shareUrl); });
 
@@ -6737,7 +6927,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 <div class="top-nav-stack">
                     ${groupHtml}
                     <div class="unified-nav-capsule">
-                        <button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="desktop-only">目錄</span></button>${sequenceHtml}${historyBtnHtml}
+                        <button class="capsule-btn main-back" onclick="window.openProjectIndex('${projectId}', true)" data-tooltip="返回目錄">${GLOBAL_SVGS.arrowLeft}<span class="capsule-back-text">目錄</span></button>${sequenceHtml}${historyBtnHtml}
                     </div>
                 </div>
             `;
@@ -7101,7 +7291,37 @@ function show404Modal(title, message) {
 // ==========================================
 window.cachedMarkdownFiles = {}; // 統一管理快取
 
-window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cacheKey, extraHtml = '') {
+window.updateSystemModalUrl = function(sysType, params = {}) {
+    const sp = new URLSearchParams();
+    sp.set('sys', sysType);
+    Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && String(v).trim() !== '') {
+            sp.set(k, String(v).trim());
+        }
+    });
+    const targetUrl = `${window.location.pathname}?${sp.toString()}`;
+    window.history.replaceState({ path: targetUrl, sys: sysType, ...params }, '', targetUrl);
+};
+
+window.handleSystemModalRouting = function(urlParams) {
+    const sysParam = (urlParams.get('sys') || '').trim().toLowerCase();
+    if (!sysParam) return false;
+    if (sysParam === 'credits') {
+        window.showCreditsModal();
+        return true;
+    }
+    if (sysParam === 'license' || sysParam === 'licence') {
+        window.showLicenseModal(urlParams.get('lang') || 'zh');
+        return true;
+    }
+    if (sysParam === 'changelog' || sysParam === 'log') {
+        window.showChangelogModal(true, urlParams.get('v'));
+        return true;
+    }
+    return false;
+};
+
+window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cacheKey, extraHtml = '', options = {}) {
     const navigation = window.beginModalNavigation();
 
     let mdText = "載入失敗"; let isError = false;
@@ -7159,6 +7379,13 @@ window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cach
             const topBar = document.querySelector('.modal-top-bar');
             if (modalContainer && topBar) window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
 
+            if (options.routeKey) {
+                window.updateSystemModalUrl(options.routeKey, options.routeParams || {});
+            }
+            if (!isError && typeof options.onAfterRender === 'function') {
+                options.onAfterRender();
+            }
+
             setInteractiveLayer(modalOverlay, true);
             window.lockScroll();
         },
@@ -7170,26 +7397,46 @@ window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cach
 };
 
 // ✨ 使用時只需呼叫一行，乾淨俐落！
-window.showCreditsModal = () => window.showSystemMarkdownModal('Credits', 'Acknowledgments', './credits.md', 'credits.md');
-
-window.showLicenseModal = () => window.showSystemMarkdownModal(
-    'License & Copyright', 
-    'important', 
-    './COPYRIGHT.md', 
-    'COPYRIGHT.md', 
-    `<div id="bilingual-switcher"><div class="lang-tabs">
-        <button class="lang-btn active" onclick="window.switchBilingualTab('zh', this)">中文版</button>
-        <button class="lang-btn" onclick="window.switchBilingualTab('en', this)">English</button>
-        <button class="lang-btn" onclick="window.switchBilingualTab('ja', this)">日本語</button>
-    </div></div>`
+window.showCreditsModal = () => window.showSystemMarkdownModal(
+    'Credits',
+    'Acknowledgments',
+    './credits.md',
+    'credits.md',
+    '',
+    { routeKey: 'credits' }
 );
+
+window.showLicenseModal = (initialLang = 'zh') => {
+    const activeLang = ['zh', 'en', 'ja'].includes(String(initialLang || '').toLowerCase())
+        ? String(initialLang).toLowerCase()
+        : 'zh';
+    return window.showSystemMarkdownModal(
+        'License & Copyright',
+        'important',
+        './COPYRIGHT.md',
+        'COPYRIGHT.md',
+        `<div id="bilingual-switcher"><div class="lang-tabs">
+            <button class="lang-btn${activeLang === 'zh' ? ' active' : ''}" data-lang="zh" onclick="window.switchBilingualTab('zh', this)">中文版</button>
+            <button class="lang-btn${activeLang === 'en' ? ' active' : ''}" data-lang="en" onclick="window.switchBilingualTab('en', this)">English</button>
+            <button class="lang-btn${activeLang === 'ja' ? ' active' : ''}" data-lang="ja" onclick="window.switchBilingualTab('ja', this)">日本語</button>
+        </div></div>`,
+        {
+            routeKey: 'license',
+            routeParams: activeLang !== 'zh' ? { lang: activeLang } : {},
+            onAfterRender: () => {
+                const btn = document.querySelector(`#bilingual-switcher .lang-btn[data-lang="${activeLang}"]`);
+                window.switchBilingualTab(activeLang, btn);
+            }
+        }
+    );
+};
 
 // ==========================================
 // ✨ 升級版系統日誌：支援兩層式架構、平滑動畫過場，與「手動強制更新檢查」！
 // ==========================================
 window.cachedChangelogs = null; 
 
-window.showChangelogModal = async function(isSystemFallback = false) {
+window.showChangelogModal = async function(isSystemFallback = false, targetLogId = null) {
     const navigation = window.beginModalNavigation();
     let fetchError = false;
 
@@ -7221,14 +7468,67 @@ window.showChangelogModal = async function(isSystemFallback = false) {
         if (logResult.aborted || navigation !== window._modalNavigation) return;
         if (logResult.success && Array.isArray(logResult.data)) {
             window.cachedChangelogs = logResult.data;
+            window.cachedChangelogGroups = {};
+        } else if (logResult.success && logResult.data && Array.isArray(logResult.data.logs)) {
+            window.cachedChangelogs = logResult.data.logs;
+            window.cachedChangelogGroups = (logResult.data.groups && typeof logResult.data.groups === 'object') ? logResult.data.groups : {};
         } else {
             console.error("日誌讀取或更新檢查失敗:", logResult.error || '無法載入 changelogs.json');
             fetchError = true;
         }
     }
+    if (!window.cachedChangelogContents) window.cachedChangelogContents = {};
 
     // 另一個頁面或錯誤畫面已接手時，不再更新 DOM。
     if (navigation !== window._modalNavigation) return;
+
+    // 共用版本分組推導與樣式輔助函式（列表與內文頂部共用）
+    const deriveLogGroup = (log) => {
+        if (log && log.group && String(log.group).trim()) return String(log.group).trim();
+        const m = String((log && log.version) || '').trim().match(/^([A-Za-z]*\d+\.\d+)/);
+        return m ? m[1] : 'other';
+    };
+    const buildLogGroupContext = () => {
+        const groupsMeta = window.cachedChangelogGroups || {};
+        const logs = Array.isArray(window.cachedChangelogs) ? window.cachedChangelogs : [];
+        const groupedMap = new Map();
+        logs.forEach(log => {
+            const gId = deriveLogGroup(log);
+            if (!groupedMap.has(gId)) groupedMap.set(gId, []);
+            groupedMap.get(gId).push(log);
+        });
+        const orderedGroupIds = Array.from(groupedMap.keys()).sort((a, b) => {
+            const oa = groupsMeta[a] && Number.isFinite(Number(groupsMeta[a].order)) ? Number(groupsMeta[a].order) : null;
+            const ob = groupsMeta[b] && Number.isFinite(Number(groupsMeta[b].order)) ? Number(groupsMeta[b].order) : null;
+            if (oa !== null && ob !== null) return oa - ob;
+            if (oa !== null) return -1;
+            if (ob !== null) return 1;
+            return 0;
+        });
+        const styleMap = new Map();
+        let colorIndex = 0;
+        orderedGroupIds.forEach(groupId => {
+            const groupData = groupsMeta[groupId] || {};
+            const groupTitle = groupData.title || (groupId === 'other' ? 'Other' : `${groupId} Series`);
+            const groupColor = groupData.color;
+            const isHighlight = groupData.highlight === true;
+            let themeClass = '';
+            let customStyle = '';
+            if (isHighlight) {
+                if (groupColor) {
+                    customStyle = ` style="--current-group-color: ${groupColor}; --tab-color: ${groupColor};"`;
+                } else {
+                    const groupNum = (colorIndex % 5) + 1;
+                    themeClass = ` group-color-${groupNum}`;
+                    colorIndex++;
+                }
+            } else if (groupColor) {
+                customStyle = ` style="--current-group-color: ${groupColor};"`;
+            }
+            styleMap.set(groupId, { groupId, groupData, groupTitle, groupColor, isHighlight, themeClass, customStyle });
+        });
+        return { groupedMap, orderedGroupIds, styleMap };
+    };
 
     // 共用標題渲染 (邏輯同步精簡)
     function renderChangelogHeader(isDetail = false, logData = null) {
@@ -7245,19 +7545,47 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                 </div>
             `;
         } else {
-            let badgeHTML = '';
+            let activeStatus = logData && logData.status === 'LATEST' ? 'NEW' : (logData ? logData.status : 'UPDATE');
+            let badgeHTML = logData ? `<span class="status-badge title-badge" data-status="${activeStatus}">${logData.status}</span>` : '';
+
+            const logs = Array.isArray(window.cachedChangelogs) ? window.cachedChangelogs : [];
+            const logIndex = logData ? logs.findIndex(l => l.id === logData.id) : -1;
+            const prevLog = logIndex > 0 ? logs[logIndex - 1] : null;
+            const nextLog = (logIndex >= 0 && logIndex < logs.length - 1) ? logs[logIndex + 1] : null;
+
+            const makeCapsuleBtn = (item, type) => {
+                const iconSvg = type === 'prev' ? GLOBAL_SVGS.chevronLeft : GLOBAL_SVGS.chevronRight;
+                if (!item) {
+                    return `<button class="capsule-btn ${type} disabled" disabled>${iconSvg}</button>`;
+                }
+                const label = type === 'prev' ? '較新版本' : '較舊版本';
+                const safeId = String(item.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const safeVer = String(item.version || item.id).replace(/"/g, '&quot;');
+                return `<button class="capsule-btn ${type}" onclick="window.renderChangelogDetail('${safeId}')" data-tooltip="${label}：${safeVer}">${iconSvg}</button>`;
+            };
+
+            const sequenceHtml = (logs.length > 1 && logIndex >= 0)
+                ? `<div class="capsule-divider"></div>${makeCapsuleBtn(prevLog, 'prev')}<span class="capsule-progress">${logIndex + 1} / ${logs.length}</span>${makeCapsuleBtn(nextLog, 'next')}`
+                : '';
+
+            let groupHtml = '';
             if (logData) {
-                // 自動對應 CSS 的狀態名稱
-                let activeStatus = logData.status === 'LATEST' ? 'NEW' : logData.status;
-                badgeHTML = `<span class="status-badge" data-status="${activeStatus}">${logData.status}</span>`;
+                const { styleMap } = buildLogGroupContext();
+                const gInfo = styleMap.get(deriveLogGroup(logData));
+                if (gInfo) {
+                    groupHtml = `<div class="article-group-label${gInfo.themeClass}"${gInfo.customStyle}>${window.parseDynamicText(gInfo.groupTitle, 'GROUP_TITLE')}</div>`;
+                }
             }
 
             modalTopLeft.innerHTML = `
                 <div class="changelog-header-row">
-                    <button class="modal-back-btn" onclick="window.renderChangelogIndex(true)">
-                        ${GLOBAL_SVGS.arrowLeft} 返回清單
-                    </button>
-                    <div style="display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;">
+                    <div class="top-nav-stack">
+                        ${groupHtml}
+                        <div class="unified-nav-capsule">
+                            <button class="capsule-btn main-back" onclick="window.renderChangelogIndex(true)" data-tooltip="返回清單">${GLOBAL_SVGS.arrowLeft}<span class="capsule-back-text">清單</span></button>${sequenceHtml}
+                        </div>
+                    </div>
+                    <div class="changelog-meta">
                         <span class="changelog-version">${logData ? logData.version : ''}</span>
                         ${badgeHTML}
                         <span class="changelog-date">${logData ? logData.date : ''}</span>
@@ -7285,17 +7613,18 @@ window.showChangelogModal = async function(isSystemFallback = false) {
 
                 if (fetchError || !window.cachedChangelogs) {
                     modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版本日誌。');
+                    if (window.renderTocMenu) window.renderTocMenu([]);
                 } else {
-                    let listHTML = '<ul class="article-list-ul">';
-                    window.cachedChangelogs.forEach(log => {
-                        
-                        let activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
-                        let badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
+                    const { groupedMap, orderedGroupIds, styleMap } = buildLogGroupContext();
 
-                        // 1. 在 li 加上 data-status 與 ID 屬性
-                        listHTML += `
-                            <li id="changelog-item-${log.id}" class="article-li is-highlight changelog-list-item" data-status="${activeStatus}">
-                                <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${log.id}')">
+                    const renderLogLi = (log, isHighlightGroup, themeClass = '', customStyle = '') => {
+                        const activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
+                        const badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
+                        const safeId = String(log.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        const liClass = isHighlightGroup ? `article-li is-highlight changelog-list-item${themeClass}` : `article-li is-highlight changelog-list-item`;
+                        return `
+                            <li id="changelog-item-${log.id}" class="${liClass}" data-status="${activeStatus}"${customStyle}>
+                                <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${safeId}')" >
                                     <div class="article-item-icon-wrap">
                                         <div class="article-item-fallback changelog-item-icon">${GLOBAL_SVGS.docIconLg}</div>
                                     </div>
@@ -7309,11 +7638,48 @@ window.showChangelogModal = async function(isSystemFallback = false) {
                                 </a>
                             </li>
                         `;
+                    };
+
+                    let listHTML = '';
+                    let tocItems = [];
+                    let isFirstGroup = true;
+
+                    orderedGroupIds.forEach(groupId => {
+                        const groupLogs = groupedMap.get(groupId) || [];
+                        if (groupLogs.length === 0) return;
+                        const { groupData, groupTitle, groupColor, isHighlight, themeClass, customStyle } = styleMap.get(groupId);
+                        const topMargin = isFirstGroup ? '0rem' : '1.2rem';
+                        const inlineStyles = groupColor ? ` --current-group-color: ${groupColor};` : '';
+                        const safeGroupId = `changelog-group-${groupId.replace(/[\s.&]+/g, '-').replace(/-+/g, '-')}`;
+
+                        listHTML += `
+                            <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;${inlineStyles}">
+                                <div class="group-header-text">
+                                    <div class="group-header-title">${window.parseDynamicText(groupTitle, 'GROUP_TITLE')}</div>${groupData.description ? `<div class="group-header-desc">${window.parseDynamicText(groupData.description, 'GROUP_DESC')}</div>` : ''}
+                                </div>
+                            </div>
+                            <ul class="article-list-ul">
+                        `;
+                        groupLogs.forEach(log => {
+                            listHTML += renderLogLi(log, isHighlight, themeClass, customStyle);
+                        });
+                        listHTML += '</ul>';
+
+                        tocItems.push({
+                            label: window.parseDynamicText(groupTitle, 'TOC_GROUP'),
+                            targetHash: `#${safeGroupId}`,
+                            className: 'toc-h1'
+                        });
+                        isFirstGroup = false;
                     });
-                    listHTML += '</ul>';
+
                     modalBody.innerHTML = listHTML;
+                    if (window.renderTocMenu) {
+                        window.renderTocMenu(tocItems.length >= 2 ? tocItems : [], '版本分群');
+                    }
                 }
                 
+                window.updateSystemModalUrl('changelog');
                 setInteractiveLayer(modalOverlay, true);
                 window.lockScroll();
             },
@@ -7333,7 +7699,7 @@ window.showChangelogModal = async function(isSystemFallback = false) {
     };
 
     // 3. 渲染第二層：詳細記錄
-    window.renderChangelogDetail = function(logId) {
+    window.renderChangelogDetail = async function(logId) {
         // ✨ 核心修復 2：改抓真正負責捲動的容器 (modalContainer)
         if (window._changelogScrollTopCache === undefined) {
             const scroller = window.getActiveScrollContainer();
@@ -7347,34 +7713,104 @@ window.showChangelogModal = async function(isSystemFallback = false) {
         const targetLog = window.cachedChangelogs.find(l => l.id === logId);
         if (!targetLog) return;
 
+        // ✨ 比照一般文章：一律走 beginModalNavigation + safeFetchWithGuard 顯示載入中膠囊（由 ?v=Hash 走瀏覽器快取）
+        let logContent = typeof targetLog.content === 'string' ? targetLog.content : null;
+        let contentLoadError = false;
+        if (logContent === null) {
+            const detailNav = window.beginModalNavigation();
+            const fetchUrl = targetLog.content_path || `./api/_changelogs/${encodeURIComponent(targetLog.id)}.json`;
+            const chunkResult = await window.safeFetchWithGuard(fetchUrl, { isJson: true });
+            if (chunkResult.aborted || detailNav !== window._modalNavigation) return;
+            if (chunkResult.success && chunkResult.data && typeof chunkResult.data.content === 'string') {
+                logContent = chunkResult.data.content;
+            } else {
+                console.error('無法載入版本日誌分片:', chunkResult.error || fetchUrl);
+                contentLoadError = true;
+            }
+        }
+
+        // ✨ 比照一般文章：已在版本頁內切換前後版本時，鎖定頂部列不縮放淡出
+        const isCurrentlyChangelogDetail = document.querySelector('#modal-top-left .changelog-header-row .unified-nav-capsule') !== null;
+        const animateTopBar = !(modalOverlay.classList.contains('active') && isCurrentlyChangelogDetail);
+
         switchModalContent(
             () => {
                 renderChangelogHeader(true, targetLog);
                 const modalBody = window.setModalView('article');
-                modalBody.innerHTML = `
-                    <div class="markdown-body" style="margin-top: -0.5rem;">
-                        ${marked.parse(targetLog.content)}
-                    </div>
-                `;
+                const logs = Array.isArray(window.cachedChangelogs) ? window.cachedChangelogs : [];
+                const logIndex = logs.findIndex(l => l.id === targetLog.id);
+                const prevLog = logIndex > 0 ? logs[logIndex - 1] : null;
+                const nextLog = (logIndex >= 0 && logIndex < logs.length - 1) ? logs[logIndex + 1] : null;
+
+                const makeNavCard = (item, type) => {
+                    if (!item) return '';
+                    const isPrev = type === 'prev';
+                    const safeId = String(item.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    const labelHtml = isPrev
+                        ? `${GLOBAL_SVGS.chevronLeft} 較新版本`
+                        : `較舊版本 ${GLOBAL_SVGS.chevronRight}`;
+                    const descText = item.description ? ` - ${item.description}` : '';
+                    return `<a href="javascript:void(0)" class="nav-card ${type}" onclick="window.renderChangelogDetail('${safeId}')"><span class="nav-label">${labelHtml}</span><span class="nav-title">${item.version}${descText}</span></a>`;
+                };
+
+                const navCardsHtml = (prevLog || nextLog)
+                    ? `<div class="article-nav-cards">${makeNavCard(prevLog, 'prev')}${makeNavCard(nextLog, 'next')}</div>`
+                    : '';
+
+                const renderedBody = contentLoadError
+                    ? window.getSystemErrorHtml('日誌載入失敗', '無法讀取該版本的更新記錄，請確認網路連線後重試。')
+                    : `<div class="markdown-body" style="margin-top: -0.5rem;">${marked.parse(logContent || '')}</div>`;
+                modalBody.innerHTML = `${renderedBody}${navCardsHtml}`;
+
+                // ✨ 比照一般文章：掃描版本內文標題建立右側 toc-toggle-btn 目錄選單
+                const detailHeadings = contentLoadError ? [] : modalBody.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
+                const detailMenuItems = [];
+                if (detailHeadings.length > 1) {
+                    detailHeadings.forEach((h, index) => {
+                        if (!h.id) h.id = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-') || `changelog-heading-${index}`;
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = h.innerHTML;
+                        tempDiv.querySelectorAll('a').forEach(aTag => {
+                            const span = document.createElement('span');
+                            span.innerHTML = aTag.innerHTML;
+                            aTag.parentNode.replaceChild(span, aTag);
+                        });
+                        detailMenuItems.push({ label: tempDiv.innerHTML, targetHash: `#${h.id}`, className: `toc-${h.tagName.toLowerCase()}` });
+                    });
+                }
+                if (window.renderTocMenu) window.renderTocMenu(detailMenuItems, '本頁目錄');
 
                 // ✨ 核心修復：閱讀進度條改為監聽真正的捲動容器 modalContainer
+                const modalOverlay = document.getElementById('md-modal');
                 const modalContainer = document.querySelector('.modal-content');
                 const topBar = document.querySelector('.modal-top-bar');
                 if (modalContainer && topBar) {
                     window.initProgressBar(topBar, modalContainer, 'top', 'reading-progress-bar');
                 }
+                window.updateSystemModalUrl('changelog', { v: targetLog.id });
+                setInteractiveLayer(modalOverlay, true);
+                window.lockScroll();
             },
             // 替換這一段
             () => {
                 // 動畫結束後確保畫面在最頂端
                 const modalContainer = document.querySelector('.modal-content');
                 if (modalContainer) modalContainer.scrollTo({ top: 0, behavior: 'auto' });
-            }
+            },
+            animateTopBar
         );
     };
 
-    // 初始進入：顯示第一層索引
-    window.renderChangelogIndex();
+    // 初始進入：若有指定版本 ID 或版號則直達該版本頁，否則顯示索引
+    const normalizedTarget = targetLogId ? String(targetLogId).trim() : '';
+    const matchedLog = normalizedTarget && Array.isArray(window.cachedChangelogs)
+        ? window.cachedChangelogs.find(l => l.id === normalizedTarget || l.version === normalizedTarget)
+        : null;
+    if (matchedLog) {
+        window.renderChangelogDetail(matchedLog.id);
+    } else {
+        window.renderChangelogIndex();
+    }
 };
 
 window.triggerSystemUpdate = function(targetVersion) {
@@ -7518,7 +7954,7 @@ async function checkSystemVersionAndBoot() {
                 // ✨ 新增：如果退路存在，就在載入完成後幫使用者重新打開目錄
                 if (fallbackP) setTimeout(() => window.openProjectIndex(fallbackP), 300);
 
-                if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600); 
+                if (sysIntent === 'changelog' && (new URLSearchParams(window.location.search).get('sys') || '').toLowerCase() !== 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600); 
                 setTimeout(() => { window.showSystemToast('>_ UPDATE_FAILED', 'CDN_CACHE_DELAY_DETECTED', `已還原為安全狀態`, 12000, 'error'); }, 1000);
                 return;
             }
@@ -7562,7 +7998,7 @@ async function checkSystemVersionAndBoot() {
 
             // 如果順利達標，就正常清除標記並啟動
             window.clearRebootState();
-            if (sysIntent === 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600);
+            if (sysIntent === 'changelog' && (new URLSearchParams(window.location.search).get('sys') || '').toLowerCase() !== 'changelog') setTimeout(() => { if (window.showChangelogModal) window.showChangelogModal(true); }, 600);
             sessionStorage.removeItem('sys_intent'); 
         }
     } catch (err) {
@@ -8025,6 +8461,9 @@ window.addEventListener('popstate', () => {
     const modalOverlay = document.getElementById('md-modal');
     const isArticleOpen = modalOverlay && modalOverlay.classList.contains('active');
 
+    if (window.handleSystemModalRouting?.(urlParams)) {
+        return;
+    }
     if (pParam) {
         // 如果網址帶有專案參數，直接驅動路由與文章開啟器
         window.handleAppRouting(pParam, aParam, hashParam);
