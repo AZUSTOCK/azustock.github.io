@@ -4126,7 +4126,66 @@ const stealthBlockExtension = {
 };
 
 // ==========================================
-// ✨ 修改：讓高光螢光筆支援 KEY 觸發
+// ✨ 共用：高光標籤日期與過期判斷解析器
+// 支援格式：[NEW:2026-11-26]、[2026-11-26]、[公告:2026/11/26]
+// 過期行為：預設降級為純內文；加上 |EXPIRE (亦相容 |EXPIRED) 時整塊隱藏
+// ==========================================
+function parseHighlightMeta(rawBadge) {
+    const trimmed = String(rawBadge || '').trim();
+    if (!trimmed) {
+        return { badge: '', dateStr: null, isExpired: false, hideOnExpire: false };
+    }
+
+    let hideOnExpire = false;
+    const keptSegments = [];
+    trimmed.split('|').forEach(seg => {
+        const cleanSeg = seg.trim();
+        if (!cleanSeg) return;
+        if (/^EXPIRED?$/i.test(cleanSeg)) {
+            hideOnExpire = true;
+        } else {
+            keptSegments.push(cleanSeg);
+        }
+    });
+
+    const core = keptSegments.join('|').trim();
+    let badge = core;
+    let dateParts = null;
+
+    const pureDateMatch = core.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (pureDateMatch) {
+        badge = '';
+        dateParts = [Number(pureDateMatch[1]), Number(pureDateMatch[2]), Number(pureDateMatch[3])];
+    } else {
+        const suffixDateMatch = core.match(/^(.*?):\s*(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+        if (suffixDateMatch) {
+            badge = suffixDateMatch[1].trim();
+            dateParts = [Number(suffixDateMatch[2]), Number(suffixDateMatch[3]), Number(suffixDateMatch[4])];
+        }
+    }
+
+    let dateStr = null;
+    let isExpired = false;
+    if (dateParts) {
+        const [y, m, d] = dateParts;
+        const dt = new Date(y, m - 1, d);
+        if (dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d) {
+            dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const expireDays = (typeof CONFIG !== 'undefined' && Number(CONFIG.TAG_EXPIRE_DAYS) > 0)
+                ? Number(CONFIG.TAG_EXPIRE_DAYS)
+                : 14;
+            const expireMs = expireDays * 24 * 60 * 60 * 1000;
+            if ((Date.now() - dt.getTime()) > expireMs) {
+                isExpired = true;
+            }
+        }
+    }
+
+    return { badge, dateStr, isExpired, hideOnExpire };
+}
+
+// ==========================================
+// ✨ 修改：讓高光螢光筆支援 KEY 觸發與日期過期判斷
 // ==========================================
 const highlightExtension = {
     name: 'updateHighlight',
@@ -4146,17 +4205,26 @@ const highlightExtension = {
         }
     },
     renderer(token) {
-        const badge = token.badgeText.trim();
+        const rawBadge = token.badgeText.trim();
         
         // ✨ 強化版靜音標記偵測 (支援大小寫、自動過濾)
-        const isKey = badge.startsWith('KEY:');
-        const isSilent = /\|SILENT/i.test(badge); 
-        const secretId = isKey ? badge.replace('KEY:', '').replace(/\|SILENT/i, '').trim() : '';
+        const isKey = rawBadge.startsWith('KEY:');
+        const isSilent = /\|SILENT/i.test(rawBadge); 
+        const secretId = isKey ? rawBadge.replace('KEY:', '').replace(/\|SILENT/i, '').trim() : '';
         const keyAttr = isKey ? ` data-secret-key="${secretId}" data-silent="${isSilent}"` : '';
         
         if (isKey && isSilent && (!token.content || token.content.trim() === '')) {
             // 輸出一個沒有體積的隱形節點，完全不佔用任何版面，但依然能觸發滾動解鎖！
             return `<span class="md-silent-key-trigger"${keyAttr} style="display: inline-block; width: 0px; height: 0px; opacity: 0; pointer-events: none; overflow: hidden; margin: 0; padding: 0;"></span>`;
+        }
+
+        let badge = rawBadge;
+        if (!isKey) {
+            const meta = parseHighlightMeta(rawBadge);
+            if (meta.isExpired) {
+                return meta.hideOnExpire ? '' : this.parser.parseInline(token.tokens);
+            }
+            badge = meta.badge;
         }
 
         const displayText = isKey ? 'KEY FOUND' : (badge ? badge : 'HIGHLIGHT'); 
@@ -4180,7 +4248,7 @@ const highlightBlockExtension = {
     level: 'block',
     start(src) { return src.match(/^:::\s*highlight/i)?.index; },
     tokenizer(src, tokens) {
-        const rule = /^:::\s*highlight(?:\[(.*?)\])?\n([\s\S]*?)\n:::/i;
+        const rule = /^:::\s*highlight(?:\[(.*?)\])?\r?\n([\s\S]*?)\r?\n:::/i;
         const match = rule.exec(src);
         if (match) {
             return {
@@ -4193,7 +4261,12 @@ const highlightBlockExtension = {
         }
     },
     renderer(token) {
-        const badge = token.badgeText.trim();
+        const meta = parseHighlightMeta(token.badgeText);
+        if (meta.isExpired) {
+            return meta.hideOnExpire ? '' : this.parser.parse(token.tokens);
+        }
+
+        const badge = meta.badge;
         const statusAttr = badge ? ` data-status="${badge.toUpperCase()}"` : '';
         const defaultStyle = badge ? '' : ' style="--dynamic-glow: var(--accent);"';
         const displayText = badge ? badge : 'HIGHLIGHT'; 

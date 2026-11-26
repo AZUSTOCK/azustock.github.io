@@ -72,8 +72,25 @@ class TrackerEngine:
         self.projects = self.root / 'projects'
         self.history_dir = self.root / 'tools' / 'tracker' / 'backups' / 'web'
         self.lock = ENGINE_LOCK
-        self.modules = {name: importlib.import_module('track_' + name)
-                        for name in ('keys', 'versions', 'tags', 'sensitive')}
+        self.tool_specs = (
+            dict(slug='keys', default_field='key'),
+            dict(slug='versions', default_field='min_sys_version'),
+            dict(slug='tags', default_field='tags'),
+            dict(slug='sensitive', default_field='sensitive'),
+            dict(slug='hidden', default_field='hidden'),
+            dict(slug='pinned', default_field='pinned'),
+        )
+        self.field_specs = (
+            dict(name='key', label='key · 發放金鑰', default_value=''),
+            dict(name='required_key', label='required_key · 上鎖條件', default_value=''),
+            dict(name='min_sys_version', label='min_sys_version · 最低版本', default_value=''),
+            dict(name='tags', label='tags · 標籤', default_value=[]),
+            dict(name='sensitive', label='sensitive · 內容警告', default_value={'MAIN': True}),
+            dict(name='hidden', label='hidden · 限時隱藏', default_value=True),
+            dict(name='pinned', label='pinned · 置頂項目', default_value=True),
+        )
+        self.modules = {spec['slug']: importlib.import_module('track_' + spec['slug'])
+                        for spec in self.tool_specs}
         self.reports = {}
         self.pending = {}
         self.scan()
@@ -168,8 +185,11 @@ class TrackerEngine:
 
     def status(self):
         with self.lock:
+            default_fields = {spec['slug']: spec['default_field'] for spec in self.tool_specs}
             return dict(root=str(self.root), projects=str(self.projects), scanned_at=self.scanned_at,
-                        tools=[dict(slug=name, title=report['title'], groups=len(report['groups']),
+                        fields=list(self.field_specs),
+                        tools=[dict(slug=name, title=report['title'], default_field=default_fields.get(name, ''),
+                                    groups=len(report['groups']),
                                     records=sum(len(g['records']) for g in report['groups']))
                                for name, report in self.reports.items()])
 
@@ -323,16 +343,16 @@ class TrackerEngine:
             elif action == 'field':
                 if path.name != 'detail.json':
                     raise ValueError('欄位操作只適用 detail.json。')
-                allowed = {'key', 'required_key', 'min_sys_version', 'tags', 'sensitive'}
+                allowed = {spec['name'] for spec in self.field_specs}
                 field = request.get('field')
                 if field not in allowed:
                     raise ValueError('請選擇支援的設定欄位。')
                 value = common.REMOVE if request.get('remove') is True else request.get('value')
                 data = strict_json(before.decode('utf-8-sig'))
-                if field == 'sensitive':
-                    module = self.modules['sensitive']
+                if field in ('sensitive', 'hidden', 'pinned'):
+                    module = self.modules[field]
                     module.PROJECTS_DIR = str(self.projects)
-                    module.APP.validate_target({'data':data, 'path':path})
+                    module.APP.validate_target({'data': data, 'path': path})
                     field = module.APP.select_field_name(data)
                     if value is not common.REMOVE:
                         module.APP.validate_value(value)

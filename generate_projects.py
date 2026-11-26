@@ -95,6 +95,11 @@ RE_DYNAMIC_TEXT = re.compile(r'\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*
 RE_FOLDER_META = re.compile(r'^(-?\d+)_+(.*)$')
 RE_TAG_EXPIRE = re.compile(r'^(NEW|UPDATED|LATEST|FEATURE):(\d{4}[-/]\d{2}[-/]\d{2})$', re.IGNORECASE)
 RE_DATE_STR = re.compile(r'^\d{4}[-/]\d{2}[-/]\d{2}$')
+RE_HIGHLIGHT_BLOCK_OPEN = re.compile(r'^[ \t]*:::\s*highlight\[(.*?)\][ \t]*$', re.IGNORECASE | re.MULTILINE)
+RE_HIGHLIGHT_INLINE = re.compile(r'\+\+\[(.*?)\][\s\S]*?\+\+')
+RE_HIGHLIGHT_PURE_DATE = re.compile(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
+RE_HIGHLIGHT_SUFFIX_DATE = re.compile(r'^(.*?):\s*(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
+RE_HIGHLIGHT_HIDE_FLAG = re.compile(r'^EXPIRED?$', re.IGNORECASE)
 RE_MD_IMG = re.compile(r'(?<!\\)!\[([^\]]*)\]\(((?:[^()\n]|\([^()\n]*\))+)\)')
 RE_HTML_IMG = re.compile(r'(<img[^>]+src=["\'])([^"\']+)(["\'][^>]*>)')
 RE_IMG_TITLE = re.compile(r'(.*?)\s+(["\'])(.*?)\2$')
@@ -1090,6 +1095,96 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
                 pass
 
 
+def _mask_markdown_code_preserve_lines(text):
+    """將 Markdown 程式碼區塊與行內程式碼替換為等長空白並保留換行，避免範例語法誤報過期。"""
+    inline_code_re = re.compile(r'(`+)[^\n]*?\1')
+    out = []
+    fence = None
+    for line in text.splitlines(keepends=True):
+        body = line.rstrip('\r\n')
+        eol = line[len(body):]
+        stripped = re.sub(r'^\s*(?:>\s*)*', '', body)
+        marker = re.match(r'(`{3,}|~{3,})(.*)$', stripped)
+        if fence:
+            out.append((' ' * len(body)) + eol)
+            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
+                fence = None
+            continue
+        if marker and not (marker[1][0] == '`' and '`' in marker[2]):
+            fence = marker[1]
+            out.append((' ' * len(body)) + eol)
+            continue
+        masked_body = inline_code_re.sub(lambda m: ' ' * len(m.group(0)), body)
+        out.append(masked_body + eol)
+    return ''.join(out)
+
+
+def _parse_highlight_badge_date(raw_badge):
+    """解析 highlight 標籤中的日期與過期隱藏旗標 (|EXPIRE / |EXPIRED)，略過 KEY: 觸發語法。"""
+    trimmed = str(raw_badge or '').strip()
+    if not trimmed or trimmed.startswith('KEY:'):
+        return None, False
+
+    hide_on_expire = False
+    kept_segments = []
+    for seg in trimmed.split('|'):
+        clean_seg = seg.strip()
+        if not clean_seg:
+            continue
+        if RE_HIGHLIGHT_HIDE_FLAG.fullmatch(clean_seg):
+            hide_on_expire = True
+        else:
+            kept_segments.append(clean_seg)
+
+    core = '|'.join(kept_segments).strip()
+    match = RE_HIGHLIGHT_PURE_DATE.match(core)
+    if match:
+        y, m, d = int(match.group(1)), int(match.group(2)), int(match.group(3))
+    else:
+        suffix_match = RE_HIGHLIGHT_SUFFIX_DATE.match(core)
+        if not suffix_match:
+            return None, hide_on_expire
+        y, m, d = int(suffix_match.group(2)), int(suffix_match.group(3)), int(suffix_match.group(4))
+
+    try:
+        return datetime(y, m, d), hide_on_expire
+    except ValueError:
+        return None, hide_on_expire
+
+
+def check_markdown_highlight_expirations(item_title, md_content, md_path, days=None):
+    """掃描文章 Markdown 中的區塊與行內 highlight 日期，過期時交由 Cout 收集提醒。"""
+    if not md_content:
+        return
+    if days is None:
+        days = get_tag_expire_days()
+    now = datetime.now()
+    expire_delta = timedelta(days=days)
+    masked = _mask_markdown_code_preserve_lines(md_content)
+
+    matches = []
+    for m in RE_HIGHLIGHT_BLOCK_OPEN.finditer(masked):
+        matches.append((m.start(), '區塊 highlight', m.group(1)))
+    for m in RE_HIGHLIGHT_INLINE.finditer(masked):
+        matches.append((m.start(), '行內 highlight', m.group(1)))
+    matches.sort(key=lambda item: item[0])
+
+    for pos, kind, raw_badge in matches:
+        dt, hide_on_expire = _parse_highlight_badge_date(raw_badge)
+        if dt is None:
+            continue
+        if now - dt > expire_delta:
+            line_no = masked.count('\n', 0, pos) + 1
+            mode_note = "(已隱藏)" if hide_on_expire else "(已降級為純內文)"
+            cout.collect_reminder(
+                "高光過期",
+                f"文章 '{item_title}' 第 {line_no} 行的{kind} '[{raw_badge.strip()}]' 已過 {days} 天 {mode_note}。",
+                filepath=md_path,
+                color='yellow',
+                icon_key='expired',
+            )
+
+
 def update_data_version():
     """計算各獨立項目的 Hash，並寫入 data_version.json"""
     cout.stage("快取引擎", "開始計算細項 Hash 值...", icon_key='cache')
@@ -1324,6 +1419,8 @@ def process_article(
 
         if sub_data.get('title') is None and raw_md_content.startswith('# '):
             meta_title = raw_md_content.split('\n', 1)[0].replace('# ', '').strip()
+
+        check_markdown_highlight_expirations(meta_title, raw_md_content, md_file_path, expire_days)
 
         real_path = f"./{rel_base}/"
         pending_replacements = []
@@ -2051,7 +2148,7 @@ if __name__ == "__main__":
         update_data_version()
 
         # 5. 統一輸出過期或解封提醒清單
-        cout.flush_reminders("過期 tag 提示")
+        cout.flush_reminders("過期 tag / highlight 提示")
 
         total_elapsed = time.perf_counter() - build_start_time
         cout.success(f"全站建置流程執行完畢！總耗時: {total_elapsed:.2f} 秒。", icon_key='party')

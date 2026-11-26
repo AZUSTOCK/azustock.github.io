@@ -8,7 +8,7 @@
 ||— 也許，在這段旅途中，我可以跟著千冬一起成長||
 > #只是想畫畫
 
-:::highlight[UPDATED]
+:::highlight[UPDATED:2026-11-17]
 
 ## 服裝
 <div class="gallery" style="--g-width: 200px; --g-rows: 1; --g-ratio: 9/16">
