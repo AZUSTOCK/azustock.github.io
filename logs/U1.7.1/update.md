@@ -18,6 +18,8 @@
 10. Date-based expiration for block and inline highlights (default downgrade to plain text, |EXPIRE to hide).
 11. Build-time expiration reminders for Markdown highlights in generate_projects.py.
 12. Added hidden and pinned trackers (track_hidden.py, track_pinned.py).
+13. Multi-select badge (AND) and group (OR) filtering with color-coded active filter chips in Tracker.
+14. Dark theme toggle in tracker.html matching main site palette.
 
 ## change / update
 1. Shared SHA-256 hash cache between validation and inventory, and cached changelogs.json.
@@ -31,6 +33,7 @@
 1. Trimmed deploy.yml cache paths, simplified build command, and removed redundant exclusion entries.
 2. Moved touch .mermaid-wrapper touch-action rule from JS to CSS.
 3. MAIN content notice checkbox wording
+4. Trimmed Tracker UI labels and isolated badge hover from record card hover.
 
 ## fix
 1. Build continuation after version synchronization failure

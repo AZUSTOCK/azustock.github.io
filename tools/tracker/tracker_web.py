@@ -232,12 +232,15 @@ class TrackerEngine:
     def in_scope(self, relative, folder):
         return not folder or relative == folder or relative.startswith(folder.rstrip('/') + '/')
 
-    def report(self, tool='keys', query='', folder='', group='', filter_key='', filter_value='all', unset=False, page=1):
+    def report(self, tool='keys', query='', folder='', group='', groups=None, badges=None,
+               filter_key='', filter_value='all', unset=False, page=1):
         if tool not in self.reports:
             raise ValueError('未知的 tracker。')
         with self.lock:
             report = deepcopy(self.reports[tool])
         records = report.get('unset', []) if unset else [r for g in report['groups'] for r in g['records']]
+        selected_groups = [g for g in (groups if groups is not None else ([group] if group else [])) if g]
+        selected_badges = [b for b in (badges or []) if b]
         matched = []
         for record in records:
             if not self.in_scope(record['edit_path'], folder):
@@ -250,17 +253,22 @@ class TrackerEngine:
                         continue
                 elif str(record.get(filter_key, '')) != filter_value:
                     continue
+            if selected_badges:
+                rec_badges = {str(x) for x in (record.get('group'), record.get('kind'), *(record.get('badges') or [])) if x}
+                if not all(b in rec_badges for b in selected_badges):
+                    continue
             matched.append(record)
-        groups = {}
+        group_counts = {}
         for record in matched:
-            groups[record['group']] = groups.get(record['group'], 0) + 1
-        if group:
-            matched = [r for r in matched if r['group'] == group]
+            group_counts[record['group']] = group_counts.get(record['group'], 0) + 1
+        if selected_groups:
+            group_set = set(selected_groups)
+            matched = [r for r in matched if r['group'] in group_set]
         total = len(matched)
         pages = max(1, (total + 49) // 50)
         page = min(max(1, int(page)), pages)
         return dict(items=matched[(page - 1) * 50:page * 50], total=total, page=page, pages=pages,
-                    groups=[dict(name=name, count=count) for name, count in groups.items()],
+                    groups=[dict(name=name, count=count) for name, count in group_counts.items()],
                     filters=report['filters'], scan=report['scan'], title=report['title'])
 
     def files(self, query='', folder='', page=1):
@@ -560,8 +568,14 @@ class TrackerHandler(BaseHTTPRequestHandler):
             if route.path == '/api/status':
                 return self.reply({**engine.status(), 'token':self.server.csrf})
             if route.path == '/api/report':
-                keys = ('tool','query','folder','group','filter_key','filter_value','page')
-                return self.reply(engine.report(**{k:params[k] for k in keys if k in params}, unset=params.get('unset') == '1'))
+                raw_qs = parse_qs(route.query)
+                keys = ('tool','query','folder','filter_key','filter_value','page')
+                return self.reply(engine.report(
+                    **{k:params[k] for k in keys if k in params},
+                    groups=raw_qs.get('group'),
+                    badges=raw_qs.get('badge'),
+                    unset=params.get('unset') == '1',
+                ))
             if route.path == '/api/folders':
                 return self.reply({'items':engine.folders(params.get('query',''))})
             if route.path == '/api/files':
