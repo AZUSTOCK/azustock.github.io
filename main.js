@@ -1380,8 +1380,9 @@ window.applyTextScale = function() {
     
     const recalcTabs = () => {
         const viewArticle = document.getElementById('view-article');
-        if (viewArticle && viewArticle.style.display !== 'none' && window.syncTabPanelsHeight) {
-            window.syncTabPanelsHeight(viewArticle);
+        if (viewArticle && viewArticle.style.display !== 'none') {
+            if (window.syncTabPanelsHeight) window.syncTabPanelsHeight(viewArticle);
+            if (window.syncSpoilerLayout) window.syncSpoilerLayout(viewArticle);
         }
         if (window.syncCardMetaLayout) {
             window.syncCardMetaLayout();
@@ -3940,6 +3941,40 @@ const spoilerExtension = {
     }
 };
 
+// ✨ 自動偵測跨行或長句防雷文字：短詞保留撕紙貼紙，跨行／跨欄自動降級為純 inline 淡化遮擋
+window.syncSpoilerLayout = function(rootEl = document) {
+    if (!rootEl || typeof rootEl.querySelectorAll !== 'function') return;
+    const spoilers = Array.from(rootEl.querySelectorAll('.spoiler-text'));
+    if (spoilers.length === 0) return;
+
+    spoilers.forEach(el => {
+        if (!el.isConnected) return;
+        const wasInline = el.classList.contains('is-inline-fade');
+        // 暫時以純 inline 狀態量測自然斷行片段，能同時偵測長句跨行與行尾被整塊踢到下一行的情況
+        el.classList.add('is-inline-fade');
+        const rects = Array.from(el.getClientRects()).filter(r => r.width > 0.5 && r.height > 0.5);
+        if (rects.length === 0) {
+            el.classList.toggle('is-inline-fade', wasInline);
+            return;
+        }
+
+        const isVertical = window.getComputedStyle(el).writingMode.startsWith('vertical');
+        let wrapsAcrossLines = false;
+        if (rects.length > 1) {
+            if (isVertical) {
+                const lefts = rects.map(r => r.left);
+                const refWidth = Math.max(...rects.map(r => r.width), 12);
+                wrapsAcrossLines = (Math.max(...lefts) - Math.min(...lefts)) > Math.max(6, refWidth * 0.5);
+            } else {
+                const tops = rects.map(r => r.top);
+                const refHeight = Math.max(...rects.map(r => r.height), 12);
+                wrapsAcrossLines = (Math.max(...tops) - Math.min(...tops)) > Math.max(6, refHeight * 0.5);
+            }
+        }
+        el.classList.toggle('is-inline-fade', wrapsAcrossLines);
+    });
+};
+
 // ==========================================
 // ✨ 機密隱藏區塊 (Secret Block)
 // ==========================================
@@ -4405,6 +4440,7 @@ window.switchTabPanel = function(panelId, btn, groupName) {
     const targetPanel = document.getElementById(panelId);
     if (targetPanel) {
         targetPanel.style.display = 'block';
+        window.requestAnimationFrame(() => window.syncSpoilerLayout?.(targetPanel));
     }
 
     const tabs = btn.closest('.tab-buttons') || btn.parentElement;
@@ -6384,9 +6420,18 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 });
             }
 
-            // ✨ Step 3：分頁狀態確定後，統一執行高度同步
+            // ✨ Step 3：分頁狀態確定後，統一執行高度同步與防雷貼紙自動降級偵測
             window.syncTabPanelsHeight(activeView);
-            setTimeout(() => window.syncTabPanelsHeight(activeView), 60);
+            window.syncSpoilerLayout(activeView);
+            setTimeout(() => {
+                window.syncTabPanelsHeight(activeView);
+                window.syncSpoilerLayout(activeView);
+            }, 60);
+            activeView.querySelectorAll('details.md-details').forEach(detailsEl => {
+                detailsEl.addEventListener('toggle', () => {
+                    if (detailsEl.open) window.requestAnimationFrame(() => window.syncSpoilerLayout(detailsEl));
+                });
+            });
 
             // ==========================================
             // ✨ 啟動進度條引擎 (主進度條 & 直書獨立進度條)
@@ -7998,6 +8043,7 @@ window.addEventListener('resize', () => {
         const viewArticle = document.getElementById('view-article');
         if (viewArticle && viewArticle.style.display !== 'none') {
             window.syncTabPanelsHeight?.(viewArticle);
+            window.syncSpoilerLayout?.(viewArticle);
         }
 
         const lightboxModal = document.getElementById('lightbox-modal');
