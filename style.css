@@ -2283,7 +2283,6 @@ span.article-item-date {
     display: contents;
 }
 .modal-top-bar:has(.changelog-header-row) .top-nav-stack,
-.modal-top-bar:has(.changelog-header-row) .unified-nav-capsule,
 .modal-top-bar:has(.index-header-container) .index-header-title {
     order: 1;
 }
@@ -2300,11 +2299,11 @@ span.article-item-date {
     margin-left: auto !important;
     flex-shrink: 0;
 }
-.modal-top-bar:has(.changelog-header-row, .index-header-container) #modal-top-left :is(.top-nav-stack, .unified-nav-capsule, .changelog-meta, .index-header-title, .index-header-actions) {
+.modal-top-bar:has(.changelog-header-row, .index-header-container) #modal-top-left :is(.top-nav-stack, .changelog-meta, .index-header-title, .index-header-actions) {
     transition: var(--modal-transition) !important;
     transform-origin: var(--modal-origin);
 }
-.modal-top-bar:has(.changelog-header-row, .index-header-container) #modal-top-left.content-fade-out :is(.top-nav-stack, .unified-nav-capsule, .changelog-meta, .index-header-title, .index-header-actions) {
+.modal-top-bar:has(.changelog-header-row, .index-header-container) #modal-top-left.content-fade-out :is(.top-nav-stack, .changelog-meta, .index-header-title, .index-header-actions) {
     will-change: var(--modal-will-change);
     opacity: var(--modal-out-opacity) !important;
     transform: var(--modal-out-transform) !important;
@@ -2314,14 +2313,22 @@ span.article-item-date {
 /* ✨ 動態換行狀態（不寫死寬度，當純圖示也放不下時由 JS 掛上；#modal-top-right 永保第一行右上角） */
 .modal-top-bar.is-topbar-wrapped:has(.changelog-header-row, .index-header-container) #modal-top-right {
     order: 2;
+    flex: 0 0 auto;
 }
-.modal-top-bar.is-topbar-wrapped:has(.index-header-container) .index-header-title {
-    max-width: calc(100% - var(--top-right-width, 130px) - 0.8rem);
+.modal-top-bar.is-topbar-wrapped:has(.index-header-container) .index-header-title,
+.modal-top-bar.is-topbar-wrapped:has(.changelog-header-row) .top-nav-stack {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
 }
 .modal-top-bar.is-topbar-wrapped:has(.changelog-header-row) .changelog-meta,
 .modal-top-bar.is-topbar-wrapped:has(.index-header-container) .index-header-actions {
     order: 3;
     flex: 1 0 100%;
+}
+.modal-top-bar.is-topbar-wrapped .index-header-title .title-hideable,
+.index-header-title.is-short-title .title-hideable {
+    display: none;
 }
 /* ✨ 目錄頁與文章頁共用的兩段式按鈕模式：1. 完整文字（隱藏重複 tooltip） 2. 純圖示（非觸控顯示 tooltip） */
 .index-header-actions .article-count-badge,
@@ -3049,14 +3056,7 @@ span.article-item-date {
     align-items: baseline; 
     flex-wrap: wrap; 
     gap: 0.4rem 1rem; 
-    
-    /* 預設（無日期時）：強勢推開按鈕 */
-    flex: 1 1 max-content; 
-}
-
-/* ✨ 神級選擇器：當內部含有日期時，轉為彈性收縮模式 */
-.header-left:has(.article-date) { 
-    flex: 1 1 200px;
+    flex: 1 1 auto; 
     min-width: 0; 
 }
 
@@ -4768,11 +4768,9 @@ body.is-touch-device .mermaid-btns .mermaid-btn:not([onclick*="fullscreenMermaid
 /* 8-2. 針對非常小的手機螢幕 (max-width: 500px) */
 @media (max-width: 500px) {
     /* 縮小返回頂部按鈕，並避開跳轉膠囊 */
-    .capsule-btn.main-back { padding: 0 0.5rem; }
     .index-header-actions {gap: 0.3rem;}
     #modal-top-left {gap: 0.3rem;}
     #modal-top-right {gap: 0.3rem;}
-    .capsule-btn { padding: 0 0.4rem; }
     .btt-btn { width: 42px; height: 42px; right: max(1rem, calc(var(--safe-right) + 1rem)); bottom: max(1.5rem, calc(var(--safe-bottom) + 1rem)); }
     body:has(.filter-toast.active) .btt-btn { bottom: max(110px, calc(var(--safe-bottom) + 80px)); }
 }

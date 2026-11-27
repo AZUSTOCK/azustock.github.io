@@ -4,7 +4,7 @@
 /* ================================================================== */
 const CONFIG = {
     // 🚩 發布前必改
-    VERSION: "U1.7.2",          // 目前系統版本號
+    VERSION: "U1.7.2.1",          // 目前系統版本號
 
     // 🎨 介面與主題設定
     DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
@@ -1384,14 +1384,8 @@ window.applyTextScale = function() {
             if (window.syncTabPanelsHeight) window.syncTabPanelsHeight(viewArticle);
             if (window.syncSpoilerLayout) window.syncSpoilerLayout(viewArticle);
         }
-        if (window.syncIndexHeaderLayout) {
-            window.syncIndexHeaderLayout();
-        }
-        if (window.syncArticleHeaderLayout) {
-            window.syncArticleHeaderLayout();
-        }
-        if (window.updateTopBarHeight) {
-            window.updateTopBarHeight();
+        if (window.syncModalHeaderLayouts) {
+            window.syncModalHeaderLayouts();
         }
         if (window.syncCardMetaLayout) {
             window.syncCardMetaLayout();
@@ -5883,7 +5877,102 @@ const modalOverlay = document.getElementById('md-modal');
 const closeModalBtn = document.getElementById('close-modal');
 const modalBody = document.getElementById('modal-body');
 
-// ✨ 頂部列動態自適應引擎（完整文字優先：1.單行完整文字 → 2.換行完整文字 → 3.單行純圖示 → 4.換行純圖示；#modal-top-right 永不掉行）
+// ✨ 共用排版量測與 UI 輔助引擎（統一供目錄頁、文章頁與版本日誌共用）
+const _measureChildrenWidth = (container) => {
+    const cs = getComputedStyle(container);
+    const gap = parseFloat(cs.columnGap || cs.gap || 0) || 0;
+    const kids = Array.from(container.children).filter(el => getComputedStyle(el).display !== 'none');
+    if (!kids.length) return 0;
+    return kids.reduce((sum, el) => sum + el.offsetWidth, 0) + gap * (kids.length - 1);
+};
+const _isOnLowerLine = (el, ref) => {
+    if (!el || !ref) return false;
+    return el.offsetTop >= ref.offsetTop + ref.offsetHeight - 2;
+};
+
+window.resolveGroupStyle = function(groupData, colorIndex = 0) {
+    const groupColor = groupData && groupData.color;
+    const isHighlight = Boolean(groupData && groupData.highlight);
+    let themeClass = '';
+    let customStyle = '';
+    let labelStyle = '';
+    let nextColorIndex = colorIndex;
+    if (isHighlight) {
+        if (groupColor) {
+            customStyle = ` style="--current-group-color: ${groupColor}; --tab-color: ${groupColor};"`;
+        } else {
+            const groupNum = (colorIndex % 5) + 1;
+            themeClass = ` group-color-${groupNum}`;
+            nextColorIndex = colorIndex + 1;
+        }
+    } else if (groupColor) {
+        customStyle = ` style="--current-group-color: ${groupColor};"`;
+    }
+    if (groupColor) {
+        labelStyle = ` style="color: ${groupColor}; text-shadow: 0 0 8px color-mix(in srgb, ${groupColor} 30%, transparent);"`;
+    }
+    return { groupColor, isHighlight, themeClass, customStyle, labelStyle, nextColorIndex };
+};
+
+window.restoreItemIntoModalView = function(targetItemId, onScrollUpdated = null) {
+    const modalContainer = document.querySelector('.modal-content');
+    if (!modalContainer || !targetItemId) return;
+    setTimeout(() => {
+        const targetItem = document.getElementById(targetItemId);
+        if (!targetItem) return;
+        const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
+        const itemTop = window.getRelativeOffsetTop(targetItem, modalContainer);
+        const itemBottom = itemTop + targetItem.offsetHeight;
+        const containerHeight = modalContainer.clientHeight || window.innerHeight;
+        let finalScroll = modalContainer.scrollTop;
+        let needsScroll = false;
+        if (itemTop < finalScroll + topBarHeight) {
+            finalScroll = itemTop - topBarHeight - 20;
+            needsScroll = true;
+        } else if (itemBottom > finalScroll + containerHeight) {
+            finalScroll = itemBottom - containerHeight + 40;
+            needsScroll = true;
+        }
+        if (needsScroll) {
+            const clamped = Math.max(0, finalScroll);
+            modalContainer.scrollTo({ top: clamped, behavior: 'auto' });
+            if (typeof onScrollUpdated === 'function') onScrollUpdated(clamped);
+        }
+        window.simulateHoverFlash(targetItem, 1200);
+    }, 50);
+};
+
+window.buildHeadingTocMenu = function(rootEl, titleText, fallbackPrefix = 'article-heading') {
+    const menuItems = [];
+    const headings = rootEl ? rootEl.querySelectorAll('h1, h2, h3') : [];
+    if (headings.length > 1) {
+        headings.forEach((h, index) => {
+            if (!h.id) h.id = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-') || `${fallbackPrefix}-${index}`;
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = h.innerHTML;
+            tempDiv.querySelectorAll('a').forEach(aTag => {
+                const span = document.createElement('span');
+                span.innerHTML = aTag.innerHTML;
+                aTag.parentNode.replaceChild(span, aTag);
+            });
+            let targetHash = '#' + h.id;
+            if (h.id.startsWith('md-sys-')) {
+                const baseId = h.id.replace('md-sys-', '');
+                if (document.getElementById(baseId)) targetHash = '#' + baseId;
+            }
+            menuItems.push({ label: tempDiv.innerHTML, targetHash, className: `toc-${h.tagName.toLowerCase()}` });
+        });
+    }
+    if (window.renderTocMenu) window.renderTocMenu(menuItems, titleText);
+};
+
+window.syncModalHeaderLayouts = function() {
+    if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
+    if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
+    if (window.updateTopBarHeight) window.updateTopBarHeight();
+};
+
+// ✨ 頂部列動態自適應引擎（改用不受 transform:scale 影響的 offsetWidth + 實體折行檢查）
 window.syncIndexHeaderLayout = function() {
     if (window._syncingIndexHeader) return;
     const topBar = document.querySelector('.modal-top-bar');
@@ -5895,8 +5984,8 @@ window.syncIndexHeaderLayout = function() {
     const actions = topBar.querySelector('.index-header-actions');
     const clCapsule = topBar.querySelector('.changelog-header-row .unified-nav-capsule');
     const clMeta = topBar.querySelector('.changelog-header-row .changelog-meta');
-
     const anyCapsule = topBar.querySelector('#modal-top-left .unified-nav-capsule');
+
     if (!(title && actions) && !(clCapsule && clMeta) && !anyCapsule) {
         topBar.classList.remove('is-topbar-wrapped');
         return;
@@ -5909,65 +5998,71 @@ window.syncIndexHeaderLayout = function() {
             - parseFloat(barStyle.paddingLeft || 0)
             - parseFloat(barStyle.paddingRight || 0);
         const colGap = parseFloat(barStyle.columnGap || 0) || 12.8;
-        const rightW = topRight.getBoundingClientRect().width;
-        topBar.style.setProperty('--top-right-width', `${Math.ceil(rightW)}px`);
+        const rightW = topRight.offsetWidth;
 
-        const measureChildrenWidth = (container) => {
-            const cs = getComputedStyle(container);
-            const gap = parseFloat(cs.columnGap || cs.gap || 0) || 0;
-            const kids = Array.from(container.children).filter(el => getComputedStyle(el).display !== 'none');
-            if (!kids.length) return 0;
-            return kids.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + gap * (kids.length - 1);
-        };
-
-        // ✨ 膠囊三級漸進壓縮（1. 隱藏返回文字 → 2. 壓縮內距 → 3. 隱藏進度數字 12/27）
         const fitCapsule = (capsule) => {
             if (!capsule) return 0;
-            const availCapsule = innerWidth - rightW - colGap - 6;
+            const availCapsule = innerWidth - rightW - colGap - 8;
             capsule.classList.remove('capsule-compact-1', 'capsule-compact-2', 'capsule-compact-3');
-            if (capsule.getBoundingClientRect().width > availCapsule) {
+            if (capsule.offsetWidth > availCapsule) {
                 capsule.classList.add('capsule-compact-1');
-                if (capsule.getBoundingClientRect().width > availCapsule) {
+                if (capsule.offsetWidth > availCapsule) {
                     capsule.classList.add('capsule-compact-2');
-                    if (capsule.getBoundingClientRect().width > availCapsule) {
+                    if (capsule.offsetWidth > availCapsule) {
                         capsule.classList.add('capsule-compact-3');
                     }
                 }
             }
-            return capsule.getBoundingClientRect().width;
+            return capsule.offsetWidth;
         };
 
         topBar.classList.remove('is-topbar-wrapped');
 
         if (title && actions) {
+            title.classList.remove('is-short-title');
             actions.classList.remove('is-icon-only');
-            const titleW = title.getBoundingClientRect().width;
-            const availRow1 = innerWidth - titleW - rightW - colGap * 2 - 6;
-            const availRow2 = innerWidth - 6;
-            const fullW = measureChildrenWidth(actions);
+            let titleW = title.offsetWidth;
+            let availRow1 = innerWidth - titleW - rightW - colGap * 2 - 8;
+            const availRow2 = innerWidth - 8;
+            const fullW = _measureChildrenWidth(actions);
+            let row1WrappedFull = _isOnLowerLine(actions, title) || _isOnLowerLine(topRight, title);
 
-            if (fullW <= availRow1) {
-                // 1. 單行完整文字
-            } else if (fullW <= availRow2) {
-                // 2. 換行完整文字（#modal-top-right 鎖在第一行右上角）
-                topBar.classList.add('is-topbar-wrapped');
+            if (fullW <= availRow1 && !row1WrappedFull) {
+                // 1. 單行完整標題 + 完整文字
             } else {
-                // 完整文字連換行都放不下 → 改試純圖示
-                actions.classList.add('is-icon-only');
-                const iconW = measureChildrenWidth(actions);
-                if (iconW <= availRow1) {
-                    // 3. 單行純圖示
-                } else {
-                    // 4. 換行純圖示
+                // 1.5 若標題含有可精簡字詞（如 System / & Copyright），先縮成單詞嘗試保單行
+                let fitsShortSingleRow = false;
+                if (title.querySelector('.title-hideable')) {
+                    title.classList.add('is-short-title');
+                    titleW = title.offsetWidth;
+                    availRow1 = innerWidth - titleW - rightW - colGap * 2 - 8;
+                    row1WrappedFull = _isOnLowerLine(actions, title) || _isOnLowerLine(topRight, title);
+                    fitsShortSingleRow = (fullW <= availRow1 && !row1WrappedFull);
+                }
+                if (fitsShortSingleRow) {
+                    // 單行精簡標題 + 完整文字
+                } else if (fullW <= availRow2) {
+                    // 2. 換行完整文字
                     topBar.classList.add('is-topbar-wrapped');
+                } else {
+                    actions.classList.add('is-icon-only');
+                    const iconW = _measureChildrenWidth(actions);
+                    const row1WrappedIcon = _isOnLowerLine(actions, title) || _isOnLowerLine(topRight, title);
+                    if (iconW <= availRow1 && !row1WrappedIcon) {
+                        // 3. 單行純圖示
+                    } else {
+                        // 4. 換行純圖示
+                        topBar.classList.add('is-topbar-wrapped');
+                    }
                 }
             }
         } else if (clCapsule && clMeta) {
             const capsuleW = fitCapsule(clCapsule);
-            const clStack = topBar.querySelector('.changelog-header-row .top-nav-stack');
-            const leftW = clStack ? Math.max(capsuleW, clStack.getBoundingClientRect().width) : capsuleW;
-            const metaW = measureChildrenWidth(clMeta);
-            if (leftW + metaW + rightW + colGap * 2 + 6 > innerWidth) {
+            const clStack = topBar.querySelector('.changelog-header-row .top-nav-stack') || clCapsule;
+            const leftW = Math.max(capsuleW, clStack.offsetWidth);
+            const metaW = _measureChildrenWidth(clMeta);
+            const clWrapped = _isOnLowerLine(clMeta, clStack) || _isOnLowerLine(topRight, clStack);
+            if (leftW + metaW + rightW + colGap * 2 + 8 > innerWidth || clWrapped) {
                 topBar.classList.add('is-topbar-wrapped');
             }
         } else if (anyCapsule) {
@@ -5978,7 +6073,7 @@ window.syncIndexHeaderLayout = function() {
     }
 };
 
-// ✨ 文章標題列分享按鈕動態自適應（同樣採完整文字優先：1.單行完整文字 → 2.換行完整文字 → 3.單行純圖示 → 4.換行純圖示）
+// ✨ 文章標題列分享按鈕動態自適應（單行優先：1.單行完整文字 → 2.單行純圖示 → 3.雙行完整文字 → 4.雙行純圖示）
 window.syncArticleHeaderLayout = function() {
     if (window._syncingArticleHeader) return;
     const viewArticle = document.getElementById('view-article');
@@ -5988,13 +6083,6 @@ window.syncArticleHeaderLayout = function() {
 
     window._syncingArticleHeader = true;
     try {
-        const measureChildrenWidth = (container) => {
-            const cs = getComputedStyle(container);
-            const gap = parseFloat(cs.columnGap || cs.gap || 0) || 0;
-            const kids = Array.from(container.children).filter(el => getComputedStyle(el).display !== 'none');
-            if (!kids.length) return 0;
-            return kids.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + gap * (kids.length - 1);
-        };
         wrappers.forEach(wrapper => {
             if (wrapper.clientWidth <= 0) return;
             const leftGroup = wrapper.querySelector('.header-left');
@@ -6008,14 +6096,16 @@ window.syncArticleHeaderLayout = function() {
             const rowGap = parseFloat(wStyle.columnGap || wStyle.gap || 0) || 8;
 
             rightGroup.classList.remove('is-icon-only');
-            const leftW = leftGroup.getBoundingClientRect().width;
-            const fullRightW = measureChildrenWidth(rightGroup);
-            const availRow1 = innerW - leftW - rowGap - 4;
-            const availRow2 = innerW - 4;
+            const leftNaturalW = _measureChildrenWidth(leftGroup);
+            const fullRightW = _measureChildrenWidth(rightGroup);
+            if (!_isOnLowerLine(rightGroup, leftGroup) && (leftNaturalW + rowGap + fullRightW <= innerW - 2)) return;
 
-            // 1. 單行完整文字 / 2. 換行完整文字（flex-wrap 自然換行）均放得下則維持完整文字；
-            // 連換行都放不下完整文字才切為純圖示（單行放得下則留在單行，否則換行純圖示）
-            if (fullRightW > availRow1 && fullRightW > availRow2) {
+            rightGroup.classList.add('is-icon-only');
+            const iconRightW = _measureChildrenWidth(rightGroup);
+            if (!_isOnLowerLine(rightGroup, leftGroup) && (leftNaturalW + rowGap + iconRightW <= innerW - 2)) return;
+
+            rightGroup.classList.remove('is-icon-only');
+            if (_measureChildrenWidth(rightGroup) > innerW - 4) {
                 rightGroup.classList.add('is-icon-only');
             }
         });
@@ -6034,10 +6124,7 @@ window.updateTopBarHeight = function() {
 
 if (!window.modalBodyObserver) {
     window.modalBodyObserver = new ResizeObserver(() => {
-        if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
-        if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
-        // 高度改變時，即時更新 CSS 變數
-        window.updateTopBarHeight();
+        window.syncModalHeaderLayouts();
 
         const activeContainer = window.getActiveScrollContainer();
         if (activeContainer) {
@@ -6065,11 +6152,14 @@ if (!window._responsiveHeaderResizeBound) {
         if (headerResizeRaf) cancelAnimationFrame(headerResizeRaf);
         headerResizeRaf = requestAnimationFrame(() => {
             headerResizeRaf = null;
-            if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
-            if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
-            if (window.updateTopBarHeight) window.updateTopBarHeight();
+            window.syncModalHeaderLayouts();
         });
     }, { passive: true });
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+            window.syncModalHeaderLayouts();
+        });
+    }
 }
 
 function switchModalContent(updateDOMCallback, afterUpdateCallback = null, animateTopBar = true) {
@@ -6102,9 +6192,7 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
             updateDOMCallback();
             
             // ✨ DOM 替換完畢後，先依寬度校正目錄按鈕，再更新 TopBar 高度變數！
-            if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
-            if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
-            window.updateTopBarHeight();
+            window.syncModalHeaderLayouts();
             
             if (afterUpdateCallback) afterUpdateCallback();
 
@@ -6115,6 +6203,9 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
                 topLeft.classList.remove('content-fade-out');
             }
             
+            requestAnimationFrame(() => {
+                window.syncModalHeaderLayouts();
+            });
             setTimeout(() => { 
                 modalContainer.style.transition = ''; 
             }, 50);
@@ -6127,15 +6218,16 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
         };
     } else {
         updateDOMCallback();
-        if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
-        if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
-        window.updateTopBarHeight(); // ✨ 第一次開啟也要更新
+        window.syncModalHeaderLayouts(); // ✨ 第一次開啟也要更新
         if (afterUpdateCallback) afterUpdateCallback();
         
         modalBody.classList.remove('content-fade-out');
         if (topLeft) topLeft.classList.remove('content-fade-out');
         
         if (window.adjustModalViewports) window.adjustModalViewports();
+        requestAnimationFrame(() => {
+            window.syncModalHeaderLayouts();
+        });
     }
 }
 
@@ -6197,7 +6289,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             // 2. 將目錄標題與功能按鈕直接注入 modal-top-left
             document.getElementById('modal-top-left').innerHTML = `
                 <div class="index-header-container">
-                    <h1 class="index-header-title">${window.parseDynamicText(proj.title, 'INDEX_HEADER')}<span style="white-space: nowrap;"> - 目錄</span></h1>
+                    <h1 class="index-header-title">${window.parseDynamicText(proj.title, 'INDEX_HEADER')}</h1>
                     <div class="index-header-actions">
                         <span class="article-count-badge">共 ${visibleCount} 篇</span>
                         <button id="toggle-sort-btn" class="share-link-btn responsive-share-btn" style="margin: 0;">
@@ -6303,24 +6395,8 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             const groupArticles = finalArray.filter(item => item.art.group === groupId);
                             if (groupArticles.length === 0) continue;
 
-                            let groupColor = groupData.color;
-                            let themeClass = '';
-                            let customStyle = ''; 
-
-                            if (groupData.highlight) {
-                                if (groupColor) {
-                                    // ✨ 同時開啟 highlight 且有自訂 color：讓文章高光背景與圖示直接套用自訂色
-                                    customStyle = ` style="--current-group-color: ${groupColor}; --tab-color: ${groupColor};"`;
-                                } else {
-                                    // 僅開啟 highlight：走系統預設的 5 色循環
-                                    const groupNum = (colorIndex % 5) + 1;
-                                    themeClass = ` group-color-${groupNum}`;
-                                    colorIndex++; 
-                                }
-                            } else if (groupColor) {
-                                // 僅設定自訂 color（無高光背景）
-                                customStyle = ` style="--current-group-color: ${groupColor};"`; 
-                            }
+                            const { groupColor, themeClass, customStyle, nextColorIndex } = window.resolveGroupStyle(groupData, colorIndex);
+                            colorIndex = nextColorIndex;
 
                             const topMargin = isFirstGroup ? '0rem' : '1.2rem';
                             // 👇 把這一行補回來即可！
@@ -6448,7 +6524,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             if (window.grantDetailKeys(proj.key)) {
                 const header = document.getElementById('modal-top-left');
                 const title = header && header.querySelector('.index-header-title');
-                if (title) title.innerHTML = `${window.parseDynamicText(proj.title, 'INDEX_HEADER')}<span style="white-space: nowrap;"> - 目錄</span>`;
+                if (title) title.innerHTML = `${window.parseDynamicText(proj.title, 'INDEX_HEADER')}`;
                 const badge = header && header.querySelector('.article-count-badge');
                 if (badge) {
                     const count = window.getVisibleArticleCount(proj);
@@ -6464,33 +6540,9 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                     // 1. 先試著捲動到快取位置
                     modalContainer.scrollTo({ top: window._indexScrollTopCache, behavior: 'auto' });
                     
-                    // ✨ 2. 終極修復：用 setTimeout 等待 DOM 重繪徹底完成，再次確認目標是否在視野內，防止被瀏覽器截斷！
-                    setTimeout(() => {
-                        const targetItem = document.getElementById(`article-item-${window.lastReadArticleIndex}`);
-                        if (targetItem) {
-                            const topBarHeight = document.querySelector('.modal-top-bar')?.offsetHeight || 80;
-                            const itemTop = window.getRelativeOffsetTop(targetItem, modalContainer);
-                            const itemBottom = itemTop + targetItem.offsetHeight;
-                            const containerHeight = modalContainer.clientHeight || window.innerHeight;
-                            
-                            let finalScroll = modalContainer.scrollTop;
-                            let needsScroll = false;
-
-                            if (itemTop < finalScroll + topBarHeight) {
-                                finalScroll = itemTop - topBarHeight - 20;
-                                needsScroll = true;
-                            } else if (itemBottom > finalScroll + containerHeight) {
-                                finalScroll = itemBottom - containerHeight + 40;
-                                needsScroll = true;
-                            }
-                            
-                            if (needsScroll) {
-                                modalContainer.scrollTo({ top: Math.max(0, finalScroll), behavior: 'auto' });
-                                window._indexScrollTopCache = Math.max(0, finalScroll); // 同步更新快取
-                            }
-                            window.simulateHoverFlash(targetItem, 1200);
-                        }
-                    }, 50);
+                    window.restoreItemIntoModalView(`article-item-${window.lastReadArticleIndex}`, (top) => {
+                        window._indexScrollTopCache = top;
+                    });
                     
                 } else {
                     modalContainer.scrollTo({ top: 0, behavior: 'auto' });
@@ -6896,30 +6948,17 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             let groupHtml = '';
             if (article.group && proj.groups && proj.groups[article.group]) {
                 const groupData = proj.groups[article.group];
-                let themeClass = '';
-                let customStyle = '';
-
-                // ✨ 優先檢查是否有自訂 color，若有則直接套用顏色與光暈
-                if (groupData.color) {
-                    customStyle = ` style="color: ${groupData.color}; text-shadow: 0 0 8px color-mix(in srgb, ${groupData.color} 30%, transparent);"`;
-                } else if (groupData.highlight) {
-                    let colorIndex = 0;
+                let colorIndex = 0;
+                if (!groupData.color && groupData.highlight) {
                     for (const [gId, gData] of Object.entries(proj.groups)) {
-                        const groupArticles = flatSequence.filter(item => item.art.group === gId);
-                        if (groupArticles.length === 0) continue; 
-                        
-                        if (gId === article.group) {
-                            const groupNum = (colorIndex % 5) + 1;
-                            themeClass = ` group-color-${groupNum}`;
-                            break;
-                        }
-                        // 只有「開啟 highlight 且沒自訂 color」的群組才消耗輪替色額度
+                        if (!flatSequence.some(item => item.art.group === gId)) continue;
+                        if (gId === article.group) break;
                         if (gData.highlight && !gData.color) colorIndex++;
                     }
                 }
-
+                const { themeClass, labelStyle } = window.resolveGroupStyle(groupData, colorIndex);
                 const groupTitle = groupData.title || article.group;
-                groupHtml = `<div class="article-group-label${themeClass}"${customStyle}>${groupTitle}</div>`;
+                groupHtml = `<div class="article-group-label${themeClass}"${labelStyle}>${groupTitle}</div>`;
             }
 
             // ✨ 修改：將標籤與膠囊用 top-nav-stack 垂直疊加
@@ -6937,36 +6976,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             // ==========================================
             // ✨ 建立文章內文目錄漢堡選單 (導入共用引擎)
             // ==========================================
-            const headings = activeView.querySelectorAll('h1, h2, h3');
-            let menuItems = [];
-            
-            if (headings.length > 1) {
-                headings.forEach((h, index) => {
-                    if (!h.id) h.id = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-') || `article-heading-${index}`;
-                    
-                    // ✨ 核心修復 2：直接抓取 h 的 innerHTML 來保留所有解析過的特效標籤 (機密、高光)
-                    let labelText = h.innerHTML;
-                    
-                    // 預防標題內有超連結，將 <a> 替換為 <span> 防止 TOC 的 <a> 標籤嵌套壞掉
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = labelText;
-                    tempDiv.querySelectorAll('a').forEach(aTag => {
-                        const span = document.createElement('span');
-                        span.innerHTML = aTag.innerHTML;
-                        aTag.parentNode.replaceChild(span, aTag);
-                    });
-                    labelText = tempDiv.innerHTML;
-                    
-                    let targetHash = '#' + h.id;
-                    if (h.id.startsWith('md-sys-')) {
-                        const baseId = h.id.replace('md-sys-', '');
-                        if (document.getElementById(baseId)) targetHash = '#' + baseId;
-                    }
-                    
-                    menuItems.push({ label: labelText, targetHash: targetHash, className: `toc-${h.tagName.toLowerCase()}` });
-                });
-            }
-            window.renderTocMenu(menuItems, '文章目錄');
+            window.buildHeadingTocMenu(activeView, '文章目錄', 'article-heading');
 
             activeView.querySelectorAll('.gallery').forEach(gallery => {
                 const wrapper = document.createElement('div');
@@ -7354,7 +7364,7 @@ window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cach
             if (modalTopLeft) {
                 modalTopLeft.innerHTML = `
                     <div class="index-header-container">
-                        <h1 class="index-header-title">${title}</h1>
+                        <h1 class="index-header-title">${options.titleHtml || title}</h1>
                         <div class="index-header-actions">
                             <span class="article-count-badge">${badgeText}</span>
                         </div>
@@ -7421,6 +7431,7 @@ window.showLicenseModal = (initialLang = 'zh') => {
             <button class="lang-btn${activeLang === 'ja' ? ' active' : ''}" data-lang="ja" onclick="window.switchBilingualTab('ja', this)">日本語</button>
         </div></div>`,
         {
+            titleHtml: 'License<span class="title-hideable"> &amp; Copyright</span>',
             routeKey: 'license',
             routeParams: activeLang !== 'zh' ? { lang: activeLang } : {},
             onAfterRender: () => {
@@ -7477,7 +7488,6 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
             fetchError = true;
         }
     }
-    if (!window.cachedChangelogContents) window.cachedChangelogContents = {};
 
     // 另一個頁面或錯誤畫面已接手時，不再更新 DOM。
     if (navigation !== window._modalNavigation) return;
@@ -7510,22 +7520,9 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
         orderedGroupIds.forEach(groupId => {
             const groupData = groupsMeta[groupId] || {};
             const groupTitle = groupData.title || (groupId === 'other' ? 'Other' : `${groupId} Series`);
-            const groupColor = groupData.color;
-            const isHighlight = groupData.highlight === true;
-            let themeClass = '';
-            let customStyle = '';
-            if (isHighlight) {
-                if (groupColor) {
-                    customStyle = ` style="--current-group-color: ${groupColor}; --tab-color: ${groupColor};"`;
-                } else {
-                    const groupNum = (colorIndex % 5) + 1;
-                    themeClass = ` group-color-${groupNum}`;
-                    colorIndex++;
-                }
-            } else if (groupColor) {
-                customStyle = ` style="--current-group-color: ${groupColor};"`;
-            }
-            styleMap.set(groupId, { groupId, groupData, groupTitle, groupColor, isHighlight, themeClass, customStyle });
+            const { groupColor, isHighlight, themeClass, customStyle, labelStyle, nextColorIndex } = window.resolveGroupStyle(groupData, colorIndex);
+            colorIndex = nextColorIndex;
+            styleMap.set(groupId, { groupId, groupData, groupTitle, groupColor, isHighlight, themeClass, customStyle, labelStyle });
         });
         return { groupedMap, orderedGroupIds, styleMap };
     };
@@ -7538,7 +7535,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
         if (!isDetail) {
             modalTopLeft.innerHTML = `
                 <div class="index-header-container">
-                    <h1 class="index-header-title">System Changelog</h1>
+                    <h1 class="index-header-title"><span class="title-hideable">System </span>Changelog</h1>
                     <div class="index-header-actions">
                         <span class="article-count-badge">Update History</span>
                     </div>
@@ -7573,7 +7570,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                 const { styleMap } = buildLogGroupContext();
                 const gInfo = styleMap.get(deriveLogGroup(logData));
                 if (gInfo) {
-                    groupHtml = `<div class="article-group-label${gInfo.themeClass}"${gInfo.customStyle}>${window.parseDynamicText(gInfo.groupTitle, 'GROUP_TITLE')}</div>`;
+                    groupHtml = `<div class="article-group-label${gInfo.themeClass}"${gInfo.labelStyle}>${window.parseDynamicText(gInfo.groupTitle, 'GROUP_TITLE')}</div>`;
                 }
             }
 
@@ -7686,10 +7683,15 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
             () => {
                 const modalContainer = document.querySelector('.modal-content');
                 if (modalContainer) {
-                    if (restoreScroll && window._changelogScrollTopCache !== undefined) {
-                        modalContainer.scrollTo({ top: window._changelogScrollTopCache, behavior: 'auto' });
-                        const targetItem = document.getElementById(`changelog-item-${window.lastReadChangelogId}`);
-                        if (targetItem) setTimeout(() => window.simulateHoverFlash(targetItem), 150);
+                    if (restoreScroll && window.lastReadChangelogId) {
+                        const baseScroll = typeof window._changelogScrollTopCache === 'number' ? window._changelogScrollTopCache : 0;
+                        const initialTargetScroll = Math.max(0, window.calculateIdealScrollCache('view-article', `changelog-item-${window.lastReadChangelogId}`, baseScroll));
+                        window._changelogScrollTopCache = initialTargetScroll;
+                        modalContainer.scrollTo({ top: initialTargetScroll, behavior: 'auto' });
+
+                        window.restoreItemIntoModalView(`changelog-item-${window.lastReadChangelogId}`, (top) => {
+                            window._changelogScrollTopCache = top;
+                        });
                     } else {
                         modalContainer.scrollTo({ top: 0, behavior: 'auto' });
                     }
@@ -7700,15 +7702,16 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
 
     // 3. 渲染第二層：詳細記錄
     window.renderChangelogDetail = async function(logId) {
-        // ✨ 核心修復 2：改抓真正負責捲動的容器 (modalContainer)
-        if (window._changelogScrollTopCache === undefined) {
+        // ✨ 若目前正位於版本清單頁，每次進入版本前都記錄當下的清單捲動位置
+        const isFromChangelogIndex = document.querySelector('#view-article .changelog-list-item') !== null;
+        if (isFromChangelogIndex) {
             const scroller = window.getActiveScrollContainer();
             if (scroller) window._changelogScrollTopCache = scroller.scrollTop;
         }
-        window.lastReadChangelogId = logId; 
-        
-        // ✨ 在 DOM 被替換前，預先計算好返回時的最佳位置
-        window._changelogScrollTopCache = window.calculateIdealScrollCache('view-article', `changelog-item-${logId}`, window._changelogScrollTopCache);
+        window.lastReadChangelogId = logId;
+        if (isFromChangelogIndex) {
+            window._changelogScrollTopCache = window.calculateIdealScrollCache('view-article', `changelog-item-${logId}`, window._changelogScrollTopCache);
+        }
 
         const targetLog = window.cachedChangelogs.find(l => l.id === logId);
         if (!targetLog) return;
@@ -7762,23 +7765,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                     : `<div class="markdown-body" style="margin-top: -0.5rem;">${marked.parse(logContent || '')}</div>`;
                 modalBody.innerHTML = `${renderedBody}${navCardsHtml}`;
 
-                // ✨ 比照一般文章：掃描版本內文標題建立右側 toc-toggle-btn 目錄選單
-                const detailHeadings = contentLoadError ? [] : modalBody.querySelectorAll('.markdown-body h1, .markdown-body h2, .markdown-body h3');
-                const detailMenuItems = [];
-                if (detailHeadings.length > 1) {
-                    detailHeadings.forEach((h, index) => {
-                        if (!h.id) h.id = h.innerText.toLowerCase().replace(/[\s&]+/g, '-').replace(/-+/g, '-') || `changelog-heading-${index}`;
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = h.innerHTML;
-                        tempDiv.querySelectorAll('a').forEach(aTag => {
-                            const span = document.createElement('span');
-                            span.innerHTML = aTag.innerHTML;
-                            aTag.parentNode.replaceChild(span, aTag);
-                        });
-                        detailMenuItems.push({ label: tempDiv.innerHTML, targetHash: `#${h.id}`, className: `toc-${h.tagName.toLowerCase()}` });
-                    });
-                }
-                if (window.renderTocMenu) window.renderTocMenu(detailMenuItems, '本頁目錄');
+                window.buildHeadingTocMenu(contentLoadError ? null : modalBody.querySelector('.markdown-body'), '本頁目錄', 'changelog-heading');
 
                 // ✨ 核心修復：閱讀進度條改為監聽真正的捲動容器 modalContainer
                 const modalOverlay = document.getElementById('md-modal');

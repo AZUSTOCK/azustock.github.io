@@ -13,15 +13,24 @@ from urllib.parse import quote
 
 
 # 更新類型只取摘要開頭的 [STATUS]，不掃描內文關鍵字。
+# 與 style.css 的 [data-status] --s-color 同步（data-theme="dark"）。
+# CSS 變數已解析為深色模式的實際色碼；BUG 沿用 HOTFIX 類型。
 STATUS_COLORS = {
-    "MAJOR": 0xF5D547,
-    "FEATURE": 0xF5D547,
-    "NEW": 0xF5D547,
-    "REFACTOR": 0xC77DFF,
-    "HOTFIX": 0xFF4D79,
-    "PATCH": 0xFF4D79,
-    "BUG": 0xFF4D79,
+    "NEW": 0xEF4444,
+    "UPDATED": 0x38BDF8,
+    "WIP": 0xF59E0B,
+    "ARCHIVED": 0x9CA3AF,
+    "OC": 0xA855F7,
+    "FANART": 0xEB4D9C,
+    "MAJOR": 0xE11D48,
+    "HOTFIX": 0xFF5722,
+    "FEATURE": 0x10B981,
+    "DEV": 0x3B82F6,
+    "REFACTOR": 0x6366F1,
+    "PATCH": 0x38BDF8,
+    "STABLE": 0x06B6D4,
 }
+STATUS_COLORS["BUG"] = STATUS_COLORS["HOTFIX"]
 DEFAULT_COLOR = 0x44D4BE
 DESCRIPTION_LIMIT = 4000  # 沿用舊版的保守長度上限
 HEADING_RE = re.compile(r"^ {0,3}#{1,6}(?:[ \t]+|(?=\*\*\[))(.+?)\s*$")
