@@ -16,17 +16,15 @@
 2. Configuration validation
 3. Standalone configuration synchronization
 4. Site configuration unit tests
-5. Tools migration documentation
-6. Public resource migration tool
-7. Resource migration and cache regression tests
-8. Article syntax and metadata examples in the Markdown test document
-9. Hidden article visibility and tag regression tests
-10. Article-level `skip_expiration_reminders` for intentional expiration tests
-11. Expiration reminder opt-out regression tests and syntax documentation
+5. Public resource path and frontend cache regression tests
+6. Article syntax and metadata examples in the Markdown test document
+7. Hidden article visibility and tag regression tests
+8. Article-level `skip_expiration_reminders` for intentional expiration tests
+9. Expiration reminder opt-out regression tests and syntax documentation
 
 ## change / update
 1. Python tool execution paths
-2. GitHub Actions tool integration
+2. GitHub Actions tool integration and `tools/.cache/` workflow cache path
 3. Unified status tag and expiration rules
 4. Discord theme color resolution
 5. Moved shared Markdown content to content/
@@ -39,22 +37,17 @@
 1. Inconsistent status tag definitions
 2. Missing LATEST status palette
 3. Duplicate configuration definitions
-4. Legacy release writer compatibility
-5. Stale in-memory resource caches and concurrent resource loading conflicts
-6. Resource loading before data version initialization
-7. Windows CP950 compatibility in unit tests (explicit UTF-8 encoding)
-8. Missing unlocked articles in cached project indices
-9. Hidden article status tags appearing before unlock or failing to appear after unlock
-10. Status priority masking visible project tags
-11. Tag filtering and article counts after visibility changes
-12. Articles omitted from indices when their group is undefined in project metadata
-13. Removed phantom gallery columns caused by empty Markdown paragraphs.
-14. Restricted horizontal scroll hints to their own containers and preserved gallery row layouts.
-15. Fixed Lightbox selection for repeated images in a gallery.
-
-## deprecate
-1. Legacy release.py for the current logs-based architecture
-2. Previous tools directory paths
+4. Stale in-memory resource caches and concurrent resource loading conflicts
+5. Resource loading before data version initialization
+6. Windows CP950 compatibility in unit tests (explicit UTF-8 encoding)
+7. Missing unlocked articles in cached project indices
+8. Hidden article status tags appearing before unlock or failing to appear after unlock
+9. Status priority masking visible project tags
+10. Tag filtering and article counts after visibility changes
+11. Articles omitted from indices when their group is undefined in project metadata
+12. Removed phantom gallery columns caused by empty Markdown paragraphs.
+13. Restricted horizontal scroll hints to their own containers and preserved gallery row layouts.
+14. Fixed Lightbox selection for repeated images in a gallery.
 
 ## remove
 1. Hardcoded Discord status color definitions
@@ -63,3 +56,7 @@
 4. Obsolete .build_cache.json workflow cache entry
 5. Hardcoded shared resource paths
 6. Pre-rendered hidden status tags and legacy marquee secret visibility logic
+7. Legacy root-level files in tools/ after module reorganization
+8. Legacy tools/release.py and tools/deployment/release.py
+9. One-time migration artifacts (`tools/MIGRATION.md`, `tools/config/migrate_resources.py`, `tools/config/generator_config_only.patch`) and migration-only tests
+10. Redundant `.gitignore` rules already covered by `/tools/.cache/`
