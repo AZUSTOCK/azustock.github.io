@@ -4,5 +4,6 @@
   "description": "管理員專用",
   "hidden": true,
   "tags": ["DEV"],
-  "min_sys_version": "1.6.1.3"
+  "min_sys_version": "1.6.1.3",
+  "skip_expiration_reminders": true
 }
