@@ -31,7 +31,6 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            .build_cache.json
             api/
             data_version.json
           key: build-cache-${{ github.sha }}
@@ -46,8 +45,8 @@ jobs:
       - name: Install Dependencies
         run: pip install pillow rjsmin rcssmin pymupdf
 
-      - name: Test public site tool
-        run: python -m unittest discover -s tools -p test_public_site.py -v
+      - name: Test deployment and shared configuration
+        run: python -m unittest discover -s tools/tests -v
 
       - name: Generate API and Data
         env:
@@ -57,7 +56,7 @@ jobs:
       - name: Prepare public site and inventory
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python -u tools/prepare_public_site.py --compare-previous
+        run: python -u -m tools.deployment.prepare_public_site --compare-previous
 
       - name: Upload public site inventory
         uses: actions/upload-artifact@v4

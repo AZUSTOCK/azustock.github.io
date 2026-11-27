@@ -22,26 +22,31 @@ from datetime import datetime
 from pathlib import Path
 
 
-from tracker_common import (TrackerApp, styled, classify_detail_path, json_field_spans, apply_changes, source_path)
+# Preserve direct script execution as well as python -m.
+if not __package__:
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+from tools.tracker.tracker_common import (TrackerApp, styled, classify_detail_path, json_field_spans, apply_changes, source_path)
 
-PROJECTS_DIR = 'projects'
-OUTPUT_FILE = './tools/tracker/reports/tag_dashboard.html'
+from tools.common.paths import ROOT_DIR
+PROJECTS_DIR = str(ROOT_DIR / "projects")
+OUTPUT_FILE = str(ROOT_DIR / "tools/tracker/reports/tag_dashboard.html")
 
-# 與 main.js STATUS_LIST 同步的狀態群組
-STATUS_GROUPS = [
-    ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED'],
-    ['WIP'],
-    ['OC'],
-    ['FANART'],
-    ['DEV'],
-]
-STATUS_TAGS = {tag for group in STATUS_GROUPS for tag in group}
+from tools.config.site_config import CONFIG, TAG_EXPIRE_DAYS, config_for_projects
 
-# 同時支援 "is_new": "2026-10-10" 與簡寫 "new": "2026-10-10"
-STATUS_FIELD_MAP = {}
-for _tag in STATUS_TAGS:
-    STATUS_FIELD_MAP[f'is_{_tag.lower()}'] = _tag
-    STATUS_FIELD_MAP[_tag.lower()] = _tag
+
+def apply_status_config(config):
+    global STATUS_GROUPS, STATUS_TAGS, STATUS_FIELD_MAP, EXPIRABLE_TAGS, METADATA_FLAG_TAGS
+    STATUS_GROUPS = config['status']['groups']
+    STATUS_TAGS = {tag for group in STATUS_GROUPS for tag in group}
+    EXPIRABLE_TAGS = set(config['status']['expirable_tags'])
+    METADATA_FLAG_TAGS = set(config['status']['metadata_flag_tags'])
+    # Keep unsupported legacy fields visible to the tracker for cleanup.
+    STATUS_FIELD_MAP = {key: tag for tag in STATUS_TAGS for key in (tag.lower(), f'is_{tag.lower()}')}
+
+
+apply_status_config(CONFIG)
 
 # Markdown 高光語法正規表達式 (對應 main.js highlightExtension & highlightBlockExtension)
 RE_FENCED_CODE = re.compile(r'```[\s\S]*?```|~~~[\s\S]*?~~~')
@@ -56,17 +61,7 @@ USE_COLOR = sys.stdout.isatty() and 'NO_COLOR' not in os.environ
 
 
 def detect_tag_expire_days():
-    """從 main.js 讀取 CONFIG.TAG_EXPIRE_DAYS，預設為 14 天。"""
-    main_js = source_path(PROJECTS_DIR, 'main.js')
-    if main_js.is_file():
-        try:
-            text = main_js.read_text(encoding='utf-8-sig')
-            match = re.search(r'TAG_EXPIRE_DAYS:\s*(\d+)', text)
-            if match:
-                return int(match.group(1))
-        except (OSError, UnicodeError, ValueError):
-            pass
-    return 14
+    return config_for_projects(PROJECTS_DIR)["status"]["expire_days"]
 
 
 def json_array_item_spans(text, val_start, val_end):
@@ -120,13 +115,15 @@ def check_date_expired(date_str, expire_days):
     return False
 
 
-def normalize_tag(raw_tag, expire_days=14):
+def normalize_tag(raw_tag, expire_days=None):
     """分離時效性標籤（如 'NEW: 2026-10-10' -> base_tag='NEW', expire_date='2026-10-10', is_expired）。"""
+    if expire_days is None:
+        expire_days = detect_tag_expire_days()
     s = str(raw_tag).strip()
     match = re.match(r'^([A-Za-z0-9_-]+):\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})$', s)
     if match:
         candidate = match.group(1).upper()
-        if candidate in STATUS_TAGS:
+        if candidate in EXPIRABLE_TAGS:
             date_str = match.group(2)
             return candidate, s, date_str, check_date_expired(date_str, expire_days)
     if s.upper() in STATUS_TAGS:
@@ -149,8 +146,10 @@ def mask_fenced_code(md_text):
     return RE_INLINE_CODE.sub(lambda m: ' ' * len(m.group(0)), masked)
 
 
-def parse_highlight_badge(raw_badge, expire_days=14):
+def parse_highlight_badge(raw_badge, expire_days=None):
     """解析高光標籤中的文字、日期與 |EXPIRE / |EXPIRED 隱藏旗標，回傳 (tag_key, expire_date, is_expired, hide_on_expire)。"""
+    if expire_days is None:
+        expire_days = detect_tag_expire_days()
     trimmed = str(raw_badge or '').strip()
     hide_on_expire = False
     kept = []
@@ -220,7 +219,7 @@ def add_record(tag_name, record_type, detail_path, line_num, column, raw_str,
     entry[record_type].append(item)
 
 
-def scan_markdown_highlights_in_dir(dir_path, detail_path, title, target_id, expire_days=14):
+def scan_markdown_highlights_in_dir(dir_path, detail_path, title, target_id, expire_days=None):
     """掃描該目錄下的 .md 檔案，找出 ++[TAG]文字++ 與 :::highlight[TAG]（含日期與 |EXPIRE 過期判斷）。"""
     found_tags = []
     md_files_scanned = 0
@@ -301,7 +300,9 @@ def collect_tags():
     all_targets = []
     scanned = False
     total_files, total_md_files, errors = 0, 0, []
-    expire_days = detect_tag_expire_days()
+    cfg = config_for_projects(PROJECTS_DIR)
+    apply_status_config(cfg)
+    expire_days = cfg["status"]["expire_days"]
     scan_info = {
         'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         'files': 0,
@@ -391,6 +392,7 @@ def collect_tags():
                         raw_display = (
                             f'[{label}: {json.dumps(b_val, ensure_ascii=False)}]{date_note} '
                             f'→ {mapped_tag} · {target_id} ({title})'
+                            + (' [非網站支援的狀態欄位；建議改用 tags[]]' if mapped_tag not in METADATA_FLAG_TAGS else '')
                         )
 
                         add_record(

@@ -1,7 +1,13 @@
 """與 main.js parseSensitiveSetting 對應的警告規則；供 keys 與 sensitive 共用。"""
 import re
 from pathlib import Path
-DEFAULT_SENSITIVE_TEMPLATES = {'DEFAULT', 'MAIN', 'INSIDE'}
+# Preserve direct script execution as well as python -m.
+if not __package__:
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+from tools.config.site_config import CONFIG, config_for_projects
+DEFAULT_SENSITIVE_TEMPLATES = set(CONFIG['sensitive_templates'])
 
 
 def js_string(value):
@@ -120,61 +126,5 @@ def valid_sensitive_condition(value):
 
 
 def discover_sensitive_templates(projects_dir="projects"):
-    """優先讀取主站 SENSITIVE_TEMPLATES 頂層名稱；找不到時使用現有內建值。"""
-    parents = [Path(projects_dir).resolve().parent, Path.cwd()]
-    seen = set()
-    for parent in parents:
-        for filename in ('main.js', 'main.min.js'):
-            path = parent / filename
-            if path in seen or not path.is_file():
-                continue
-            seen.add(path)
-            try:
-                text = path.read_text(encoding='utf-8-sig')
-            except (OSError, UnicodeError):
-                continue
-            match = re.search(r'window\.SENSITIVE_TEMPLATES\s*=\s*\{', text)
-            if not match:
-                continue
-            index, depth, expect_key, names = match.end(), 1, True, set()
-            while index < len(text) and depth:
-                if text.startswith('//', index):
-                    end = text.find('\n', index + 2)
-                    index = len(text) if end < 0 else end + 1
-                    continue
-                if text.startswith('/*', index):
-                    end = text.find('*/', index + 2)
-                    index = len(text) if end < 0 else end + 2
-                    continue
-                char = text[index]
-                if depth == 1 and expect_key and not char.isspace():
-                    key_match = re.match(r'''(?:"([^"\\]*)"|'([^'\\]*)'|([A-Za-z_$][\w$]*))\s*:''', text[index:])
-                    if key_match:
-                        names.add(next(part for part in key_match.groups() if part is not None).upper())
-                        index += key_match.end()
-                        expect_key = False
-                        continue
-                if char in "\"'`":
-                    quote = char
-                    index += 1
-                    while index < len(text):
-                        if text[index] == '\\':
-                            index += 2
-                        elif text[index] == quote:
-                            index += 1
-                            break
-                        else:
-                            index += 1
-                    continue
-                if char == '{':
-                    depth += 1
-                elif char == '}':
-                    depth -= 1
-                elif char == ',' and depth == 1:
-                    expect_key = True
-                index += 1
-            if names:
-                return names
-    return set(DEFAULT_SENSITIVE_TEMPLATES)
-
-
+    """Read the canonical templates instead of reverse-parsing generated JavaScript."""
+    return set(config_for_projects(projects_dir)['sensitive_templates'])

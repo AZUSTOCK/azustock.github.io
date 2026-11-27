@@ -1,6 +1,6 @@
 @echo off
 setlocal
 cd /d "%~dp0..\.."
-python "tools\check_exif.py" --web %*
+python -m tools.check_exif.check_exif --web %*
 if errorlevel 1 pause
 endlocal

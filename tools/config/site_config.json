@@ -1,0 +1,273 @@
+{
+  "site": {
+    "url": "https://azustock.com",
+    "banner": "assets/og.png",
+    "repo": "AZUSTOCK/azustock.github.io",
+    "default_theme": "dark"
+  },
+  "frontend": {
+    "MARQUEE_SPEED": 120,
+    "FAVICON_LIGHT": "./assets/OG_dark.png",
+    "FAVICON_DARK": "./assets/OG_light.png",
+    "DATA_SOURCE": "./all_projects.json",
+    "DEBUG_FETCH_DELAY": 0
+  },
+  "social_links": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/AZUSTOCK",
+      "icon": "socialGithub"
+    },
+    {
+      "name": "YouTube",
+      "url": "https://youtube.com/@azustock",
+      "icon": "socialYoutube"
+    },
+    {
+      "name": "piapro",
+      "url": "https://piapro.jp/azustock",
+      "icon": "socialPiapro"
+    },
+    {
+      "name": "pixiv",
+      "url": "https://www.pixiv.net/users/131123043",
+      "icon": "socialPixiv"
+    },
+    {
+      "name": "Twitter",
+      "url": "https://x.com/azustock_phy",
+      "icon": "socialX"
+    },
+    {
+      "name": "Discord",
+      "url": "",
+      "icon": "socialDiscord"
+    },
+    {
+      "name": "分享本站",
+      "icon": "socialShare",
+      "copy_site_url": true
+    }
+  ],
+  "themes": {
+    "dark": {
+      "color-scheme": "dark",
+      "--bg": "#020617",
+      "--card": "#0b1220",
+      "--text": "#e5e7eb",
+      "--muted": "#9ca3af",
+      "--accent": "#38bdf8",
+      "--accent-2": "#f5d547",
+      "--accent-hover": "#F5D547",
+      "--glow-1": "rgba(16, 85, 137, 0.8)",
+      "--glow-2": "rgba(4, 47, 46, 0.8)",
+      "--glass-bg": "rgba(11, 18, 32, 0.7)",
+      "--glass-border": "rgba(56, 189, 248, 0.2)",
+      "--box-bg": "rgba(23, 35, 59, 0.6)",
+      "--box-border": "rgba(71, 198, 253, 0.15)",
+      "--nav-bg": "rgba(2, 6, 23, 0.95)",
+      "--divider-line": "rgba(255, 255, 255, 0.2)",
+      "--tag-bg": "rgba(34, 211, 238, 0.15)",
+      "--marquee-bg": "rgba(34, 211, 238, 0.1)",
+      "--marquee-border": "rgba(34, 211, 238, 0.3)",
+      "--card-border": "rgba(255, 255, 255, 0.15)",
+      "--shadow-base": "rgba(0, 0, 0, 0.35)",
+      "--shadow-hover": "rgba(56, 189, 248, 0.15)",
+      "--btn-hover-bg": "rgba(11, 18, 32, 0.95)",
+      "--btn-hover-shadow": "rgba(56, 189, 248, 0.3)",
+      "--nav-text-shadow": "rgba(56, 189, 248, 0.6)",
+      "--error-color": "#ef4444",
+      "--error-shadow": "rgba(239, 68, 68, 0.8)",
+      "--scrollbar-bg": "transparent",
+      "--scrollbar-thumb": "rgba(255, 255, 255, 0.25)",
+      "--scrollbar-hover": "rgba(56, 189, 248, 0.4)",
+      "--inline-code-color": "#2dd4bf",
+      "--inline-code-bg": "rgba(45, 212, 191, 0.15)",
+      "--group-c1": "#FF4D79",
+      "--c1-text": "#FFE4E6",
+      "--group-c2": "#10E781",
+      "--c2-text": "#D1FAE5",
+      "--group-c3": "#FF9F1C",
+      "--c3-text": "#FFEDD5",
+      "--group-c4": "#C77DFF",
+      "--c4-text": "#F3E8FF",
+      "--group-c5": "#00E5FF",
+      "--c5-text": "#E0F2FE",
+      "--cursor-link": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23@error-color-hex@' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='transform: rotate(-15deg); filter: drop-shadow(0 0 4px rgba(255, 77, 121, 0.5));'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E\") 6 6, pointer"
+    },
+    "light": {
+      "color-scheme": "light",
+      "--bg": "#F1F5F9",
+      "--card": "#FFFFFF",
+      "--text": "#1E293B",
+      "--muted": "#64748B",
+      "--accent": "#407899",
+      "--accent-2": "#44D4BE",
+      "--accent-hover": "#44D4BE",
+      "--glow-1": "rgba(68, 212, 190, 0.3)",
+      "--glow-2": "rgba(245, 213, 71, 0.3)",
+      "--glass-bg": "rgba(255, 255, 255, 0.7)",
+      "--glass-border": "rgba(68, 212, 190, 0.4)",
+      "--box-bg": "rgba(255, 255, 255, 0.6)",
+      "--box-border": "rgba(64, 120, 153, 0.3)",
+      "--nav-bg": "rgba(248, 250, 252, 0.95)",
+      "--divider-line": "rgba(0, 0, 0, 0.2)",
+      "--tag-bg": "rgba(68, 212, 190, 0.15)",
+      "--marquee-bg": "rgba(68, 212, 190, 0.1)",
+      "--marquee-border": "rgba(68, 212, 190, 0.3)",
+      "--card-border": "rgba(64, 120, 153, 0.3)",
+      "--shadow-base": "rgba(0, 0, 0, 0.05)",
+      "--shadow-hover": "rgba(68, 212, 190, 0.2)",
+      "--btn-hover-bg": "rgba(255, 255, 255, 0.95)",
+      "--btn-hover-shadow": "rgba(254, 232, 67, 0.2)",
+      "--nav-text-shadow": "rgba(219, 205, 48, 0.3)",
+      "--error-color": "#DB3069",
+      "--error-shadow": "rgba(219, 48, 105, 0.5)",
+      "--scrollbar-bg": "transparent",
+      "--scrollbar-thumb": "rgba(0, 0, 0, 0.15)",
+      "--scrollbar-hover": "rgba(64, 120, 153, 0.4)",
+      "--inline-code-color": "#0f766e",
+      "--inline-code-bg": "rgba(15, 118, 110, 0.08)",
+      "--group-c1": "#b01436",
+      "--c1-text": "#881337",
+      "--group-c2": "#08865e",
+      "--c2-text": "#064E3B",
+      "--group-c3": "#cb4b05",
+      "--c3-text": "#7C2D12",
+      "--group-c4": "#5420af",
+      "--c4-text": "#4C1D95",
+      "--group-c5": "#006a9f",
+      "--c5-text": "#082F49",
+      "--cursor-link": "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23@error-color-hex@' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='transform: rotate(-15deg); filter: drop-shadow(0 0 4px rgba(255, 77, 121, 0.5));'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E\") 6 6, pointer"
+    }
+  },
+  "status": {
+    "expire_days": 14,
+    "expirable_tags": [
+      "NEW",
+      "UPDATED",
+      "LATEST",
+      "FEATURE"
+    ],
+    "groups": [
+      [
+        "MAJOR",
+        "HOTFIX",
+        "LATEST",
+        "FEATURE",
+        "NEW",
+        "UPDATED",
+        "REFACTOR",
+        "PATCH",
+        "STABLE",
+        "ARCHIVED"
+      ],
+      [
+        "WIP"
+      ],
+      [
+        "OC"
+      ],
+      [
+        "FANART"
+      ],
+      [
+        "DEV"
+      ]
+    ],
+    "tags": {
+      "NEW": {
+        "color": "var(--error-color)",
+        "shadow": "var(--error-shadow)"
+      },
+      "UPDATED": {
+        "color": "var(--accent)",
+        "shadow": "rgba(64, 120, 153, 0.4)"
+      },
+      "WIP": {
+        "color": "#F59E0B",
+        "shadow": "rgba(245, 158, 11, 0.4)"
+      },
+      "ARCHIVED": {
+        "color": "var(--muted)",
+        "shadow": "transparent"
+      },
+      "OC": {
+        "color": "#A855F7",
+        "shadow": "rgba(168, 85, 247, 0.4)"
+      },
+      "FANART": {
+        "color": "#eb4d9c",
+        "shadow": "rgba(236, 72, 153, 0.4)"
+      },
+      "MAJOR": {
+        "color": "#E11D48",
+        "shadow": "rgba(225, 29, 72, 0.6)"
+      },
+      "HOTFIX": {
+        "color": "#FF5722",
+        "shadow": "rgba(255, 87, 34, 0.6)"
+      },
+      "FEATURE": {
+        "color": "#10B981",
+        "shadow": "rgba(16, 185, 129, 0.5)"
+      },
+      "DEV": {
+        "color": "#3B82F6",
+        "shadow": "rgba(59, 130, 246, 0.5)"
+      },
+      "REFACTOR": {
+        "color": "#6366F1",
+        "shadow": "rgba(99, 102, 241, 0.5)"
+      },
+      "PATCH": {
+        "color": "var(--accent)",
+        "shadow": "rgba(64, 120, 153, 0.4)"
+      },
+      "STABLE": {
+        "color": "#06B6D4",
+        "shadow": "rgba(6, 182, 212, 0.5)"
+      }
+    },
+    "color_aliases": {
+      "LATEST": "NEW"
+    },
+    "discord_aliases": {
+      "BUG": "HOTFIX"
+    },
+    "discord_default_color": "#44D4BE",
+    "metadata_flag_tags": [
+      "NEW",
+      "UPDATED",
+      "WIP",
+      "ARCHIVED"
+    ]
+  },
+  "sensitive_templates": {
+    "DEFAULT": {
+      "title": "內容警告 (Content Warning)",
+      "desc": "此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。",
+      "btn_text": "我已了解並前往",
+      "color": "var(--error-color)"
+    },
+    "MAIN": {
+      "title": "內容提示 (Content Notice)",
+      "desc": "建議先閱讀前篇，以獲得較完整的體驗。<br>點擊前往即表示您已了解。",
+      "btn_text": "我已了解並前往",
+      "color": "var(--group-c5)"
+    },
+    "INSIDE": {
+      "title": "風險提示 (Risk Warning)",
+      "desc": "此條目含有警示內容，具高度風險，閱讀後所產生之後果概自行承受。<br>點擊前往即表示您已接受風險。",
+      "btn_text": "我已接受並前往",
+      "color": "var(--group-c4)"
+    }
+  },
+  "resources": {
+    "kotoba": "content/kotoba.md",
+    "quotes": "content/quotes.md",
+    "credits": "content/credits.md",
+    "copyright": "content/COPYRIGHT.md",
+    "mermaid_styles": "config/mermaid_styles.txt"
+  }
+}

@@ -1,4 +1,4 @@
 @echo off
 cd /d "%~dp0..\.."
-python "tools\tracker\tracker.py" --web %*
+python -m tools.tracker.tracker --web %*
 if errorlevel 1 pause

@@ -12,10 +12,16 @@ import re
 import sys
 from datetime import datetime
 
-from tracker_common import JsonFieldTracker
+# Preserve direct script execution as well as python -m.
+if not __package__:
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+from tools.tracker.tracker_common import JsonFieldTracker
 
-PROJECTS_DIR = 'projects'
-OUTPUT_FILE = './tools/tracker/reports/hidden_dashboard.html'
+from tools.common.paths import ROOT_DIR
+PROJECTS_DIR = str(ROOT_DIR / "projects")
+OUTPUT_FILE = str(ROOT_DIR / "tools/tracker/reports/hidden_dashboard.html")
 RE_DATE = re.compile(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
 HIDDEN_ALIASES = ('hidden', 'HIDDEN', 'is_hidden')
 

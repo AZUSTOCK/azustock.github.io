@@ -19,9 +19,12 @@ import uuid
 import webbrowser
 
 HERE = Path(__file__).resolve().parent
-if str(HERE) not in sys.path:
-    sys.path.insert(0, str(HERE))
-import tracker_common as common
+# Preserve direct script execution as well as python -m.
+if not __package__:
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+from tools.tracker import tracker_common as common
 
 ENGINE_LOCK = threading.RLock()
 EDITABLE = {'.json', '.md', '.markdown', '.txt'}
@@ -89,7 +92,7 @@ class TrackerEngine:
             dict(name='hidden', label='hidden · 限時隱藏', default_value=True),
             dict(name='pinned', label='pinned · 置頂項目', default_value=True),
         )
-        self.modules = {spec['slug']: importlib.import_module('track_' + spec['slug'])
+        self.modules = {spec['slug']: importlib.import_module('tools.tracker.track_' + spec['slug'])
                         for spec in self.tool_specs}
         self.reports = {}
         self.pending = {}

@@ -1,63 +1,109 @@
 /* ================================================================== */
 /* ⚙️ 網站核心設定區 (SITE CONFIGURATION)                               */
-/* 每次發布新版本或修改全域狀態時，請只在這裡修改！                         */
+/* 共用設定請修改 tools/config/site_config.json；版號由 logs/ 同步。 */
 /* ================================================================== */
+// BEGIN GENERATED SITE CONFIG
 const CONFIG = {
-    // 🚩 發布前必改
-    VERSION: "U1.7.2.1",          // 目前系統版本號
-
-    // 🎨 介面與主題設定
-    DEFAULT_THEME: "dark",     // 預設主題 (light / dark)
-    
-    // ✨ 跑馬燈速度設定：跑完一整圈需要的「秒數」(數字越大跑得越慢！)
+    VERSION: "U1.7.2.1",
+    DEFAULT_THEME: "dark",
     MARQUEE_SPEED: 120,
-
-    // ✨ 狀態標籤過期天數 (支援 NEW, UPDATED 等狀態)
-    TAG_EXPIRE_DAYS: 14,
-
-    // 🔗 資源路徑
     FAVICON_LIGHT: "./assets/OG_dark.png",
     FAVICON_DARK: "./assets/OG_light.png",
     DATA_SOURCE: "./all_projects.json",
-    
-    // 🔗 Header 社群與分享圖示連結（修改網址或順序即可更新）
-    SOCIAL_LINKS: [
-        { name: "GitHub",   url: "https://github.com/AZUSTOCK",          icon: "socialGithub" },
-        { name: "YouTube",  url: "https://youtube.com/@azustock", icon: "socialYoutube" },
-        { name: "piapro",   url: "https://piapro.jp/azustock",        icon: "socialPiapro" },
-        { name: "pixiv",    url: "https://www.pixiv.net/users/131123043",   icon: "socialPixiv" },
-        { name: "Twitter",  url: "https://x.com/azustock_phy",            icon: "socialX" },
-        { name: "Discord",  url: "",                                     icon: "socialDiscord" },
-        { name: "分享本站", copyUrl: "https://azustock.com/",       icon: "socialShare" }
+    DEBUG_FETCH_DELAY: 0,
+    TAG_EXPIRE_DAYS: 14,
+    EXPIRABLE_TAGS: [
+        "NEW",
+        "UPDATED",
+        "LATEST",
+        "FEATURE"
     ],
-
-    // 🐛 測試與除錯設定
-    DEBUG_FETCH_DELAY: 0  // [測試專用] 強制延遲網路請求 (毫秒)。設定 0 即關閉延遲，正式發布請設為 0！
+    STATUS_FLAG_KEYS: [
+        "is_new",
+        "is_updated",
+        "is_wip",
+        "is_archived"
+    ],
+    SOCIAL_LINKS: [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/AZUSTOCK",
+            "icon": "socialGithub"
+        },
+        {
+            "name": "YouTube",
+            "url": "https://youtube.com/@azustock",
+            "icon": "socialYoutube"
+        },
+        {
+            "name": "piapro",
+            "url": "https://piapro.jp/azustock",
+            "icon": "socialPiapro"
+        },
+        {
+            "name": "pixiv",
+            "url": "https://www.pixiv.net/users/131123043",
+            "icon": "socialPixiv"
+        },
+        {
+            "name": "Twitter",
+            "url": "https://x.com/azustock_phy",
+            "icon": "socialX"
+        },
+        {
+            "name": "Discord",
+            "url": "",
+            "icon": "socialDiscord"
+        },
+        {
+            "name": "分享本站",
+            "icon": "socialShare",
+            "copyUrl": "https://azustock.com/"
+        }
+    ],
+    RESOURCES: {
+        "kotoba": "content/kotoba.md",
+        "quotes": "content/quotes.md",
+        "credits": "content/credits.md",
+        "copyright": "content/COPYRIGHT.md",
+        "mermaid_styles": "config/mermaid_styles.txt"
+    },
+    LEGACY_HASH_KEYS: {
+        "kotoba": "kotoba.md",
+        "quotes": "quotes.md",
+        "credits": "credits.md",
+        "copyright": "COPYRIGHT.md",
+        "mermaid_styles": "mermaid_styles.txt",
+        "changelogs": "changelogs.json"
+    }
 };
+// END GENERATED SITE CONFIG
 
 // ==========================================
 // ✨ 內容警告模板設定區 (Sensitive Templates)
 // ==========================================
+// BEGIN GENERATED SENSITIVE TEMPLATES
 window.SENSITIVE_TEMPLATES = {
     "DEFAULT": {
-        title: "內容警告 (Content Warning)",
-        desc: "此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。",
-        btn_text: "我已了解並前往",
-        color: "var(--error-color)"
+        "title": "內容警告 (Content Warning)",
+        "desc": "此條目包括但不限於：負面、一時興起、莫名其妙、取景框。<br>點擊前往即表示您已了解。",
+        "btn_text": "我已了解並前往",
+        "color": "var(--error-color)"
     },
     "MAIN": {
-        title: "內容提示 (Content Notice)",
-        desc: "建議先閱讀前篇，以獲得較完整的體驗。<br>點擊前往即表示您已了解。",
-        btn_text: "我已了解並前往",
-        color: "var(--group-c5)"
+        "title": "內容提示 (Content Notice)",
+        "desc": "建議先閱讀前篇，以獲得較完整的體驗。<br>點擊前往即表示您已了解。",
+        "btn_text": "我已了解並前往",
+        "color": "var(--group-c5)"
     },
     "INSIDE": {
-        title: "風險提示 (Risk Warning)",
-        desc: "此條目含有警示內容，具高度風險，閱讀後所產生之後果概自行承受。<br>點擊前往即表示您已接受風險。",
-        btn_text: "我已接受並前往",
-        color: "var(--group-c4)"
+        "title": "風險提示 (Risk Warning)",
+        "desc": "此條目含有警示內容，具高度風險，閱讀後所產生之後果概自行承受。<br>點擊前往即表示您已接受風險。",
+        "btn_text": "我已接受並前往",
+        "color": "var(--group-c4)"
     }
 };
+// END GENERATED SENSITIVE TEMPLATES
 
 // ==========================================
 // ✨ 全域共用 SVG 圖標 (集中管理，消滅重複代碼)
@@ -156,13 +202,34 @@ const GLOBAL_SVGS = {
 // 1. 內層陣列代表「互斥群組」，排越前面的優先級越高 (例如 UPDATED 贏過 NEW)
 // 2. 外層陣列代表「全域排序」，排越前面的 Tag 會顯示在卡片越左邊
 // 將 MAJOR 與 HOTFIX 放在最前面，確保它們不會被其他標籤蓋掉
+// BEGIN GENERATED STATUS GROUPS
 window.STATUS_LIST = [
-    ['MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED', 'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED'], 
-    ['WIP'], 
-    ['OC'],
-    ['FANART'],
-    ['DEV']
+    [
+        "MAJOR",
+        "HOTFIX",
+        "LATEST",
+        "FEATURE",
+        "NEW",
+        "UPDATED",
+        "REFACTOR",
+        "PATCH",
+        "STABLE",
+        "ARCHIVED"
+    ],
+    [
+        "WIP"
+    ],
+    [
+        "OC"
+    ],
+    [
+        "FANART"
+    ],
+    [
+        "DEV"
+    ]
 ];
+// END GENERATED STATUS GROUPS
 
 /* ========================================================================== */
 /* 2. 基礎工具、快取與儲存 (Core Utilities, Storage & Fetch)                          */
@@ -221,7 +288,13 @@ window.readDataVersions = function() {
     }
 };
 window.getResVersion = function(key) {
-    return window.readDataVersions()[key] || CONFIG.VERSION;
+    const versions = window.readDataVersions();
+    // New IDs take priority, including an explicit empty value for a removed resource.
+    const stable = Object.keys(CONFIG.LEGACY_HASH_KEYS).find(id => CONFIG.LEGACY_HASH_KEYS[id] === key) || key;
+    const legacy = CONFIG.LEGACY_HASH_KEYS[stable];
+    const value = Object.prototype.hasOwnProperty.call(versions, stable)
+        ? versions[stable] : (legacy ? versions[legacy] : undefined);
+    return (typeof value === 'string' && value) || CONFIG.VERSION;
 };
 
 // ✨ 共用輔助函式（由重複邏輯提取）
@@ -537,43 +610,51 @@ window.compareVersions = function(v1, v2) {
 // ==========================================
 // ✨ 獨立檔案快取系統 (Singleton Pattern + Hash)
 // ==========================================
-window.loadDelimitedMarkdown = async function(filename, cacheKey) {
-    if (window[cacheKey] !== null) return window[cacheKey];
-    try {
-        const res = await fetch(`./${filename}?v=${window.getResVersion(filename)}`);
-        if (res.ok) {
-            const text = await res.text();
-            window[cacheKey] = text.split('---').map(n => n.trim()).filter(n => n.length > 0);
-        } else {
-            window[cacheKey] = [];
+// Cache successful responses by resource ID and current Hash; deduplicate concurrent requests.
+const resourceCache = new Map();
+window.loadSharedResource = async function(id, cacheKey, transform, fallback) {
+    const version = window.getResVersion(id);
+    const existing = resourceCache.get(id);
+    if (existing?.version === version) return existing.promise;
+    const entry = { version, promise: null };
+    entry.promise = Promise.resolve().then(async () => {
+        let result = fallback;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+            const res = await fetch(`./${CONFIG.RESOURCES[id]}?v=${encodeURIComponent(version)}`, { signal: controller.signal });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            result = transform(await res.text());
+        } catch (error) {
+            // Failed reads are retryable on the next call.
+            if (resourceCache.get(id) === entry) resourceCache.delete(id);
+        } finally {
+            clearTimeout(timeout);
         }
-    } catch (err) { window[cacheKey] = []; }
-    return window[cacheKey];
+        // A late response must not overwrite a newer resource version.
+        if (window.getResVersion(id) !== version) {
+            return window.loadSharedResource(id, cacheKey, transform, fallback);
+        }
+        window[cacheKey] = result;
+        return result;
+    });
+    resourceCache.set(id, entry);
+    return entry.promise;
+};
+
+window.loadDelimitedMarkdown = function(id, cacheKey) {
+    return window.loadSharedResource(id, cacheKey,
+        text => text.split('---').map(n => n.trim()).filter(n => n.length > 0), []);
 };
 
 window.cachedKotobaList = null;
-window.getKotobaList = async function() {
-    return window.loadDelimitedMarkdown('kotoba.md', 'cachedKotobaList');
-};
+window.getKotobaList = () => window.loadDelimitedMarkdown('kotoba', 'cachedKotobaList');
 
 window.cachedMermaidStyles = null;
-window.getMermaidStyles = async function() {
-    if (window.cachedMermaidStyles !== null) return window.cachedMermaidStyles;
-    try {
-        const res = await fetch(`./mermaid_styles.txt?v=${window.getResVersion('mermaid_styles.txt')}`);
-        if (res.ok) {
-            window.cachedMermaidStyles = await res.text();
-        } else {
-            window.cachedMermaidStyles = '';
-        }
-    } catch (err) { window.cachedMermaidStyles = ''; }
-    return window.cachedMermaidStyles;
-};
+window.getMermaidStyles = () => window.loadSharedResource('mermaid_styles', 'cachedMermaidStyles', text => text, '');
 
 window.cachedQuotesList = null;
-window.getQuotesList = async function() {
-    return window.loadDelimitedMarkdown('quotes.md', 'cachedQuotesList');
-};
+window.getQuotesList = () => window.loadDelimitedMarkdown('quotes', 'cachedQuotesList');
 
 // ==========================================
 // ✨ 全域共用輔助函式 (Global Helpers)
@@ -808,15 +889,37 @@ window.revealUnlockedSecretNodes = function(root = document) {
     });
 };
 
-// 6. 計算專案在當前權限下的可見文章數 (取代原本散落 5 處的 filter)
+// 同一可見性規則供目錄、數量、卡片及跑馬燈使用。Override 不會略過金鑰。
+window.isListingVisible = function(item) {
+    return !!item && (window.isSystemOverrideActive() || !item.is_hidden)
+        && !(window.isItemLocked(item) && (item.lock_mode || 'visible') === 'hidden');
+};
+
 window.getVisibleArticleCount = function(proj) {
-    if (!proj || !Array.isArray(proj.articles)) return 0;
-    const isUnlockedSys = document.body.classList.contains('system-override-active');
-    return proj.articles.filter(art => {
-        const artLocked = art.required_key && !window.isSecretUnlocked(art.required_key);
-        if (artLocked && (art.lock_mode || 'visible') === 'hidden') return false;
-        return isUnlockedSys || !art.is_hidden;
-    }).length;
+    return Array.isArray(proj?.articles) ? proj.articles.filter(window.isListingVisible).length : 0;
+};
+
+// 來源 tags 保持不變；每次依當前可見文章重新計算互斥群組。
+window.getProjectDisplayTags = function(proj) {
+    const groups = window.STATUS_LIST;
+    const statuses = new Set(groups.flat());
+    const own = proj.tags || [];
+    const visibleArticles = (proj.articles || []).filter(window.isListingVisible);
+    const hasStatus = (item, status) => item[`is_${status.toLowerCase()}`] === true || (item.tags || []).includes(status);
+    const active = status => hasStatus(proj, status)
+        || (status !== 'NEW' && visibleArticles.some(art => hasStatus(art, status)))
+        || (status === 'UPDATED' && !proj.is_new && visibleArticles.some(art => ['NEW', 'UPDATED', 'LATEST'].some(tag => hasStatus(art, tag))));
+    return [...groups.map(group => group.find(active)).filter(Boolean), ...own.filter(tag => !statuses.has(tag))];
+};
+
+// Revision also invalidates cached indices that are not currently open.
+window._listingRevision = 0;
+window.scheduleListingRefresh = function() {
+    window._listingRevision++;
+    if (!window._keysRefreshFrame) window._keysRefreshFrame = requestAnimationFrame(() => {
+        window._keysRefreshFrame = 0;
+        window.refreshHomeKeysUI();
+    });
 };
 
 // ==========================================
@@ -880,8 +983,7 @@ window.unlockSecret = function(rawKey) {
         return { status: 'ALREADY_HAVE', baseId, currentCount, reqCount, hasExplicitTotal, fragIndex, isRange, rangeStart, rangeEnd, addedCount: 0 };
     }
     
-    window._keysUnlockedSinceLastIndex = true;
-    setTimeout(() => { if (window.refreshHomeKeysUI) window.refreshHomeKeysUI(); }, 500);
+    window.scheduleListingRefresh();
     
     if (fragIndex) {
         const isComplete = hasExplicitTotal && currentCount >= reqCount;
@@ -1163,7 +1265,7 @@ window.findFirstUnreadArticleForMain = function(projectId, currentArticleIndex =
             for (const groupId of Object.keys(proj.groups)) {
                 ordered.push(...indexed.filter(item => item.art.group === groupId));
             }
-            ordered.push(...indexed.filter(item => !item.art.group));
+            ordered.push(...indexed.filter(item => !Object.prototype.hasOwnProperty.call(proj.groups, item.art.group)));
             return ordered;
         }
         return indexed;
@@ -1861,24 +1963,42 @@ window.getSystemErrorHtml = function(title, msg) {
 // ==========================================
 // ✨ 8. 網格置中捲動演算法 (Grid Item Centering Engine)
 // ==========================================
+// 只改變指定容器的水平捲動位置，避免 scrollIntoView 捲動外層 Modal 或頁面。
+window.getHorizontalScrollGeometry = function(container) {
+    const rect = container.getBoundingClientRect();
+    const scale = rect.width / (container.offsetWidth || container.clientWidth || 1) || 1;
+    const center = rect.left + (container.clientLeft + container.clientWidth / 2) * scale;
+    return { scale, center, max: Math.max(0, container.scrollWidth - container.clientWidth) };
+};
+
+window.centerHorizontalItem = function(container, item, geometry = window.getHorizontalScrollGeometry(container)) {
+    if (!item) return;
+    const rect = item.getBoundingClientRect();
+    const left = container.scrollLeft + (rect.left + rect.width / 2 - geometry.center) / geometry.scale;
+    container.scrollTo({ left: Math.max(0, Math.min(geometry.max, left)), behavior: 'smooth' });
+};
+
 window.scrollContainerByItem = function(container, itemSelector, direction) {
+    if (!container || !direction) return;
     const items = Array.from(container.querySelectorAll(itemSelector)).filter(el => el.offsetWidth > 0);
-    if (!items.length) return;
+    const geometry = window.getHorizontalScrollGeometry(container);
+    if (!items.length || geometry.max <= 0) return;
 
-    const containerCenter = container.getBoundingClientRect().left + container.clientWidth / 2;
-    let targetItem = null;
-
-    if (direction > 0) { // 向右尋找
-        targetItem = items.find(el => (el.getBoundingClientRect().left + el.clientWidth / 2) > containerCenter + 20);
-    } else { // 向左尋找
-        for (let i = items.length - 1; i >= 0; i--) {
-            if ((items[i].getBoundingClientRect().left + items[i].clientWidth / 2) < containerCenter - 20) {
-                targetItem = items[i];
-                break;
-            }
-        }
+    // 依水平座標排序，讓多列畫廊沿欄位而非 DOM 順序移動。
+    const centers = items.map(item => {
+        const rect = item.getBoundingClientRect();
+        return { item, center: rect.left + rect.width / 2 };
+    }).sort((a, b) => a.center - b.center);
+    const tolerance = 20 * geometry.scale;
+    const target = direction > 0
+        ? centers.find(entry => entry.center > geometry.center + tolerance)
+        : centers.reverse().find(entry => entry.center < geometry.center - tolerance);
+    if (target) {
+        window.centerHorizontalItem(container, target.item, geometry);
+    } else {
+        // 最後一欄已經接近中心時，仍可到達水平捲軸端點。
+        container.scrollTo({ left: direction > 0 ? geometry.max : 0, behavior: 'smooth' });
     }
-    if (targetItem) targetItem.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 };
 
 // ==========================================
@@ -1994,6 +2114,47 @@ window.initScrollHints = function(container, hintLeft, hintRight, beforeMeasure 
     if (container.closest('#view-article')) window.registerArticleObserver({ disconnect: cleanup });
     schedule(true);
     return cleanup;
+};
+
+// Markdown 圖片 renderer 會輸出 figure；瀏覽器修復 <p><figure> 時產生的空 p
+// 不應成為 Grid 的額外欄位。僅清理畫廊直屬的無屬性空段落，保留有效內容。
+window.normalizeGalleryItems = function(gallery) {
+    Array.from(gallery.children).forEach(child => {
+        if (child.tagName === 'P' && !child.attributes.length &&
+            !child.children.length && !child.textContent.trim()) child.remove();
+    });
+};
+
+window.initArticleGalleries = function(activeView) {
+    if (!activeView) return;
+    activeView.querySelectorAll('.gallery').forEach(gallery => {
+        window.normalizeGalleryItems(gallery);
+        if (gallery.parentElement?.classList.contains('gallery-scroll-wrapper')) return;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'scroll-wrapper gallery-scroll-wrapper';
+        gallery.parentNode.insertBefore(wrapper, gallery);
+
+        const hintLeft = document.createElement('div');
+        hintLeft.className = 'scroll-hint hint-left';
+        const hintRight = document.createElement('div');
+        hintRight.className = 'scroll-hint hint-right';
+        wrapper.append(hintLeft, gallery, hintRight);
+
+        const manualRows = parseInt(gallery.style.getPropertyValue('--g-rows'), 10) > 0;
+        window.initScrollHints(gallery, hintLeft, hintRight, () => {
+            const figures = Array.from(gallery.children).filter(el => el.tagName === 'FIGURE');
+            if (!figures.length || gallery.clientWidth <= 0) return;
+            const style = getComputedStyle(gallery);
+            const gap = parseFloat(style.columnGap) || 0;
+            const available = gallery.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+            const required = figures.reduce((sum, fig) => sum + fig.offsetWidth, 0) + gap * (figures.length - 1);
+            // 手動列數一律使用原始 Grid；自動模式沿用 1.5 倍門檻。
+            const shouldWrap = !manualRows && figures.length > 1 && available > 0 && required >= available * 1.5;
+            gallery.dataset.wrapped = String(shouldWrap);
+        });
+        hintRight.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', 1));
+        hintLeft.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', -1));
+    });
 };
 
 // ==========================================
@@ -2451,18 +2612,20 @@ window.openLightbox = function(btn, event) {
 
     // 相簿圖片陣列讀取邏輯
     if (gallery) {
-        const figures = Array.from(gallery.querySelectorAll('figure'));
+        const figures = Array.from(gallery.querySelectorAll('figure')).filter(fig => {
+            const img = fig.querySelector('img');
+            return img?.getAttribute('data-full') || img?.src;
+        });
         window.lightboxState.images = figures.map(fig => {
             const img = fig.querySelector('img');
             return {
-                // ✨ 優先拿 data-full，沒有才退回 src
-                src: img?.getAttribute('data-full') || img?.src,
-                caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim()
-            }
-        }).filter(item => item.src);
-        
-        const targetFullSrc = targetImg.getAttribute('data-full') || targetImg.src;
-        window.lightboxState.currentIndex = window.lightboxState.images.findIndex(item => item.src === targetFullSrc);
+                src: img.getAttribute('data-full') || img.src,
+                caption: fig.querySelector('figcaption')?.innerText.replace('查看大圖', '').trim(),
+                figure: fig
+            };
+        });
+        // 同一張圖可以在畫廊出現多次；用實際 figure 定位，避免跳回第一張。
+        window.lightboxState.currentIndex = Math.max(0, figures.indexOf(container));
     } else {
         window.lightboxState.images = [{
             src: targetImg.getAttribute('data-full') || targetImg.src, // ✨ 優先拿 data-full
@@ -2694,11 +2857,9 @@ window.closeLightbox = function() {
     const state = window.lightboxState;
     if (state && !state.isDomMode && state.activeGallery) {
         const gallery = state.activeGallery;
-        const figures = gallery.querySelectorAll('figure');
-        const targetFig = figures[state.currentIndex];
+        const targetFig = state.images[state.currentIndex]?.figure;
         if (targetFig && gallery.scrollWidth > gallery.clientWidth) {
-            const targetLeft = targetFig.offsetLeft - (gallery.clientWidth / 2) + (targetFig.clientWidth / 2);
-            gallery.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+            window.centerHorizontalItem(gallery, targetFig);
         }
     }
 
@@ -4174,9 +4335,7 @@ function parseHighlightMeta(rawBadge) {
         const dt = new Date(y, m - 1, d);
         if (dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d) {
             dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-            const expireDays = (typeof CONFIG !== 'undefined' && Number(CONFIG.TAG_EXPIRE_DAYS) > 0)
-                ? Number(CONFIG.TAG_EXPIRE_DAYS)
-                : 14;
+            const expireDays = CONFIG.TAG_EXPIRE_DAYS;
             const expireMs = expireDays * 24 * 60 * 60 * 1000;
             if ((Date.now() - dt.getTime()) > expireMs) {
                 isExpired = true;
@@ -4841,6 +5000,8 @@ window.syncProjectCardUI = function(card, proj) {
     const descP = card.querySelector('.card-desc-text');
     if (descP) descP.innerHTML = window.parseDynamicText(proj.description, 'CARD_DESC');
 
+    window.syncProjectCardTags(card, proj);
+
     const actionBtn = card.querySelector('.card-action-btn');
     if (isLocked) {
         card.onclick = (e) => {
@@ -4924,12 +5085,122 @@ window.syncCardMetaLayout = function(root = document) {
     });
 };
 
+window.syncProjectCardTags = function(card, proj) {
+    const tags = window.getProjectDisplayTags(proj);
+    const container = card.querySelector('.tags-container');
+    if (!container) return;
+    const signature = JSON.stringify(tags);
+    if (card.dataset.tagSignature === signature) return;
+    card.dataset.tagSignature = signature;
+    card.setAttribute('data-tags', tags.join(','));
+    const statuses = new Set(window.STATUS_LIST.flat());
+    container.replaceChildren(...tags.map(tag => {
+        const el = document.createElement('span');
+        el.className = statuses.has(tag) ? 'tag status-tag' : 'tag';
+        if (statuses.has(tag)) el.dataset.status = tag;
+        el.dataset.tag = tag;
+        el.textContent = tag;
+        el.onclick = event => window.filterByTag(tag, event, el);
+        return el;
+    }));
+};
+
+window.getVisibleMarqueeTags = function() {
+    return [...new Set(window.siteProjects.filter(window.isListingVisible).flatMap(window.getProjectDisplayTags))];
+};
+
+window.createTickerTag = function(tag, index) {
+    const wrapper = document.createElement('span');
+    wrapper.className = 'marquee-tag-wrapper';
+    const ticker = document.createElement('span');
+    ticker.className = 'clickable-ticker-tag';
+    ticker.dataset.tag = tag;
+    if (window.STATUS_LIST.flat().includes(tag)) ticker.dataset.status = tag;
+    ticker.onclick = event => window.filterByTag(tag, event);
+    const name = document.createElement('span');
+    name.className = 'ticker-name';
+    name.textContent = tag;
+    const change = document.createElement('span');
+    const up = index % 2 !== 0;
+    change.className = up ? 'stock-up' : 'stock-down';
+    change.textContent = `${up ? '▲ +' : '▼ -'}${(Math.random() * 3 + 0.1).toFixed(2)}%`;
+    ticker.append(name, ' ', change);
+    const separator = document.createElement('span');
+    separator.style.cssText = 'color: var(--muted); opacity: 0.5; margin: 0 10rem;';
+    separator.textContent = '|';
+    wrapper.append(ticker, separator);
+    return wrapper;
+};
+
+// Preserve the current Kotoba and existing ticker order/quotes. Both tracks stay in sync.
+window.syncVisibleMarqueeTags = function() {
+    const tracks = [...document.querySelectorAll('.marquee-content')];
+    if (!tracks.length) return false;
+    const wanted = new Set(window.getVisibleMarqueeTags());
+    const current = [...tracks[0].querySelectorAll('.clickable-ticker-tag')].map(el => el.dataset.tag);
+    if (current.length === wanted.size && current.every(tag => wanted.has(tag))) return false;
+    const old = new Set(current);
+    const added = [...wanted].filter(tag => !old.has(tag));
+    const additions = added.map((tag, i) => window.createTickerTag(tag, current.length + i));
+    tracks.forEach(track => {
+        if (track.marqueePlayer) { track.marqueePlayer.cancel(); track.marqueePlayer = null; }
+        track.style.animation = ''; track.style.transform = ''; track.style.transition = ''; track.style.filter = '';
+        for (const ticker of track.querySelectorAll('.clickable-ticker-tag')) {
+            if (!wanted.has(ticker.dataset.tag)) ticker.closest('.marquee-tag-wrapper').remove();
+        }
+        additions.forEach(template => {
+            const node = template.cloneNode(true);
+            const ticker = node.querySelector('.clickable-ticker-tag');
+            ticker.onclick = event => window.filterByTag(ticker.dataset.tag, event);
+            node.classList.add('ticker-unlock-flash');
+            track.append(node);
+            node.addEventListener('animationend', () => node.classList.remove('ticker-unlock-flash'), { once: true });
+        });
+    });
+    return true;
+};
+
+// Keep the active filter valid without toggling it off or jumping the page.
+window.syncActiveTagFilter = function() {
+    const tag = window.currentActiveTag;
+    if (!tag) return;
+    const previous = window.highlightedCards[window.currentCardIndex];
+    const matches = [];
+    document.querySelectorAll('[data-tag]').forEach(el => el.classList.toggle('active-tag', el.dataset.tag === tag));
+    document.querySelectorAll('.card[data-project-id]').forEach(card => {
+        const match = window.cardMatchesTag(card, tag);
+        card.classList.toggle('highlighted', match);
+        if (!match) card.classList.remove('jump-bump');
+        if (match) matches.push(card);
+    });
+    window.highlightedCards = matches;
+    window.currentCardIndex = Math.max(0, matches.indexOf(previous));
+    if (!matches.length) window.clearFilter();
+    else window.updateFilterToast();
+};
+
+window.cardMatchesTag = function(card, tag) {
+    const proj = window.siteProjects.find(p => p.id === card.dataset.projectId);
+    return !!proj && window.isListingVisible(proj) && window.getProjectDisplayTags(proj).includes(tag);
+};
+
 window.refreshHomeKeysUI = function() {
-    document.querySelectorAll('.card').forEach(card => {
-        const pid = card.getAttribute('data-project-id');
-        const proj = window.siteProjects.find(p => p.id === pid);
+    document.querySelectorAll('.card[data-project-id]').forEach(card => {
+        const proj = window.siteProjects.find(p => p.id === card.dataset.projectId);
         if (proj) window.syncProjectCardUI(card, proj);
     });
+    const marqueeChanged = window.syncVisibleMarqueeTags();
+    window.syncActiveTagFilter();
+    if (marqueeChanged && (window.currentActiveTag || window.isKotobaActive)) {
+        const track = document.querySelector('.marquee-content');
+        const target = window.isKotobaActive ? track?.querySelector('.kotoba-whisper')
+            : [...(track?.querySelectorAll('.clickable-ticker-tag') || [])].find(el => el.dataset.tag === window.currentActiveTag);
+        if (target && track.offsetWidth > 0) window.centerMarqueeTarget(target, track);
+    }
+    window.revealUnlockedSecretNodes(document);
+    window._refreshOpenProjectIndex?.();
+    document.querySelectorAll('.grid').forEach(el => el.dispatchEvent(new Event('scroll')));
+    return marqueeChanged;
 };
 
 window.focusAndBumpCard = function(targetCard) {
@@ -5130,23 +5401,20 @@ window.filterByTag = function(targetTag, event, clickedElement) {
     
     const firstContent = targetTagEl ? targetTagEl.closest('.marquee-content') : document.querySelector('.marquee-content');
     if (!targetTagEl && firstContent) {
-        targetTagEl = firstContent.querySelector(`.clickable-ticker-tag[data-tag="${targetTag}"]`);
+        targetTagEl = [...firstContent.querySelectorAll('.clickable-ticker-tag')].find(el => el.dataset.tag === targetTag);
     }
     
     if (targetTagEl && firstContent) {
         window.centerMarqueeTarget(targetTagEl, firstContent);
     }
 
-    document.querySelectorAll(`[data-tag="${targetTag}"]`).forEach(t => t.classList.add('active-tag'));
-    document.querySelectorAll('.card').forEach(card => {
-        const tags = card.getAttribute('data-tags');
-        if (tags && tags.includes(targetTag)) { 
-            if (card.classList.contains('key-hidden-card')) return;
-            if (card.classList.contains('sys-hidden-card') && !document.body.classList.contains('system-override-active')) {
-                return;
-            }
-            card.classList.add('highlighted'); 
-            window.highlightedCards.push(card); 
+    document.querySelectorAll('[data-tag]').forEach(t => {
+        if (t.dataset.tag === targetTag) t.classList.add('active-tag');
+    });
+    document.querySelectorAll('.card[data-project-id]').forEach(card => {
+        if (window.cardMatchesTag(card, targetTag)) {
+            card.classList.add('highlighted');
+            window.highlightedCards.push(card);
         }
     });
 
@@ -5197,98 +5465,31 @@ window.scrollToNextCard = function(event) {
 // ✨ 系統權限切換重刷引擎 (System Override UI Updater)
 // ==========================================
 window.refreshUIAfterOverrideToggle = function() {
-    const isUnlocked = document.body.classList.contains('system-override-active');
-
-    const updateCardCounts = () => {
-        document.querySelectorAll('.card[data-project-id]').forEach(card => {
-            const pid = card.getAttribute('data-project-id');
-            const proj = window.siteProjects.find(p => p.id === pid);
-            if (!proj || !proj.articles || proj.articles.length === 0) return;
-
-            const actionBtn = card.querySelector('.card-action-btn');
-            if (actionBtn && actionBtn.innerText.includes('展開系列')) {
-                const count = window.getVisibleArticleCount(proj);
-                const iconWrap = actionBtn.querySelector('.card-action-icon-wrap');
-                actionBtn.innerHTML = '';
-                if (iconWrap) actionBtn.appendChild(iconWrap);
-                actionBtn.insertAdjacentHTML('beforeend', `展開系列 (${count})`);
-            }
-        });
-    };
-
-    if (isUnlocked && window._hasAlreadyUnlockedOnce) {
-        updateCardCounts();
-        return; 
-    }
-
-    if (isUnlocked) window._hasAlreadyUnlockedOnce = true;
-
-    const marquees = document.querySelectorAll('.marquee-content');
-
-    marquees.forEach(m => {
-        if (isUnlocked) m.classList.add('suppress-secrets');
-        m.dataset.startX = window.getMarqueeCurrentX(m); 
-        
-        if (m.marqueePlayer) { m.marqueePlayer.cancel(); m.marqueePlayer = null; }
-        m.style.transition = 'none';
-        m.style.animation = 'none';
-
-        m.classList.remove('suppress-secrets');
-        m.classList.add('force-show-secrets');
-    });
-
-    void document.body.offsetWidth;
-
-    marquees.forEach(m => {
-        m.dataset.targetWidth = m.offsetWidth;
-        m.classList.remove('force-show-secrets');
-        if (isUnlocked) m.classList.add('suppress-secrets');
-    });
-
-    setTimeout(() => {
-        window.dispatchEvent(new Event('resize'));
-        document.querySelectorAll('.grid, .gallery').forEach(el => el.dispatchEvent(new Event('scroll')));
-        
-        updateCardCounts();
-
-        if (window.currentActiveTag) {
-            window._pendingActiveTag = window.currentActiveTag;
-            window.currentActiveTag = null; 
-            document.querySelectorAll('.card').forEach(c => c.classList.remove('highlighted', 'jump-bump'));
-            document.querySelectorAll('.active-tag').forEach(t => t.classList.remove('active-tag'));
-        }
-
-        marquees.forEach((m, index) => {
-            const targetWidth = parseFloat(m.dataset.targetWidth) || m.offsetWidth;
-            let startX = parseFloat(m.dataset.startX) || 0;
-            
-            if (startX > 0) startX = 0;
-            if (startX < -targetWidth) startX = startX % targetWidth;
-
-            const distance = Math.abs(-targetWidth - startX);
-            const duration = Math.max(600, Math.min(1600, (distance / targetWidth) * 2000));
-
-            m.marqueePlayer = m.animate([
-                { transform: `translateX(${startX}px)`, filter: 'blur(0px)' },
-                { transform: `translateX(${startX - (distance * 0.5)}px)`, filter: 'blur(3px)' }, 
-                { transform: `translateX(-${targetWidth}px)`, filter: 'blur(0px)' }
+    const tracks = [...document.querySelectorAll('.marquee-content')];
+    const starts = tracks.map(track => window.getMarqueeCurrentX(track));
+    window._listingRevision++;
+    const changed = window.refreshHomeKeysUI();
+    // 保留 Override 的光速注入動畫；不再依賴尚未顯示的機密 DOM 量測。
+    if (changed && window.isSystemOverrideActive() && !window.currentActiveTag && !window.isKotobaActive) {
+        tracks.forEach((track, i) => {
+            const width = track.offsetWidth;
+            if (!width) return;
+            const start = Math.min(0, starts[i]) % width;
+            const distance = Math.abs(-width - start);
+            const duration = Math.max(600, Math.min(1600, distance / width * 2000));
+            track.style.animation = 'none';
+            track.marqueePlayer = track.animate([
+                { transform: `translateX(${start}px)`, filter: 'blur(0px)' },
+                { transform: `translateX(${start - distance * 0.5}px)`, filter: 'blur(3px)' },
+                { transform: `translateX(-${width}px)`, filter: 'blur(0px)' }
             ], { duration, easing: 'ease-in-out' });
-
-            if (isUnlocked) {
-                setTimeout(() => m.classList.remove('suppress-secrets'), duration / 2); 
-            }
-
-            m.marqueePlayer.onfinish = () => {
-                m.style.transform = ''; m.style.filter = ''; m.style.animation = ''; m.marqueePlayer = null;
-                m.classList.remove('suppress-secrets'); 
-                if (index === 0 && window._pendingActiveTag) {
-                    const activeTag = window._pendingActiveTag;
-                    window._pendingActiveTag = null; 
-                    window.filterByTag(activeTag);  
-                }
+            track.marqueePlayer.onfinish = () => {
+                track.style.transform = ''; track.style.filter = ''; track.style.animation = '';
+                track.marqueePlayer = null;
             };
         });
-    }, 50);
+    }
+    window.dispatchEvent(new Event('resize'));
 };
 
 // === 3. JSON 資料載入與卡片動態生成 ===
@@ -5329,9 +5530,10 @@ async function loadProjects() {
             let validTags = [];
             tags.forEach(tag => {
                 const strTag = String(tag).trim(); 
-                const match = strTag.match(/^(NEW|UPDATED|LATEST|FEATURE):\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})$/i);
+                const match = strTag.match(/^([A-Za-z0-9_-]+):\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})$/i);
+                const isExpirable = match && CONFIG.EXPIRABLE_TAGS.includes(match[1].toUpperCase());
                 
-                if (match) {
+                if (isExpirable) {
                     const baseTag = match[1].toUpperCase();
                     const tagDate = new Date(match[2].replace(/-/g, '/')).getTime();
                     if (!isNaN(tagDate) && (nowMs - tagDate <= expireMs)) {
@@ -5344,150 +5546,62 @@ async function loadProjects() {
             return validTags;
         };
 
-        const flatStatusList = window.STATUS_LIST.flat();
-
-        // 往下是您原本的 projects.forEach 區塊 (維持不變)
+        const normalizeItem = item => {
+            [...CONFIG.STATUS_FLAG_KEYS, 'pinned'].forEach(k => {
+                if (item[k] !== undefined) item[k] = evaluateExpiration(item[k], 'status');
+            });
+            if (item.is_hidden !== undefined) item.is_hidden = evaluateExpiration(item.is_hidden, 'hidden');
+            item.tags = parseAndFilterTags(item.tags);
+        };
         projects.forEach(p => {
-            ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
-                if (p[k] !== undefined) p[k] = evaluateExpiration(p[k], 'status');
-            });
-            if (p.is_hidden !== undefined) p.is_hidden = evaluateExpiration(p.is_hidden, 'hidden');
-            p.tags = parseAndFilterTags(p.tags);
-
-            let isAllUpdated = p.is_updated;
-            let isPublicUpdated = p.is_updated;
-
-            if (p.articles && p.articles.length > 0) {
-                p.articles.forEach(art => {
-                    ['is_new', 'is_updated', 'is_wip', 'is_archived', 'pinned'].forEach(k => {
-                        // ✨ 換成新的 evaluateExpiration
-                        if (art[k] !== undefined) art[k] = evaluateExpiration(art[k], 'status');
-                    });
-                    // ✨ 換成新的 evaluateExpiration
-                    if (art.is_hidden !== undefined) art.is_hidden = evaluateExpiration(art.is_hidden, 'hidden');
-                    art.tags = parseAndFilterTags(art.tags);
-                });
-
-                if (!p.is_new) {
-                    p.articles.forEach(art => {
-                        const hasUpdate = art.is_new || art.is_updated || (art.tags && (art.tags.includes('NEW') || art.tags.includes('UPDATED') || art.tags.includes('LATEST')));
-                        if (hasUpdate) {
-                            isAllUpdated = true;
-                            // ✨ 只有當文章是公開時，才認定它是「公開級別」的更新
-                            if (!art.is_hidden) isPublicUpdated = true;
-                        }
-                    });
-                }
-            }
-            p.computed_is_updated = isAllUpdated;
-
-            let allActiveStates = new Set();
-            let publicActiveStates = new Set();
-
-            flatStatusList.forEach(status => {
-                const boolKey = `is_${status.toLowerCase()}`;
-                
-                // 1. 處理專案「自己」的屬性
-                if (p[boolKey] === true || p.tags.includes(status)) {
-                    allActiveStates.add(status);
-                    publicActiveStates.add(status);
-                }
-
-                // 2. 處理「子文章」的狀態冒泡
-                if (status !== 'NEW' && p.articles) {
-                    p.articles.forEach(art => {
-                        if (art[boolKey] === true || (art.tags && art.tags.includes(status))) {
-                            allActiveStates.add(status);
-                            // ✨ 只有公開文章的標籤，才能進入公開狀態池
-                            if (!art.is_hidden) publicActiveStates.add(status);
-                        }
-                    });
-                }
-
-                // 特別處理 UPDATED 的冒泡
-                if (status === 'UPDATED') {
-                    if (isAllUpdated) allActiveStates.add('UPDATED');
-                    if (isPublicUpdated) publicActiveStates.add('UPDATED');
-                }
-            });
-
-            p.tags = p.tags.filter(t => !flatStatusList.includes(t));
-            p.secret_tags = []; // ✨ 準備紀錄哪些標籤是「僅存在於隱藏文章中」的機密標籤
-
-            [...window.STATUS_LIST].reverse().forEach(group => {
-                const winningStatus = group.find(status => allActiveStates.has(status));
-                if (winningStatus) {
-                    p.tags.unshift(winningStatus);
-                    // 如果這個最終贏得的標籤「不在」公開狀態池裡，那它就是機密標籤！
-                    if (!publicActiveStates.has(winningStatus)) {
-                        p.secret_tags.push(winningStatus);
-                    }
-                }
-            });
+            normalizeItem(p);
+            (p.articles || []).forEach(normalizeItem);
         });
-
         window.siteProjects = projects;
+        window._listingRevision++;
 
-        // 1. 處理跑馬燈橫幅
+        // 1. 只渲染當前可見的標籤；初始無標籤時也保留雙軌供之後解鎖使用。
         if (marquee) {
-            // ✨ 1. 建立「公開白名單」：找出所有未隱藏專案中，不屬於機密的標籤
-            const publicTags = projects.filter(p => !p.is_hidden).flatMap(p => p.tags.filter(t => !(p.secret_tags && p.secret_tags.includes(t))) || []);
-            
-            // 2. 找出所有標籤 (用於亂數排列)
-            const allTags = projects.flatMap(p => p.tags || []);
-            const uniqueTags = [...new Set(allTags)].sort(() => Math.random() - 0.5);
-            
-            // 處理言之箱 (這裡依據你的實際命名可能是 getKotobaList 或 getQuotesList)
-            const kotobaList = await window.getKotobaList(); 
-
+            const kotobaList = await window.getKotobaList();
+            const tags = window.getVisibleMarqueeTags().sort(() => Math.random() - 0.5);
+            const nodes = tags.map(window.createTickerTag);
             window.currentKotobaNote = null;
-            if (kotobaList.length > 0) {
-                const randomKotoba = kotobaList[Math.floor(Math.random() * kotobaList.length)];
-                const insertIndex = Math.floor(Math.random() * (uniqueTags.length || 1));
-                window.currentKotobaNote = randomKotoba;
-                const inlineKotoba = randomKotoba.replace(/\n/g, ' ').replace(/> /g, '').trim();
-                uniqueTags.splice(insertIndex, 0, `KOTOBA_NO_BOX:『${inlineKotoba}』`);
+            if (kotobaList.length) {
+                const note = kotobaList[Math.floor(Math.random() * kotobaList.length)];
+                window.currentKotobaNote = note;
+                const wrapper = document.createElement('span');
+                wrapper.className = 'marquee-tag-wrapper';
+                const whisper = document.createElement('span');
+                whisper.className = 'kotoba-whisper';
+                whisper.innerHTML = `『${note.replace(/\n/g, ' ').replace(/> /g, '').trim()}』`;
+                const separator = document.createElement('span');
+                separator.style.cssText = 'color: var(--muted); opacity: 0.5; margin: 0 10rem;';
+                separator.textContent = '|';
+                wrapper.append(whisper, separator);
+                nodes.splice(Math.floor(Math.random() * (nodes.length + 1)), 0, wrapper);
             }
-
-            if (uniqueTags.length > 0) {
-                const stockContent = uniqueTags.map((tag, i) => {
-                    let innerHtml = '';
-                    let isSecret = false; // ✨ 預設為公開
-
-                    if (tag.startsWith('KOTOBA_NO_BOX:')) {
-                        innerHtml = `<span class="kotoba-whisper" onclick="window.centerKotobaTag(event)">${tag.replace('KOTOBA_NO_BOX:', '')}</span>`;
-                    } else {
-                        // ✨ 2. 判斷該標籤是否「僅」存在於機密專案中 (不在公開白名單內)
-                        isSecret = !publicTags.includes(tag);
-                        
-                        const isUp = i % 2 !== 0;
-                        const change = (Math.random() * 3 + 0.1).toFixed(2); 
-                        const arrow = isUp ? '▲' : '▼';
-                        const colorClass = isUp ? 'stock-up' : 'stock-down';
-                        const sign = isUp ? '+' : '-';
-                        const statusAttr = window.STATUS_LIST.flat().includes(tag) ? `data-status="${tag}"` : '';
-                        innerHtml = `<span class="clickable-ticker-tag" data-tag="${tag}" ${statusAttr} onclick="window.filterByTag('${tag}', event)"><span class="ticker-name">${tag}</span> <span class="${colorClass}">${arrow} ${sign}${change}%</span></span>`;
-                    }
-                    
-                    // ✨ 核心排版修復：利用 Flex 置中，並把 3rem 的完美對稱間距交給分隔線！
-                const wrapperClass = isSecret ? 'marquee-tag-wrapper sys-hidden-ticker' : 'marquee-tag-wrapper';
-                return `<span class="${wrapperClass}" style="display: inline-flex; align-items: center;">${innerHtml}<span style="color: var(--muted); opacity: 0.5; margin: 0 10rem;">|</span></span>`;
-                }).join(''); // ✨ 直接串接，不再使用 join 加分隔線
-
-                const container = marquee.parentElement;
-                // ✨ 將串好的 HTML 塞回兩軌道中
-                container.innerHTML = `
-                    <div class="marquee-content">${stockContent}</div>
-                    <div class="marquee-content">${stockContent}</div>
-                `;
-
-                container.onclick = (e) => {
-                    if ((window.currentActiveTag || window.isKotobaActive) && !e.target.closest('.clickable-ticker-tag') && !e.target.closest('.kotoba-whisper')) window.clearFilter();
-                };
-
-                container.onmouseenter = () => document.querySelectorAll('.marquee-content').forEach(m => { if (m.marqueePlayer) m.marqueePlayer.pause(); });
-                container.onmouseleave = () => document.querySelectorAll('.marquee-content').forEach(m => { if (m.marqueePlayer) m.marqueePlayer.play(); });
-            }
+            const container = marquee.parentElement;
+            const tracks = [0, 1].map(() => {
+                const track = document.createElement('div');
+                track.className = 'marquee-content';
+                nodes.forEach(node => {
+                    const copy = node.cloneNode(true);
+                    const ticker = copy.querySelector('.clickable-ticker-tag');
+                    if (ticker) ticker.onclick = event => window.filterByTag(ticker.dataset.tag, event);
+                    const whisper = copy.querySelector('.kotoba-whisper');
+                    if (whisper) whisper.onclick = event => window.centerKotobaTag(event);
+                    track.append(copy);
+                });
+                return track;
+            });
+            container.replaceChildren(...tracks);
+            container.onclick = e => {
+                if ((window.currentActiveTag || window.isKotobaActive) && !e.target.closest('.clickable-ticker-tag') && !e.target.closest('.kotoba-whisper')) window.clearFilter();
+            };
+            container.onmouseenter = () => document.querySelectorAll('.marquee-content').forEach(m => { if (m.marqueePlayer) m.marqueePlayer.pause(); });
+            container.onmouseleave = () => document.querySelectorAll('.marquee-content').forEach(m => { if (m.marqueePlayer) m.marqueePlayer.play(); });
+        } else {
+            window.syncVisibleMarqueeTags();
         }
 
         // 2. 動態生成分類區塊 (批次串接後一次寫入 DOM，避免迴圈內反覆觸發 HTML 解析器)
@@ -5537,7 +5651,6 @@ async function loadProjects() {
         portfolioSections.innerHTML = sectionsHtmlBuffer;
 
         // 3. 填入專案卡片
-        const flatList = window.STATUS_LIST.flat();
         projects.forEach(data => {
             const targetGrid = document.getElementById(`${data.category}-grid`); 
             if (!targetGrid) return;
@@ -5547,15 +5660,6 @@ async function loadProjects() {
             
             card.setAttribute('data-required-key', typeof data.required_key === 'string' ? data.required_key : JSON.stringify(data.required_key || ''));
             card.setAttribute('data-project-id', data.id);
-            card.setAttribute('data-tags', (data.tags || []).join(','));
-            
-            const tagsHTML = (data.tags || []).map(tag => {
-                const isSecretTag = data.secret_tags && data.secret_tags.includes(tag);
-                const secretClass = isSecretTag ? ' sys-hidden-tag' : '';
-                const statusAttr = flatList.includes(tag) ? ` data-status="${tag}" class="tag status-tag${secretClass}"` : ` class="tag${secretClass}"`;
-                return `<span${statusAttr} data-tag="${tag}" onclick="window.filterByTag('${tag}', event, this)">${tag}</span>`;
-            }).join('');
-
             const hasAction = (data.articles && data.articles.length > 0) || data.link;
             if (!hasAction) {
                 card.addEventListener('mouseenter', () => { card.style.cursor = window.currentActiveTag ? 'pointer' : 'default'; });
@@ -5576,7 +5680,7 @@ async function loadProjects() {
                     <div class="card-text"><h3 style="margin-top: 0; margin-bottom: 0.4rem;"></h3>${cardDescHtml}</div>
                     ${cardImageHtml ? `<div class="card-image">${cardImageHtml}</div>` : ''}
                 </div>
-                <div class="tags-container">${tagsHTML}</div>${hasAction ? '<div class="card-action-btn"></div>' : ''}`;
+                <div class="tags-container"></div>${hasAction ? '<div class="card-action-btn"></div>' : ''}`;
             window.syncProjectCardUI(card, data);
             
             targetGrid.appendChild(card);
@@ -5772,12 +5876,11 @@ window.getArticleSequence = function(projectId) {
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !proj.articles) return [];
     
-    const isUnlocked = document.body.classList.contains('system-override-active');
     let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
     
     let displayArticles = proj.articles
         .map((art, idx) => ({ art, idx }))
-        .filter(item => { const artLocked = item.art.required_key && !window.isSecretUnlocked(item.art.required_key); if (artLocked && (item.art.lock_mode || 'visible') === 'hidden') return false; return isUnlocked || !item.art.is_hidden; })
+        .filter(item => window.isListingVisible(item.art));
     
     const pinned = displayArticles.filter(item => item.art.pinned);
     const unpinned = displayArticles.filter(item => !item.art.pinned);
@@ -5789,7 +5892,7 @@ window.getArticleSequence = function(projectId) {
         for (const groupId of Object.keys(proj.groups)) {
             flatSequence.push(...finalArray.filter(item => item.art.group === groupId));
         }
-        flatSequence.push(...finalArray.filter(item => !item.art.group));
+        flatSequence.push(...finalArray.filter(item => !Object.prototype.hasOwnProperty.call(proj.groups, item.art.group)));
     } else {
         flatSequence = [...finalArray];
     }
@@ -6306,12 +6409,11 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             
             const viewIndex = window.setModalView('index');
 
-            // 加入 window._keysUnlockedSinceLastIndex
-            const needsRender = viewIndex.dataset.projectId !== projectId || viewIndex.dataset.sort !== currentSort || window._keysUnlockedSinceLastIndex;
+            const listingRevision = () => `${window._listingRevision}:${window.isSystemOverrideActive()}`;
+            const needsRender = viewIndex.dataset.projectId !== projectId || viewIndex.dataset.sort !== currentSort || viewIndex.dataset.listingRevision !== listingRevision();
 
             if (needsRender) {
                 viewIndex.innerHTML = `<div id="article-list-container" style="transition: opacity 0.2s ease;"></div>`;
-                window._keysUnlockedSinceLastIndex = false; // 歸零
             }
             
             // ✨ 目錄模式：隱藏閱讀進度條
@@ -6327,6 +6429,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const sortBtn = document.getElementById('toggle-sort-btn');
 
             const renderList = (forceRegenerateHTML) => {
+                if (forceRegenerateHTML) viewIndex.dataset.listingRevision = listingRevision();
                 const finalArray = window.getArticleSequence(projectId);
 
                 if (forceRegenerateHTML) {
@@ -6433,7 +6536,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                             
                             isFirstGroup = false;
                         }
-                        const ungrouped = finalArray.filter(item => !item.art.group);
+                        const ungrouped = finalArray.filter(item => !Object.prototype.hasOwnProperty.call(proj.groups, item.art.group));
                         if (ungrouped.length > 0) {
                             const topMargin = isFirstGroup ? '0rem' : '1rem';
                             // ✨ 未分群區塊也加上 ID
@@ -6460,7 +6563,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 let menuItems = [];
                 if (proj.groups && Object.keys(proj.groups).length > 0) {
                     const validGroups = Object.entries(proj.groups).filter(([gId, gData]) => finalArray.some(item => item.art.group === gId));
-                    const hasUngrouped = finalArray.some(item => !item.art.group);
+                    const hasUngrouped = finalArray.some(item => !Object.prototype.hasOwnProperty.call(proj.groups, item.art.group));
                     
                     if ((validGroups.length + (hasUngrouped ? 1 : 0)) >= 2) {
                         validGroups.forEach(([groupId, groupData]) => {
@@ -6489,7 +6592,22 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             };
 
             updateSortBtnUI();
-            
+            // Re-render an already open index without navigation, replaying warnings or changing scroll.
+            window._refreshOpenProjectIndex = () => {
+                if (!modalOverlay.classList.contains('active') || viewIndex.style.display === 'none'
+                    || window._cancelModalTransition || !listContainer.isConnected
+                    || viewIndex.dataset.projectId !== projectId
+                    || !document.querySelector('#modal-top-left .index-header-title')) return;
+                if (viewIndex.dataset.listingRevision === listingRevision()) return;
+                const header = document.getElementById('modal-top-left');
+                const title = header.querySelector('.index-header-title');
+                title.innerHTML = window.parseDynamicText(proj.title, 'INDEX_HEADER');
+                const badge = header.querySelector('.article-count-badge');
+                if (badge) badge.textContent = `共 ${window.getVisibleArticleCount(proj)} 篇`;
+                renderList(true);
+                window.syncModalHeaderLayouts();
+            };
+
             if (needsRender) {
                 renderList(true);
                 viewIndex.dataset.projectId = projectId;
@@ -6678,6 +6796,10 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
         console.error('無法載入文章 contents.json:', fetchResult.error || '缺少有效的 content_path 或 content 欄位');
     }
     const markdownContent = hasContent ? fetchResult.data.content : '';
+    if (/\bmermaid\b/i.test(markdownContent)) {
+        await window.getMermaidStyles();
+        if (navigation !== window._modalNavigation) return;
+    }
 
     // ✨ 智慧判斷：如果彈窗是開著的... (這行以下維持原樣)
     // 代表這是「文章切換文章」，我們就把頂部列的動畫關掉！
@@ -6708,7 +6830,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                     window.grantDetailKeys([proj.key, article.key]);
                 } else {
                     const articleName = window.escapeHtml(window.parseDynamicText(String(article.title || article.id || articleIndex), 'TOOLTIP'));
-                    viewArticle.innerHTML = window.getSystemErrorHtml('載入失敗', `文章「${articleName}」載入失敗。`);
+                    viewArticle.innerHTML = window.getSystemErrorHtml('Loading failed', `文章「${articleName}」載入失敗。`);
                     window.updateRouteState(projectId, article.id || articleIndex, targetHash);
                 }
             }
@@ -6978,63 +7100,7 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
             // ==========================================
             window.buildHeadingTocMenu(activeView, '文章目錄', 'article-heading');
 
-            activeView.querySelectorAll('.gallery').forEach(gallery => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'scroll-wrapper';
-                gallery.parentNode.insertBefore(wrapper, gallery);
-
-                const hintLeft = document.createElement('div');
-                hintLeft.className = 'scroll-hint hint-left';
-                const hintRight = document.createElement('div');
-                hintRight.className = 'scroll-hint hint-right';
-                
-                wrapper.appendChild(hintLeft);
-                wrapper.appendChild(gallery);
-                wrapper.appendChild(hintRight);
-
-                const initialStyle = gallery.getAttribute('style') || '';
-                const manualRows = (initialStyle.match(/--g-rows:\s*(\d+)/)) ? parseInt(initialStyle.match(/--g-rows:\s*(\d+)/)[1], 10) : null;
-
-                // 將折行判斷作為 onBeforeCheck 傳入，只綁定單一 rAF Scroll 與 ResizeObserver
-                window.initScrollHints(gallery, hintLeft, hintRight, () => {
-                    const totalItems = gallery.querySelectorAll('figure').length;
-                    if (totalItems > 0) {
-                        let shouldWrap = false;
-                        if (!manualRows && totalItems > 1) {
-                            const containerWidth = gallery.clientWidth;
-                            if (containerWidth > 0) {
-                                const matchWidth = initialStyle.match(/--g-width:\s*(\d+)px/);
-                                const baseWidth = matchWidth ? parseInt(matchWidth[1], 10) : 200;
-                                if (((baseWidth * totalItems) + (16 * (totalItems - 1))) >= containerWidth * 1.5) shouldWrap = true;
-                            }
-                        }
-
-                        const isCurrentlyWrapped = gallery.getAttribute('data-wrapped') === 'true';
-                        if (shouldWrap !== isCurrentlyWrapped) {
-                            if (shouldWrap) {
-                                gallery.style.display = 'flex';
-                                gallery.style.flexWrap = 'wrap';
-                                gallery.style.justifyContent = 'flex-start'; 
-                                gallery.style.gridAutoFlow = '';
-                                gallery.style.gridTemplateColumns = '';
-                                gallery.style.gridTemplateRows = '';
-                                gallery.setAttribute('data-wrapped', 'true');
-                            } else {
-                                gallery.style.display = 'grid';
-                                gallery.style.flexWrap = '';
-                                gallery.style.justifyContent = '';
-                                gallery.style.gridAutoFlow = 'column';
-                                gallery.style.gridTemplateColumns = `minmax(var(--g-width), var(--g-width))`;
-                                gallery.style.gridTemplateRows = 'auto';
-                                gallery.setAttribute('data-wrapped', 'false');
-                            }
-                        }
-                    }
-                });
-
-                hintRight.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', 1));
-                hintLeft.addEventListener('click', () => window.scrollContainerByItem(gallery, 'figure', -1));
-            });
+            window.initArticleGalleries(activeView);
 
             // ✅ 【將原本的 figure 迴圈內部重構為】：
             activeView.querySelectorAll('figure').forEach(figure => {
@@ -7336,15 +7402,17 @@ window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cach
 
     let mdText = "載入失敗"; let isError = false;
 
-    if (window.cachedMarkdownFiles[cacheKey]) {
-        mdText = window.cachedMarkdownFiles[cacheKey];
+    const version = window.getResVersion(cacheKey);
+    const cached = window.cachedMarkdownFiles[cacheKey];
+    if (cached?.version === version) {
+        mdText = cached.text;
     } else {
-        const fetchResult = await window.safeFetchWithGuard(`${fetchUrl}?v=${window.getResVersion(cacheKey)}`, { isJson: false });
-        if (fetchResult.aborted) return;
-        
+        const fetchResult = await window.safeFetchWithGuard(`${fetchUrl}?v=${encodeURIComponent(version)}`, { isJson: false });
+        if (fetchResult.aborted || navigation !== window._modalNavigation) return;
+
         if (fetchResult.success) {
             mdText = fetchResult.data;
-            window.cachedMarkdownFiles[cacheKey] = mdText;
+            window.cachedMarkdownFiles[cacheKey] = { version, text: mdText };
         } else {
             console.error(`${title} 載入失敗:`, fetchResult.error);
             isError = true;
@@ -7410,8 +7478,8 @@ window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cach
 window.showCreditsModal = () => window.showSystemMarkdownModal(
     'Credits',
     'Acknowledgments',
-    './credits.md',
-    'credits.md',
+    `./${CONFIG.RESOURCES.credits}`,
+    'credits',
     '',
     { routeKey: 'credits' }
 );
@@ -7423,8 +7491,8 @@ window.showLicenseModal = (initialLang = 'zh') => {
     return window.showSystemMarkdownModal(
         'License & Copyright',
         'important',
-        './COPYRIGHT.md',
-        'COPYRIGHT.md',
+        `./${CONFIG.RESOURCES.copyright}`,
+        'copyright',
         `<div id="bilingual-switcher"><div class="lang-tabs">
             <button class="lang-btn${activeLang === 'zh' ? ' active' : ''}" data-lang="zh" onclick="window.switchBilingualTab('zh', this)">中文版</button>
             <button class="lang-btn${activeLang === 'en' ? ' active' : ''}" data-lang="en" onclick="window.switchBilingualTab('en', this)">English</button>
@@ -7445,7 +7513,8 @@ window.showLicenseModal = (initialLang = 'zh') => {
 // ==========================================
 // ✨ 升級版系統日誌：支援兩層式架構、平滑動畫過場，與「手動強制更新檢查」！
 // ==========================================
-window.cachedChangelogs = null; 
+window.cachedChangelogs = null;
+window.cachedChangelogVersion = null;
 
 window.showChangelogModal = async function(isSystemFallback = false, targetLogId = null) {
     const navigation = window.beginModalNavigation();
@@ -7474,15 +7543,20 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
         }
     }
 
-    if (window.cachedChangelogs === null) {
-        const logResult = await window.safeFetchWithGuard(`./changelogs.json?v=${window.getResVersion('changelogs.json')}`, { isJson: true });
+    const logVersion = window.getResVersion('changelogs');
+    if (window.cachedChangelogs === null || window.cachedChangelogVersion !== logVersion) {
+        window.cachedChangelogs = null;
+        window.cachedChangelogGroups = {};
+        const logResult = await window.safeFetchWithGuard(`./changelogs.json?v=${encodeURIComponent(logVersion)}`, { isJson: true });
         if (logResult.aborted || navigation !== window._modalNavigation) return;
         if (logResult.success && Array.isArray(logResult.data)) {
             window.cachedChangelogs = logResult.data;
             window.cachedChangelogGroups = {};
+            window.cachedChangelogVersion = logVersion;
         } else if (logResult.success && logResult.data && Array.isArray(logResult.data.logs)) {
             window.cachedChangelogs = logResult.data.logs;
             window.cachedChangelogGroups = (logResult.data.groups && typeof logResult.data.groups === 'object') ? logResult.data.groups : {};
+            window.cachedChangelogVersion = logVersion;
         } else {
             console.error("日誌讀取或更新檢查失敗:", logResult.error || '無法載入 changelogs.json');
             fetchError = true;
@@ -7542,7 +7616,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                 </div>
             `;
         } else {
-            let activeStatus = logData && logData.status === 'LATEST' ? 'NEW' : (logData ? logData.status : 'UPDATE');
+            let activeStatus = logData ? logData.status : 'UPDATE';
             let badgeHTML = logData ? `<span class="status-badge title-badge" data-status="${activeStatus}">${logData.status}</span>` : '';
 
             const logs = Array.isArray(window.cachedChangelogs) ? window.cachedChangelogs : [];
@@ -7615,7 +7689,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                     const { groupedMap, orderedGroupIds, styleMap } = buildLogGroupContext();
 
                     const renderLogLi = (log, isHighlightGroup, themeClass = '', customStyle = '') => {
-                        const activeStatus = log.status === 'LATEST' ? 'NEW' : log.status;
+                        const activeStatus = log.status;
                         const badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
                         const safeId = String(log.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                         const liClass = isHighlightGroup ? `article-li is-highlight changelog-list-item${themeClass}` : `article-li is-highlight changelog-list-item`;
@@ -8128,6 +8202,7 @@ window.showSystemMemoryModal = function(mode) {
                 includeAgreements: agreements.checked,
                 restorePreferences: preferences.checked
             });
+            if (result.added.sys_unlocked_secrets) window.scheduleListingRefresh();
             const counts = Object.fromEntries(Object.entries(result.added).map(([key, length]) => [key, { length }]));
             const summary = '本次新增：' + describeCounts(counts) + `更新 ${result.preferences} 項外觀偏好。`;
             const backupNote = prebackup.checked ? ' 請確認匯入前備份已儲存。' : '';
@@ -8293,11 +8368,7 @@ window.addEventListener('storage', event => {
         window.updateFilterToast?.();
     }
     if (storage === localStorage && (key === null || key === 'sys_unlocked_secrets')) {
-        window._keysUnlockedSinceLastIndex = true;
-        if (!window._keysRefreshFrame) window._keysRefreshFrame = requestAnimationFrame(() => {
-            window._keysRefreshFrame = 0;
-            window.refreshHomeKeysUI();
-        });
+        window.scheduleListingRefresh();
     }
 });
 
@@ -9008,8 +9079,10 @@ document.addEventListener('DOMContentLoaded', () => {
     initThemeAndMenu();
     initMobileLayoutAndLightboxGestures();
     window.renderSocialLinks();
-    checkSystemVersionAndBoot();
-    window.getMermaidStyles();
+    // Read the current data-version manifest before prefetching independent resources.
+    checkSystemVersionAndBoot().then(() => {
+        window.getMermaidStyles();
+        initSystemQuote();
+    });
     window.initPWAPullToRefresh();
-    initSystemQuote();
 });
