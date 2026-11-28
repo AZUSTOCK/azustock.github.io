@@ -10,6 +10,8 @@
 9. Version-aware frontend resource caching
 10. Separated runtime configuration from brand assets
 11. Unified article visibility and project status aggregation
+12. In-memory resource version tracking without localStorage writes
+13. Unified changelog index and detail views with the `#view-index` / `#view-article` dual-view template
 
 ## add
 1. Shared site_config.json
@@ -23,6 +25,7 @@
 9. Expiration reminder opt-out regression tests and syntax documentation
 10. Inline SVG support for `social_links` icons in `main.js`
 11. Automatic stale manifest key pruning in `webp_manifest.py`
+12. Throttled background update checks on modal navigation with immediate no-cooldown checks via the version button
 
 ## change / update
 1. Python tool execution paths
@@ -36,6 +39,8 @@
 9. Updated project tags and both marquee tracks when article visibility changes
 10. Dynamic theme CSS variable reading for `applyTheme()` and Mermaid PNG export
 11. Granular `site_config.py` validation diagnostics and complete `cout` build/error summaries across tools
+12. PWA pull-to-refresh checkmark confirmation before handing off to the reload overlay
+13. Automatic hiding of the leading "-" separator on wrapped index item descriptions
 
 ## fix
 1. Inconsistent status tag definitions
@@ -52,6 +57,8 @@
 12. Removed phantom gallery columns caused by empty Markdown paragraphs.
 13. Restricted horizontal scroll hints to their own containers and preserved gallery row layouts.
 14. Fixed Lightbox selection for repeated images in a gallery.
+15. TOC menu flicker when switching between the changelog index and version detail views
+16. Amplified vertical bounce during modal content transitions when returning to deeply scrolled lists
 
 ## remove
 1. Hardcoded Discord status color definitions
@@ -65,3 +72,4 @@
 9. One-time migration artifacts (`tools/MIGRATION.md`, `tools/config/migrate_resources.py`, `tools/config/generator_config_only.patch`) and migration-only tests
 10. Redundant `.gitignore` rules already covered by `/tools/.cache/`
 11. Automatic `.gitignore` mutation (`_ensure_gitignore`) in `webp_manifest.py`
+12. Writing resource version maps to browser `localStorage`

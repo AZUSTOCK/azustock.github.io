@@ -279,7 +279,11 @@ document.documentElement.style.setProperty('--marquee-speed', `${CONFIG.MARQUEE_
 window.siteProjects = [];
 
 // ✨ 取得細項檔案的專屬 Cache Hash
+window._dataVersions = null;
 window.readDataVersions = function() {
+    if (window._dataVersions && typeof window._dataVersions === 'object' && !Array.isArray(window._dataVersions)) {
+        return window._dataVersions;
+    }
     try {
         const data = JSON.parse(localStorage.getItem('sys_data_versions') || '{}');
         return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
@@ -1705,19 +1709,18 @@ window.initPWAPullToRefresh = function() {
     const beginReload = (threshold) => {
         isRefreshing = true;
         indicator.style.transition = returnTransition;
-        indicator.classList.remove('ready', 'is-success');
-        indicator.classList.add('is-reloading');
+        indicator.classList.remove('ready', 'is-reloading');
+        indicator.innerHTML = GLOBAL_SVGS.check;
+        indicator.classList.add('is-success');
         indicator.style.setProperty('transform', `translate(-50%, calc(${threshold}px - 100%)) scale(1)`, 'important');
-        const icon = indicator.querySelector('svg');
-        if (icon) icon.style.transform = '';
         haptic('light');
 
-        // 顯示處理中，不在 reload 前顯示「已成功」的勾號。
+        // 打勾圖示短暫彈出後收回消失，交由重整過場彈窗接手。
         setTimeout(() => {
+            hideIndicator(true);
             // 若其他更新流程已建立重開機畫面，交由該流程繼續處理。
             if (document.getElementById('sys-reboot-screen')) {
                 isRefreshing = false;
-                hideIndicator();
                 return;
             }
 
@@ -1760,7 +1763,7 @@ window.initPWAPullToRefresh = function() {
                     restoreAfterFailure();
                 }
             }, 400);
-        }, 700);
+        }, 450);
     };
 
     hideIndicator(false);
@@ -6073,9 +6076,36 @@ window.buildHeadingTocMenu = function(rootEl, titleText, fallbackPrefix = 'artic
     if (window.renderTocMenu) window.renderTocMenu(menuItems, titleText);
 };
 
+window.syncIndexDescWrap = function() {
+    if (window._syncingIndexDescWrap) return;
+    const viewIndex = document.getElementById('view-index');
+    if (!viewIndex || viewIndex.style.display === 'none') return;
+    const pairs = [];
+    viewIndex.querySelectorAll('.article-item-title-row').forEach(row => {
+        const titleEl = row.querySelector('.article-item-title');
+        const descEl = row.querySelector('.article-item-desc');
+        if (titleEl && descEl) pairs.push([titleEl, descEl]);
+    });
+    if (!pairs.length) return;
+    window._syncingIndexDescWrap = true;
+    try {
+        // 1. 先統一還原為含 "-" 狀態，避免逐筆量測造成反覆重排
+        pairs.forEach(([, descEl]) => descEl.classList.remove('is-wrapped'));
+        // 2. 一次性量測哪些副標換到標題下方
+        const wrappedFlags = pairs.map(([titleEl, descEl]) => _isOnLowerLine(descEl, titleEl));
+        // 3. 批次套用 .is-wrapped，隱藏 "-" 並鎖定換行防止回彈抖動
+        pairs.forEach(([, descEl], idx) => {
+            if (wrappedFlags[idx]) descEl.classList.add('is-wrapped');
+        });
+    } finally {
+        window._syncingIndexDescWrap = false;
+    }
+};
+
 window.syncModalHeaderLayouts = function() {
     if (window.syncIndexHeaderLayout) window.syncIndexHeaderLayout();
     if (window.syncArticleHeaderLayout) window.syncArticleHeaderLayout();
+    if (window.syncIndexDescWrap) window.syncIndexDescWrap();
     if (window.updateTopBarHeight) window.updateTopBarHeight();
 };
 
@@ -6274,6 +6304,11 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
     const isModalOpen = modalOverlay.classList.contains('active');
     const topLeft = document.getElementById('modal-top-left');
     const modalContainer = document.querySelector('.modal-content');
+    const syncBodyTransformOrigin = () => {
+        if (!modalBody || !modalContainer) return;
+        const originY = Math.max(0, Math.round(modalContainer.scrollTop + modalContainer.clientHeight * 0.35));
+        modalBody.style.transformOrigin = `50% ${originY}px`;
+    };
     
     
     if (window.indexScrollHandler) {
@@ -6285,6 +6320,7 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
     if (jumpToast) jumpToast.classList.remove('is-visible');
 
     if (isModalOpen) {
+        syncBodyTransformOrigin();
         modalBody.classList.add('content-fade-out');
         if (animateTopBar && topLeft) {
             topLeft.classList.add('content-fade-out');
@@ -6302,6 +6338,7 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
             window.syncModalHeaderLayouts();
             
             if (afterUpdateCallback) afterUpdateCallback();
+            syncBodyTransformOrigin();
 
             void modalContainer.offsetHeight; 
             
@@ -6327,6 +6364,7 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
         updateDOMCallback();
         window.syncModalHeaderLayouts(); // ✨ 第一次開啟也要更新
         if (afterUpdateCallback) afterUpdateCallback();
+        syncBodyTransformOrigin();
         
         modalBody.classList.remove('content-fade-out');
         if (topLeft) topLeft.classList.remove('content-fade-out');
@@ -6343,6 +6381,7 @@ function switchModalContent(updateDOMCallback, afterUpdateCallback = null, anima
 // 打開該專案的「目錄頁面」
 // ==========================================
 window.openProjectIndex = function(projectId, restoreScroll = false) {
+    window.checkUpdatesInBackground?.();
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !proj.articles) return;
 
@@ -6414,7 +6453,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
             const viewIndex = window.setModalView('index');
 
             const listingRevision = () => `${window._listingRevision}:${window.isSystemOverrideActive()}`;
-            const needsRender = viewIndex.dataset.projectId !== projectId || viewIndex.dataset.sort !== currentSort || viewIndex.dataset.listingRevision !== listingRevision();
+            const needsRender = viewIndex.dataset.viewMode !== 'project' || viewIndex.dataset.projectId !== projectId || viewIndex.dataset.sort !== currentSort || viewIndex.dataset.listingRevision !== listingRevision();
 
             if (needsRender) {
                 viewIndex.innerHTML = `<div id="article-list-container" style="transition: opacity 0.2s ease;"></div>`;
@@ -6456,7 +6495,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                         ? `onclick="event.preventDefault(); window.showSystemToast('>_ ACCESS_DENIED', '存取被拒', '${lockPrompt} 才能解鎖', 4000, 'error');"` 
                         : `onclick="event.preventDefault(); window.openArticle('${projectId}',${idx})"`;
 
-                    let descHtml = art.description ? `<span class="article-item-desc">- ${window.parseDynamicText(art.description, 'INDEX_DESC')}</span>` : '';
+                    let descHtml = art.description ? `<span class="article-item-desc">${window.parseDynamicText(art.description, 'INDEX_DESC')}</span>` : '';
                     let dateHtml = art.date ? `<span class="article-item-date">${art.date}</span>` : '';
                     let statusBadgeHtml = window.getStatusBadgeHtml(art, true);
                     
@@ -6614,8 +6653,10 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 
             if (needsRender) {
                 renderList(true);
+                viewIndex.dataset.viewMode = 'project';
                 viewIndex.dataset.projectId = projectId;
                 viewIndex.dataset.sort = currentSort;
+                delete viewIndex.dataset.changelogVersion;
             } else {
                 renderList(false); // 若 DOM 已存在，只重新綁定事件
             }
@@ -6635,6 +6676,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
                 setTimeout(() => {
                     renderList(true); // 排序改變時強制重繪
                     viewIndex.dataset.sort = currentSort;
+                    window.syncIndexDescWrap?.();
                     void listContainer.offsetWidth;
                     listContainer.style.opacity = '1';
                     setTimeout(() => { window.isRendering = false; sortBtn.disabled = false; }, 200); 
@@ -6678,6 +6720,7 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
 // 打開具體的「文章內文」
 // ==========================================
 window.openArticle = async function(projectId, articleIndex, isFromHistory = false, restoreScrollTop = 0, targetHash = null, restoreInnerScrolls = [], restoreActiveTabs = []) {
+    window.checkUpdatesInBackground?.();
     const proj = window.siteProjects.find(p => p.id === projectId);
     if (!proj || !Array.isArray(proj.articles)) return;
     const article = proj.articles[articleIndex];
@@ -7249,7 +7292,7 @@ function show404Modal(title, message) {
     
 
     if (modalTopLeft) modalTopLeft.innerHTML = `<span style="color: var(--muted); font-weight: 600; font-family: monospace; letter-spacing: 0.05em;">SYSTEM_ERROR</span>`;
-    if (tocMountPoint) tocMountPoint.innerHTML = '';
+    window.renderTocMenu?.([]);
 
     // ✨ 動態判斷：如果是 403 就顯示鎖頭，否則顯示驚嘆號
     const is403 = title.includes('403');
@@ -7402,6 +7445,7 @@ window.handleSystemModalRouting = function(urlParams) {
 };
 
 window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cacheKey, extraHtml = '', options = {}) {
+    window.checkUpdatesInBackground?.();
     const navigation = window.beginModalNavigation();
 
     let mdText = "載入失敗"; let isError = false;
@@ -7430,7 +7474,7 @@ window.showSystemMarkdownModal = async function(title, badgeText, fetchUrl, cach
             const modalOverlay = document.getElementById('md-modal');
             const modalBody = window.setModalView('article');
             
-            if (document.getElementById('toc-mount-point')) document.getElementById('toc-mount-point').innerHTML = '';
+            window.renderTocMenu?.([]);
             
             const modalTopLeft = document.getElementById('modal-top-left');
             if (modalTopLeft) {
@@ -7525,8 +7569,17 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
     let fetchError = false;
 
     if (!isSystemFallback) {
-        const vResult = await window.safeFetchWithGuard(`./version.json?t=${new Date().getTime()}`, { isJson: true });
+        // 手動點擊版本按鈕一律即時檢查（不受背景檢查冷卻時間限制），並同步最新 data_version.json
+        const now = Date.now();
+        const dataPromise = fetch(`./data_version.json?t=${now}`).then(r => r.ok ? r.json() : null).catch(() => null);
+        const vResult = await window.safeFetchWithGuard(`./version.json?t=${now}`, { isJson: true });
         if (vResult.aborted || navigation !== window._modalNavigation) return;
+        const freshDataVersions = await dataPromise;
+        if (navigation !== window._modalNavigation) return;
+        if (freshDataVersions && typeof freshDataVersions === 'object' && !Array.isArray(freshDataVersions)) {
+            window._dataVersions = freshDataVersions;
+        }
+        window._lastBgUpdateCheckAt = now;
         if (vResult.success && vResult.data && vResult.data.version && vResult.data.version !== CONFIG.VERSION) {
             const nextVer = vResult.data.version;
             console.warn(`[MANUAL_UPDATE] 發現新版本 ${nextVer}，準備強制更新...`);
@@ -7670,88 +7723,103 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
         }
     }
 
-    // 2. 渲染第一層：索引清單
+    // 2. 渲染第一層：索引清單（與專案目錄共用 #view-index 雙視圖模板，避免重繪與 TOC 閃爍）
     window.renderChangelogIndex = function(restoreScroll = false) {
         switchModalContent(
             () => {
                 const modalOverlay = document.getElementById('md-modal');
-                const modalBody = window.setModalView('article');
-                const tocMountPoint = document.getElementById('toc-mount-point');
-                
-                if (tocMountPoint) tocMountPoint.innerHTML = '';
-                
-                // ✨ 加上這兩行：隱藏閱讀進度條
+                const viewIndex = window.setModalView('index');
+
+                // ✨ 隱藏閱讀進度條（TOC 交由 renderTocMenu 原地沿用或移除，不手動清空）
                 const progressBar = document.getElementById('reading-progress-bar');
                 if (progressBar) progressBar.style.display = 'none';
 
                 renderChangelogHeader(false);
 
+                const currentVersionKey = String(window.cachedChangelogVersion || '');
                 if (fetchError || !window.cachedChangelogs) {
-                    modalBody.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版本日誌。');
-                    if (window.renderTocMenu) window.renderTocMenu([]);
+                    viewIndex.innerHTML = window.getSystemErrorHtml('System Error', '無法載入版本日誌。');
+                    delete viewIndex.dataset.viewMode;
+                    delete viewIndex.dataset.changelogVersion;
+                    window.renderTocMenu?.([]);
                 } else {
                     const { groupedMap, orderedGroupIds, styleMap } = buildLogGroupContext();
+                    const needsRender = viewIndex.dataset.viewMode !== 'changelog'
+                        || viewIndex.dataset.changelogVersion !== currentVersionKey
+                        || !viewIndex.querySelector('.changelog-list-item');
 
-                    const renderLogLi = (log, isHighlightGroup, themeClass = '', customStyle = '') => {
-                        const activeStatus = log.status;
-                        const badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
-                        const safeId = String(log.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                        const liClass = isHighlightGroup ? `article-li is-highlight changelog-list-item${themeClass}` : `article-li is-highlight changelog-list-item`;
-                        return `
-                            <li id="changelog-item-${log.id}" class="${liClass}" data-status="${activeStatus}"${customStyle}>
-                                <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${safeId}')" >
-                                    <div class="article-item-icon-wrap">
-                                        <div class="article-item-fallback changelog-item-icon">${GLOBAL_SVGS.docIconLg}</div>
-                                    </div>
-                                    <div class="article-item-content">
-                                        <div class="article-item-title-row">
-                                            <span class="article-item-title"><span class="changelog-item-version">${log.version}</span>${badgeHTML}</span>
-                                            <span class="article-item-desc">- ${log.description}</span>
-                                        </div>
-                                        <span class="article-item-date">${log.date}</span>
-                                    </div>
-                                </a>
-                            </li>
-                        `;
-                    };
-
-                    let listHTML = '';
                     let tocItems = [];
-                    let isFirstGroup = true;
+                    if (needsRender) {
+                        const renderLogLi = (log, isHighlightGroup, themeClass = '', customStyle = '') => {
+                            const activeStatus = log.status;
+                            const badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
+                            const safeId = String(log.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                            const liClass = isHighlightGroup ? `article-li is-highlight changelog-list-item${themeClass}` : `article-li is-highlight changelog-list-item`;
+                            return `
+                                <li id="changelog-item-${log.id}" class="${liClass}" data-status="${activeStatus}"${customStyle}>
+                                    <a href="javascript:void(0)" class="article-link" onclick="window.renderChangelogDetail('${safeId}')" >
+                                        <div class="article-item-icon-wrap">
+                                            <div class="article-item-fallback changelog-item-icon">${GLOBAL_SVGS.docIconLg}</div>
+                                        </div>
+                                        <div class="article-item-content">
+                                            <div class="article-item-title-row">
+                                                <span class="article-item-title"><span class="changelog-item-version">${log.version}</span>${badgeHTML}</span>
+                                                <span class="article-item-desc">${log.description}</span>
+                                            </div>
+                                            <span class="article-item-date">${log.date}</span>
+                                        </div>
+                                    </a>
+                                </li>
+                            `;
+                        };
+
+                        let listHTML = '';
+                        let isFirstGroup = true;
+
+                        orderedGroupIds.forEach(groupId => {
+                            const groupLogs = groupedMap.get(groupId) || [];
+                            if (groupLogs.length === 0) return;
+                            const { groupData, groupTitle, groupColor, isHighlight, themeClass, customStyle } = styleMap.get(groupId);
+                            const topMargin = isFirstGroup ? '0rem' : '1.2rem';
+                            const inlineStyles = groupColor ? ` --current-group-color: ${groupColor};` : '';
+                            const safeGroupId = `changelog-group-${groupId.replace(/[\s.&]+/g, '-').replace(/-+/g, '-')}`;
+
+                            listHTML += `
+                                <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;${inlineStyles}">
+                                    <div class="group-header-text">
+                                        <div class="group-header-title">${window.parseDynamicText(groupTitle, 'GROUP_TITLE')}</div>${groupData.description ? `<div class="group-header-desc">${window.parseDynamicText(groupData.description, 'GROUP_DESC')}</div>` : ''}
+                                    </div>
+                                </div>
+                                <ul class="article-list-ul">
+                            `;
+                            groupLogs.forEach(log => {
+                                listHTML += renderLogLi(log, isHighlight, themeClass, customStyle);
+                            });
+                            listHTML += '</ul>';
+                            isFirstGroup = false;
+                        });
+
+                        viewIndex.innerHTML = listHTML;
+                        viewIndex.dataset.viewMode = 'changelog';
+                        viewIndex.dataset.changelogVersion = currentVersionKey;
+                        delete viewIndex.dataset.projectId;
+                        delete viewIndex.dataset.sort;
+                        delete viewIndex.dataset.listingRevision;
+                    }
 
                     orderedGroupIds.forEach(groupId => {
                         const groupLogs = groupedMap.get(groupId) || [];
                         if (groupLogs.length === 0) return;
-                        const { groupData, groupTitle, groupColor, isHighlight, themeClass, customStyle } = styleMap.get(groupId);
-                        const topMargin = isFirstGroup ? '0rem' : '1.2rem';
-                        const inlineStyles = groupColor ? ` --current-group-color: ${groupColor};` : '';
+                        const { groupTitle } = styleMap.get(groupId);
                         const safeGroupId = `changelog-group-${groupId.replace(/[\s.&]+/g, '-').replace(/-+/g, '-')}`;
-
-                        listHTML += `
-                            <div id="${safeGroupId}" class="group-header${themeClass}" style="margin-top: ${topMargin}; margin-bottom: 0.8rem;${inlineStyles}">
-                                <div class="group-header-text">
-                                    <div class="group-header-title">${window.parseDynamicText(groupTitle, 'GROUP_TITLE')}</div>${groupData.description ? `<div class="group-header-desc">${window.parseDynamicText(groupData.description, 'GROUP_DESC')}</div>` : ''}
-                                </div>
-                            </div>
-                            <ul class="article-list-ul">
-                        `;
-                        groupLogs.forEach(log => {
-                            listHTML += renderLogLi(log, isHighlight, themeClass, customStyle);
-                        });
-                        listHTML += '</ul>';
-
                         tocItems.push({
                             label: window.parseDynamicText(groupTitle, 'TOC_GROUP'),
                             targetHash: `#${safeGroupId}`,
                             className: 'toc-h1'
                         });
-                        isFirstGroup = false;
                     });
 
-                    modalBody.innerHTML = listHTML;
-                    if (window.renderTocMenu) {
-                        window.renderTocMenu(tocItems.length >= 2 ? tocItems : [], '版本分群');
-                    }
+                    window.renderTocMenu?.(tocItems.length >= 2 ? tocItems : [], '版本分群');
                 }
                 
                 window.updateSystemModalUrl('changelog');
@@ -7763,7 +7831,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                 if (modalContainer) {
                     if (restoreScroll && window.lastReadChangelogId) {
                         const baseScroll = typeof window._changelogScrollTopCache === 'number' ? window._changelogScrollTopCache : 0;
-                        const initialTargetScroll = Math.max(0, window.calculateIdealScrollCache('view-article', `changelog-item-${window.lastReadChangelogId}`, baseScroll));
+                        const initialTargetScroll = Math.max(0, window.calculateIdealScrollCache('view-index', `changelog-item-${window.lastReadChangelogId}`, baseScroll));
                         window._changelogScrollTopCache = initialTargetScroll;
                         modalContainer.scrollTo({ top: initialTargetScroll, behavior: 'auto' });
 
@@ -7780,15 +7848,16 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
 
     // 3. 渲染第二層：詳細記錄
     window.renderChangelogDetail = async function(logId) {
-        // ✨ 若目前正位於版本清單頁，每次進入版本前都記錄當下的清單捲動位置
-        const isFromChangelogIndex = document.querySelector('#view-article .changelog-list-item') !== null;
+        // ✨ 若目前正位於版本清單頁 (#view-index)，記錄當下的清單捲動位置
+        const viewIndex = document.getElementById('view-index');
+        const isFromChangelogIndex = Boolean(viewIndex && viewIndex.style.display !== 'none' && viewIndex.dataset.viewMode === 'changelog');
         if (isFromChangelogIndex) {
             const scroller = window.getActiveScrollContainer();
             if (scroller) window._changelogScrollTopCache = scroller.scrollTop;
         }
         window.lastReadChangelogId = logId;
-        if (isFromChangelogIndex) {
-            window._changelogScrollTopCache = window.calculateIdealScrollCache('view-article', `changelog-item-${logId}`, window._changelogScrollTopCache);
+        if (viewIndex && viewIndex.dataset.viewMode === 'changelog') {
+            window._changelogScrollTopCache = window.calculateIdealScrollCache('view-index', `changelog-item-${logId}`, window._changelogScrollTopCache);
         }
 
         const targetLog = window.cachedChangelogs.find(l => l.id === logId);
@@ -7987,21 +8056,11 @@ async function checkSystemVersionAndBoot() {
             remoteVersion = sysData.version;
             console.warn(`[SYS_UPDATE] 發現系統新版本 ${remoteVersion}，準備強制更新...`);
         }
-        // 2. 檢查內容層級更新 (如果系統無需更新，才檢查 projects 目錄的 Hash 是否改變)
-        else if (contentData && contentData.projects) {
-            const localDataVersions = window.readDataVersions();
-            
-            // ✨ 如果本地有舊紀錄，且專案 (projects) 的 Hash 發生改變，才需要強制重開機刷新首頁
-            if (localDataVersions.projects && localDataVersions.projects !== contentData.projects) {
-                needReboot = true;
-                rebootReason = 'SYNCING_NEW_DATA';
-                console.info(`[DATA_UPDATE] 發現文章內容修改，準備同步資料庫...`);
-            }
-            
-            // ✨ 寫入最新的細項 Hash 字典到本機
-            // (如果是 kotoba.md 等獨立細項改變，下次點擊時會自己抓最新 Hash，不需重啟畫面！)
-            localStorage.setItem('sys_data_versions', JSON.stringify(contentData));
+        // 2. 內容層級版本表僅存於記憶體（不寫入 localStorage），後續 loadProjects 直接使用最新 Hash
+        if (contentData && typeof contentData === 'object' && !Array.isArray(contentData)) {
+            window._dataVersions = contentData;
         }
+        window._lastBgUpdateCheckAt = Date.now();
 
         if (needReboot) {
             const rebootCount = parseInt(sessionStorage.getItem('sys_reboot_count') || '0');
@@ -8075,6 +8134,79 @@ async function checkSystemVersionAndBoot() {
     hideSystemRebootScreen(true);
     loadProjects();
 }
+
+// ==========================================
+// ✨ 背景靜默更新檢查引擎（純記憶體，不碰 localStorage；僅系統升版提示）
+// ==========================================
+window._lastBgUpdateCheckAt = 0;
+window._bgUpdateCheckRunning = false;
+window._notifiedSysVersion = null;
+
+window.checkUpdatesInBackground = function() {
+    const COOLDOWN_MS = 5 * 60 * 1000;
+    const now = Date.now();
+    if (window._bgUpdateCheckRunning || (now - window._lastBgUpdateCheckAt) < COOLDOWN_MS) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+
+    window._bgUpdateCheckRunning = true;
+    window._lastBgUpdateCheckAt = now;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    Promise.all([
+        fetch(`./version.json?t=${now}`, { signal: controller.signal }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`./data_version.json?t=${now}`, { signal: controller.signal }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(async ([sysData, contentData]) => {
+        if (sysData && sysData.version && sysData.version !== CONFIG.VERSION) {
+            if (window._notifiedSysVersion !== sysData.version) {
+                window._notifiedSysVersion = sysData.version;
+                window.showSystemToast?.(
+                    '>_ UPDATE_AVAILABLE',
+                    `發現系統新版本 ${window.escapeHtml(sysData.version)}`,
+                    '請重新整理頁面，或點擊右下角版本號以更新。',
+                    10000,
+                    'success',
+                );
+            }
+        }
+
+        if (contentData && typeof contentData === 'object' && !Array.isArray(contentData)) {
+            const prevProjectsHash = window._dataVersions?.projects || null;
+            window._dataVersions = contentData;
+
+            if (prevProjectsHash && contentData.projects && prevProjectsHash !== contentData.projects) {
+                try {
+                    const projRes = await fetch(
+                        `${CONFIG.DATA_SOURCE}?v=${encodeURIComponent(contentData.projects)}`,
+                        { signal: controller.signal },
+                    );
+                    if (projRes.ok) {
+                        const freshDb = await projRes.json();
+                        const freshProjects = Array.isArray(freshDb?.projects) ? freshDb.projects : [];
+                        const freshById = new Map(freshProjects.map(p => [p.id, p]));
+                        for (const localProj of (window.siteProjects || [])) {
+                            const remoteProj = freshById.get(localProj.id);
+                            if (!remoteProj || !Array.isArray(localProj.articles) || !Array.isArray(remoteProj.articles)) continue;
+                            const remoteArtById = new Map(remoteProj.articles.map(a => [a.id, a]));
+                            for (const localArt of localProj.articles) {
+                                const remoteArt = remoteArtById.get(localArt.id);
+                                if (!remoteArt) continue;
+                                if (remoteArt.content_path) localArt.content_path = remoteArt.content_path;
+                                if (remoteArt.cover_image !== undefined) localArt.cover_image = remoteArt.cover_image;
+                            }
+                        }
+                    }
+                } catch (_) {
+                    // 靜默失敗，不干擾使用者目前閱讀。
+                }
+            }
+        }
+    }).catch(() => {}).finally(() => {
+        clearTimeout(timeoutId);
+        window._bgUpdateCheckRunning = false;
+    });
+};
 
 // 🖥️ 系統重載與記憶重置底部選單 (完美借用 PDF Modal UI)
 // ==========================================
