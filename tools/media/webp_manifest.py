@@ -65,28 +65,6 @@ def write_manifest(path, manifest):
             temporary.unlink(missing_ok=True)
 
 
-def _ensure_gitignore(site_root, manifest_path):
-    try:
-        relative = manifest_path.relative_to(site_root).as_posix()
-    except ValueError:
-        return  # 明確指定網站外的紀錄檔時，不修改網站的 ignore 規則。
-    path = site_root / '.gitignore'
-    original = path.read_bytes() if path.exists() else b''
-    text = original.decode('utf-8-sig')
-    rules = ['/' + relative, '/' + relative + '.lock', '/tools/.cache/site_build.lock']
-    existing = {line.strip().lstrip('/') for line in text.splitlines()}
-    missing = [rule for rule in rules if rule.lstrip('/') not in existing]
-    if not missing:
-        return
-    nl = b'\r\n' if b'\r\n' in original else b'\n'
-    addition = (b'' if not original or original.endswith(b'\n') else nl)
-    addition += b'# Local WebP incremental build cache' + nl
-    addition += nl.join(rule.encode('utf-8') for rule in missing) + nl
-    # 只追加新規則，保留原本的 BOM、內容、換行與其他忽略設定。
-    with path.open('ab') as stream:
-        stream.write(addition)
-
-
 def _forced_target(relative, target_folders):
     parents = '/' + relative.parent.as_posix().strip('/') + '/'
     return any('/' + str(target).replace('\\', '/').strip('/') + '/' in parents
@@ -124,12 +102,15 @@ def _convert_local_webp_unlocked(directory='projects', quality=90, max_size=MAX_
     settings = dict(quality=quality, max_size=list(max_size), ratio=ratio, logic_version=str(logic_version))
     # 設定必須能以標準 JSON 持久化，避免 NaN 造成每次誤判。
     json.dumps(settings, allow_nan=False)
-    _ensure_gitignore(root.parent, path)
     targets = set(target_folders or ())
-    report = dict(converted=0, updated=0, baseline=0, skipped=0, ignored=0, errors=[])
+    report = dict(converted=0, updated=0, baseline=0, skipped=0, ignored=0, pruned=0, errors=[])
     cout.stage('第一階段', '本地 WebP 內容與設定檢查（JSON 紀錄）', icon_key='search')
 
+    scan_errors = False
+
     def on_scan_error(error):
+        nonlocal scan_errors
+        scan_errors = True
         report['errors'].append(str(error))
 
     sources = []
@@ -198,11 +179,21 @@ def _convert_local_webp_unlocked(directory='projects', quality=90, max_size=MAX_
             except (OSError, ValueError, RuntimeError) as error:
                 # 舊紀錄維持不變，下次仍會辨識為待更新；成功項目則可以正常保存。
                 report['errors'].append(str(source) + ': ' + str(error))
+
+    if not scan_errors:
+        active_keys = {source.relative_to(root).as_posix() for source in sources}
+        stale_keys = [key for key in manifest['files'] if key not in active_keys]
+        for key in stale_keys:
+            del manifest['files'][key]
+        report['pruned'] = len(stale_keys)
+
     write_manifest(path, manifest)
     for error in report['errors']:
         cout.error(error)
     summary = ('新增 {converted} / 更新 {updated} / 首次建立基準 {baseline} / 未變更 {skipped} / 排除 {ignored}'
                .format(**report))
+    if report['pruned']:
+        summary += f" / 清理過期紀錄 {report['pruned']}"
     if report['errors']:
         cout.error('本地 WebP 處理有錯誤：' + summary)
     else:

@@ -130,8 +130,19 @@ def validate_config(config):
     if any(not isinstance(n,str) or not NAME.fullmatch(n) for n in names) or len(names) != len(set(names)):
         raise ValueError('Invalid or duplicate status group member')
     tags = status['tags']; aliases = status['color_aliases']; discord = status['discord_aliases']
-    if set(tags) & set(aliases) or set(names) != set(tags) | set(aliases):
-        raise ValueError('Status groups and color definitions differ')
+    overlap = sorted(set(tags) & set(aliases))
+    if overlap:
+        raise ValueError(f"Status groups and color definitions differ (defined in both tags and color_aliases: {', '.join(overlap)})")
+    defined = set(tags) | set(aliases)
+    if set(names) != defined:
+        parts = []
+        missing_defs = sorted(set(names) - defined)
+        extra_defs = sorted(defined - set(names))
+        if missing_defs:
+            parts.append('missing color/alias: ' + ', '.join(missing_defs))
+        if extra_defs:
+            parts.append('not in status.groups: ' + ', '.join(extra_defs))
+        raise ValueError(f"Status groups and color definitions differ ({'; '.join(parts)})")
     if set(discord) & set(names) or any(not NAME.fullmatch(k) or v not in names for k,v in discord.items()):
         raise ValueError('Invalid Discord-only alias')
     expiry = status['expirable_tags']
@@ -143,46 +154,57 @@ def validate_config(config):
     if not HEX.fullmatch(status['discord_default_color']):
         raise ValueError('Invalid Discord default color')
     themes = config['themes']
-    if set(themes) != {'dark','light'} or set(themes['dark']) != set(themes['light']):
-        raise ValueError('Theme variables must match')
+    if set(themes) != {'dark', 'light'}:
+        raise ValueError(f"Theme variables must match (expected themes 'dark' and 'light', got: {', '.join(sorted(themes))})")
+    dark_only = sorted(set(themes['dark']) - set(themes['light']))
+    light_only = sorted(set(themes['light']) - set(themes['dark']))
+    if dark_only or light_only:
+        parts = []
+        if dark_only:
+            parts.append('light 缺少: ' + ', '.join(dark_only))
+        if light_only:
+            parts.append('dark 缺少: ' + ', '.join(light_only))
+        raise ValueError(f"Theme variables must match ({'; '.join(parts)})")
     for mode, theme in themes.items():
         if theme.get('color-scheme') != mode:
-            raise ValueError('Theme color-scheme mismatch')
+            raise ValueError(f"Theme color-scheme mismatch (theme={mode}, got={theme.get('color-scheme')!r})")
         for key, value in theme.items():
             if not isinstance(value,str) or not (key == 'color-scheme' or re.fullmatch(r'--[\w-]+',key)) or any(c in value for c in '\r\n{}') or '/*' in value:
-                raise ValueError(f'Invalid theme declaration {key}')
+                raise ValueError(f'Invalid theme declaration [{mode}] {key}')
             if key not in ('color-scheme','--cursor-link'):
                 resolved = resolve_value(value,theme)
                 if not valid_css_color(resolved):
-                    raise ValueError(f'Invalid theme color {key}: {value}')
+                    raise ValueError(f'Invalid theme color [{mode}] {key}: {value} (resolved: {resolved})')
         if not HEX.fullmatch(resolve_value(theme['--error-color'],theme)):
-            raise ValueError('Cursor error color must resolve to RGB hex')
+            raise ValueError(f"Cursor error color must resolve to RGB hex ([{mode}] --error-color={theme['--error-color']!r})")
         for tag in names:
             spec = tag_definition(config,tag)
             if set(spec) != {'color','shadow'}:
                 raise ValueError(f'Invalid tag definition: {tag}')
             if not HEX.fullmatch(resolve_status_color(tag,mode,config)):
-                raise ValueError(f'Invalid tag color: {tag}')
+                raise ValueError(f"Invalid tag color: {tag} (theme={mode}, value={spec['color']!r})")
             shadow = resolve_value(spec['shadow'],theme)
             if not valid_css_color(shadow):
-                raise ValueError(f'Invalid tag shadow: {tag}')
+                raise ValueError(f"Invalid tag shadow: {tag} (theme={mode}, value={spec['shadow']!r})")
     templates = config['sensitive_templates']
-    if not {'DEFAULT','MAIN','INSIDE'} <= set(templates):
-        raise ValueError('Required sensitive template missing')
+    missing_tpl = sorted({'DEFAULT', 'MAIN', 'INSIDE'} - set(templates))
+    if missing_tpl:
+        raise ValueError(f"Required sensitive template missing: {', '.join(missing_tpl)}")
     for name, template in templates.items():
         if not NAME.fullmatch(name) or set(template) != {'title','desc','btn_text','color'} or any(not isinstance(v,str) for v in template.values()):
             raise ValueError(f'Invalid sensitive template {name}')
-        for theme in themes.values():
+        for mode, theme in themes.items():
             if not HEX.fullmatch(resolve_value(template['color'],theme)):
-                raise ValueError(f'Invalid sensitive template color {name}')
-    for link in config['social_links']:
+                raise ValueError(f"Invalid sensitive template color {name} (theme={mode}, value={template['color']!r})")
+    for idx, link in enumerate(config['social_links'], 1):
+        label = link.get('name') or f'#{idx}'
         if not isinstance(link.get('name'),str) or not isinstance(link.get('icon'),str) or sum(k in link for k in ('url','copyUrl','copy_site_url')) != 1:
-            raise ValueError('Invalid social link')
+            raise ValueError(f'Invalid social link ({label})')
         for key in ('url','copyUrl'):
             if key in link and (not isinstance(link[key],str) or (link[key] and urlsplit(link[key]).scheme not in ('https','http'))):
-                raise ValueError('Invalid social URL')
+                raise ValueError(f'Invalid social URL ({label}.{key}: {link[key]!r})')
         if 'copy_site_url' in link and link['copy_site_url'] is not True:
-            raise ValueError('copy_site_url must be true')
+            raise ValueError(f'copy_site_url must be true ({label})')
     return config
 
 
@@ -280,9 +302,17 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check',action='store_true',help='Check generated configuration without modifying files')
     args=parser.parse_args(argv)
-    with file_lock(ROOT_DIR/'tools/.cache/site_build.lock'):
-        changed=inject(check=args.check)
-    print('Updated: '+', '.join(changed) if changed else 'Site configuration is up to date.')
+    from tools.common.cout import cout
+    try:
+        with file_lock(ROOT_DIR/'tools/.cache/site_build.lock'):
+            changed=inject(check=args.check)
+    except Exception as exc:
+        cout.error(f'設定檢查或注入失敗：{exc}')
+        return 1
+    if changed:
+        cout.success('已同步更新設定區塊：' + ', '.join(changed))
+    else:
+        cout.skip('main.js 與 style.css 設定區塊已是最新，無須更新。', indent=0)
     return 0
 
 

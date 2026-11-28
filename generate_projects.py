@@ -30,7 +30,11 @@ from tools.media.convert_webp import (
 )
 from tools.build.update_paths import update_extensions_to_webp
 from tools.common.cout import cout  # ✨ 引入 Cout 全域實例
-from tools.config.site_config import SITE_URL, BANNER_PATH, SYS_TAGS, EXPIRABLE_TAGS, TAG_EXPIRE_DAYS, METADATA_FLAG_TAGS, inject
+try:
+    from tools.config.site_config import SITE_URL, BANNER_PATH, SYS_TAGS, EXPIRABLE_TAGS, TAG_EXPIRE_DAYS, METADATA_FLAG_TAGS, inject
+except Exception as _cfg_err:
+    cout.error(f"讀取或驗證 tools/config/site_config.json 失敗：{_cfg_err}")
+    raise
 from tools.common.paths import ROOT_DIR
 from tools.deployment.release_validation import (
     HASH_HEX_LENGTH, DATA_VERSION_FILES, collect_log_entries, parse_version,
@@ -278,6 +282,7 @@ class BuildState:
 
 def convert_project_images(is_github_actions, overwrite_webp=False, target_folders=None):
     if is_github_actions:
+        cout.stage("第一階段", "CI 模式圖片 WebP 檢查與轉檔...", icon_key='search')
         return convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
     from tools.media.webp_manifest import convert_local_webp
     report = convert_local_webp(
@@ -1377,10 +1382,13 @@ def run_image_tasks(img_tasks):
             for future in as_completed(futures):
                 record_result(*future.result())
 
+    if pdf_tasks:
+        cout.info(f"主執行緒依序渲染 PDF 封面縮圖 ({len(pdf_tasks)} 項任務)...", icon_key='pdf')
     for task in pdf_tasks:
         record_result(*_execute_img_task(task))
 
     if image_failures:
+        cout.error(f"共有 {len(image_failures)} 項影像生成失敗，已中止寫入快取與資料庫。")
         raise RuntimeError('影像生成失敗，快取紀錄與資料庫尚未提交：' + ', '.join(image_failures))
 
 
@@ -1428,6 +1436,7 @@ def process_article(
                 meta_cover = sub_item
 
         if not md_file_path:
+            cout.warn(f"略過文章 {proj_folder}/{item}：資料夾內找不到 .md 檔。")
             return None
 
         stats["art_total"] += 1
@@ -1619,6 +1628,8 @@ def process_article(
         art_thumb_local_path = os.path.join(art_dir, art_thumb_filename)
 
         if meta_cover:
+            if local_cover_path and not os.path.isfile(local_cover_path):
+                cout.warn(f"文章 {proj_folder}/{item} 指定的封面圖不存在：{meta_cover}")
             art_bg_image_path = BANNER_PATH
             if state.register_image_asset(
                 stat_prefix="og", fn=create_og_image,
@@ -1778,6 +1789,8 @@ def generate_projects_json(
             if not os.path.isabs(cat_cover) and os.path.isfile(literal_path):
                 cat_cover = quote(literal_path.replace(os.sep, '/'), safe='/')
             cat_cover_path, cover_url = resolve_media_reference(cat_cover, cat_path)
+            if cat_cover_path and not os.path.isfile(cat_cover_path):
+                cout.warn(f"分類 {cat_folder} 指定的封面圖不存在：{cat_cover}")
             if cover_url.startswith('./'):
                 cover_url = cover_url[2:]
             cat_cover_url = get_hash_url(cat_cover_path, cover_url)
@@ -1866,6 +1879,8 @@ def generate_projects_json(
                     g_cover = g_info.get('cover')
                     if g_cover:
                         g_cover_local_path = os.path.normpath(os.path.join(proj_path, g_cover))
+                        if not os.path.exists(g_cover_local_path):
+                            cout.warn(f"專案 {proj_folder} 群組 '{g_id}' 指定的封面圖不存在：{g_cover}")
                         if os.path.exists(g_cover_local_path):
                             thumb_dir = os.path.join(proj_api_dir, "thumbnails")
                             os.makedirs(thumb_dir, exist_ok=True)
@@ -2009,6 +2024,7 @@ def generate_projects_json(
             output_data["projects"].append(proj_data)
 
     if state.scan_failures:
+        cout.error(f"共有 {len(state.scan_failures)} 篇文章解析失敗，已中止建置。")
         raise RuntimeError('文章解析失敗，停止提交生成快取：' + '; '.join(state.scan_failures))
 
     # 4. 執行所有待辦影像任務
@@ -2105,9 +2121,15 @@ def cleanup_old_api_files(api_dir=API_DIR, *, keep_dirs=()):
 
 if __name__ == "__main__":
     os.chdir(ROOT_DIR)
-    with file_lock("tools/.cache/site_build.lock"):
+    try:
+      with file_lock("tools/.cache/site_build.lock"):
         is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
-        inject(ROOT_DIR, ci=is_github_actions)
+        cout.stage("設定檢查與注入", "驗證 site_config.json 並同步至 main.js 與 style.css...", icon_key='config')
+        changed_cfg = inject(ROOT_DIR, ci=is_github_actions)
+        if changed_cfg:
+            cout.success(f"已同步更新設定區塊：{', '.join(changed_cfg)}")
+        else:
+            cout.skip("main.js 與 style.css 設定區塊已是最新，無須更新。", indent=0)
 
         overwrite_webp = False
         overwrite_json = False
@@ -2189,3 +2211,6 @@ if __name__ == "__main__":
 
         total_elapsed = time.perf_counter() - build_start_time
         cout.success(f"全站建置流程執行完畢！總耗時: {total_elapsed:.2f} 秒。", icon_key='party')
+    except Exception as _build_err:
+        cout.error(f"建置中止：{_build_err}")
+        raise

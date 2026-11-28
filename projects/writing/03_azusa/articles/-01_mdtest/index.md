@@ -594,10 +594,6 @@ flowchart LR
 python -m tools.config.site_config
 python -m tools.config.site_config --check
 
-# 預覽及執行舊資源搬移
-python -m tools.config.migrate_resources
-python -m tools.config.migrate_resources --apply
-
 # 測試、建置、發布驗證
 python -m unittest discover -s tools/tests -v
 python generate_projects.py

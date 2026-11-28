@@ -3364,9 +3364,12 @@ window.downloadMermaidPNG = function(btn) {
         
         const ctx = canvas.getContext('2d');
         
-        // ✨ 智慧背景色補全：根據當下深淺色主題填上背景，防止 PNG 變透明導致字看不見！
+        // ✨ 智慧背景色補全：從主題 CSS 變數讀取背景色，防止 PNG 變透明導致字看不見！
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-        ctx.fillStyle = currentTheme === 'dark' ? '#020617' : '#ffffff';
+        const rootStyles = getComputedStyle(document.documentElement);
+        const themeBg = rootStyles.getPropertyValue(currentTheme === 'dark' ? '--bg' : '--card').trim()
+            || rootStyles.getPropertyValue('--bg').trim();
+        ctx.fillStyle = themeBg || (currentTheme === 'dark' ? '#020617' : '#ffffff');
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         ctx.scale(scale, scale);
@@ -4911,7 +4914,8 @@ window.renderSocialLinks = function() {
 
     container.style.display = '';
     container.innerHTML = CONFIG.SOCIAL_LINKS.map((item, idx) => {
-        const iconSvg = GLOBAL_SVGS[item.icon] || GLOBAL_SVGS.linkLg;
+        const rawIcon = typeof item.icon === 'string' ? item.icon.trim() : '';
+        const iconSvg = /^<svg[\s>]/i.test(rawIcon) ? rawIcon : (GLOBAL_SVGS[rawIcon] || GLOBAL_SVGS.linkLg);
         const safeName = window.escapeHtml(item.name || '');
         if (item.copyUrl) {
             return `<button type="button" class="header-social-link icon-only-copy" data-social-copy-idx="${idx}" aria-label="${safeName}">${iconSvg}</button>`;
@@ -8647,13 +8651,17 @@ function initThemeAndMenu() {
     else if (prefersLight) initialTheme = 'light';
 
     function applyTheme(theme) {
-        const bgHex = theme === 'light' ? '#F1F5F9' : '#020617';
         const root = document.documentElement;
 
-        // 同步頁面底色及原生色彩提示，避免初始行內顏色在切換主題後停留舊值。
+        // 先切換 data-theme，再從 CSS 主題變數讀取最新底色與色彩提示。
         root.setAttribute('data-theme', theme);
+        const rootStyles = getComputedStyle(root);
+        const fallbackBg = theme === 'light' ? '#F1F5F9' : '#020617';
+        const bgHex = rootStyles.getPropertyValue('--bg').trim() || fallbackBg;
+        const scheme = rootStyles.getPropertyValue('color-scheme').trim() || (theme === 'light' ? 'light' : 'dark');
+
         root.style.backgroundColor = bgHex;
-        root.style.colorScheme = theme === 'light' ? 'light' : 'dark';
+        root.style.colorScheme = scheme;
 
         // ✨ 2. 原地更新 meta 屬性（嚴禁 remove() 重建，避免觸發 iOS WebKit 將 env(safe-area-inset-top) 歸零的 Bug！）
         let metaTheme = document.getElementById('meta-theme-color') || document.querySelector('meta[name="theme-color"]');
