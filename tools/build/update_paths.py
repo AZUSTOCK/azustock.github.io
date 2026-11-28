@@ -23,6 +23,7 @@ def update_extensions_to_webp(directory=DEFAULT_DIR):
         return
 
     success_count = 0
+    error_count = 0
     for file_path in target_files:
         try:
             # 讀取檔案內容
@@ -45,8 +46,11 @@ def update_extensions_to_webp(directory=DEFAULT_DIR):
                 
         except Exception as e:
             cout.error(f"更新檔案失敗 {os.path.relpath(file_path)}: {e}")
+            error_count += 1
             
-    if success_count > 0:
+    if error_count > 0:
+        cout.error(f"系統路徑升級完成但有錯誤！成功修改: {success_count} 個 | 失敗: {error_count} 個檔案。")
+    elif success_count > 0:
         cout.success(f"系統路徑升級完成！共修改了 {success_count} 個檔案。", icon_key='party')
     else:
         cout.skip("所有檔案內文路徑皆已為 .webp，無須修改。", indent=0)

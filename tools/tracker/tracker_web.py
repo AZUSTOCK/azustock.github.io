@@ -628,6 +628,7 @@ def serve(root, port=8766, open_browser=True):
     except OSError:
         if not port:
             raise
+        print(f'連接埠 {port} 無法使用，改用可用連接埠。')
         server = TrackerServer(root, 0)
     url = f'http://127.0.0.1:{server.server_port}/'
     print(f'Tracker 管理介面：{url}\n網站根目錄：{server.engine.root}\n按 Ctrl+C 關閉。', flush=True)

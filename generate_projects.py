@@ -282,7 +282,6 @@ class BuildState:
 
 def convert_project_images(is_github_actions, overwrite_webp=False, target_folders=None):
     if is_github_actions:
-        cout.stage("第一階段", "CI 模式圖片 WebP 檢查與轉檔...", icon_key='search')
         return convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
     from tools.media.webp_manifest import convert_local_webp
     report = convert_local_webp(
