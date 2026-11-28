@@ -1,80 +1,44 @@
 ## refactor
-1. Discord WebHook (YAML + Python)
-2. GitHub Pages deployment (Branch → Artifact; YAML + Python)
-3. Filter Toast logic
-4. UI interaction state management
-5. System Toast lifecycle
-6. GitHub metadata version normalization
-7. Centralized public site preparation, exclusion rules, and validation
+1. Discord WebHook and GitHub Pages deployment (Branch → Artifact; YAML + Python)
+2. Centralized public site preparation, exclusion rules, and pre-deployment validation
+3. UI interaction state management, Filter Toast logic, and System Toast lifecycle
 
 ## add
-1. GitHub metadata sync
+1. GitHub metadata sync with version prefix normalization
 2. `header-social-icons`
-3. System Memory (export / import / reset)
-4. System Memory backup validation and merge mechanism
-5. Kotoba click history (`sys_clicked_kotoba`)
-6. Kotoba collection progress in Filter Toast
-7. Pre-deployment file and resource validation
-8. Manual deployment trigger
-9. System Memory reset confirmation and optional backup
-10. Local Discord notification preview and JSON payload output
-11. Public Site Inventory (file paths, sizes, and SHA-256 hashes)
-12. Inventory comparison against the previous successful deployment
-13. Local public site preparation and preview
-14. Unit tests for Discord notifications and public site preparation
+3. System Memory (export, validated merge import, and reset with confirmation and optional backup)
+4. Kotoba click history (`sys_clicked_kotoba`) and collection progress in Filter Toast
+5. Manual deployment trigger
+6. Public Site Inventory (file paths, sizes, SHA-256 hashes) with comparison against the previous deployment
+7. Local preview tools for public site preparation and Discord notifications (with JSON payload output)
+8. Unit tests for Discord notifications and public site preparation
 
 ## change / update
-1. `default_sort` in `categories`
-2. `fullscreen-menu` UI
-3. Custom domain (`azustock.github.io` → `azustock.com`)
-4. Open Graph, Twitter Cards and canonical URLs
-5. PWA Manifest (ID, scope and start URL)
-6. Favicon resource references
-7. System Memory backup metadata
-8. System Memory import result summary
-9. Discord Release notifications (extract the changelog heading and render it as H3)
-10. Discord Embed color mapping based on explicit `[STATUS]`
-11. GitHub version prefixes (preserve existing prefixes; prepend `v` to numeric versions)
+1. Custom domain (`azustock.github.io` → `azustock.com`), including Open Graph, Twitter Cards, canonical URLs, and PWA manifest
+2. `default_sort` in `categories`
+3. `fullscreen-menu` UI
+4. Discord notifications (render release changelog headings as H3; map embed colors via explicit `[STATUS]`)
 
 ## adjust
-1. UI
-2. `sys-memory-sheet` UI
-3. `nav-item` gradient hover effect
-4. `nav-plane-svg` animation
-5. `tags-container` available width
-6. Filter Toast navigation button states
-7. Disabled button cursor and tooltip opacity
-8. System Memory descriptions and disabled option styles
+1. Navigation hover and icon animations (`nav-item`, `nav-plane-svg`)
+2. `tags-container` available width
+3. Filter Toast navigation button states and disabled button/tooltip styling
 
 ## fix
 1. UI shake and hover flickering
-2. Interaction State (hidden elements blocking pointer events)
-3. Hidden elements retaining keyboard focus
-4. Lightbox reopening and delayed cleanup
-5. System Toast animation timing
-6. Invalid favicon references
-7. Legacy domain resource references
-8. Deployment script escaping
-9. Single-item Filter Toast navigation
-10. Duplicate and incorrect version prefixes
-11. Incorrect Discord Embed colors caused by summary keywords
-12. Duplicate Release titles in Discord notifications
-13. Stale files in deployment staging
-
-## deprecate
-1. Branch-based deployment via `gh-pages`
+2. Hidden elements blocking pointer events and retaining keyboard focus
+3. Lightbox reopening and delayed cleanup
+4. System Toast animation timing
+5. Single-item Filter Toast navigation
+6. Invalid favicon and legacy domain resource references
+7. Deployment script escaping and stale staging files
+8. Duplicate release titles and keyword-triggered embed color mismatches in Discord notifications
 
 ## remove
-1. Force-push deployment mechanism
-2. System Memory source origin display
-3. Redundant System Memory descriptions
-4. Invalid 16×16 and 32×32 favicon references
-5. Inline notification and public site preparation scripts from GitHub Actions workflows
-6. Internal build tools, cache metadata, and source files from public deployment (`tools/`, `logs/`, root `README.md`, `api/**/meta.json`, `projects/**/detail.json`, `projects/**/index.md`)
+1. Legacy `gh-pages` branch and force-push deployment mechanism
+2. Internal build tools, cache metadata, and source files from public deployment (`tools/`, `logs/`, root `README.md`, `api/**/meta.json`, `projects/**/detail.json`, `projects/**/index.md`)
 
 ## notice
-1. The official domain has been changed to `azustock.com`.
-2. Local storage is isolated between the old and new domains.
-3. Existing System Memory backups remain compatible.
-4. The new deployment workflow requires GitHub Pages Source to be set to GitHub Actions.
-5. Public Site Inventory reports are available as a separate GitHub Actions artifact (`public-site-inventory`) for 30 days and are not published to the website.
+1. The official domain is now `azustock.com`; local storage is isolated from the previous domain, though existing System Memory backups remain compatible.
+2. The new deployment workflow requires GitHub Pages Source to be set to GitHub Actions.
+3. Public Site Inventory reports are stored as a separate GitHub Actions artifact (`public-site-inventory`) for 30 days and are not published to the website.
