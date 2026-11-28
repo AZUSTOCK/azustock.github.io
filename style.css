@@ -3857,6 +3857,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     object-fit: contain !important; /* 確保影片比例正確，上下或左右留黑邊 */
     margin: 0 !important;
     border-radius: 0 !important;
+    overscroll-behavior: none !important;
 }
 
 .media-container-wrapper {
@@ -4271,7 +4272,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     box-shadow: 30px 0 0 0 var(--bg); 
     background: var(--bg); 
     
-    height: 100vh; height: 100dvh; z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease, visibility 0s linear 0.3s; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; 
+    height: 100vh; height: 100dvh; z-index: 9999; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease, visibility 0s linear 0.3s; overflow: hidden; overscroll-behavior: none; touch-action: none; user-select: none; -webkit-user-select: none; 
 }
 #lightbox-modal.is-active { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
 #lightbox-backdrop { 

@@ -4,7 +4,7 @@
 /* ================================================================== */
 // BEGIN GENERATED SITE CONFIG
 const CONFIG = {
-    VERSION: "U1.7.3.1",
+    VERSION: "U1.7.3.2",
     DEFAULT_THEME: "dark",
     MARQUEE_SPEED: 120,
     FAVICON_LIGHT: "./assets/OG_dark.png",
@@ -1544,7 +1544,7 @@ for (const [id, stateClass] of [['md-modal', 'active'], ['fullscreen-menu', 'act
 function hasActiveScrollLock() {
     return !!document.querySelector(
         '#fullscreen-menu.active, #pdf-action-modal, #md-modal.active, .modal-overlay.active, ' +
-        '#sensitive-modal-overlay, video.is-web-fullscreen, #sys-reboot-screen'
+        '#lightbox-modal.is-active, #sensitive-modal-overlay, video.is-web-fullscreen, #sys-reboot-screen'
     );
 }
 
@@ -3668,41 +3668,36 @@ window.showPdfActionModal = function(href, title) {
 // ==========================================
 window.toggleWebFullscreen = function(videoEl) {
     if (!videoEl) return;
-    
-    if (videoEl.classList.contains('is-web-fullscreen')) {
-        // 退出全螢幕
-        videoEl.classList.remove('is-web-fullscreen');
-        window.unlockScroll(); // 恢復背景捲動
-        
-        // ✨ 核心修復：把影片從 body 搬回 Modal 裡的原本位置！
-        const placeholder = videoEl._fsPlaceholder;
-        if (placeholder && placeholder.parentNode) {
-            placeholder.parentNode.insertBefore(videoEl, placeholder);
-            placeholder.remove();
-        }
-        
-        // 移除 body 下的關閉按鈕
-        const exitBtn = videoEl._fsExitBtn;
-        if (exitBtn) exitBtn.remove();
-        
-    } else {
-        // 進入全螢幕
-        // 記錄目前的播放狀態，以免搬家後暫停
+
+    const enterCustomWebFullscreen = () => {
         const isPaused = videoEl.paused;
-        
+
         const placeholder = document.createElement('div');
         placeholder.className = 'video-fs-placeholder';
-        
+
         videoEl._fsPlaceholder = placeholder;
         videoEl.parentNode.insertBefore(placeholder, videoEl);
         document.body.appendChild(videoEl); // ✨ 瞬間搬家到最高層級
-        
+
         videoEl.classList.add('is-web-fullscreen');
         window.lockScroll(); // 鎖定背景捲動
-        
+
+        // 防止全螢幕觀看時上下滑動喚出瀏覽器工具列，同時保留底部 72px 原生進度條拖曳區
+        if (!videoEl._fsTouchGuard) {
+            videoEl._fsTouchGuard = (e) => {
+                if (!videoEl.classList.contains('is-web-fullscreen') || !e.cancelable) return;
+                const touchY = e.touches?.[0]?.clientY;
+                const rect = videoEl.getBoundingClientRect();
+                if (touchY === undefined || touchY < rect.bottom - 72) {
+                    e.preventDefault();
+                }
+            };
+            document.addEventListener('touchmove', videoEl._fsTouchGuard, { passive: false });
+        }
+
         // 確保搬家後影片繼續播放
         if (!isPaused) videoEl.play().catch(e => console.warn("自動播放被系統阻擋", e));
-        
+
         // 建立並顯示專屬的關閉按鈕 (一樣放在 body 下)
         if (!videoEl._fsExitBtn) {
             const exitBtn = document.createElement('button');
@@ -3717,7 +3712,59 @@ window.toggleWebFullscreen = function(videoEl) {
         } else {
             document.body.appendChild(videoEl._fsExitBtn);
         }
+    };
+
+    if (videoEl.classList.contains('is-web-fullscreen')) {
+        // 退出自製網頁全螢幕
+        videoEl.classList.remove('is-web-fullscreen');
+        if (videoEl._fsTouchGuard) {
+            document.removeEventListener('touchmove', videoEl._fsTouchGuard);
+            videoEl._fsTouchGuard = null;
+        }
+        window.unlockScroll(); // 恢復背景捲動
+
+        // ✨ 核心修復：把影片從 body 搬回 Modal 裡的原本位置！
+        const placeholder = videoEl._fsPlaceholder;
+        if (placeholder && placeholder.parentNode) {
+            placeholder.parentNode.insertBefore(videoEl, placeholder);
+            placeholder.remove();
+        }
+
+        // 移除 body 下的關閉按鈕
+        const exitBtn = videoEl._fsExitBtn;
+        if (exitBtn) exitBtn.remove();
+        return;
     }
+
+    // 非 PWA 的觸控瀏覽器（手機／平板 Safari、Chrome）：優先使用原生全螢幕徹底隱藏瀏覽器工具列
+    const isTouchBrowser = !window.isPWAEnvironment() && (
+        document.body.classList.contains('is-touch-device') ||
+        ('ontouchstart' in window) ||
+        (navigator.maxTouchPoints > 0)
+    );
+    if (isTouchBrowser) {
+        if (document.fullscreenElement === videoEl) {
+            document.exitFullscreen?.().catch(() => {});
+            return;
+        }
+        if (typeof videoEl.webkitEnterFullscreen === 'function' && !videoEl.requestFullscreen) {
+            try {
+                videoEl.webkitEnterFullscreen();
+                return;
+            } catch (_) { /* 降級至自製網頁全螢幕 */ }
+        }
+        if (typeof videoEl.requestFullscreen === 'function') {
+            Promise.resolve(videoEl.requestFullscreen()).catch(() => {
+                if (typeof videoEl.webkitEnterFullscreen === 'function') {
+                    try { videoEl.webkitEnterFullscreen(); return; } catch (_) {}
+                }
+                enterCustomWebFullscreen();
+            });
+            return;
+        }
+    }
+
+    enterCustomWebFullscreen();
 };
 
 /* ========================================================================== */
@@ -7267,6 +7314,15 @@ closeModalBtn.addEventListener('click', closeModal);
 modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
 
 modalOverlay.addEventListener('touchmove', (e) => { if (e.target === modalOverlay) e.preventDefault(); }, { passive: false });
+
+const lightboxOverlayEl = document.getElementById('lightbox-modal');
+if (lightboxOverlayEl) {
+    lightboxOverlayEl.addEventListener('touchmove', (e) => {
+        if (lightboxOverlayEl.classList.contains('is-active') && e.cancelable) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+}
 
 function show404Modal(title, message) {
     window.beginModalNavigation();
