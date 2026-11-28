@@ -4,8 +4,7 @@
 真正需要轉檔時，沿用原版 convert_webp._convert_single_worker。
 """
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from tools.common.build_cache import file_lock
-import hashlib
+from tools.common.build_cache import file_hash, file_lock
 import json
 import os
 from pathlib import Path
@@ -16,14 +15,6 @@ from .convert_webp import _convert_single_worker, MAX_SIZE, RATIO
 from tools.common.cout import cout
 
 SCHEMA_VERSION = 1
-
-
-def file_hash(path):
-    hasher = hashlib.sha256()
-    with Path(path).open('rb') as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b''):
-            hasher.update(block)
-    return hasher.hexdigest()
 
 
 def read_manifest(path):

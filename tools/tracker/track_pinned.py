@@ -8,7 +8,6 @@ python track_pinned.py --set '"2026-11-26"' --file my_article
 python track_pinned.py --remove --file my_article
 """
 import json
-import re
 import sys
 from datetime import datetime
 
@@ -17,13 +16,12 @@ if not __package__:
     import sys as _sys
     from pathlib import Path as _Path
     _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
-from tools.tracker.tracker_common import JsonFieldTracker, source_path
+from tools.tracker.tracker_common import JsonFieldTracker, parse_valid_date
 
 from tools.common.paths import ROOT_DIR
 from tools.config.site_config import config_for_projects
 PROJECTS_DIR = str(ROOT_DIR / "projects")
 OUTPUT_FILE = str(ROOT_DIR / "tools/tracker/reports/pinned_dashboard.html")
-RE_DATE = re.compile(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
 PINNED_ALIASES = ('pinned', 'PINNED')
 
 results = {}
@@ -35,17 +33,6 @@ scanned = False
 
 def detect_expire_days():
     return config_for_projects(PROJECTS_DIR)["status"]["expire_days"]
-
-
-def parse_valid_date(text):
-    match = RE_DATE.match(str(text).strip())
-    if not match:
-        return None
-    y, m, d = int(match.group(1)), int(match.group(2)), int(match.group(3))
-    try:
-        return datetime(y, m, d)
-    except ValueError:
-        return None
 
 
 class PinnedTracker(JsonFieldTracker):

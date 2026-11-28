@@ -8,6 +8,10 @@ from typing import Literal
 import unicodedata
 from PIL import Image
 
+# Preserve direct script execution / IDE Run as well as python -m.
+if not __package__:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from tools.common.cout import cout
 from tools.common.paths import ROOT_DIR
 

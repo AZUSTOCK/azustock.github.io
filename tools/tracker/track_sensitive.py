@@ -10,7 +10,6 @@ python track_sensitive.py --remove --file my_article
 import json
 import re
 import sys
-from pathlib import Path
 
 # Preserve direct script execution as well as python -m.
 if not __package__:

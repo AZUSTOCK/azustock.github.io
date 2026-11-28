@@ -18,6 +18,40 @@ from pathlib import Path
 
 USE_COLOR = False
 REMOVE = object()
+RE_DATE = re.compile(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
+
+
+def parse_valid_date(text):
+    match = RE_DATE.match(str(text).strip())
+    if not match:
+        return None
+    y, m, d = int(match.group(1)), int(match.group(2)), int(match.group(3))
+    try:
+        return datetime(y, m, d)
+    except ValueError:
+        return None
+
+
+def print_unset_targets_list(targets, *, is_unset, heading, query='', kind='all', note_fn=None, location_fn=None):
+    q = query.casefold()
+    items = [
+        t for t in targets
+        if is_unset(t)
+        and (kind == 'all' or t['kind'] == kind)
+        and (not q or any(q in str(t[f]).casefold() for f in ('file', 'title', 'target_id')))
+    ]
+    print(styled(f'\n{heading} · 共 {len(items)} 筆', 'bold'))
+    if not items:
+        print('沒有符合條件的未設定項目。')
+        return items
+    for t in items:
+        label = '專案' if t['kind'] == 'projects' else '文章'
+        color = 'green' if t['kind'] == 'projects' else 'cyan'
+        note = note_fn(t) if note_fn else ''
+        print(f"  [{styled(label, color)}] {styled(t['target_id'], 'yellow')} ({t['title']}){note}")
+        if location_fn:
+            print(location_fn(t))
+    return items
 
 
 def styled(value, color='cyan'):

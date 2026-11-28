@@ -27,13 +27,13 @@ if not __package__:
     import sys as _sys
     from pathlib import Path as _Path
     _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
-from tools.tracker.tracker_common import (TrackerApp, styled, classify_detail_path, json_field_spans, apply_changes, source_path)
+from tools.tracker.tracker_common import (TrackerApp, styled, classify_detail_path, json_field_spans, apply_changes, print_unset_targets_list)
 
 from tools.common.paths import ROOT_DIR
 PROJECTS_DIR = str(ROOT_DIR / "projects")
 OUTPUT_FILE = str(ROOT_DIR / "tools/tracker/reports/tag_dashboard.html")
 
-from tools.config.site_config import CONFIG, TAG_EXPIRE_DAYS, config_for_projects
+from tools.config.site_config import CONFIG, config_for_projects
 
 
 def apply_status_config(config):
@@ -532,24 +532,15 @@ def print_unset_targets(query='', kind='all'):
     """列出尚未設定任何標籤的專案或文章 detail.json。"""
     if not scanned:
         scan_tags(generate_html=False)
-    q = query.casefold()
-    items = [
-        t for t in all_targets
-        if not t['tags']
-        and (kind == 'all' or t['kind'] == kind)
-        and (not q or any(q in str(t[f]).casefold() for f in ('file', 'title', 'target_id')))
-    ]
-    print(styled(f'\n未設定任何 detail.json 標籤的目標 · 共 {len(items)} 筆', 'bold'))
-    if not items:
-        print('沒有符合條件的未設定項目。')
-        return items
-    for t in items:
-        label = '專案' if t['kind'] == 'projects' else '文章'
-        color = 'green' if t['kind'] == 'projects' else 'cyan'
-        md_note = f" (內文高光: {', '.join(t['md_tags'])})" if t.get('md_tags') else ''
-        print(f"  [{styled(label, color)}] {styled(t['target_id'], 'yellow')} ({t['title']}){md_note}")
-        print(f"    detail.json 位置：{styled(t['raw_abs'] + ':' + str(t['line']) + ':' + str(t['column']))}")
-    return items
+    return print_unset_targets_list(
+        all_targets,
+        is_unset=lambda t: not t['tags'],
+        heading='未設定任何 detail.json 標籤的目標',
+        query=query,
+        kind=kind,
+        note_fn=lambda t: f" (內文高光: {', '.join(t['md_tags'])})" if t.get('md_tags') else '',
+        location_fn=lambda t: f"    detail.json 位置：{styled(t['raw_abs'] + ':' + str(t['line']) + ':' + str(t['column']))}",
+    )
 
 
 def query_tags_interactive():

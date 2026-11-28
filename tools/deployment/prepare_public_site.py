@@ -2,7 +2,6 @@
 Run after generate_projects.py; this tool never deploys or changes source files.
 """
 import argparse
-import hashlib
 import json
 import os
 import shutil
@@ -13,6 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
 from tools.deployment.release_validation import SITE_URL, CORE_FILES, validate_release
+from tools.common.build_cache import file_hash
 from tools.common.paths import ROOT_DIR
 STAGING = ".gh-pages-temp"
 REPORT_DIR = "tools/public-site-inventory"
@@ -27,7 +27,7 @@ ROOT_EXCLUDED = frozenset({
     "generate_projects.py", "main.js", "style.css", LEGACY_REPORT_DIR,
 })
 # All dotfiles/dotdirs (.git, .github, .gh-pages-temp, .env, .secrets.json,
-# .github_sync.json, .build_cache.json, etc.) are excluded by p.startswith(".").
+# .github_sync.json, .DS_Store, etc.) are excluded by p.startswith(".").
 ANYWHERE_EXCLUDED = frozenset({"private", "node_modules", "__pycache__"})
 SCOPED_EXCLUDED = {
     "api": frozenset({"meta.json"}),
@@ -119,14 +119,6 @@ def verify_public_site(stage, source_root=None, *, file_hashes=None):
         if not (stage / rel).is_dir():
             raise ValueError(f"Missing directory: {rel}")
     return validate_release(stage, source_root if source_root is not None else stage.parent, file_hashes=file_hashes)
-
-
-def file_hash(path):
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def generate_inventory(stage, *, file_hashes=None):

@@ -190,7 +190,7 @@ $('folder-source').addEventListener('change',()=>{folderState.parent='';loadFold
 $('folder-prev').addEventListener('click',()=>{if(folderState.page>1){folderState.page--;loadFolders(false);}});$('folder-next').addEventListener('click',()=>{if(folderState.page<folderState.pages){folderState.page++;loadFolders(false);}});
 $('use-current-folder').addEventListener('click',()=>{if(folderState.current)chooseFolder(folderState.current);});$('clear-folder').addEventListener('click',()=>{setFolder(null);search();});
 
-if(location.protocol==='file:'){showError('請先執行 python tools/check_exif.py --web，再使用自動開啟的本機頁面。');setCount('等待啟動 Python 程式');$('root').textContent='尚未連線';}else{status().then(()=>search()).catch(error=>{showError(error.message);setCount('連線失敗');});}
+if(location.protocol==='file:'){showError('請先執行 python -m tools.check_exif.check_exif --web，再使用自動開啟的本機頁面。');setCount('等待啟動 Python 程式');$('root').textContent='尚未連線';}else{status().then(()=>search()).catch(error=>{showError(error.message);setCount('連線失敗');});}
 </script>
 </body>
 </html>

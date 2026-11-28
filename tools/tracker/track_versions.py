@@ -26,7 +26,7 @@ if not __package__:
     import sys as _sys
     from pathlib import Path as _Path
     _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
-from tools.tracker.tracker_common import (TrackerApp, styled, classify_detail_path, json_field_spans, apply_changes, location, source_path)
+from tools.tracker.tracker_common import (TrackerApp, styled, classify_detail_path, json_field_spans, apply_changes, location, print_unset_targets_list, source_path)
 
 from tools.common.paths import ROOT_DIR
 PROJECTS_DIR = str(ROOT_DIR / "projects")
@@ -303,24 +303,15 @@ def print_unset_targets(query='', kind='all'):
     """列出尚未設定 min_sys_version 的專案或文章 detail.json。"""
     if not scanned:
         scan_versions(generate_html=False)
-    q = query.casefold()
-    items = [
-        t for t in all_targets
-        if not t['version']
-        and (kind == 'all' or t['kind'] == kind)
-        and (not q or any(q in str(t[f]).casefold() for f in ('file', 'title', 'target_id')))
-    ]
-    print(styled(f'\n未設定 min_sys_version 的目標 · 共 {len(items)} 筆', 'bold'))
-    if not items:
-        print('沒有符合條件的未設定項目。')
-        return items
-    for t in items:
-        label = '專案' if t['kind'] == 'projects' else '文章'
-        color = 'green' if t['kind'] == 'projects' else 'cyan'
-        inherited = f" (繼承專案版本: {t['proj_version']})" if t.get('proj_version') else ''
-        print(f"  [{styled(label, color)}] {styled(t['target_id'], 'yellow')} ({t['title']}){inherited}")
-        print(f"    位置：{t['raw_abs']}:1:1")
-    return items
+    return print_unset_targets_list(
+        all_targets,
+        is_unset=lambda t: not t['version'],
+        heading='未設定 min_sys_version 的目標',
+        query=query,
+        kind=kind,
+        note_fn=lambda t: f" (繼承專案版本: {t['proj_version']})" if t.get('proj_version') else '',
+        location_fn=lambda t: f"    位置：{t['raw_abs']}:1:1",
+    )
 
 
 def query_versions():

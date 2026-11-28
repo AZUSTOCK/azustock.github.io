@@ -1,6 +1,5 @@
 """與 main.js parseSensitiveSetting 對應的警告規則；供 keys 與 sensitive 共用。"""
 import re
-from pathlib import Path
 # Preserve direct script execution as well as python -m.
 if not __package__:
     import sys as _sys

@@ -77,3 +77,12 @@ def signature(primary, dependencies, settings, logic_version, hash_file):
     encoded = json.dumps(dict(inputs=values, settings=settings or {}, logic=logic_version),
                          sort_keys=True, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
     return hashlib.sha256(encoded.encode('utf-8')).hexdigest()[:16]
+
+
+def file_hash(path, chunk_size=1024 * 1024):
+    """計算檔案完整 SHA-256 雜湊值（分塊讀取，避免大檔佔用記憶體）。"""
+    digest = hashlib.sha256()
+    with open(path, 'rb') as stream:
+        for chunk in iter(lambda: stream.read(chunk_size), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
