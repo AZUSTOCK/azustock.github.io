@@ -351,21 +351,6 @@ window.ensureMinSysVersion = function(project, article = null) {
     return true;
 };
 
-window.setModalView = function(mode) {
-    const viewIndex = document.getElementById('view-index');
-    const viewArticle = document.getElementById('view-article');
-    if (mode === 'index') {
-        if (viewArticle) viewArticle.style.display = 'none';
-        if (viewIndex) {
-            viewIndex.querySelectorAll('.is-unlocked:not(.already-unlocked)').forEach(el => el.classList.add('already-unlocked'));
-            viewIndex.style.display = 'block';
-        }
-        return viewIndex;
-    }
-    if (viewIndex) viewIndex.style.display = 'none';
-    if (viewArticle) viewArticle.style.display = 'block';
-    return viewArticle || document.getElementById('modal-body');
-};
 
 // ==========================================
 // ✨ 核心通用工具庫 (Core Utilities & Memory Cache)
@@ -594,7 +579,9 @@ window.stripHtml = function(str) {
     return String(str ?? '').replace(/<[^>]+>/g, '');
 };
 
-// 3. 統計指定金鑰已收集的碎片數 (有指定總數時僅計數 1..reqCount)
+window.escapeJsSingleQuote = function(str) {
+    return String(str ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+};
 
 // ==========================================
 // ✨ 系統版本比對引擎 (SemVer)
@@ -732,8 +719,6 @@ window.triggerSecureDownload = async function(url, filename, isNewTab = false) {
         window.open(url, '_blank'); 
     }
 };
-
-// 4. 卡片定位後的高光閃爍特效器
 
 window.getRelativeOffsetTop = function(element, container) {
     let itemTop = element.offsetTop;
@@ -1249,7 +1234,7 @@ window.findFirstUnreadArticleForMain = function(projectId, currentArticleIndex =
     const currentProj = projects.find(p => p.id === projectId);
     if (!currentProj || !Array.isArray(currentProj.articles)) return null;
 
-    const isUnlockedSys = document.body?.classList?.contains('system-override-active') || false;
+    const isUnlockedSys = window.isSystemOverrideActive();
     const isProjAccessible = (proj) => {
         if (!proj || !Array.isArray(proj.articles)) return false;
         if (proj.required_key && !window.isSecretUnlocked(proj.required_key)) return false;
@@ -2388,7 +2373,7 @@ window.initProgressBar = function(mountEl, scrollEl, type, existingBarId = null)
 // ==========================================
 // ✨ 手機/PWA 專屬 PDF 安全互動選單 (強制下載與瀏覽器穿透版)
 // ==========================================
-function openPdfActionSheet(markup) {
+function openActionSheet(markup) {
     const previous = document.getElementById('pdf-action-modal');
     const overlay = document.createElement('div');
     overlay.id = 'pdf-action-modal';
@@ -3640,7 +3625,7 @@ window.showPdfActionModal = function(href, title) {
     const viewBtnIcon = GLOBAL_SVGS.newTab;
     const downloadBtnDisplay = isPWA ? 'none' : 'flex';
 
-    const { overlay, close } = openPdfActionSheet(`
+    const { overlay, close } = openActionSheet(`
         <div class="pdf-action-sheet">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title">${title}</div>
@@ -3760,7 +3745,7 @@ function renderMediaTag(cleanMediaUrl, ext, isVideo, posterUrl, altText, imgTitl
         : `<audio preload="metadata" controls class="md-audio"><source src="${cleanMediaUrl}" type="audio/${ext}" onerror="window.handleMediaError(this)">您的瀏覽器不支援音樂標籤。</audio>`;
 
     // ✨ 影音專屬：重載腳本 (加上時間戳防快取)
-    const reloadScript = `event.stopPropagation(); const media = this.closest('.media-container-wrapper').querySelector('.md-video, .md-audio'); const source = media.querySelector('source'); const orig = source.src.split('?retry=')[0].split('&retry=')[0]; const sep = orig.includes('?') ? '&' : '?'; source.src = orig + sep + 'retry=' + new Date().getTime(); media.load();`;
+    const reloadScript = `event.stopPropagation(); const media = this.closest('.media-container-wrapper').querySelector('.md-video, .md-audio'); const source = media.querySelector('source'); source.src = window.withRetryParam(source.src); media.load();`;
 
     // ✨ 注入重新整理按鈕，並在有全螢幕按鈕時加入分隔線
     const actionBtns = `
@@ -3868,7 +3853,6 @@ renderer.image = function(token_or_href, title, text) {
 };
 
 // 2. ✨ 攔截 Mermaid 程式碼區塊與一般程式碼區塊
-const originalCodeRenderer = renderer.code.bind(renderer);
 renderer.code = function(token_or_code, language, isEscaped) {
     const lang = typeof token_or_code === 'object' ? token_or_code.lang : language;
     
@@ -5506,7 +5490,7 @@ async function loadProjects() {
     const marquee = document.getElementById('marquee-text');
 
     try {
-        // ✨ 核心資料載入：向 localStorage 取得 projects 的專屬 Hash 版號
+        // ✨ 核心資料載入：從記憶體快取取得 projects 的專屬 Hash 版號
         const projVersion = window.getResVersion('projects');
         const response = await fetch(`${CONFIG.DATA_SOURCE}?v=${projVersion}`);
         const db = await response.json();
@@ -5830,7 +5814,7 @@ window.handleAppRouting = function(pParam, aParam, hashParam = null) {
         return;
     }
 
-    const isUnlockedSys = document.body.classList.contains('system-override-active');
+    const isUnlockedSys = window.isSystemOverrideActive();
     
     // ✨ 1. 專案層級：只要專案未公開 (is_hidden) 或金鑰未解鎖 (projLocked)，從網址進入一律先攔截顯示 403
     const projLocked = project.required_key && !window.isSecretUnlocked(project.required_key);
@@ -5983,6 +5967,22 @@ window.getActiveScrollContainer = function() {
 };
 
 // === 4. 索引式 Markdown Modal 邏輯 ===
+window.setModalView = function(mode) {
+    const viewIndex = document.getElementById('view-index');
+    const viewArticle = document.getElementById('view-article');
+    if (mode === 'index') {
+        if (viewArticle) viewArticle.style.display = 'none';
+        if (viewIndex) {
+            viewIndex.querySelectorAll('.is-unlocked:not(.already-unlocked)').forEach(el => el.classList.add('already-unlocked'));
+            viewIndex.style.display = 'block';
+        }
+        return viewIndex;
+    }
+    if (viewIndex) viewIndex.style.display = 'none';
+    if (viewArticle) viewArticle.style.display = 'block';
+    return viewArticle || document.getElementById('modal-body');
+};
+
 const modalOverlay = document.getElementById('md-modal');
 const closeModalBtn = document.getElementById('close-modal');
 const modalBody = document.getElementById('modal-body');
@@ -6281,17 +6281,8 @@ if (!window.modalBodyObserver) {
     const initialTopRight = document.getElementById('modal-top-right');
     if (initialTopRight) window.modalBodyObserver.observe(initialTopRight);
 }
-if (!window._responsiveHeaderResizeBound) {
-    window._responsiveHeaderResizeBound = true;
-    let headerResizeRaf = null;
-    window.addEventListener('resize', () => {
-        if (!modalOverlay || !modalOverlay.classList.contains('active')) return;
-        if (headerResizeRaf) cancelAnimationFrame(headerResizeRaf);
-        headerResizeRaf = requestAnimationFrame(() => {
-            headerResizeRaf = null;
-            window.syncModalHeaderLayouts();
-        });
-    }, { passive: true });
+if (!window._responsiveHeaderFontsBound) {
+    window._responsiveHeaderFontsBound = true;
     if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(() => {
             window.syncModalHeaderLayouts();
@@ -6419,10 +6410,6 @@ window.openProjectIndex = function(projectId, restoreScroll = false) {
     switchModalContent(
         () => {
             const modalContainer = document.querySelector('.modal-content');
-            
-
-            const proj = window.siteProjects.find(p => p.id === projectId);
-            if (!proj || !proj.articles) return;
 
             let currentSort = sessionStorage.getItem(`sort_${projectId}`) || proj.default_sort || 'desc';
             sessionStorage.setItem(`sort_${projectId}`, currentSort);
@@ -7140,8 +7127,6 @@ window.openArticle = async function(projectId, articleIndex, isFromHistory = fal
                 </div>
             `;
 
-            const tocMount = document.getElementById('toc-mount-point');
-            let tocWrapper = tocMount.querySelector('.toc-wrapper'); // 尋找既有的選單
             // ==========================================
             // ✨ 建立文章內文目錄漢堡選單 (導入共用引擎)
             // ==========================================
@@ -7288,8 +7273,9 @@ function show404Modal(title, message) {
     const modalOverlay = document.getElementById('md-modal');
     const modalBody = window.setModalView('article');
     const modalTopLeft = document.getElementById('modal-top-left');
-    const tocMountPoint = document.getElementById('toc-mount-point');
-    
+
+    const progressBar = document.getElementById('reading-progress-bar');
+    if (progressBar) progressBar.style.display = 'none';
 
     if (modalTopLeft) modalTopLeft.innerHTML = `<span style="color: var(--muted); font-weight: 600; font-family: monospace; letter-spacing: 0.05em;">SYSTEM_ERROR</span>`;
     window.renderTocMenu?.([]);
@@ -7687,7 +7673,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                     return `<button class="capsule-btn ${type} disabled" disabled>${iconSvg}</button>`;
                 }
                 const label = type === 'prev' ? '較新版本' : '較舊版本';
-                const safeId = String(item.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const safeId = window.escapeJsSingleQuote(item.id);
                 const safeVer = String(item.version || item.id).replace(/"/g, '&quot;');
                 return `<button class="capsule-btn ${type}" onclick="window.renderChangelogDetail('${safeId}')" data-tooltip="${label}：${safeVer}">${iconSvg}</button>`;
             };
@@ -7753,7 +7739,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                         const renderLogLi = (log, isHighlightGroup, themeClass = '', customStyle = '') => {
                             const activeStatus = log.status;
                             const badgeHTML = `<span class="status-badge title-badge" data-status="${activeStatus}">${log.status}</span>`;
-                            const safeId = String(log.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                            const safeId = window.escapeJsSingleQuote(log.id);
                             const liClass = isHighlightGroup ? `article-li is-highlight changelog-list-item${themeClass}` : `article-li is-highlight changelog-list-item`;
                             return `
                                 <li id="changelog-item-${log.id}" class="${liClass}" data-status="${activeStatus}"${customStyle}>
@@ -7895,7 +7881,7 @@ window.showChangelogModal = async function(isSystemFallback = false, targetLogId
                 const makeNavCard = (item, type) => {
                     if (!item) return '';
                     const isPrev = type === 'prev';
-                    const safeId = String(item.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    const safeId = window.escapeJsSingleQuote(item.id);
                     const labelHtml = isPrev
                         ? `${GLOBAL_SVGS.chevronLeft} 較新版本`
                         : `較舊版本 ${GLOBAL_SVGS.chevronRight}`;
@@ -8213,7 +8199,7 @@ window.checkUpdatesInBackground = function() {
 // 記憶管理沿用 PDF Action Sheet，不另建一套彈窗引擎。
 window.showSystemMemoryModal = function(mode) {
     const exporting = mode === 'export';
-    const { overlay, close } = openPdfActionSheet(`
+    const { overlay, close } = openActionSheet(`
         <div class="pdf-action-sheet sys-memory-sheet sys-memory-transfer">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title" style="color: var(--accent); font-family: monospace;">&gt;_ ${exporting ? '匯出系統記憶' : '匯入系統記憶'}</div>
@@ -8359,7 +8345,7 @@ window.showSystemReloadModal = function() {
     const trashIcon = GLOBAL_SVGS.trashLg;
 
     // 套用與 PDF 彈窗 100% 相同的 HTML 結構 (pdf-action-sheet, pdf-action-btn)
-    const { overlay, close } = openPdfActionSheet(`
+    const { overlay, close } = openActionSheet(`
         <div class="pdf-action-sheet sys-memory-sheet">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title" style="color: var(--accent); font-family: monospace;">&gt;_ 系統維護控制台</div>
@@ -8401,7 +8387,7 @@ window.showSystemReloadModal = function() {
 };
 
 window.showSystemFormatMemoryModal = function() {
-    const { overlay, close } = openPdfActionSheet(`
+    const { overlay, close } = openActionSheet(`
         <div class="pdf-action-sheet sys-memory-sheet">
             <div class="pdf-drag-handle"></div>
             <div class="pdf-sheet-title" style="color: var(--error-color); font-family: monospace;">&gt;_ 確認重置系統記憶</div>
@@ -8745,6 +8731,9 @@ window.addEventListener('resize', () => {
         window._checkMobileLayout?.();
         window.syncCardMetaLayout?.();
         window.syncSocialIconsLayout?.();
+        if (modalOverlay?.classList.contains('active')) {
+            window.syncModalHeaderLayouts?.();
+        }
 
         const viewArticle = document.getElementById('view-article');
         if (viewArticle && viewArticle.style.display !== 'none') {
@@ -8938,7 +8927,7 @@ function initThemeAndMenu() {
                 clickCount = 0; 
                 
                 // ✨ 核心修改 1：在解鎖前，先記住當下是否為「剛好被解鎖的瞬間」
-                const isJustUnlocked = !document.body.classList.contains('system-override-active');
+                const isJustUnlocked = !window.isSystemOverrideActive();
                 
                 // 強制保持解鎖狀態
                 document.body.classList.add('system-override-active');

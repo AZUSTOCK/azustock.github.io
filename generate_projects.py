@@ -37,7 +37,7 @@ except Exception as _cfg_err:
     raise
 from tools.common.paths import ROOT_DIR
 from tools.deployment.release_validation import (
-    HASH_HEX_LENGTH, DATA_VERSION_FILES, collect_log_entries, parse_version,
+    HASH_HEX_LENGTH, DATA_VERSION_FILES, collect_log_entries,
     is_public_log, public_log_record, load_log_groups, validate_version, replace_config_version,
 )
 
@@ -966,38 +966,48 @@ def resolve_media_reference(url, base_dir):
     return os.path.normpath(local_path), urlunsplit(('', '', web_path, parts.query, parts.fragment))
 
 
-def _transform_markdown_outside_code(text, transform_fn):
-    """僅對 Markdown 程式碼區塊與行內程式碼以外的段落套用轉換函式。"""
-    inline_code_re = re.compile(r'(`+)[^\n]*?\1')
+_RE_INLINE_CODE = re.compile(r'(`+)[^\n]*?\1')
+_RE_QUOTE_PREFIX = re.compile(r'^\s*(?:>\s*)*')
+_RE_FENCE_MARKER = re.compile(r'(`{3,}|~{3,})(.*)$')
 
-    def transform_line(line):
-        parts = []
-        last = 0
-        for match in inline_code_re.finditer(line):
-            if match.start() > last:
-                parts.append(transform_fn(line[last:match.start()]))
-            parts.append(match.group(0))
-            last = match.end()
-        if last < len(line):
-            parts.append(transform_fn(line[last:]))
-        return ''.join(parts)
 
+def _scan_markdown_code(text, *, on_text=None, on_code_line=None, on_inline_code=None):
+    """掃描 Markdown 的圍欄程式碼區塊與行內程式碼，分別回呼純文字與程式碼片段。"""
     out = []
     fence = None
     for line in text.splitlines(keepends=True):
-        stripped = re.sub(r'^\s*(?:>\s*)*', '', line.rstrip('\r\n'))
-        marker = re.match(r'(`{3,}|~{3,})(.*)$', stripped)
+        body = line.rstrip('\r\n')
+        eol = line[len(body):]
+        stripped = _RE_QUOTE_PREFIX.sub('', body)
+        marker = _RE_FENCE_MARKER.match(stripped)
         if fence:
-            out.append(line)
+            out.append(on_code_line(body, eol) if on_code_line else line)
             if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
                 fence = None
             continue
         if marker and not (marker[1][0] == '`' and '`' in marker[2]):
             fence = marker[1]
-            out.append(line)
+            out.append(on_code_line(body, eol) if on_code_line else line)
             continue
-        out.append(transform_line(line))
+        parts = []
+        last = 0
+        for match in _RE_INLINE_CODE.finditer(body):
+            if match.start() > last:
+                chunk = body[last:match.start()]
+                parts.append(on_text(chunk) if on_text else chunk)
+            code_span = match.group(0)
+            parts.append(on_inline_code(code_span) if on_inline_code else code_span)
+            last = match.end()
+        if last < len(body):
+            chunk = body[last:]
+            parts.append(on_text(chunk) if on_text else chunk)
+        out.append(''.join(parts) + eol)
     return ''.join(out)
+
+
+def _transform_markdown_outside_code(text, transform_fn):
+    """僅對 Markdown 程式碼區塊與行內程式碼以外的段落套用轉換函式。"""
+    return _scan_markdown_code(text, on_text=transform_fn)
 
 
 def resolve_content_tokens(content, replacements):
@@ -1091,26 +1101,11 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
 
 def _mask_markdown_code_preserve_lines(text):
     """將 Markdown 程式碼區塊與行內程式碼替換為等長空白並保留換行，避免範例語法誤報過期。"""
-    inline_code_re = re.compile(r'(`+)[^\n]*?\1')
-    out = []
-    fence = None
-    for line in text.splitlines(keepends=True):
-        body = line.rstrip('\r\n')
-        eol = line[len(body):]
-        stripped = re.sub(r'^\s*(?:>\s*)*', '', body)
-        marker = re.match(r'(`{3,}|~{3,})(.*)$', stripped)
-        if fence:
-            out.append((' ' * len(body)) + eol)
-            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
-                fence = None
-            continue
-        if marker and not (marker[1][0] == '`' and '`' in marker[2]):
-            fence = marker[1]
-            out.append((' ' * len(body)) + eol)
-            continue
-        masked_body = inline_code_re.sub(lambda m: ' ' * len(m.group(0)), body)
-        out.append(masked_body + eol)
-    return ''.join(out)
+    return _scan_markdown_code(
+        text,
+        on_code_line=lambda body, eol: (' ' * len(body)) + eol,
+        on_inline_code=lambda span: ' ' * len(span),
+    )
 
 
 def _parse_highlight_badge_date(raw_badge):
@@ -1924,6 +1919,8 @@ def generate_projects_json(
             proj_og_local_path = os.path.join(proj_api_dir, "og.webp")
 
             if local_proj_cover:
+                if not os.path.isfile(local_proj_cover):
+                    cout.warn(f"專案 {proj_folder} 指定的封面圖不存在：{proj_cover}")
                 proj_data['cover_image'] = local_proj_cover
                 if state.register_image_asset(
                     stat_prefix="og", fn=create_og_image,
