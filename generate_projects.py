@@ -20,18 +20,24 @@ from PIL import Image
 import rjsmin  # type: ignore
 import rcssmin  # type: ignore
 
-from tools.build_cache import stat_key, invalidate, atomic_write, signature, file_lock
-from tools.convert_webp import (
+from tools.common.build_cache import stat_key, invalidate, atomic_write, signature, file_lock
+from tools.media.convert_webp import (
     convert_to_webp_with_protection,
     generate_cover_thumbnail,
     get_copyright_exif,
     MAX_SIZE,
     RATIO,
 )
-from tools.update_paths import update_extensions_to_webp
-from tools.cout import cout  # ✨ 引入 Cout 全域實例
-from tools.release_validation import (
-    HASH_HEX_LENGTH, DATA_VERSION_FILES, collect_log_entries, parse_version,
+from tools.build.update_paths import update_extensions_to_webp
+from tools.common.cout import cout  # ✨ 引入 Cout 全域實例
+try:
+    from tools.config.site_config import SITE_URL, BANNER_PATH, SYS_TAGS, EXPIRABLE_TAGS, TAG_EXPIRE_DAYS, METADATA_FLAG_TAGS, inject
+except Exception as _cfg_err:
+    cout.error(f"讀取或驗證 tools/config/site_config.json 失敗：{_cfg_err}")
+    raise
+from tools.common.paths import ROOT_DIR
+from tools.deployment.release_validation import (
+    HASH_HEX_LENGTH, DATA_VERSION_FILES, collect_log_entries,
     is_public_log, public_log_record, load_log_groups, validate_version, replace_config_version,
 )
 
@@ -51,7 +57,7 @@ WEBP_QUALITY = 90
 WEBP_MAX_SIZE = MAX_SIZE
 WEBP_RATIO = RATIO
 
-BASE_URL = "https://azustock.com"
+BASE_URL = SITE_URL
 API_DIR = "api"
 JS_SOURCE_PATH = "main.js"
 HASH_CHUNK_SIZE = 1024 * 1024
@@ -83,17 +89,13 @@ PDF_RENDER_STRATEGY = 'target-width-2x-v1'
 VALID_IMAGE_EXTS = frozenset({'.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg'})
 RASTER_IMAGE_EXTS = VALID_IMAGE_EXTS - {'.svg'}
 VALID_MEDIA_EXTS = VALID_IMAGE_EXTS | frozenset({'.mp4', '.webm', '.ogg', '.mp3', '.wav', '.pdf'})
-SYS_TAGS = frozenset({
-    'MAJOR', 'HOTFIX', 'LATEST', 'FEATURE', 'NEW', 'UPDATED',
-    'REFACTOR', 'PATCH', 'STABLE', 'ARCHIVED', 'WIP', 'OC', 'FANART',
-})
-META_FLAG_KEYS = ('pinned', 'new', 'updated', 'wip', 'archived', 'hidden', 'sensitive', 'required_key', 'lock_mode', 'key')
+META_FLAG_KEYS = ('pinned', *METADATA_FLAG_TAGS, 'hidden', 'sensitive', 'required_key', 'lock_mode', 'key')
 
 # 預編譯常用 Regex
 RE_LANG_CODE = re.compile(r'[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*')
 RE_DYNAMIC_TEXT = re.compile(r'\?\?\[(.*?)\](?:[ \t]*"([^"]+)")?\s*([\s\S]*?)\s*\?\?')
 RE_FOLDER_META = re.compile(r'^(-?\d+)_+(.*)$')
-RE_TAG_EXPIRE = re.compile(r'^(NEW|UPDATED|LATEST|FEATURE):(\d{4}[-/]\d{2}[-/]\d{2})$', re.IGNORECASE)
+RE_TAG_EXPIRE = re.compile(r'^(' + ('|'.join(map(re.escape, sorted(EXPIRABLE_TAGS))) or '(?!)') + r'):\s*(\d{4}[-/]\d{1,2}[-/]\d{1,2})$', re.IGNORECASE)
 RE_DATE_STR = re.compile(r'^\d{4}[-/]\d{2}[-/]\d{2}$')
 RE_HIGHLIGHT_BLOCK_OPEN = re.compile(r'^[ \t]*:::\s*highlight\[(.*?)\][ \t]*$', re.IGNORECASE | re.MULTILINE)
 RE_HIGHLIGHT_INLINE = re.compile(r'\+\+\[(.*?)\][\s\S]*?\+\+')
@@ -208,7 +210,7 @@ class ShareHtmlTask:
                     self.proj_cover_local, f"{BASE_URL}/{quote(self.proj_cover_local, safe='/')}",
                 )
             else:
-                image_url = resolve_hashed_asset("assets/og.png", self.proj_img_base or f"{BASE_URL}/assets/og.png")
+                image_url = resolve_hashed_asset(BANNER_PATH, self.proj_img_base or f"{BASE_URL}/{BANNER_PATH}")
         title = clean_dynamic_text(self.title)
         if self.project_title is not _UNSET:
             title = f"{title} | {clean_dynamic_text(self.project_title)}"
@@ -222,7 +224,7 @@ class ShareHtmlTask:
             description=safe_desc,
             image=safe_image,
             target_url=safe_target,
-            target_url_js=json.dumps(self.target_url).replace("</", "<\/"),
+            target_url_js=json.dumps(self.target_url).replace("</", r"<\/"),
             share_url=safe_share,
         )
 
@@ -281,7 +283,7 @@ class BuildState:
 def convert_project_images(is_github_actions, overwrite_webp=False, target_folders=None):
     if is_github_actions:
         return convert_to_webp_with_protection(directory="projects", quality=90, auto_mode=overwrite_webp)
-    from tools.webp_manifest import convert_local_webp
+    from tools.media.webp_manifest import convert_local_webp
     report = convert_local_webp(
         directory="projects", quality=WEBP_QUALITY, max_size=WEBP_MAX_SIZE,
         ratio=WEBP_RATIO, logic_version=WEBP_LOGIC_VERSION,
@@ -815,15 +817,7 @@ def generate_pdf_thumbnail(pdf_path, output_path, max_width=1600, quality=90):
 
 
 def get_tag_expire_days():
-    """從 main.js 的 CONFIG 中動態抓取 TAG_EXPIRE_DAYS"""
-    try:
-        with open(JS_SOURCE_PATH, 'r', encoding='utf-8') as f:
-            match = re.search(r'TAG_EXPIRE_DAYS:\s*(\d+)', f.read())
-            if match:
-                return int(match.group(1))
-    except Exception as e:
-        cout.warn(f"無法讀取 TAG_EXPIRE_DAYS，將使用預設值 14: {e}")
-    return 14
+    return TAG_EXPIRE_DAYS
 
 
 # ==========================================
@@ -972,38 +966,48 @@ def resolve_media_reference(url, base_dir):
     return os.path.normpath(local_path), urlunsplit(('', '', web_path, parts.query, parts.fragment))
 
 
-def _transform_markdown_outside_code(text, transform_fn):
-    """僅對 Markdown 程式碼區塊與行內程式碼以外的段落套用轉換函式。"""
-    inline_code_re = re.compile(r'(`+)[^\n]*?\1')
+_RE_INLINE_CODE = re.compile(r'(`+)[^\n]*?\1')
+_RE_QUOTE_PREFIX = re.compile(r'^\s*(?:>\s*)*')
+_RE_FENCE_MARKER = re.compile(r'(`{3,}|~{3,})(.*)$')
 
-    def transform_line(line):
-        parts = []
-        last = 0
-        for match in inline_code_re.finditer(line):
-            if match.start() > last:
-                parts.append(transform_fn(line[last:match.start()]))
-            parts.append(match.group(0))
-            last = match.end()
-        if last < len(line):
-            parts.append(transform_fn(line[last:]))
-        return ''.join(parts)
 
+def _scan_markdown_code(text, *, on_text=None, on_code_line=None, on_inline_code=None):
+    """掃描 Markdown 的圍欄程式碼區塊與行內程式碼，分別回呼純文字與程式碼片段。"""
     out = []
     fence = None
     for line in text.splitlines(keepends=True):
-        stripped = re.sub(r'^\s*(?:>\s*)*', '', line.rstrip('\r\n'))
-        marker = re.match(r'(`{3,}|~{3,})(.*)$', stripped)
+        body = line.rstrip('\r\n')
+        eol = line[len(body):]
+        stripped = _RE_QUOTE_PREFIX.sub('', body)
+        marker = _RE_FENCE_MARKER.match(stripped)
         if fence:
-            out.append(line)
+            out.append(on_code_line(body, eol) if on_code_line else line)
             if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
                 fence = None
             continue
         if marker and not (marker[1][0] == '`' and '`' in marker[2]):
             fence = marker[1]
-            out.append(line)
+            out.append(on_code_line(body, eol) if on_code_line else line)
             continue
-        out.append(transform_line(line))
+        parts = []
+        last = 0
+        for match in _RE_INLINE_CODE.finditer(body):
+            if match.start() > last:
+                chunk = body[last:match.start()]
+                parts.append(on_text(chunk) if on_text else chunk)
+            code_span = match.group(0)
+            parts.append(on_inline_code(code_span) if on_inline_code else code_span)
+            last = match.end()
+        if last < len(body):
+            chunk = body[last:]
+            parts.append(on_text(chunk) if on_text else chunk)
+        out.append(''.join(parts) + eol)
     return ''.join(out)
+
+
+def _transform_markdown_outside_code(text, transform_fn):
+    """僅對 Markdown 程式碼區塊與行內程式碼以外的段落套用轉換函式。"""
+    return _scan_markdown_code(text, on_text=transform_fn)
 
 
 def resolve_content_tokens(content, replacements):
@@ -1075,7 +1079,7 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
                 except ValueError:
                     pass
 
-    for key in ('new', 'updated', 'wip', 'archived', 'hidden'):
+    for key in (*METADATA_FLAG_TAGS, 'hidden'):
         val = data_dict.get(key) or data_dict.get(key.upper())
         if isinstance(val, str) and RE_DATE_STR.match(val):
             try:
@@ -1097,26 +1101,11 @@ def check_expiration_reminders(item_title, item_type, data_dict, detail_path, da
 
 def _mask_markdown_code_preserve_lines(text):
     """將 Markdown 程式碼區塊與行內程式碼替換為等長空白並保留換行，避免範例語法誤報過期。"""
-    inline_code_re = re.compile(r'(`+)[^\n]*?\1')
-    out = []
-    fence = None
-    for line in text.splitlines(keepends=True):
-        body = line.rstrip('\r\n')
-        eol = line[len(body):]
-        stripped = re.sub(r'^\s*(?:>\s*)*', '', body)
-        marker = re.match(r'(`{3,}|~{3,})(.*)$', stripped)
-        if fence:
-            out.append((' ' * len(body)) + eol)
-            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
-                fence = None
-            continue
-        if marker and not (marker[1][0] == '`' and '`' in marker[2]):
-            fence = marker[1]
-            out.append((' ' * len(body)) + eol)
-            continue
-        masked_body = inline_code_re.sub(lambda m: ' ' * len(m.group(0)), body)
-        out.append(masked_body + eol)
-    return ''.join(out)
+    return _scan_markdown_code(
+        text,
+        on_code_line=lambda body, eol: (' ' * len(body)) + eol,
+        on_inline_code=lambda span: ' ' * len(span),
+    )
 
 
 def _parse_highlight_badge_date(raw_badge):
@@ -1387,10 +1376,13 @@ def run_image_tasks(img_tasks):
             for future in as_completed(futures):
                 record_result(*future.result())
 
+    if pdf_tasks:
+        cout.info(f"主執行緒依序渲染 PDF 封面縮圖 ({len(pdf_tasks)} 項任務)...", icon_key='pdf')
     for task in pdf_tasks:
         record_result(*_execute_img_task(task))
 
     if image_failures:
+        cout.error(f"共有 {len(image_failures)} 項影像生成失敗，已中止寫入快取與資料庫。")
         raise RuntimeError('影像生成失敗，快取紀錄與資料庫尚未提交：' + ', '.join(image_failures))
 
 
@@ -1410,6 +1402,8 @@ def process_article(
 
     try:
         sub_data = load_detail_json(art_detail_path, required=True)
+        # 僅由本地文章設定控制建置提醒，不受遠端 Metadata 同步影響。
+        skip_expiration_reminders = sub_data.get('skip_expiration_reminders') is True
         sub_data, art_github_synced = sync_github_metadata(sub_data, f"文章 {proj_folder}/{item}")
         default_art_order, clean_art_title = parse_folder_meta(item)
 
@@ -1425,7 +1419,8 @@ def process_article(
         has_explicit_cover = 'cover' in sub_data
         meta_cover = sub_data.get('cover')
 
-        check_expiration_reminders(meta_title, "文章", sub_data, art_detail_path, expire_days)
+        if not skip_expiration_reminders:
+            check_expiration_reminders(meta_title, "文章", sub_data, art_detail_path, expire_days)
 
         rel_base = item_path.replace(os.sep, '/')
         for sub_item in os.listdir(item_path):
@@ -1435,6 +1430,7 @@ def process_article(
                 meta_cover = sub_item
 
         if not md_file_path:
+            cout.warn(f"略過文章 {proj_folder}/{item}：資料夾內找不到 .md 檔。")
             return None
 
         stats["art_total"] += 1
@@ -1458,7 +1454,10 @@ def process_article(
         if sub_data.get('title') is None and raw_md_content.startswith('# '):
             meta_title = raw_md_content.split('\n', 1)[0].replace('# ', '').strip()
 
-        check_markdown_highlight_expirations(meta_title, raw_md_content, md_file_path, expire_days)
+        if skip_expiration_reminders:
+            cout.skip(f"跳過文章過期提醒：{proj_folder}/{item} (skip_expiration_reminders: true)", indent=1)
+        else:
+            check_markdown_highlight_expirations(meta_title, raw_md_content, md_file_path, expire_days)
 
         real_path = f"./{rel_base}/"
         pending_replacements = []
@@ -1623,7 +1622,9 @@ def process_article(
         art_thumb_local_path = os.path.join(art_dir, art_thumb_filename)
 
         if meta_cover:
-            art_bg_image_path = os.path.join("assets", "og.png")
+            if local_cover_path and not os.path.isfile(local_cover_path):
+                cout.warn(f"文章 {proj_folder}/{item} 指定的封面圖不存在：{meta_cover}")
+            art_bg_image_path = BANNER_PATH
             if state.register_image_asset(
                 stat_prefix="og", fn=create_og_image,
                 args=(local_cover_path, og_local_path, art_bg_image_path),
@@ -1655,7 +1656,7 @@ def process_article(
         art_html_status, art_detail_hash = check_hash_status(
             art_detail_path, art_html_path, art_cache, 'art_detail', a_overwrite_json,
             logic_version=HTML_LOGIC_VERSION,
-            dependencies=[md_file_path, proj_detail_path, local_cover_path, grp_cover_dep, local_proj_cover, bg_image_path, 'assets/og.png'],
+            dependencies=[md_file_path, proj_detail_path, local_cover_path, grp_cover_dep, local_proj_cover, bg_image_path, BANNER_PATH],
             settings=art_html_settings,
         )
         current_hashes['art_detail'] = art_detail_hash
@@ -1782,6 +1783,8 @@ def generate_projects_json(
             if not os.path.isabs(cat_cover) and os.path.isfile(literal_path):
                 cat_cover = quote(literal_path.replace(os.sep, '/'), safe='/')
             cat_cover_path, cover_url = resolve_media_reference(cat_cover, cat_path)
+            if cat_cover_path and not os.path.isfile(cat_cover_path):
+                cout.warn(f"分類 {cat_folder} 指定的封面圖不存在：{cat_cover}")
             if cover_url.startswith('./'):
                 cover_url = cover_url[2:]
             cat_cover_url = get_hash_url(cat_cover_path, cover_url)
@@ -1870,6 +1873,8 @@ def generate_projects_json(
                     g_cover = g_info.get('cover')
                     if g_cover:
                         g_cover_local_path = os.path.normpath(os.path.join(proj_path, g_cover))
+                        if not os.path.exists(g_cover_local_path):
+                            cout.warn(f"專案 {proj_folder} 群組 '{g_id}' 指定的封面圖不存在：{g_cover}")
                         if os.path.exists(g_cover_local_path):
                             thumb_dir = os.path.join(proj_api_dir, "thumbnails")
                             os.makedirs(thumb_dir, exist_ok=True)
@@ -1914,6 +1919,8 @@ def generate_projects_json(
             proj_og_local_path = os.path.join(proj_api_dir, "og.webp")
 
             if local_proj_cover:
+                if not os.path.isfile(local_proj_cover):
+                    cout.warn(f"專案 {proj_folder} 指定的封面圖不存在：{proj_cover}")
                 proj_data['cover_image'] = local_proj_cover
                 if state.register_image_asset(
                     stat_prefix="og", fn=create_og_image,
@@ -1941,7 +1948,7 @@ def generate_projects_json(
                         resolve_hashed_asset(t_l, t_u, o_c, quote(o_c, safe='/')),
                 ))
             else:
-                proj_img_base = f"{BASE_URL}/assets/og.png"
+                proj_img_base = f"{BASE_URL}/{BANNER_PATH}"
 
             proj_html_path = os.path.join(proj_api_dir, "index.html")
             proj_html_settings = {'template': SHARE_HTML_TEMPLATE, 'base_url': BASE_URL}
@@ -1950,7 +1957,7 @@ def generate_projects_json(
             proj_html_status, detail_hash = check_hash_status(
                 proj_detail_path, proj_html_path, proj_cache, 'detail', p_overwrite_json,
                 logic_version=HTML_LOGIC_VERSION,
-                dependencies=[local_proj_cover, bg_image_path, 'assets/og.png'],
+                dependencies=[local_proj_cover, bg_image_path, BANNER_PATH],
                 settings=proj_html_settings,
             )
             current_proj_hashes['detail'] = detail_hash
@@ -2013,6 +2020,7 @@ def generate_projects_json(
             output_data["projects"].append(proj_data)
 
     if state.scan_failures:
+        cout.error(f"共有 {len(state.scan_failures)} 篇文章解析失敗，已中止建置。")
         raise RuntimeError('文章解析失敗，停止提交生成快取：' + '; '.join(state.scan_failures))
 
     # 4. 執行所有待辦影像任務
@@ -2108,8 +2116,16 @@ def cleanup_old_api_files(api_dir=API_DIR, *, keep_dirs=()):
 
 
 if __name__ == "__main__":
-    with file_lock("tools/.cache/site_build.lock"):
+    os.chdir(ROOT_DIR)
+    try:
+      with file_lock("tools/.cache/site_build.lock"):
         is_github_actions = os.getenv("GITHUB_ACTIONS") == "true"
+        cout.stage("設定檢查與注入", "驗證 site_config.json 並同步至 main.js 與 style.css...", icon_key='config')
+        changed_cfg = inject(ROOT_DIR, ci=is_github_actions)
+        if changed_cfg:
+            cout.success(f"已同步更新設定區塊：{', '.join(changed_cfg)}")
+        else:
+            cout.skip("main.js 與 style.css 設定區塊已是最新，無須更新。", indent=0)
 
         overwrite_webp = False
         overwrite_json = False
@@ -2191,3 +2207,6 @@ if __name__ == "__main__":
 
         total_elapsed = time.perf_counter() - build_start_time
         cout.success(f"全站建置流程執行完畢！總耗時: {total_elapsed:.2f} 秒。", icon_key='party')
+    except Exception as _build_err:
+        cout.error(f"建置中止：{_build_err}")
+        raise

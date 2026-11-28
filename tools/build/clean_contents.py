@@ -1,13 +1,9 @@
 import os
 
-# ✨ 支援由外部主程式呼叫 (tools.cout) 或在 tools 目錄下單獨執行 (cout)
-try:
-    from tools.cout import cout
-except ImportError:
-    from cout import cout
+from tools.common.cout import cout
 
-# ✨ 魔法路徑：自動從 tools 資料夾往上一層找到 projects
-DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'projects'))
+from tools.common.paths import PROJECTS_DIR
+DEFAULT_DIR = str(PROJECTS_DIR)
 
 def clean_old_contents_json(directory=DEFAULT_DIR):
     """
@@ -20,6 +16,7 @@ def clean_old_contents_json(directory=DEFAULT_DIR):
         return
 
     delete_count = 0
+    error_count = 0
     
     # 使用 os.walk 深入每一層資料夾
     for root, dirs, files in os.walk(directory):
@@ -32,9 +29,12 @@ def clean_old_contents_json(directory=DEFAULT_DIR):
                     delete_count += 1
                 except Exception as e:
                     cout.warn(f"刪除失敗 {os.path.relpath(file_path)}: {e}")
+                    error_count += 1
 
     # ✨ 直接以單行狀態總結收尾，不再重複印出 stage 橫幅
-    if delete_count > 0:
+    if error_count > 0:
+        cout.error(f"清理完成但有錯誤！已移除: {delete_count} 個 | 刪除失敗: {error_count} 個檔案。")
+    elif delete_count > 0:
         cout.success(f"清理完成！總共移除了 {delete_count} 個舊版 contents.json 檔案。", icon_key='party')
     else:
         cout.skip("您的 projects 資料夾很乾淨，沒有發現任何 contents.json 檔案！", indent=0)

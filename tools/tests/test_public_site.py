@@ -1,4 +1,4 @@
-"""Run with python -m unittest discover -s tools -p test_public_site.py -v."""
+"""Run with python -m unittest discover -s tools/tests -p test_public_site.py -v."""
 import hashlib
 import json
 import shutil
@@ -9,8 +9,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import prepare_public_site as site
-import release_validation as release
+from tools.deployment import prepare_public_site as site
+from tools.deployment import release_validation as release
+from tools.config.site_config import SITE_URL, BANNER_PATH
 
 
 class PublicSiteTests(unittest.TestCase):
@@ -24,10 +25,10 @@ class PublicSiteTests(unittest.TestCase):
         self.put("index.html", self.homepage())
         self.put("assets/favicon.svg", "<svg/>")
         self.put("assets/icon.png", "icon")
-        self.put("assets/og.png", "og")
+        self.put(BANNER_PATH, "og")
         for page in ("api/p/index.html", "api/p/a/index.html"):
-            self.put(page, f'<meta property="og:url" content="https://azustock.com/{page}">'
-                           '<meta property="og:image" content="https://azustock.com/assets/og.png">')
+            self.put(page, f'<meta property="og:url" content="{SITE_URL}/{page}">'
+                           f'<meta property="og:image" content="{SITE_URL}/{BANNER_PATH}">')
         self.put("assets/site.webmanifest", json.dumps({
             "icons": [{"src": "./icon.png"}], "start_url": "/", "scope": "/", "id": "/"
         }))
@@ -84,8 +85,8 @@ class PublicSiteTests(unittest.TestCase):
         return site.prepare_public_site(self.root)
 
     def test_exclusions_and_preservation(self):
-        excluded = ["tools/discord_release.py", "logs/U1/update.md", "README.md", "CNAME", "main.js", "style.css", "index_local.html", "generate_projects.py", "api/meta.json", "api/p/meta.json", "projects/detail.json", "projects/p/detail.json", "projects/index.md", "projects/p/a/index.md", "projects/p/private/test.txt", ".github_sync.json", "assets/.secrets.json", "assets/.env.production", "assets/.hidden/a", ".well-known/test", "node_modules/a", "projects/p/__pycache__/a", ".build_cache.json", "public-site-inventory/old.txt", "tools/public-site-inventory/old.txt"]
-        included = ["projects/p/README.md", "projects/p/notes.md", "projects/p/settings.json", "projects/p/main.js", "projects/p/style.css", "projects/p/hidden/cover.webp", "projects/p/wip/movie.mp4", "projects/p/document.pdf", "projects/p/index.html", "projects/p/logs/a.txt", "api/p/a/contents.json", "api/p/index.md", "assets/detail.json", "assets/icon.webp", "kotoba.md"]
+        excluded = ["tools/notifications/discord_release.py", "logs/U1/update.md", "README.md", "CNAME", "main.js", "style.css", "index_local.html", "generate_projects.py", "api/meta.json", "api/p/meta.json", "projects/detail.json", "projects/p/detail.json", "projects/index.md", "projects/p/a/index.md", "projects/p/private/test.txt", ".github_sync.json", "assets/.secrets.json", "assets/.env.production", "assets/.hidden/a", ".well-known/test", "node_modules/a", "projects/p/__pycache__/a", ".build_cache.json", "public-site-inventory/old.txt", "tools/public-site-inventory/old.txt"]
+        included = ["projects/p/README.md", "projects/p/notes.md", "projects/p/settings.json", "projects/p/main.js", "projects/p/style.css", "projects/p/hidden/cover.webp", "projects/p/wip/movie.mp4", "projects/p/document.pdf", "projects/p/index.html", "projects/p/logs/a.txt", "api/p/a/contents.json", "api/p/index.md", "assets/detail.json", "assets/icon.webp", "content/kotoba.md", "config/mermaid_styles.txt"]
         for name in excluded + included:
             if not (self.root / name).exists():
                 self.put(name)
@@ -117,7 +118,7 @@ class PublicSiteTests(unittest.TestCase):
         for name in ("README.md", "tools/a.py", "api/p/meta.json", "projects/a/index.md", ".secret"):
             target = stage / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text("bad")
+            target.write_text("bad", encoding="utf-8")
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, "Excluded entry"):
                 site.verify_public_site(stage)
             target.unlink()
@@ -137,7 +138,7 @@ class PublicSiteTests(unittest.TestCase):
             site.verify_public_site(self.stage())
 
     def test_resource_check(self):
-        for href in ("http://azustock.com/assets/favicon.svg", "https://azustock.github.io/assets/favicon.svg", "/assets/missing.svg", "/assets/%2e%2e/favicon.svg"):
+        for href in (SITE_URL.replace("https://","http://")+"/assets/favicon.svg", "https://example.invalid/assets/favicon.svg", "/assets/missing.svg", "/assets/%2e%2e/favicon.svg"):
             with self.subTest(href=href):
                 self.put("index.html", self.homepage(icon=href))
                 with self.assertRaises(ValueError):
@@ -202,7 +203,7 @@ class PublicSiteTests(unittest.TestCase):
         old = site.generate_inventory(self.stage())
         (self.root / "old.txt").unlink()
         self.put("new.txt", "new")
-        js = (self.root / "main.min.js").read_text()
+        js = (self.root / "main.min.js").read_text(encoding="utf-8")
         self.put("main.min.js", js.replace("U1.7.0", "U1.7.1"))  # same byte length, different hash
         now = site.generate_inventory(self.stage())
         diff = site.compare_inventories(now, old, source="test")
@@ -261,7 +262,7 @@ class PublicSiteTests(unittest.TestCase):
                 site.verify_public_site(stage)
         for name, invalid in (("version.json", "[]"), ("data_version.json", "[]"), ("all_projects.json", "[]"), ("changelogs.json", "[]")):
             stage = self.stage()
-            (stage / name).write_text(invalid)
+            (stage / name).write_text(invalid, encoding="utf-8")
             with self.subTest(name=name), self.assertRaises(ValueError):
                 site.verify_public_site(stage)
 
@@ -270,13 +271,13 @@ class PublicSiteTests(unittest.TestCase):
                           ("main.min.js", 'const CONFIG={VERSION:"U1.6.2"};'),
                           ("index.html", self.homepage(version="U1.6.2"))):
             stage = self.stage()
-            (stage / name).write_text(bad)
+            (stage / name).write_text(bad, encoding="utf-8")
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, "System version mismatch"):
                 site.verify_public_site(stage)
 
     def test_stale_changelog_and_latest_source(self):
         stage = self.stage()
-        (stage / "changelogs.json").write_text('{"groups": {}, "logs": []}')
+        (stage / "changelogs.json").write_text('{"groups": {}, "logs": []}', encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "differs from source logs"):
             site.verify_public_site(stage)
         self.put("logs/U1.7.1/detail.json", '{"version":"U1.7.1"}')
@@ -296,18 +297,50 @@ class PublicSiteTests(unittest.TestCase):
         result = site.verify_public_site(self.stage())
         self.assertEqual(result["version"], self.version)
         self.assertTrue(any("no public changelog entry" in w for w in result["warnings"]))
-        cl_doc = json.loads((self.root / "changelogs.json").read_text())
+        cl_doc = json.loads((self.root / "changelogs.json").read_text(encoding="utf-8"))
         self.assertEqual([row["version"] for row in cl_doc["logs"]], ["U2.0.0", "U1.7.0"])
 
     def test_optional_files_warn(self):
-        (self.root / "kotoba.md").unlink()
+        (self.root / "content/kotoba.md").unlink()
         self.refresh_hashes()
         result = site.verify_public_site(self.stage())
-        self.assertEqual(result["warnings"], ["Optional feature file missing or empty: kotoba.md"])
+        self.assertEqual(result["warnings"], ["Optional feature file missing or empty: content/kotoba.md"])
+
+    def test_unmigrated_resource_is_rejected(self):
+        (self.root / "content/kotoba.md").rename(self.root / "kotoba.md")
+        self.refresh_hashes()
+        with self.assertRaisesRegex(ValueError, "Resource migration required"):
+            site.verify_public_site(self.stage())
+
+    def test_unmigrated_mermaid_locations_are_rejected(self):
+        new = self.root / 'config/mermaid_styles.txt'
+        for legacy in ('mermaid_styles.txt', 'assets/styles/mermaid_styles.txt'):
+            with self.subTest(legacy=legacy):
+                old = self.root / legacy
+                old.parent.mkdir(parents=True, exist_ok=True)
+                new.rename(old)
+                self.refresh_hashes()
+                with self.assertRaisesRegex(ValueError, 'Resource migration required: ' + legacy):
+                    site.verify_public_site(self.stage())
+                old.rename(new)
+        self.refresh_hashes()
+        site.verify_public_site(self.stage())
+
+    def test_moved_resource_hash_mismatch(self):
+        stage = self.stage()
+        (stage / "content/kotoba.md").write_text("changed", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "hash mismatch: content/kotoba.md"):
+            site.verify_public_site(stage)
+
+    def test_missing_optional_resource_with_stale_hash_rejected(self):
+        stage = self.stage()
+        (stage / "content/kotoba.md").unlink()
+        with self.assertRaisesRegex(ValueError, "hash mismatch: content/kotoba.md"):
+            site.verify_public_site(stage)
 
     def test_hash_mismatch(self):
         stage = self.stage()
-        (stage / "style.min.css").write_text("body{color:red}")
+        (stage / "style.min.css").write_text("body{color:red}", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "data_version.json hash mismatch: style.min.css"):
             site.verify_public_site(stage)
 
@@ -361,7 +394,7 @@ class PublicSiteTests(unittest.TestCase):
 ```
 """
         self.put("api/p/a/contents.json", json.dumps({"content": markdown}))
-        db = json.loads((self.root / "all_projects.json").read_text())
+        db = json.loads((self.root / "all_projects.json").read_text(encoding="utf-8"))
         article = db["projects"][0]["articles"][0]
         article.update(is_hidden=True, cover_image="./projects/p/cover.webp")
         self.put("all_projects.json", json.dumps(db))
@@ -374,7 +407,7 @@ class PublicSiteTests(unittest.TestCase):
             with self.subTest(resource=resource), self.assertRaisesRegex(ValueError, "Missing or empty resource"):
                 site.verify_public_site(stage)
         stage = self.stage()
-        (stage / "api/p/thumb.webp").write_text("bad content")
+        (stage / "api/p/thumb.webp").write_text("bad content", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "Resource hash mismatch"):
             site.verify_public_site(stage)
 
@@ -391,7 +424,7 @@ class PublicSiteTests(unittest.TestCase):
                 release.replace_config_version(source, bad)
 
     def test_share_page_and_og(self):
-        for rel in ("api/p/index.html", "api/p/a/index.html", "assets/og.png"):
+        for rel in ("api/p/index.html", "api/p/a/index.html", BANNER_PATH):
             stage = self.stage()
             (stage / rel).unlink()
             with self.subTest(rel=rel), self.assertRaisesRegex(ValueError, "Missing or empty resource"):
@@ -416,9 +449,9 @@ class PublicSiteTests(unittest.TestCase):
         with patch.dict(os.environ, {"GITHUB_STEP_SUMMARY": ""}):
             site.main(["--root", str(self.root)])
         report = self.root / site.REPORT_DIR
-        inv = json.loads((report / "public_inventory.json").read_text())
+        inv = json.loads((report / "public_inventory.json").read_text(encoding="utf-8"))
         self.assertEqual(inv["validation"], {"version": self.version, "articles_checked": 1, "warnings": []})
-        self.assertIn("Release validation", (report / "summary.md").read_text())
+        self.assertIn("Release validation", (report / "summary.md").read_text(encoding="utf-8"))
         self.assertFalse((self.root / site.STAGING / site.REPORT_DIR).exists())
 
 

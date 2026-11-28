@@ -1,14 +1,10 @@
 import os
 import glob
 
-# ✨ 支援由外部主程式呼叫 (tools.cout) 或在 tools 目錄下單獨執行 (cout)
-try:
-    from tools.cout import cout
-except ImportError:
-    from cout import cout
+from tools.common.cout import cout
 
-# ✨ 魔法路徑：自動從 tools 資料夾往上一層找到 projects
-DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'projects'))
+from tools.common.paths import PROJECTS_DIR
+DEFAULT_DIR = str(PROJECTS_DIR)
 
 def update_extensions_to_webp(directory=DEFAULT_DIR):
     """
@@ -27,6 +23,7 @@ def update_extensions_to_webp(directory=DEFAULT_DIR):
         return
 
     success_count = 0
+    error_count = 0
     for file_path in target_files:
         try:
             # 讀取檔案內容
@@ -49,8 +46,11 @@ def update_extensions_to_webp(directory=DEFAULT_DIR):
                 
         except Exception as e:
             cout.error(f"更新檔案失敗 {os.path.relpath(file_path)}: {e}")
+            error_count += 1
             
-    if success_count > 0:
+    if error_count > 0:
+        cout.error(f"系統路徑升級完成但有錯誤！成功修改: {success_count} 個 | 失敗: {error_count} 個檔案。")
+    elif success_count > 0:
         cout.success(f"系統路徑升級完成！共修改了 {success_count} 個檔案。", icon_key='party')
     else:
         cout.skip("所有檔案內文路徑皆已為 .webp，無須修改。", indent=0)

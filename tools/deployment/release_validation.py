@@ -8,16 +8,21 @@ from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 
-SITE_URL = "https://azustock.com/"
+from tools.config.site_config import SITE_URL as SITE_ORIGIN, RESOURCE_PATHS, legacy_resource_locations
+
+SITE_URL = SITE_ORIGIN + "/"
 HASH_HEX_LENGTH = 16
 CORE_FILES = (
     "index.html", "main.min.js", "style.min.css", "all_projects.json",
     "version.json", "data_version.json", "changelogs.json", "assets/site.webmanifest",
 )
-OPTIONAL_FILES = ("kotoba.md", "quotes.md", "credits.md", "COPYRIGHT.md", "mermaid_styles.txt")
+OPTIONAL_FILES = tuple(RESOURCE_PATHS.values())
 DATA_VERSION_FILES = {
     "projects": "all_projects.json",
-    **{name: name for name in (*OPTIONAL_FILES, "changelogs.json", "main.min.js", "style.min.css")},
+    **RESOURCE_PATHS,
+    "changelogs": "changelogs.json",
+    "main.min.js": "main.min.js",
+    "style.min.css": "style.min.css",
 }
 # VERSION is the first CONFIG property in the source and compressed JS.
 CONFIG_VERSION_RE = re.compile(
@@ -196,11 +201,20 @@ class Validator:
             if not isinstance(expected, str) or (expected and not re.fullmatch(r'[0-9a-f]{16}', expected)):
                 raise ValueError(f"Invalid or missing data_version.json hash for {key}")
             path = self.stage / relative
-            if not path.is_file() or not path.stat().st_size:
+            if not path.is_file():
                 if optional:
+                    for legacy in legacy_resource_locations(key):
+                        if legacy != relative and (self.stage / legacy).exists():
+                            raise ValueError(f"Resource migration required: {legacy} -> {relative}")
+                    if expected:
+                        raise ValueError(f"data_version.json hash mismatch: {relative}")
                     self.warn(f"Optional feature file missing or empty: {relative}")
                     continue
                 raise ValueError(f"Missing or empty {relative}")
+            if not path.stat().st_size:
+                if not optional:
+                    raise ValueError(f"Missing or empty {relative}")
+                self.warn(f"Optional feature file missing or empty: {relative}")
             if expected != self.hash16(relative):
                 raise ValueError(f"data_version.json hash mismatch: {relative}")
 

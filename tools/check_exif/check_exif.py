@@ -1,5 +1,4 @@
 import argparse
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -9,20 +8,17 @@ from typing import Literal
 import unicodedata
 from PIL import Image
 
-# ✨ 支援由外部主程式呼叫 (tools.cout) 或在 tools 目錄下單獨執行 (cout)
-try:
-    from tools.cout import cout
-except ImportError:
-    from cout import cout
+# Preserve direct script execution / IDE Run as well as python -m.
+if not __package__:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from tools.common.cout import cout
+from tools.common.paths import ROOT_DIR
 
 def _root(root_dir=None):
     if root_dir is not None:
         return Path(root_dir).expanduser().resolve()
-    script_dir = Path(__file__).resolve().parent
-    for candidate in (script_dir.parent, script_dir):
-        if (candidate / 'projects').is_dir() or (candidate / 'api').is_dir():
-            return candidate
-    return script_dir.parent
+    return ROOT_DIR
 
 
 def head_dir(source_dir: Literal['projects', 'api'] | str | os.PathLike | None = 'projects', *, root_dir=None):
@@ -331,30 +327,8 @@ def picture_path(category=None, project=None, article=None, filename=None,
 
 
 def _load_web_serve():
-    """按檔案位置載入 UI，避免 check_exif.py 與 check_exif/ 同名的匯入衝突。"""
-    tools_dir = Path(__file__).resolve().parent
-    candidates = (tools_dir / 'check_exif' / 'check_exif_web.py',
-                  tools_dir / 'check_exif_web.py')
-    module_path = next((path for path in candidates if path.is_file()), None)
-    if module_path is None:
-        locations = '\n'.join(str(path) for path in candidates)
-        raise FileNotFoundError(f'找不到 HTML 介面程式，請確認檔案位於以下任一位置：\n{locations}')
-    name = '_local_check_exif_web'
-    spec = importlib.util.spec_from_file_location(name, module_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f'無法載入 HTML 介面：{module_path}')
-    module = importlib.util.module_from_spec(spec)
-    previous = sys.modules.get(name)
-    sys.modules[name] = module
-    try:
-        spec.loader.exec_module(module)
-    except Exception:
-        if previous is None:
-            sys.modules.pop(name, None)
-        else:
-            sys.modules[name] = previous
-        raise
-    return module.serve
+    from tools.check_exif.check_exif_web import serve
+    return serve
 
 
 def main(argv=None):

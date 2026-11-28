@@ -19,11 +19,17 @@ from datetime import datetime
 from pathlib import Path
 
 
-from tracker_common import (TrackerApp, styled, apply_changes, make_plan)
-from tracker_sensitive_rules import sensitive_bypass, valid_sensitive_condition, discover_sensitive_templates
+# Preserve direct script execution as well as python -m.
+if not __package__:
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+from tools.tracker.tracker_common import (TrackerApp, styled, apply_changes, make_plan)
+from tools.tracker.tracker_sensitive_rules import sensitive_bypass, valid_sensitive_condition, discover_sensitive_templates
 
-PROJECTS_DIR = 'projects'
-OUTPUT_FILE = './tools/tracker/reports/key_dashboard.html'
+from tools.common.paths import ROOT_DIR
+PROJECTS_DIR = str(ROOT_DIR / "projects")
+OUTPUT_FILE = str(ROOT_DIR / "tools/tracker/reports/key_dashboard.html")
 RE_SILENT = re.compile(r'\|SILENT', re.IGNORECASE)
 RE_DETAIL_SILENT = re.compile(r'\|\s*SILENT\s*$', re.IGNORECASE)
 RE_HIGHLIGHT = re.compile(r'\+\+(?:\[([^\]\n]*)\])?((?:(?!\r?\n[ \t]*\r?\n)[\s\S])*?)\+\+')

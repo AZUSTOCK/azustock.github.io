@@ -1,6 +1,6 @@
 {
-  "version": "U1.7.2.1",
-  "date": "",
-  "status": "",
-  "description": ""
+  "version": "U1.7.3",
+  "date": "2026-11-28",
+  "status": "REFACTOR",
+  "description": "全站設定統一、模組化工具與資源結構，應用修正"
 }

@@ -34,6 +34,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_SEND: ${{ inputs.send }}
-          SITE_URL: "https://azustock.com"
-          BANNER_URL: "https://azustock.com/assets/og.png"
-        run: python3 tools/discord_release.py
+        run: python3 -m tools.notifications.discord_release

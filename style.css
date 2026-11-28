@@ -1,71 +1,104 @@
 /* ========================================================================== */
-/* 🔖 第一層：系統核心與變數 (System & Variables)                                       */
-/* ========================================================================== */
-
-/* ========================================================================== */
 /* 🔖 第一層：系統核心與變數 (System & Variables)                               */
 /* ========================================================================== */
 
 /* 1-1. 深色模式 (Dark Mode) */
+/* BEGIN GENERATED DARK THEME */
 [data-theme="dark"] {
-    color-scheme: dark; /* ✨ 核心魔法：強制原生 UI 啟用深色模式 */
-    --bg: #020617; --card: #0b1220; --text: #e5e7eb; --muted: #9ca3af;
-    --accent: #38bdf8; --accent-2: #f5d547; --accent-hover: #F5D547;
-    --glow-1: rgba(16, 85, 137, 0.8); --glow-2: rgba(4, 47, 46, 0.8);
-    --glass-bg: rgba(11, 18, 32, 0.7); --glass-border: rgba(56, 189, 248, 0.2);
-    --box-bg: rgba(23, 35, 59, 0.6); --box-border: rgba(71, 198, 253, 0.15);
-    --nav-bg: rgba(2, 6, 23, 0.95); --divider-line: rgba(255, 255, 255, 0.2);
-    --tag-bg: rgba(34, 211, 238, 0.15); --marquee-bg: rgba(34, 211, 238, 0.1);    
-    --marquee-border: rgba(34, 211, 238, 0.3); --card-border: rgba(255, 255, 255, 0.15); 
-    --shadow-base: rgba(0, 0, 0, 0.35); --shadow-hover: rgba(56, 189, 248, 0.15); 
-    --btn-hover-bg: rgba(11, 18, 32, 0.95); --btn-hover-shadow: rgba(56, 189, 248, 0.3); 
-    --nav-text-shadow: rgba(56, 189, 248, 0.6); --error-color: #ef4444;                  
-    --error-shadow: rgba(239, 68, 68, 0.8);  
-    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(255, 255, 255, 0.25); --scrollbar-hover: rgba(56, 189, 248, 0.4); 
-    
-    --inline-code-color: #2dd4bf;  /* 螢光青綠色，在深色背景非常清晰 */
-    --inline-code-bg: rgba(45, 212, 191, 0.15); /* 微微的青綠色玻璃背板 */
-
-    --group-c1: #FF4D79; --c1-text: #FFE4E6;
-    --group-c2: #10E781; --c2-text: #D1FAE5;
-    --group-c3: #FF9F1C; --c3-text: #FFEDD5;
-    --group-c4: #C77DFF; --c4-text: #F3E8FF;
-    --group-c5: #00E5FF; --c5-text: #E0F2FE;
+    color-scheme: dark;
+    --bg: #020617;
+    --card: #0b1220;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --accent: #38bdf8;
+    --accent-2: #f5d547;
+    --accent-hover: #F5D547;
+    --glow-1: rgba(16, 85, 137, 0.8);
+    --glow-2: rgba(4, 47, 46, 0.8);
+    --glass-bg: rgba(11, 18, 32, 0.7);
+    --glass-border: rgba(56, 189, 248, 0.2);
+    --box-bg: rgba(23, 35, 59, 0.6);
+    --box-border: rgba(71, 198, 253, 0.15);
+    --nav-bg: rgba(2, 6, 23, 0.95);
+    --divider-line: rgba(255, 255, 255, 0.2);
+    --tag-bg: rgba(34, 211, 238, 0.15);
+    --marquee-bg: rgba(34, 211, 238, 0.1);
+    --marquee-border: rgba(34, 211, 238, 0.3);
+    --card-border: rgba(255, 255, 255, 0.15);
+    --shadow-base: rgba(0, 0, 0, 0.35);
+    --shadow-hover: rgba(56, 189, 248, 0.15);
+    --btn-hover-bg: rgba(11, 18, 32, 0.95);
+    --btn-hover-shadow: rgba(56, 189, 248, 0.3);
+    --nav-text-shadow: rgba(56, 189, 248, 0.6);
+    --error-color: #ef4444;
+    --error-shadow: rgba(239, 68, 68, 0.8);
+    --scrollbar-bg: transparent;
+    --scrollbar-thumb: rgba(255, 255, 255, 0.25);
+    --scrollbar-hover: rgba(56, 189, 248, 0.4);
+    --inline-code-color: #2dd4bf;
+    --inline-code-bg: rgba(45, 212, 191, 0.15);
+    --group-c1: #FF4D79;
+    --c1-text: #FFE4E6;
+    --group-c2: #10E781;
+    --c2-text: #D1FAE5;
+    --group-c3: #FF9F1C;
+    --c3-text: #FFEDD5;
+    --group-c4: #C77DFF;
+    --c4-text: #F3E8FF;
+    --group-c5: #00E5FF;
+    --c5-text: #E0F2FE;
     --cursor-link: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='transform: rotate(-15deg); filter: drop-shadow(0 0 4px rgba(255, 77, 121, 0.5));'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E") 6 6, pointer;
 }
+/* END GENERATED DARK THEME */
 
 /* 2. 淺色模式 (Light Mode) - 極淨透亮調色盤 */
+/* BEGIN GENERATED LIGHT THEME */
 [data-theme="light"] {
-    color-scheme: light; 
-    
-    /* ✨ 將背景稍微調亮並帶入極微弱的冷色調，徹底消除髒污感 */
-    --bg: #F1F5F9; 
-    --card: #FFFFFF; 
-    --text: #1E293B; 
-    --muted: #64748B; 
-
-    --accent: #407899; --accent-2: #44D4BE; --accent-hover: #44D4BE;
-    --glow-1: rgba(68, 212, 190, 0.3); --glow-2: rgba(245, 213, 71, 0.3);
-    --glass-bg: rgba(255, 255, 255, 0.7); --glass-border: rgba(68, 212, 190, 0.4);
-    --box-bg: rgba(255, 255, 255, 0.6); --box-border: rgba(64, 120, 153, 0.3);
-    --nav-bg: rgba(248, 250, 252, 0.95); --divider-line: rgba(0, 0, 0, 0.2);
-    --tag-bg: rgba(68, 212, 190, 0.15); --marquee-bg: rgba(68, 212, 190, 0.1);    
-    --marquee-border: rgba(68, 212, 190, 0.3); --card-border: rgba(64, 120, 153, 0.3);  
-    --shadow-base: rgba(0, 0, 0, 0.05); --shadow-hover: rgba(68, 212, 190, 0.2);  
-    --btn-hover-bg: rgba(255, 255, 255, 0.95); --btn-hover-shadow: rgba(254, 232, 67, 0.2); 
-    --nav-text-shadow: rgba(219, 205, 48, 0.3); --error-color: #DB3069;                  
-    --error-shadow: rgba(219, 48, 105, 0.5);  
-    --scrollbar-bg: transparent; --scrollbar-thumb: rgba(0, 0, 0, 0.15); --scrollbar-hover: rgba(64, 120, 153, 0.4); 
-
-    --inline-code-color: #0f766e;  /* 深孔雀綠，在淺色背景擁有極佳的閱讀對比度 */
-    --inline-code-bg: rgba(15, 118, 110, 0.08); /* 非常淡的青綠色背景，不搶戲 */
-
-    --group-c1: #b01436; --c1-text: #881337;
-    --group-c2: #08865e; --c2-text: #064E3B;
-    --group-c3: #cb4b05; --c3-text: #7C2D12;
-    --group-c4: #5420af; --c4-text: #4C1D95;
-    --group-c5: #006a9f; --c5-text: #082F49;
-    --cursor-link: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23DB3069' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='transform: rotate(-15deg); filter: drop-shadow(0 0 4px rgba(255, 77, 121, 0.5));'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E") 6 6, pointer;} /* 挑好想要的 Hex 色碼（例如 #XXXXXX），把 # 拿掉接在 %23 後面 */
+    color-scheme: light;
+    --bg: #F1F5F9;
+    --card: #FFFFFF;
+    --text: #1E293B;
+    --muted: #64748B;
+    --accent: #407899;
+    --accent-2: #44D4BE;
+    --accent-hover: #44D4BE;
+    --glow-1: rgba(68, 212, 190, 0.3);
+    --glow-2: rgba(245, 213, 71, 0.3);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(68, 212, 190, 0.4);
+    --box-bg: rgba(255, 255, 255, 0.6);
+    --box-border: rgba(64, 120, 153, 0.3);
+    --nav-bg: rgba(248, 250, 252, 0.95);
+    --divider-line: rgba(0, 0, 0, 0.2);
+    --tag-bg: rgba(68, 212, 190, 0.15);
+    --marquee-bg: rgba(68, 212, 190, 0.1);
+    --marquee-border: rgba(68, 212, 190, 0.3);
+    --card-border: rgba(64, 120, 153, 0.3);
+    --shadow-base: rgba(0, 0, 0, 0.05);
+    --shadow-hover: rgba(68, 212, 190, 0.2);
+    --btn-hover-bg: rgba(255, 255, 255, 0.95);
+    --btn-hover-shadow: rgba(254, 232, 67, 0.2);
+    --nav-text-shadow: rgba(219, 205, 48, 0.3);
+    --error-color: #DB3069;
+    --error-shadow: rgba(219, 48, 105, 0.5);
+    --scrollbar-bg: transparent;
+    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --scrollbar-hover: rgba(64, 120, 153, 0.4);
+    --inline-code-color: #0f766e;
+    --inline-code-bg: rgba(15, 118, 110, 0.08);
+    --group-c1: #b01436;
+    --c1-text: #881337;
+    --group-c2: #08865e;
+    --c2-text: #064E3B;
+    --group-c3: #cb4b05;
+    --c3-text: #7C2D12;
+    --group-c4: #5420af;
+    --c4-text: #4C1D95;
+    --group-c5: #006a9f;
+    --c5-text: #082F49;
+    --cursor-link: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23DB3069' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='transform: rotate(-15deg); filter: drop-shadow(0 0 4px rgba(255, 77, 121, 0.5));'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E") 6 6, pointer;
+}
+/* END GENERATED LIGHT THEME */
 
 /* ========================================================================== */
 /* ✨ 1. 全域字體與多語系設定                                                  */
@@ -110,21 +143,25 @@
 .group-color-2 { --current-group-color: var(--group-c2); --c-text: var(--c2-text); }
 .group-color-3 { --current-group-color: var(--group-c3); --c-text: var(--c3-text); }
 .group-color-4 { --current-group-color: var(--group-c4); --c-text: var(--c4-text); }
+.group-color-5 { --current-group-color: var(--group-c5); --c-text: var(--c5-text); }
 
 /* 1-4. 標籤與徽章狀態色盤 (含 SemVer 擴充) */
-[data-status="NEW"]      { --s-color: var(--error-color); --s-shadow: var(--error-shadow); }
-[data-status="UPDATED"]  { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); }
-[data-status="WIP"]      { --s-color: #F59E0B;            --s-shadow: rgba(245, 158, 11, 0.4); } 
-[data-status="ARCHIVED"] { --s-color: var(--muted);       --s-shadow: transparent; }           
-[data-status="OC"]       { --s-color: #A855F7;            --s-shadow: rgba(168, 85, 247, 0.4); }
-[data-status="FANART"]   { --s-color: #eb4d9c;            --s-shadow: rgba(236, 72, 153, 0.4); } /* ✨ FANART 專屬亮桃粉色 */
-[data-status="MAJOR"]    { --s-color: #E11D48;            --s-shadow: rgba(225, 29, 72, 0.6); } 
-[data-status="HOTFIX"]   { --s-color: #FF5722;            --s-shadow: rgba(255, 87, 34, 0.6); } 
-[data-status="FEATURE"]  { --s-color: #10B981;            --s-shadow: rgba(16, 185, 129, 0.5); } 
-[data-status="DEV"]      { --s-color: #3B82F6;            --s-shadow: rgba(59, 130, 246, 0.5); } /* ✨ DEV 專屬科技藍 */
-[data-status="REFACTOR"] { --s-color: #6366F1;            --s-shadow: rgba(99, 102, 241, 0.5); } 
-[data-status="PATCH"]    { --s-color: var(--accent);      --s-shadow: rgba(64, 120, 153, 0.4); }
-[data-status="STABLE"]   { --s-color: #06B6D4;            --s-shadow: rgba(6, 182, 212, 0.5); } /* ✨ STABLE 專屬湖水青 */
+/* BEGIN GENERATED STATUS PALETTE */
+[data-status="NEW"] { --s-color: var(--error-color); --s-shadow: var(--error-shadow); }
+[data-status="UPDATED"] { --s-color: var(--accent); --s-shadow: rgba(64, 120, 153, 0.4); }
+[data-status="WIP"] { --s-color: #F59E0B; --s-shadow: rgba(245, 158, 11, 0.4); }
+[data-status="ARCHIVED"] { --s-color: var(--muted); --s-shadow: transparent; }
+[data-status="OC"] { --s-color: #A855F7; --s-shadow: rgba(168, 85, 247, 0.4); }
+[data-status="FANART"] { --s-color: #eb4d9c; --s-shadow: rgba(236, 72, 153, 0.4); }
+[data-status="MAJOR"] { --s-color: #E11D48; --s-shadow: rgba(225, 29, 72, 0.6); }
+[data-status="HOTFIX"] { --s-color: #FF5722; --s-shadow: rgba(255, 87, 34, 0.6); }
+[data-status="FEATURE"] { --s-color: #10B981; --s-shadow: rgba(16, 185, 129, 0.5); }
+[data-status="DEV"] { --s-color: #3B82F6; --s-shadow: rgba(59, 130, 246, 0.5); }
+[data-status="REFACTOR"] { --s-color: #6366F1; --s-shadow: rgba(99, 102, 241, 0.5); }
+[data-status="PATCH"] { --s-color: var(--accent); --s-shadow: rgba(64, 120, 153, 0.4); }
+[data-status="STABLE"] { --s-color: #06B6D4; --s-shadow: rgba(6, 182, 212, 0.5); }
+[data-status="LATEST"] { --s-color: var(--error-color); --s-shadow: var(--error-shadow); }
+/* END GENERATED STATUS PALETTE */
 
 /* 1-5. 動畫可擴充模組化引擎 (預設：VisionOS 景深) */
 :root {
@@ -160,10 +197,6 @@
     --vv-width: 100vw;
     --vv-width: 100dvw;
 }
-
-/* ========================================================================== */
-/* 🏗️ 第二層：全域基底與版面 (Base & Layout)                                           */
-/* ========================================================================== */
 
 /* ========================================================================== */
 /* 🏗️ 第二層：全域基底與版面 (Base & Layout)                                   */
@@ -395,10 +428,6 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 .toc-dropdown ul::-webkit-scrollbar-thumb { border: 3px solid transparent; }
 .markdown-body table::-webkit-scrollbar, .markdown-body .gallery::-webkit-scrollbar { height: 10px; }
 .markdown-body table::-webkit-scrollbar-thumb, .markdown-body .gallery::-webkit-scrollbar-thumb { border: 3px solid transparent; }
-
-/* ========================================================================== */
-/* 🧰 第三層：全域共用 UI 元件 (Global UI Components)                                  */
-/* ========================================================================== */
 
 /* ========================================================================== */
 /* 🧰 第三層：全域共用 UI 元件 (Global UI Components)                           */
@@ -1500,10 +1529,6 @@ footer { padding: 2rem 1.5rem 4rem; display: flex; justify-content: center; }
 }
 
 /* ========================================================================== */
-/* 🏠 第四層：首頁專屬視圖 (Homepage View)                                             */
-/* ========================================================================== */
-
-/* ========================================================================== */
 /* 🏠 第四層：首頁專屬視圖 (Homepage View)                                      */
 /* ========================================================================== */
 
@@ -1833,10 +1858,6 @@ body:not(.system-override-active) .article-li.is-key-locked-item.simulate-hover 
     pointer-events: none; 
 }
 
-/* ========================================================================== */
-/* 📖 第五層：文章系統與 Modal (Article & Modal)                                 */
-/* ========================================================================== */
-
 /* 5-1. Modal 基礎結構 */
 .modal-overlay { 
     position: fixed; top: 0; left: 0; 
@@ -1861,28 +1882,34 @@ body.is-touch-device .toolbox-group:not(.is-open) *,
 #sys-global-toast:not(.is-active) *,
 #sensitive-modal-overlay[inert] * { pointer-events: none !important; }
 .modal-overlay.active { opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
-.modal-content { 
-    background: var(--card); border: 1px solid var(--card-border); 
-    border-radius: 1.1rem; box-sizing: border-box; width: 95%; 
-    max-width: 800px; max-height: 90vh; max-height: 90dvh; 
-    overflow-y: auto; 
-    
-    /* ✨ 加上這行：強制隱藏水平溢出，徹底解決左右被撐開的問題！ */
-    overflow-x: hidden; 
-    
-    /* 關鍵防禦：強制保留 Modal 內部的捲軸空間，防止內容長度變化時造成寬度抖動 */
-    scrollbar-gutter: stable; 
-    
-    overscroll-behavior: contain; -webkit-overflow-scrolling: touch; 
-    padding: 0 3rem 2rem 3rem; position: relative; 
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); 
-    transform: translateY(30px) scale(0.95); 
-    transition: transform 0.25s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease; 
+.modal-content {
+    display: block;
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 1.1rem; box-sizing: border-box; width: 95%;
+    max-width: 800px; max-height: 90vh; max-height: 90dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    padding: 0; position: relative;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    transform: translateY(30px) scale(0.95);
+    transition: transform 0.25s var(--ease-smooth), background-color 0.5s ease, border-color 0.5s ease;
 }
 .modal-overlay.active .modal-content { transform: translateY(0) scale(1); }
 
-/* 5-2. 頂部控制列 */
-.modal-top-bar { position: sticky; top: 0; margin: 0 -3rem 1.5rem -3rem; padding: 1.5rem 1.5rem 1.2rem 3rem; box-shadow: 0 -2px 0 0 var(--glass-bg); border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem; background: var(--glass-bg); backdrop-filter: blur(8px); border-bottom: 1px solid var(--card-border); z-index: 1060; display: flex; justify-content: space-between; align-items: center; transition: background-color 0.3s ease, border-color 0.3s ease; }
+/* 5-2. 頂部控制列（Sticky 毛玻璃黏性定位） */
+.modal-top-bar {
+    position: sticky; top: 0; left: 0; right: 0;
+    width: 100%; box-sizing: border-box;
+    margin: 0; padding: 1.5rem 3rem 1.2rem 3rem;
+    box-shadow: 0 -2px 0 0 var(--glass-bg);
+    border-top-left-radius: 1.1rem; border-top-right-radius: 1.1rem;
+    background: var(--glass-bg); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--card-border);
+    z-index: 1060; display: flex; justify-content: space-between; align-items: center;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
 #modal-top-left, #modal-top-right { 
     display: flex; 
     align-items: center; 
@@ -1924,32 +1951,10 @@ body.is-touch-device .toolbox-group:not(.is-open) *,
 .modal-tool-btn:hover svg { transform: scale(1.08); }
 
 /* ========================================================================== */
-/* ✨ 獨立捲軸與高度動態分配引擎 (Sticky 毛玻璃 + 原生完美卷軸版) */
+/* ✨ 雙視圖內容容器 (#modal-body / #view-index / #view-article)                */
 /* ========================================================================== */
 
-/* 1. 外層容器：拿回「捲動權」！ */
-.modal-content {
-    /* 恢復讓外層負責捲動，卷軸就會出現在最外側邊緣 */
-    overflow-y: auto !important; 
-    overflow-x: hidden !important; 
-    padding: 0 !important; 
-    display: block !important; /* 拔除 Flex，恢復原生流動，排版最穩 */
-}
-
-/* 2. 頂部導覽列：改回 Sticky (黏性定位) */
-.modal-top-bar {
-    position: sticky !important; /* ✨ 關鍵：黏在頂部，內文會自動鑽到它底下產生毛玻璃效果 */
-    top: 0;
-    left: 0;
-    right: 0;
-    margin: 0 !important; 
-    padding: 1.5rem 3rem 1.2rem 3rem !important; 
-    width: 100%;
-    box-sizing: border-box;
-    z-index: 1060 !important; 
-}
-
-/* 3. 中間容器：單純的包裝盒 */
+/* 1. 中間容器：單純的包裝盒 */
 #modal-body {
     display: block !important;
     height: auto !important;
@@ -2136,6 +2141,9 @@ img.article-item-cover { position: relative; z-index: 2; width: 44px !important;
 .article-item-title-row { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; }
 span.article-item-title { font-size: 1.15rem; color: var(--accent); font-weight: bold; }
 span.article-item-desc { font-size: 0.95rem; color: var(--muted); line-height: 1.4; }
+span.article-item-desc::before { content: "- "; }
+span.article-item-desc.is-wrapped { flex-basis: 100%; }
+span.article-item-desc.is-wrapped::before { content: none; }
 span.article-item-date { 
     font-family: monospace; 
     font-size: 0.85rem; 
@@ -2187,7 +2195,7 @@ span.article-item-date {
 .article-li.is-highlight:hover, .article-li.is-highlight.simulate-hover { transform: translate3d(8px, 0, 0); background: linear-gradient(to right, color-mix(in srgb, var(--tab-color, var(--accent)) 18%, transparent) 0%, color-mix(in srgb, var(--tab-color, var(--accent)) 5%, transparent) 100%); }
 .article-li.is-highlight a { padding: 0.6rem 1rem !important; border-radius: 0 0.6rem 0.6rem 0 !important; }
 #modal-body .article-li.is-highlight:hover > a, #modal-body .article-li.is-highlight.simulate-hover > a { background-color: color-mix(in srgb, var(--tab-color, var(--accent)) 15%, transparent) !important; border-left-color: transparent !important; transform: translate3d(0, 0, 0) !important; }
-#modal-body .article-li.is-highlight:hover > a span:not(.status-badge), #modal-body .article-li.is-highlight.simulate-hover > a span:not(.status-badge) { color: var(--c1-text) !important; }
+#modal-body .article-li.is-highlight:hover > a span:not(.status-badge), #modal-body .article-li.is-highlight.simulate-hover > a span:not(.status-badge) { color: var(--c-text, var(--c1-text)) !important; }
 
 /* 排序按鈕動畫 */
 .sort-icon .sort-arr-left, .sort-icon .sort-arr-right { stroke-dasharray: 24 24; transition: stroke-dasharray 0.4s var(--ease-smooth); }
@@ -2696,10 +2704,6 @@ span.article-item-date {
 .lang-wrapper {
     margin: 1rem 0;
 }
-
-/* ========================================================================== */
-/* 🖋️ 第六層：Markdown 渲染引擎 (Markdown Renderer)                             */
-/* ========================================================================== */
 
 /* 6-1. 基礎文字與區塊排版 */
 .markdown-body { 
@@ -3534,12 +3538,15 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 
 /* 6-4. 畫廊系統 (Gallery) */
 .markdown-body .gallery { --g-width: 200px; --g-rows: 1; --g-ratio: 1/1; display: grid; gap: 1rem; margin: 0.2rem -0.8rem 0.2rem -0.8rem; padding: 0.5rem 0.8rem 1.5rem 0.8rem; grid-template-rows: repeat(var(--g-rows), auto); grid-auto-flow: column; grid-auto-columns: minmax(var(--g-width), var(--g-width)); overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-.markdown-body .gallery figure { margin: 0; padding: 0; width: var(--g-width) !important; aspect-ratio: var(--g-ratio); max-width: none !important; flex-shrink: 0; border-radius: 0.6rem; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); overflow: hidden; position: relative; backface-visibility: hidden; transform: translateZ(0); transition: transform 0.3s var(--ease-smooth), border-radius 0.3s ease; cursor: pointer; }
-.markdown-body .gallery figure:hover { transform: scale(1.05) translateZ(0); z-index: 10; }
+.markdown-body .gallery figure { box-sizing: border-box; margin: 0; padding: 0; width: var(--g-width) !important; aspect-ratio: var(--g-ratio); max-width: none !important; flex-shrink: 0; border-radius: 0.6rem; border: 1px solid var(--card-border); box-shadow: 0 4px 15px var(--shadow-base); overflow: hidden; isolation: isolate; position: relative; backface-visibility: hidden; transform: translateZ(0); transition: transform 0.3s var(--ease-smooth), border-radius 0.3s ease; cursor: pointer; }
+/* 只切換佈局，不覆寫作者的 --g-rows 或 Grid 設定。 */
+.markdown-body .gallery[data-wrapped="true"] { display: flex; flex-wrap: wrap; justify-content: flex-start; }
+.markdown-body .gallery-scroll-wrapper { min-width: 0; max-width: 100%; }
+.markdown-body .gallery figure:hover { transform: scale(1.05) translateZ(0); border-radius: 0; z-index: 10; }
 .markdown-body .gallery figure img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; border: none; border-radius: 0; transform: scale(1.02); }
 .markdown-body .gallery figure img.is-broken { transform: none; }
-.markdown-body .gallery figure figcaption { position: absolute; bottom: -3px; left: -3px; right: -3px; width: auto; margin: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); color: #fff; font-size: 0.85rem; font-weight: 500; text-align: center; padding: 0.6rem 0; transform: translateY(105%); transition: transform 0.3s var(--ease-smooth); }
-.markdown-body .gallery figure:hover figcaption { transform: translateY(0); }
+.markdown-body .gallery figure figcaption { position: absolute; bottom: 0; left: 0; right: 0; width: auto; margin: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border-bottom-left-radius: calc(0.6rem - 1px); border-bottom-right-radius: calc(0.6rem - 1px); color: #fff; font-size: 0.85rem; font-weight: 500; text-align: center; padding: 0.6rem 0.5rem; box-sizing: border-box; transform: translateY(105%); transition: transform 0.3s var(--ease-smooth), border-radius 0.3s ease; }
+.markdown-body .gallery figure:hover figcaption { transform: translateY(0); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .markdown-body .gallery figure.hide-caption figcaption { transform: translateY(105%) !important; }
 
 /* 6-5. Mermaid 圖表引擎 */
@@ -4252,11 +4259,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 }
 
 /* ========================================================================== */
-/* 🖼️ 第七層：大圖預覽與閱讀進度條 (Lightbox & Progress Bar)                              */
-/* ========================================================================== */
-
-/* ========================================================================== */
-/* 🖼️ 第七層：大圖預覽引擎 (Lightbox Engine)                                    */
+/* 🖼️ 第七層：大圖預覽與閱讀進度條 (Lightbox & Progress Bar)                    */
 /* ========================================================================== */
 
 /* 7-1. Modal 基礎佈局 */
@@ -4352,7 +4355,7 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 }
 
 /* 底部圖片說明膠囊 (動態主題適應) */
-.lightbox-caption { position: absolute; bottom: max(60px, calc(var(--safe-bottom) + 30px)); left: 50%; max-width: calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px); transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 999px; padding: 8px 24px; color: var(--text); font-size: 1rem; font-weight: 500; pointer-events: none; z-index: 50; max-width: 90%; box-shadow: 0 4px 20px var(--shadow-base); display: none; }
+.lightbox-caption { position: absolute; bottom: max(60px, calc(var(--safe-bottom) + 30px)); left: 50%; max-width: min(90%, calc(var(--vv-width) - var(--safe-left) - var(--safe-right) - 40px)); transform: translateX(-50%); background: var(--glass-bg); backdrop-filter: blur(10px); border: 1px solid var(--glass-border); border-radius: 999px; padding: 8px 24px; color: var(--text); font-size: 1rem; font-weight: 500; pointer-events: none; z-index: 50; box-shadow: 0 4px 20px var(--shadow-base); display: none; }
 .toolbox-group { display: flex; align-items: center; gap: 8px; }
 .toolbox-toggle-btn { display: none; }
 
@@ -4457,12 +4460,10 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
 }
 
 /* ========================================================================== */
-/* 🌐 第八層：多語系、分頁結界與 System Override (i18n & Override)                        */
+/* 🌐 第八層：多語系、分頁結界與 System Override (i18n & Override)              */
 /* ========================================================================== */
 
-/* ========================================================================== */
-/* 🌐 第九層：語言系統                                */
-/* ========================================================================== */
+/* 8-1. 語言系統 */
 
 /* 雙語切換標籤 UI */
 .lang-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--box-bg); padding: 0.4rem; border-radius: 0.8rem; width: max-content; border: 1px solid var(--box-border); }
@@ -4571,17 +4572,13 @@ figure.standalone-figure.no-caption:has(img:hover) .zoom-btn.floating {
     margin: 0 !important;
 }
 
-/* ========================================================================== */
-/* 🔓 第十層：System Override 系統覆寫 (隱藏解鎖彩蛋)                           */
-/* ========================================================================== */
+/* 8-2. System Override 系統覆寫 (隱藏解鎖彩蛋) */
 
 /* 1. 預設狀態：披上隱形斗篷，不佔用任何版面空間 */
 .sys-hidden-card,
 .sys-hidden-item,
 .key-hidden-card,
-.key-hidden-item,
-.sys-hidden-ticker,
-.sys-hidden-tag { 
+.key-hidden-item { 
     display: none !important; 
 }
 
@@ -4595,9 +4592,7 @@ body.system-override-active .article-li.sys-hidden-item:not(.key-hidden-item) {
 }
 
 
-/* ========================================================================== */
-/* 🔓 第十一層：403 錯誤畫面隱藏解鎖彩蛋 (Admin Trigger)                       */
-/* ========================================================================== */
+/* 8-3. 403 錯誤畫面隱藏解鎖彩蛋 (Admin Trigger) */
 .secret-admin-trigger {
     color: var(--muted);
     transition: color 0.3s ease, text-shadow 0.3s ease;
@@ -4628,32 +4623,17 @@ body.system-override-active .article-li.sys-hidden-item:not(.key-hidden-item) {
 /* ==========================================
    ✨ 跑馬燈光速注入引擎 (Warp Speed Injection)
    ========================================== */
-/* 1. 量測未來寬度時的強制顯示器 */
-.marquee-content.force-show-secrets .sys-hidden-ticker { 
-    display: inline-block !important; 
-}
-/* 2. 動畫醞釀期的隱形壓抑器 */
-.marquee-content.suppress-secrets .sys-hidden-ticker { 
-    display: none !important; 
-}
-
-/* 3. 標籤注入瞬間的「高光爆發與動態傾斜」特效 */
+/* 標籤注入瞬間的「高光爆發與動態傾斜」特效 */
 @keyframes inject-flash {
     0% { filter: brightness(2) drop-shadow(0 0 12px var(--accent-2)); transform: scale(1.15) skewX(-15deg); }
     100% { filter: brightness(1) drop-shadow(0 0 0 transparent); transform: scale(1) skewX(0); }
 }
 
-/* 只要隱形壓抑器一解除，機密標籤就會以爆發動畫現身！ */
-body.system-override-active .marquee-content:not(.suppress-secrets) .sys-hidden-ticker {
-    animation: inject-flash 0.6s var(--ease-smooth) forwards;
-}
+/* 新解鎖的標籤在雙軌中同步注入。 */
+.marquee-tag-wrapper.ticker-unlock-flash { animation: inject-flash 0.6s var(--ease-smooth) forwards; }
 
 /* ========================================================================== */
-/* 📱 第九層：行動版、觸控優化與 PWA 安全區 (Mobile, Touch & PWA)                            */
-/* ========================================================================== */
-
-/* ========================================================================== */
-/* 📱 第八層：行動版與觸控優化 (Mobile & Touch)                                 */
+/* 📱 第九層：行動版、觸控優化與 PWA 安全區 (Mobile, Touch & PWA)               */
 /* ========================================================================== */
 
 /* ========================================================================== */
@@ -4989,7 +4969,7 @@ body {
     padding-top: calc(80px + var(--safe-top)) !important;
 }
 
-/* 📱 手機窄版 (<= 700px)：保留頂部 safe-top 遮罩空間，其餘填滿視窗 */
+/* 📱 手機窄版 (<= 700px)：保留頂部 safe-top 遮罩空間，其餘填滿視窗與內距微調 */
 @media (max-width: 700px) {
     .modal-overlay {
         padding-top: var(--safe-top) !important;
@@ -5002,19 +4982,13 @@ body {
         max-width: 100% !important;
         max-height: calc(var(--vv-height) - var(--safe-top) - var(--safe-bottom)) !important;
     }
-}
-
-/* 📱 手機版微調 */
-@media (max-width: 700px) {
     .modal-top-bar {
         padding: 1.5rem 1.5rem 1.2rem 1.5rem !important;
     }
     #view-index, #view-article {
-        /* ✨ 手機版的上方間距也適度補回 */
-        padding-top: 1rem !important; 
-        
+        padding-top: 1rem !important;
         padding-left: 1.5rem !important;
-        padding-right: 1.5rem !important; 
+        padding-right: 1.5rem !important;
         padding-bottom: 2.5rem !important;
     }
 }

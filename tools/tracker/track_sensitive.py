@@ -10,13 +10,18 @@ python track_sensitive.py --remove --file my_article
 import json
 import re
 import sys
-from pathlib import Path
 
-from tracker_common import JsonFieldTracker, json_field_spans
-from tracker_sensitive_rules import discover_sensitive_templates, parse_sensitive_setting
+# Preserve direct script execution as well as python -m.
+if not __package__:
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+from tools.tracker.tracker_common import JsonFieldTracker, json_field_spans
+from tools.tracker.tracker_sensitive_rules import discover_sensitive_templates, parse_sensitive_setting
 
-PROJECTS_DIR = 'projects'
-OUTPUT_FILE = './tools/tracker/reports/sensitive_dashboard.html'
+from tools.common.paths import ROOT_DIR
+PROJECTS_DIR = str(ROOT_DIR / "projects")
+OUTPUT_FILE = str(ROOT_DIR / "tools/tracker/reports/sensitive_dashboard.html")
 results = {}
 all_targets = []
 unset_targets = []

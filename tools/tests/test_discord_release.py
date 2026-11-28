@@ -1,4 +1,4 @@
-"""Offline tests: python -m unittest discover -s tools -p test_discord_release.py -v"""
+"""Offline tests: python -m unittest discover -s tools/tests -p test_discord_release.py -v"""
 import contextlib
 import io
 import json
@@ -8,7 +8,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-import discord_release as dr
+from tools.notifications import discord_release as dr
+from tools.config import site_config as cfg
 
 
 class SummaryTests(unittest.TestCase):
@@ -34,13 +35,8 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(dr.parse_release_summary(body), ("MAJOR", "[MAJOR] Real"))
 
     def test_colors(self):
-        expected = {
-            "NEW": 0xEF4444, "UPDATED": 0x38BDF8, "WIP": 0xF59E0B,
-            "ARCHIVED": 0x9CA3AF, "OC": 0xA855F7, "FANART": 0xEB4D9C,
-            "MAJOR": 0xE11D48, "HOTFIX": 0xFF5722, "FEATURE": 0x10B981,
-            "DEV": 0x3B82F6, "REFACTOR": 0x6366F1, "PATCH": 0x38BDF8,
-            "STABLE": 0x06B6D4, "BUG": 0xFF5722,
-        }
+        names = cfg.SYS_TAGS | set(cfg.CONFIG['status']['discord_aliases'])
+        expected = {tag:int(cfg.resolve_status_color(tag)[1:],16) for tag in names}
         self.assertEqual(dr.STATUS_COLORS, expected)
         for status, color in expected.items():
             with self.subTest(status=status):
@@ -60,7 +56,7 @@ class EmbedTests(unittest.TestCase):
         payload = dr.build_embed(self.release, self.config)
         embed = payload['embeds'][0]
         self.assertEqual(embed['description'], "## [U1.6.3](https://github.com/owner/repo/releases/tag/U1.6.3) RELEASE\n-# owner/repo\n### [MAJOR] Deployment refactor\n[Visit Website ↗](https://example.com/?v=U1.6.3)")
-        self.assertEqual(embed['color'], 0xE11D48)
+        self.assertEqual(embed['color'], dr.STATUS_COLORS["MAJOR"])
         self.assertEqual(embed['author'], {"name":"user", "icon_url":"https://example.com/avatar.png"})
         self.assertEqual(embed['image']['url'], self.config.banner_url)
         self.assertEqual(embed['footer']['text'], "Version U1.6.3")
@@ -105,7 +101,7 @@ class WorkflowTests(unittest.TestCase):
         with patch.object(dr, 'send_webhook') as send, patch.object(dr, 'fetch_release') as fetch:
             result, output = self.invoke(['--file',str(self.markdown),'--tag','U1','--json'], {"GITHUB_EVENT_NAME":"release","INPUT_SEND":"true","DISCORD_WEBHOOK":"secret"})
             self.assertEqual(result, 0)
-            self.assertEqual(json.loads(output)['embeds'][0]['color'], 0xE11D48)
+            self.assertEqual(json.loads(output)['embeds'][0]['color'], dr.STATUS_COLORS["MAJOR"])
             send.assert_not_called()
             fetch.assert_not_called()
 
@@ -114,7 +110,7 @@ class WorkflowTests(unittest.TestCase):
             result, _ = self.invoke([], {"GITHUB_EVENT_NAME":"release","GITHUB_EVENT_PATH":str(self.event_path),"DISCORD_WEBHOOK":"secret"})
             self.assertEqual(result, 0)
             send.assert_called_once()
-            self.assertEqual(send.call_args.args[0]['embeds'][0]['color'], 0x6366F1)
+            self.assertEqual(send.call_args.args[0]['embeds'][0]['color'], dr.STATUS_COLORS["REFACTOR"])
 
     def test_manual_modes(self):
         for mode in ('false','true'):

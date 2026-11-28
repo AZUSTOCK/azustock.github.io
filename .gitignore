@@ -1,27 +1,44 @@
-projects/**/*.png
-projects/**/*.jpg
-projects/**/*.jpeg
-*.pyc
-__pycache__
-.vscode
+# === Python ===
+*.py[cod]
+__pycache__/
+
+# === Local development ===
+.vscode/
 note.txt
 tempCodeRunnerFile.py
-private/
-api/
-all_projects.json
-changelogs.json
-data_version.json
-version.json
-.build_cache.json
-index.html
-main.min.js
-style.min.css
-/tools/tracker/reports
 desktop.ini
+private/
+
+# === Secrets ===
+/.github_sync.json
+/tools/.secrets.json
+
+# === Original project images ===
+/projects/**/*.png
+/projects/**/*.jpg
+/projects/**/*.jpeg
+
+# === Generated website ===
+/api/
+/all_projects.json
+/changelogs.json
+/data_version.json
+/version.json
+/index.html
+/main.min.js
+/style.min.css
+
+# === Build cache ===
+/.build_cache.json
+/tools/.cache/
+
+# === Tool reports ===
+/tools/tracker/reports/
+
+# === Deployment artifacts ===
+/.gh-pages-temp/
+/tools/public-site-inventory/
+# Local WebP incremental build cache
 /tools/.cache/webp_manifest.json
 /tools/.cache/webp_manifest.json.lock
 /tools/.cache/site_build.lock
-.github_sync.json
-# Deployment artifacts
-/.gh-pages-temp/
-/tools/public-site-inventory/

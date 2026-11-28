@@ -5,14 +5,10 @@ from PIL import Image
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ✨ 支援由外部主程式呼叫 (tools.cout) 或在 tools 目錄下單獨執行 (cout)
-try:
-    from tools.cout import cout
-except ImportError:
-    from cout import cout
+from tools.common.cout import cout
 
-# ✨ 魔法路徑：自動從 tools 資料夾往上一層找到 projects
-DEFAULT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'projects'))
+from tools.common.paths import PROJECTS_DIR
+DEFAULT_DIR = str(PROJECTS_DIR)
 
 # ==========================================
 # 🛡️ 防偽與轉檔設定區
@@ -117,6 +113,8 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
 
     success_count = 0
     skip_count = 0
+    ignored_count = 0
+    error_count = 0
     max_workers = min(32, (os.cpu_count() or 4) + 4)
     
     # 🔥 啟動多核心平行池處理圖片
@@ -128,9 +126,8 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
         for future in as_completed(futures):
             status, img_path, webp_path, err = future.result()
             
-            # ✨ 新增：如果是 IGNORE，直接 pass，不計算入 skip_count
             if status == 'IGNORE':
-                pass
+                ignored_count += 1
             elif status == 'SKIPPED':
                 skip_count += 1
             elif status == 'OVERWRITTEN':
@@ -141,12 +138,23 @@ def convert_to_webp_with_protection(directory=DEFAULT_DIR, quality=90, auto_mode
                 success_count += 1
             elif status == 'ERROR':
                 cout.error(f"處理失敗 {img_path}: {err}")
+                error_count += 1
 
     elapsed = time.perf_counter() - t_start
-    if success_count > 0:
-        cout.success(f"WebP 系統處理完成！成功轉檔/複寫: {success_count} 張 | 略過已存在圖: {skip_count} 張 (耗時 {elapsed:.2f}s)。", icon_key='party')
+    if error_count > 0:
+        cout.error(
+            f"WebP 處理完成但有錯誤！成功: {success_count} 張 | 略過: {skip_count} 張 | 排除: {ignored_count} 張 | 失敗: {error_count} 張 (耗時 {elapsed:.2f}s)。"
+        )
+    elif success_count > 0:
+        cout.success(
+            f"WebP 系統處理完成！成功轉檔/複寫: {success_count} 張 | 略過已存在圖: {skip_count} 張 | 排除: {ignored_count} 張 (耗時 {elapsed:.2f}s)。",
+            icon_key='party',
+        )
     else:
-        cout.skip(f"圖片皆已為最新 WebP 格式，共略過 {skip_count} 張已存在圖片 (耗時 {elapsed:.2f}s)。", indent=0)
+        cout.skip(
+            f"圖片皆已為最新 WebP 格式，共略過 {skip_count} 張 | 排除 {ignored_count} 張 (耗時 {elapsed:.2f}s)。",
+            indent=0,
+        )
 
 def generate_cover_thumbnail(src_path, dest_path, max_width=320, quality=80):
     """

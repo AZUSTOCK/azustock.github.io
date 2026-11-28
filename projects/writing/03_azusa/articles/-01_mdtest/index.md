@@ -215,7 +215,7 @@ This English paragraph uses `<div id="lang-en" class="no-format">`, applying the
 | **排版結界** | `<div class="md-divider"></div>` | 清除浮動圖片溢出並畫出分隔線（隱形版為 `.md-clear`） |
 
 > **💡 提示：**
-> * 語法中的 `[標籤]`、`[lang]` 與 `"偽裝文字"` 皆為選填項目，若不填寫將套用系統預設設定。
+> * 高光的 `[標籤]`、Ruby 的 `[lang]` 與機密的 `"偽裝文字"` 可省略；有解鎖條件的機密仍須指定有效金鑰。
 > * `[金鑰邏輯]` 支援 `A || (B && C)` 多重邏輯與 `KEY_ID|3`（需集滿 `#1`~`#3` 碎片）驗證。
 
 ---
@@ -324,3 +324,291 @@ GitHub 上常見的小徽章與自訂實體按鈕測試：
 
 ## 10. 結語
 完整測試到此結束。
+
+---
+
+## 11. 高光期限、批次金鑰與明確錨點 (Extended Syntax)
+
+### 11.1 日期高光
+
+高光日期使用 `YYYY-MM-DD` 或 `YYYY/MM/DD`；系統依共用設定 `status.expire_days` 判斷期限（目前 14 天）。逾期預設只移除高光效果，保留內文；加入 `|EXPIRE` 或 `|EXPIRED` 則隱藏整段。
+
+```markdown
+++[2026-01-01]只有日期的高光++
+++[NEW:2026-01-01]到期後保留純文字++
+++[NEW:2026-01-01|EXPIRE]到期後不顯示++
+
+:::highlight[UPDATED:2026-01-01|EXPIRED]
+到期後整個區塊都不顯示。
+:::
+```
+
+實際測試（過去日期）：
+
+- ++[NEW:2000-01-01]這段仍應顯示，但沒有高光。++
+- 以下冒號後的過期文字不應顯示：++[NEW:2000-01-01|EXPIRE]不應出現的測試文字++
+
+:::highlight[UPDATED:2000-01-01]
+**過期區塊測試**：這段仍應顯示為普通 Markdown。
+:::
+
+### 11.2 批次金鑰、複合條件
+
+- `++[KEY:DEMO_RANGE#1~3]文字++`：一次授予第 1 至 3 個碎片（單一區間最多 100 個）。
+- `++[KEY:DEMO_RANGE#1~3/3|SILENT]++`：指定總數與靜音模式；只有行內 `KEY:` 高光會授予金鑰。
+- `DEMO_RANGE|3`：驗證是否已取得第 1 至 3 個碎片；`/3` 則是授予金鑰時的總數標示。
+- `A || (B && C)`：滿足 A，或同時滿足 B 與 C；括號只包整個 AND 群組，不支援任意巢狀邏輯。
+
+!![SYNTAX_DEMO_RANGE|3] "尚未取得三個碎片" 三個碎片已全部取得 !!
+
+++[KEY:SYNTAX_DEMO_RANGE#1~3/3]批次授予測試碎片（滾動進入視野觸發）++
+
+### 11.3 自訂標題錨點 {#syntax-demo-anchor}
+
+在 Markdown 標題末端加上空格及 `{#id}` 即可指定穩定的錨點，例如：
+
+```markdown
+### 自訂標題錨點 {#syntax-demo-anchor}
+[返回指定標題](#syntax-demo-anchor)
+[其他文章指定段落](?p=專案ID&a=文章ID#syntax-demo-anchor)
+```
+
+[返回自訂錨點](#syntax-demo-anchor)
+
+## 12. 進階排版與媒體操作 (Layout & Media)
+
+### 12.1 直書與縮排
+
+<div class="vertical-wrapper">
+
+:::lang[ja|no-format]
+「言葉」
+
+縦書きの例です。<br>次の行です。
+:::
+
+</div>
+
+<div class="vertical-wrapper" data-indent="false">
+
+這是一個停用自動段首全形空白的直書區塊。
+
+</div>
+
+### 12.2 畫廊
+
+<div class="gallery" style="--g-width: 160px; --g-rows: 1; --g-ratio: 1/1;">
+
+![圖片 A](./architecture.webp "圖 A")
+
+![圖片 B](./architecture.webp "圖 B")
+
+</div>
+
+`--g-width` 控制單張寬度，`--g-rows` 控制列數，`--g-ratio` 控制圖片框比例。Lightbox 可在同一畫廊內切換圖片。 上方兩張 160px 圖片應緊鄰排列（間距為 1rem）；寬度足夠時不應出現橫向捲軸或箭頭。窄版時才出現捲動提示，點擊箭頭只移動畫廊本身，不應使文章頁面偏移。若要清除浮動圖片的排版影響，可使用 `<div class="md-clear"></div>` 或帶分隔線的 `<div class="md-divider"></div>`。
+
+**橫向捲動回歸測試（單列、不自動換行）：**
+
+<div class="gallery" style="--g-width: 240px; --g-rows: 1; --g-ratio: 1/1;">
+
+![圖片 1](./architecture.webp "圖 1")
+
+![圖片 2](./architecture.webp "圖 2")
+
+![圖片 3](./architecture.webp "圖 3")
+
+![圖片 4](./architecture.webp "圖 4")
+
+![圖片 5](./architecture.webp "圖 5")
+
+![圖片 6](./architecture.webp "圖 6")
+
+</div>
+
+請測試左右箭頭、拖曳橫向捲軸及 Lightbox 切換。使用同一圖片檔案刻意測試每個圖說與相簿索引是否各自正確；原有文章垂直與水平位置不應因畫廊箭頭而改變。
+
+### 12.3 圖片與媒體參數
+
+以下使用本測試文件既有資源名稱，實際使用時請換成同文章目錄下存在的檔案。
+
+```markdown
+![圖片](./architecture.webp "圖說")
+![圖片](./thumb.webp#full=./original.webp)
+![float-left](./architecture.webp "靠左圖說")
+![float-right](./architecture.webp)
+![icon](./architecture.webp)
+![文件.pdf](./meme.pdf?h=450#poster=./cover.webp)
+![影片.mp4](./HBD-TETO-2026.mp4#poster=./HBD-TETO-2026.webp)
+![音訊.wav](./HBD-TETO-2026.wav)
+```
+
+- `#full=`：Lightbox 指向原圖；不指定時，由建置工具為本地點陣圖片生成縮圖及原圖連結。
+- `#poster=`：PDF 或影片預覽封面；PDF 未指定封面時，建置器可自動產生預覽圖。
+- `?h=450`：PDF 桌面內嵌框高度（px）。行動裝置使用自己的預覽與操作選單。
+- 影音格式：影片 `mp4`、`webm`、`ogg`；音訊 `mp3`、`wav`。實際播放能力取決於瀏覽器與編碼。
+- `&w=...&h=...`、舊版 `&ar=...` 是渲染器使用的尺寸資訊，正常讓生成器自動加入即可。
+
+### 12.4 Mermaid 自訂高度
+
+```mermaid[自訂高度測試]?h=320
+flowchart LR
+    A[文章] --> B[渲染]
+    B --> C[圖表]
+```
+
+全站 Mermaid 共用樣式存放於 `config/mermaid_styles.txt`，建置後由前端獨立載入。它主要注入 `graph` / `flowchart` 圖表宣告後方。
+
+## 13. 文章及專案設定檔 (detail.json)
+
+以下均為**設定範例**，不是在 Markdown 內執行的指令。請把對應 JSON 欄位寫入實際專案或文章的 `detail.json`。
+
+### 13.1 基本欄位
+
+```json
+{
+  "title": "文章標題",
+  "description": "文章摘要",
+  "date": "2026-11-27",
+  "order": 10,
+  "lang": "ja",
+  "version": "v1.0.0",
+  "min_sys_version": "U1.7.0",
+  "cover": "architecture.webp",
+  "group": "demo",
+  "tags": ["OC", "NEW:2026-11-27"],
+  "pinned": true
+}
+```
+
+- `lang`：文章可覆寫專案語言；未設定時繼承專案。
+- `group`：對應專案 `groups` 的 ID；未指定時可由專案的 `default: true` 群組接收。
+- `default_sort`：專案層級可用 `asc` 或 `desc`，使用者當前工作階段的排序選擇優先。
+- `min_sys_version`：低於指定網站版號時觸發系統更新流程。
+
+### 13.2 狀態標籤、日期與優先順序
+
+系統 Tag 依 `tools/config/site_config.json` 的 `status.groups` 及 `status.expirable_tags` 定義。目前第一互斥群組為：
+
+`MAJOR > HOTFIX > LATEST > FEATURE > NEW > UPDATED > REFACTOR > PATCH > STABLE > ARCHIVED`
+
+`WIP`、`OC`、`FANART`、`DEV` 各自獨立。第一群組在專案卡片只顯示當前可見狀態中優先級最高的一項。子文章 `NEW` 會觸發專案 `UPDATED`（專案本身不是 `NEW` 時），其餘系統狀態按群組冒泡；一般自訂文章 Tag 不自動冒泡至專案卡片。
+
+```json
+{
+  "tags": ["FEATURE:2026-11-27", "OC", "DEV"],
+  "new": "2026-11-27",
+  "updated": false,
+  "wip": true,
+  "archived": false,
+  "pinned": "2026-11-27"
+}
+```
+
+目前日期型 Tag 僅支援 `NEW`、`UPDATED`、`LATEST`、`FEATURE`；獨立的 `new`、`updated`、`wip`、`archived`、`pinned` 旗標亦可使用日期作為限期狀態。`hidden` 日期與上述不同，是在指定日期到達時解除隱藏。
+
+### 13.2.1 跳過建置時的過期提醒
+
+若文章是語法測試文件，或刻意保留過期狀態作為展示，可在該文章本地的 `detail.json` 加入：
+
+```json
+{
+  "skip_expiration_reminders": true
+}
+```
+
+- 建置時跳過此文章的 Metadata 日期標籤、狀態／解封及 Markdown 行內／區塊高光過期提醒，只輸出一筆「跳過文章過期提醒」。
+- 這不是跳過文章建置：內容、縮圖、分享頁及 API 仍正常生成。前端過期判斷、`|EXPIRE`／`|EXPIRED` 隱藏行為、定時解封均維持原樣。
+- 僅本地文章設定中的 JSON 布林值 `true` 啟用；省略或設為 `false` 即恢復一般提醒。不繼承專案設定，也不影響其他文章或 Tracker。
+- 此欄位僅供建置器使用，不會輸出至公開文章 Metadata。適合本文件 11.1 節刻意使用的過期高光測試。
+
+### 13.3 隱藏文章與金鑰限制
+
+一般金鑰隱藏（取得金鑰後出現在目錄）：
+
+```json
+{
+  "title": "隱藏測試文章",
+  "required_key": "SYNTAX_DEMO_RANGE|3",
+  "lock_mode": "hidden",
+  "tags": ["MAJOR", "OC", "DEV"]
+}
+```
+
+- `lock_mode: "hidden"`：缺少金鑰時不顯示文章；解鎖後出現在目錄，系統 Tag 依互斥規則更新專案卡片及跑馬燈。
+- `lock_mode: "visible"`（預設）：目錄可顯示上鎖項目，但不能閱讀。
+- `hidden: true`：System Override 的獨立隱藏旗標；也可以填日期做定時解封。若同時設定金鑰隱藏，必須同時滿足兩種可見性條件。
+- `required_key` 不授予金鑰；`key` 才是在進入對應內容時授予金鑰。
+
+```json
+{
+  "required_key": "KEY_A || (KEY_B && KEY_C|2)",
+  "lock_mode": "hidden",
+  "key": ["KEY_D", "KEY_E#1~3/3|SILENT"]
+}
+```
+
+同一組 OR/AND 條件也可寫成二維陣列，例如 `[["KEY_A"], ["KEY_B", "KEY_C|2"]]`。一維陣列代表 OR。
+
+> 注意：這些是前端閱讀體驗與防雷機制，不是伺服器端的存取控制。公開部署的資料仍可能被直接讀取，不應存放真正機密或個資。
+
+### 13.4 多重內容警告
+
+```json
+{
+  "sensitive": {
+    "MAIN": ["KEY_A", "KEY_B"],
+    "INSIDE": "KEY_C && KEY_D",
+    "DEFAULT": true
+  }
+}
+```
+
+每個警告可以設定不同的略過條件；`true` 表示顯示且無金鑰略過條件，`false` 表示停用該警告。舊語法 `"sensitive": "INSIDE"` 仍可使用。MAIN 的永久同意以專案內的作品群組為範圍；不同警告類型不因此一律放行。
+
+### 13.5 專案群組
+
+```json
+{
+  "title": "測試專案",
+  "default_sort": "asc",
+  "groups": {
+    "demo": {
+      "title": "測試群組",
+      "description": "群組摘要",
+      "highlight": true,
+      "color": "var(--group-c2)",
+      "default": true
+    }
+  }
+}
+```
+
+文章設定 `"group": "demo"` 即加入此群組。未定義或未指定的群組會列入其他文章，避免目錄與可見文章數量不一致。
+
+## 14. 維護與操作 (Build & Maintenance)
+
+下列指令均在儲存庫根目錄執行：
+
+```powershell
+# 只同步共用設定（不重新生成壓縮產物）
+python -m tools.config.site_config
+python -m tools.config.site_config --check
+
+# 測試、建置、發布驗證
+python -m unittest discover -s tools/tests -v
+python generate_projects.py
+python -m tools.deployment.prepare_public_site
+```
+
+文章、專案與版本日誌內容仍分別維護於 `projects/`、`logs/`，公開共用 Markdown 位於 `content/`。不要直接修改自動生成的 API、Hash 清單及壓縮資源。修改共用 Tag 顏色、主題或警告模板時，使用 `tools/config/site_config.json`。
+
+### 14.1 隱藏文章回歸測試步驟
+
+1. 在測試專案建立公開文章（例如 `PATCH`）及 `lock_mode: "hidden"` 的金鑰隱藏文章（例如 `MAJOR`、`OC`、`DEV`）。
+2. 確認解鎖前目錄、文章數量、專案狀態、跑馬燈均不包含僅由隱藏文章提供的狀態；公開 `PATCH` 仍存在。
+3. 取得完整金鑰後返回目錄，確認文章顯示，卡片計數增加，互斥狀態更新為 `MAJOR`，`OC`、`DEV` 同步冒泡，兩條跑馬燈各出現一次。
+4. 若同一狀態也存在於其他公開專案，確認全站跑馬燈不重複新增該標籤。
+5. 在兩個同網域分頁中測試金鑰同步；同時確認 System Override 不略過金鑰限制。
+
+測試請使用獨立的 DEMO 金鑰，避免改變其他文章的閱讀流程。
+

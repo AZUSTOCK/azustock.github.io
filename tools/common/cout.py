@@ -252,7 +252,7 @@ class Cout:
         return choice if choice else default
 
 
-# ✅ 補齊 3：建立全域實例，讓外部可以直接 `from tools.cout import cout`
+# ✅ 補齊 3：建立全域實例，讓外部可以直接 `from tools.common.cout import cout`
 cout = Cout(mode=os.getenv("AZU_ICON_MODE", "emoji"))
 
 # ==========================================================
@@ -380,5 +380,5 @@ def run_cout_universal_test(instance=None, interactive=False):
 
 
 if __name__ == "__main__":
-    # 直接執行 python tools/cout.py 時，自動啟動萬能測試
+    # 直接執行 python -m tools.common.cout 時，自動啟動萬能測試
     run_cout_universal_test(cout, interactive=False)

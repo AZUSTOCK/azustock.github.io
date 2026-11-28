@@ -8,15 +8,20 @@ python track_pinned.py --set '"2026-11-26"' --file my_article
 python track_pinned.py --remove --file my_article
 """
 import json
-import re
 import sys
 from datetime import datetime
 
-from tracker_common import JsonFieldTracker, source_path
+# Preserve direct script execution as well as python -m.
+if not __package__:
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parents[2]))
+from tools.tracker.tracker_common import JsonFieldTracker, parse_valid_date
 
-PROJECTS_DIR = 'projects'
-OUTPUT_FILE = './tools/tracker/reports/pinned_dashboard.html'
-RE_DATE = re.compile(r'^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$')
+from tools.common.paths import ROOT_DIR
+from tools.config.site_config import config_for_projects
+PROJECTS_DIR = str(ROOT_DIR / "projects")
+OUTPUT_FILE = str(ROOT_DIR / "tools/tracker/reports/pinned_dashboard.html")
 PINNED_ALIASES = ('pinned', 'PINNED')
 
 results = {}
@@ -27,27 +32,7 @@ scanned = False
 
 
 def detect_expire_days():
-    main_js = source_path(PROJECTS_DIR, 'main.js')
-    if main_js.is_file():
-        try:
-            text = main_js.read_text(encoding='utf-8-sig')
-            match = re.search(r'TAG_EXPIRE_DAYS:\s*(\d+)', text)
-            if match:
-                return int(match.group(1))
-        except (OSError, UnicodeError, ValueError):
-            pass
-    return 14
-
-
-def parse_valid_date(text):
-    match = RE_DATE.match(str(text).strip())
-    if not match:
-        return None
-    y, m, d = int(match.group(1)), int(match.group(2)), int(match.group(3))
-    try:
-        return datetime(y, m, d)
-    except ValueError:
-        return None
+    return config_for_projects(PROJECTS_DIR)["status"]["expire_days"]
 
 
 class PinnedTracker(JsonFieldTracker):

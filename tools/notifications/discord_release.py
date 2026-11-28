@@ -12,26 +12,11 @@ from pathlib import Path
 from urllib.parse import quote
 
 
-# 更新類型只取摘要開頭的 [STATUS]，不掃描內文關鍵字。
-# 與 style.css 的 [data-status] --s-color 同步（data-theme="dark"）。
-# CSS 變數已解析為深色模式的實際色碼；BUG 沿用 HOTFIX 類型。
-STATUS_COLORS = {
-    "NEW": 0xEF4444,
-    "UPDATED": 0x38BDF8,
-    "WIP": 0xF59E0B,
-    "ARCHIVED": 0x9CA3AF,
-    "OC": 0xA855F7,
-    "FANART": 0xEB4D9C,
-    "MAJOR": 0xE11D48,
-    "HOTFIX": 0xFF5722,
-    "FEATURE": 0x10B981,
-    "DEV": 0x3B82F6,
-    "REFACTOR": 0x6366F1,
-    "PATCH": 0x38BDF8,
-    "STABLE": 0x06B6D4,
-}
-STATUS_COLORS["BUG"] = STATUS_COLORS["HOTFIX"]
-DEFAULT_COLOR = 0x44D4BE
+from tools.config.site_config import CONFIG as SITE_CONFIG, SITE_URL, BANNER_URL, status_colors
+
+# Dark-theme colors are resolved from the canonical site configuration.
+STATUS_COLORS = status_colors()
+DEFAULT_COLOR = int(SITE_CONFIG['status']['discord_default_color'][1:], 16)
 DESCRIPTION_LIMIT = 4000  # 沿用舊版的保守長度上限
 HEADING_RE = re.compile(r"^ {0,3}#{1,6}(?:[ \t]+|(?=\*\*\[))(.+?)\s*$")
 STATUS_RE = re.compile(r"^\[([A-Za-z][A-Za-z0-9_-]*)\][ \t]*(.*)$")
@@ -78,7 +63,8 @@ def load_config():
 
     return Config(
         repo=env("GITHUB_REPOSITORY"),
-        site_url=env("SITE_URL"), banner_url=env("BANNER_URL"),
+        site_url=os.environ.get("SITE_URL", SITE_URL).strip(),
+        banner_url=os.environ.get("BANNER_URL", BANNER_URL).strip(),
         token=env("GITHUB_TOKEN"), webhook=env("DISCORD_WEBHOOK"),
         event=env("GITHUB_EVENT_NAME"), input_tag=env("INPUT_TAG"),
         input_send=env("INPUT_SEND").lower() == "true",
@@ -289,9 +275,9 @@ def main(argv=None):
             # 本機模式不讀 event、不查 API、不接觸 webhook，即使有 CI 環境變數。
             from dataclasses import replace
             config = replace(config,
-                repo=args.repo if args.repo is not None else config.repo or "AZUSTOCK/azustock.github.io",
-                site_url=args.site_url if args.site_url is not None else config.site_url or "https://azustock.com",
-                banner_url=args.banner_url if args.banner_url is not None else config.banner_url or "https://azustock.com/assets/og.png")
+                repo=args.repo if args.repo is not None else config.repo or SITE_CONFIG["site"]["repo"],
+                site_url=args.site_url if args.site_url is not None else config.site_url,
+                banner_url=args.banner_url if args.banner_url is not None else config.banner_url)
             try:
                 body = args.file.read_text(encoding="utf-8-sig")
             except (OSError, UnicodeError):
