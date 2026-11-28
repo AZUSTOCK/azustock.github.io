@@ -21,10 +21,12 @@
 7. Hidden article visibility and tag regression tests
 8. Article-level `skip_expiration_reminders` for intentional expiration tests
 9. Expiration reminder opt-out regression tests and syntax documentation
+10. Inline SVG support for `social_links` icons in `main.js`
+11. Automatic stale manifest key pruning in `webp_manifest.py`
 
 ## change / update
 1. Python tool execution paths
-2. GitHub Actions tool integration and `tools/.cache/` workflow cache path
+2. GitHub Actions workflow caching (`api/`, `data_version.json`, `tools/.cache/`) and `main`-only Pages deployment gating
 3. Unified status tag and expiration rules
 4. Discord theme color resolution
 5. Moved shared Markdown content to content/
@@ -32,6 +34,8 @@
 7. Integrated the latest generator with unified configuration
 8. Reorganized .gitignore
 9. Updated project tags and both marquee tracks when article visibility changes
+10. Dynamic theme CSS variable reading for `applyTheme()` and Mermaid PNG export
+11. Granular `site_config.py` validation diagnostics and complete `cout` build/error summaries across tools
 
 ## fix
 1. Inconsistent status tag definitions
@@ -60,3 +64,4 @@
 8. Legacy tools/release.py and tools/deployment/release.py
 9. One-time migration artifacts (`tools/MIGRATION.md`, `tools/config/migrate_resources.py`, `tools/config/generator_config_only.patch`) and migration-only tests
 10. Redundant `.gitignore` rules already covered by `/tools/.cache/`
+11. Automatic `.gitignore` mutation (`_ensure_gitignore`) in `webp_manifest.py`

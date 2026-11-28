@@ -4,7 +4,7 @@
 /* ================================================================== */
 // BEGIN GENERATED SITE CONFIG
 const CONFIG = {
-    VERSION: "U1.7.2.1",
+    VERSION: "U1.7.3",
     DEFAULT_THEME: "dark",
     MARQUEE_SPEED: 120,
     FAVICON_LIGHT: "./assets/OG_dark.png",
